@@ -28,7 +28,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 |:--|:--|
 | `out\bootstrapper.exe` | 正常启动：无边框 780×570 窗口加载 `app.html` |
 | `--debug` | 开 DevTools 并自动弹出（默认关闭；顺带开右键菜单） |
-| `--uninstall` | **卸载器模式**（件 1d）：无边框 **720×540** 窗口（标题「LinkDesk 卸载」），启动 URL 自动补 `?mode=uninstall` ⇒ 页面走卸载四帧（confirm/running/progress/finish）。同一 exe、同一页面，产品化入口（ARP `UninstallString` 指向本 exe）归件 2b/2d |
+| `--uninstall` | **卸载器模式**（件 1d 静态 UI ／ 件 2b ARP 指向 ／ **件 2d 真清理**）：无边框 **720×540** 窗口（标题「LinkDesk 卸载」），启动 URL 自动补 `?mode=uninstall` ⇒ 页面走卸载四帧（confirm/running/progress/finish）。同 `--dir=`/`--log=`；界面态额外注入 `usize=`（体积 MB）与 `udata=`（userData 路径）给四帧真数据。**静默卸载 = `--uninstall /S`**（ARP `QuietUninstallString` 同款）：不建窗，keep 恒 true（静默永不删用户数据）。清理清单 = `customUnInstall` 逐条（syswrite 卸载侧）＋ 目录树自删 ＋ 子进程自删；**工人带目标体检闸**（目录必须真有 `LinkDesk.exe`，见 syswrite.h/uninstall-test.ps1） |
 | `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入）｜卸载态另有 `screen=un-confirm\|un-running\|un-progress\|un-finish`（**必须与 `--uninstall` 同给**：屏名不在当前模式的白名单里会被**静默拒绝**，症状＝实机整屏空白）与 `keep=0`（卸载完成屏「数据已一并移除」黄徽章态）｜件 2c 增：`screen=version&kind=same\|older&from=<已装>&to=<本包>`（**版本守卫屏**取图口——真载荷的守卫在页面白名单里也认 `version`，但开发壳无载荷走不到守卫，取图走这条）、`autouninstall=1`（卸载确认屏自动点「卸载」）＋ `autocontinue=1`（摆到「正在运行」后自动点「关闭并继续」，供 `tools\guard-test.ps1`）｜⚠️ 三个 `auto*=1` 走的都是**页面真动作**（post 链同产品），不是宿主短路 |
 | `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口；走 WebView2 `CapturePreview`，只拍页面、**不触碰桌面**） |
 | `--capture-delay=<ms>` | 覆盖 `--capture` 的落图延时（默认 1200——i18n fetch ＋ 入场动效落定）。**要「动画跑完的定格帧」必须调大**：完成屏彩粒（`.burst`）实测 end time 995–1665ms，1.2s 拍下去拍到半空粒子（`cmp-shots.ps1` 因此传 `-SettleMs`）。非法值静默维持默认 |
@@ -39,6 +39,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `LK_FORCE_NO_RUNTIME=1`（环境变量） | 模拟 WebView2 运行时缺失 → 系统对话框＋退出码 3（件 3c 非交互测兜底路径） |
 | `LK_GUARD_ASSUME_VERSION=<ver>`（环境变量，件 2c） | 覆盖版本守卫读到的「已装版本」——不用改注册表就能摆出同版/更旧/更新三种情形（`tools\guard-test.ps1` 靠它做到**零系统写入**）。与 `LK_FORCE_NO_RUNTIME` 同族：**产品运行不带** |
 | `LK_IGNORE_CLOSE=1`（环境变量，件 2c） | 本窗**拒绝** WM_CLOSE（测试缝）：「优雅关闭超时」路径要一个真的关不掉的对端才测得出——`guard-test.ps1` 路 3c 给 replica 挂它，验「10s 超时回『稍后』且没强杀」 |
+| `LK_TRACE=<路径>`（环境变量，件 2d） | 卸载/安装**工人**的逐阶段诊断流水（静默态没有窗，`PostJson`/`WM_LK_*` 全是哑的——工人走到哪、为何被目标体检闸拦下，必须有地方看）。`uninstall-test.ps1` 全程挂它；产品运行不带 |
 
 验收辅助脚本（`tools/`，PS 5.1 直跑，**改完 `app.*` 必须先 `build.cmd`**——exe 只从自己所在目录读页面）：
 
@@ -54,6 +55,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
 | `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。🔴 **路 2 有「目标体检」闸**（2026-10-02）：那一路刻意不给 `--dir`（为验「覆盖装从 ARP 认目录」）⇒ 落装前先认 ARP 里的目录，**不在 `$Work` 下就跳过本路**（要拿真机目录当靶子才加 `-AllowRealInstallDir`）；为什么加这闸见**坑 15**。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
 | `guard-test.ps1` | 件 2c 验收（**四路 18 断言**，🔴 **零系统写入**——不碰注册表与真装目录）：路 1 静默版本守卫（同版/更旧 ⇒ 退 **1602** 且目标目录一字节没建；更新 ⇒ 放行，用「放行后下一道闸退 5」证放行）· 路 2 界面态守卫真接线（`version-guard` 进日志 ＋ **无** `progress`）· 路 3 进程守卫三态（3a 无实例 ⇒ `uninstall-norun→closed`；3b 有实例 ⇒ 帧拦在「正在运行」＋ **replica 自己的日志出现 `close-request`**（证明走的是 WM_CLOSE 优雅关，非强杀）＋ 对端退净 ⇒ `uninstall-closed`；3c 拒关（`LK_IGNORE_CLOSE=1`）⇒ 10s 后 `uninstall-close-timeout` 且**对端还活着**）· 路 4 路径守卫宿主半边（`dir-invalid` 就近回页面）。判据全走 `--log` ＋ 退出码；replica = 壳改名 `out\LinkDesk.exe`（跑完自删），**开跑前发现有别的 `LinkDesk.exe` 在跑直接 `exit 3`**（本脚本会向每个同名进程发 WM_CLOSE，不许碰别人的）。`-Road <1..4>` 单跑、`-Keep` 留 replica |
+| `uninstall-test.ps1` | 件 2d 验收（**三路 29 断言**，🔴 会写真机注册表——装前**全量快照**（整键 `reg export`＋单值 .NET 带类型）跑完无条件还原并自检；桌面/开始菜单 .lnk 同样备份还原）：路 1 全链（静默装→覆盖装（右键反推）→静默卸 ⇒ `customUnInstall` 清单**逐条对账**：ARP/右键三键/ProgId/Capabilities/RegisteredApplications/13 扩展名值/PATH 精确恢复（逐字符＋类型）/标记值/.lnk/INSTDIR 自删，userData 原样未动）· 路 2 PATH 误伤保护（装后人为改 PATH ⇒ 卸载**一字不动**）· 路 3 界面态全流程（自动缝走帧 1→3→4，`uninstall-finished`＋60/80/92/100 进度＋WM_CLOSE 干净退出后 INSTDIR 自删——**不能 Stop-Process**：杀进程跳过退出路径＝自删子进程不产生）。🔴 **keep=0（真删 userData）不在此脚本测**——真 `%APPDATA%\linkdesk` 删了不可逆，实机验证归 3c「卸载两分支各一次」；keep=0 的删除与程序树删除是同一段 WipeTree，路 1 已实删验证。🔴 工人带**目标体检闸**：卸载目录必须真有 `LinkDesk.exe`（与 VerifyInstall 同判据），开发壳 out\／下载夹里的裸 setup.exe 都过不了闸——只演流程不删任何东西（360 关着也不许抱侥幸）。`-Road <1..3>` 单跑 |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
 | `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--attach` 连已在跑的实例、`--keep` 测完不关窗 |
 | `pix-diff.ps1` | 两张同尺寸 PNG 比像素：只回报差异点数／最大通道差／差异包围盒，**不落图**——回答「改了样式后哪一屏变了、变在哪一块」比人眼看图便宜得多（读图付 token）。`-A out\app-home.png -B out\base-home.png`（`-Tol` 默认 6） |
@@ -119,6 +121,14 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   实测：home/version ⇒ `close` · progress ⇒ `cancel` · finish ⇒ `install-done{launch}` · 卸载 progress ⇒
   **零消息**（置灰吞掉）。防重复提交——stub 宿主回话连点三下只发出 1 条 `install-start`。DWM 圆角——
   `DwmGetWindowAttribute(33)` 读回 `2`（DWMWCP_ROUND），Win10 无此属性号自动直角、无版本分支。
+- **卸载实测（件 2d，2026-10-02，`tools\uninstall-test.ps1` 三路 29 断言全绿 ＋ `LK_TRACE` 工人流水）**：
+  静默装 → 覆盖装（右键反推生效）→ 静默卸：`customUnInstall` 清单**逐条对账**全过（右键三键整树 ·
+  ProgId/Capabilities · RegisteredApplications · 13 扩展名值（扩展名键不动）· PATH **逐字符**恢复＋类型
+  不降级 · 标记值 · .lnk）＋ ARP 删 ＋ INSTDIR 自删（204/204 文件 ＋ del/rd）＋ userData 原样未动；
+  路 2 装后人为改 PATH ⇒ 卸载一字不动（宁可不删）；路 3 界面态帧 1→3→4（`uninstall-finished`、
+  60/80/92/100 到位、WM_CLOSE 干净退出后自删）。🔴 过程中抓到并修掉两个设计级问题：① **360 秒删
+  自复制副本**（坑 17）⇒ 改 1MB 纯壳自提取；② 卸载工人加**目标体检闸**（目录里必须有 `LinkDesk.exe`）
+  ——没有它，从错误目录跑一次 `--uninstall` 就把那个目录（或真 userData）删了。
 - Per-Monitor V2：`GetProcessDpiAwareness` 实测返回 awareness=2；窗口按 `逻辑像素 × dpi/96` 建，并响应 `WM_DPICHANGED` 守回 780×570 逻辑尺寸。
 - 页面加载：`SetVirtualHostNameToFolderMapping`（`installer.local` → exe 目录）+ `https://installer.local/app.html`，`NavigationCompleted` 返回 success=1。
 - 缺运行时：系统对话框（中文警告＋官方下载按钮）＋退出码 3。
@@ -212,6 +222,26 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
     `screen`」，钉着 `screen=home` 的取图 URL 会静默不触发（已在 app.js 改成「当前在 home/progress 就触发」，
     取图 URL 与自动装不再互斥）。**凡「进程活着但该动的没动」，先查参数到没到（`--log` 里有没有第一行），
     再查页面判据，最后才怀疑 C++。**
+17. 🔴🔴 **杀软（本机 360）会把「安装器自复制」的卸载器副本秒删**（件 2d 实测，差点让 ARP 卸载
+    对全部 360 用户失效）。第一版设计 = `CopyFileW(自己 → INSTDIR\linkdesk-setup.exe)`（107MB 整份），
+    实测副本**出生 ~1 秒内消失**、exec 报拒绝访问，静默卸载因此**从来没真正跑过**——而验收脚本
+    还一格格 PASS（装/覆盖装都绿），直到卸载那格永远等不到，才顺藤摸到 360。360 是**行为监控**
+    拦的：不动中立的 `Copy-Item`/`cp` 副本（同内容、同目录、活得好好的），只拦**安装器进程自己
+    复制自己的映像**（蠕虫启发式）；Defender 是关着的（本机），`Get-MpThreatDetection` 恒空。
+    **改法（现设计）**：不整份自复制，改**自提取**——只写自身前 `g_markerAt` 字节（＝ 1MB 纯壳，
+    不含 7z 载荷）到 `INSTDIR\linkdesk-setup.exe`，与 NSIS 的 1MB Uninstall.exe 同量级，还省 106MB
+    磁盘；壳不含载荷对 `--uninstall` 无影响（工人不碰 payload）。⚠️ **待验**：1MB 自提取能否过
+    360 的行为监控——**用户把 360 开回来后必须复测**（装一次 → 等 10s → 副本还在 ＋ 静默卸载跑通）。
+    若仍被拦 ⇒ 备选：壳 exe 随 7z 载荷分发（由 7zr 落盘，中性），3b 出包链加一步。
+    **同族判据**：凡是「进程把自己的映像往外复制」的安装器设计，都要在 360/火绒/腾讯管家下验一遍。
+18. 🔴 **验收脚本的注册表备份链，`reg.exe` 一律数组传参**（`Start-Process -ArgumentList @('export',$full,$file,'/y')`）：
+    手拼字符串的引号转义（`` `\" `` ＋ `\"` 混用）在 export/delete/import 上各踩一次，症状是
+    `reg export` **静默失败**（exit 1 只在 stderr）⇒ 备份文件没生成 ⇒ 跑完「还原自检全绿」
+    （它只数**抛异常**的步数，不看每步退出码）⇒ ARP/菜单键/ProgId **真机状态丢失**。
+    11:13 那次跑恰好留下一批 export 文件才把原值手工救回。**修法**：① 数组传参；② Restore-All
+    的每步把退出码纳入记账（WARN 不许吞 import 失败）；③ 整键 export 的路径必须带 `HKCU\` 前缀；
+    ④ 单值还原用 .NET（带 `GetValueKind`，值不存在时 kind 留空 ⇒ 还原=删掉——`GetValueKind` 对
+    不存在的值会**抛 IOException**，要先判 `GetValue` 返回非 null）。
 
 ## 四、宿主契约（件 1b 起会用到）
 
@@ -225,10 +255,11 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   最后一条不是多余的——**壳自己的 `.rdata` 里就存着 magic 字面量**，只认 magic 会认到自己身上。
 - **退出码（静默态）**：0 成功 · 4 拿开发壳当安装包跑（无载荷）· 5 解压失败 · 6 解压后校验没找到 `LinkDesk.exe`。
   3 = 缺 WebView2 运行时（界面态专用）。件 2c 增：**1602 = 版本守卫拦下**（同版/降级；＝ `ERROR_INSTALL_USEREXIT`，
-  与 NSIS 版 `installer.nsh` 同一口径；被拦时目标目录一个字节没建）。
+  与 NSIS 版 `installer.nsh` 同一口径；被拦时目标目录一个字节没建）。件 2d：静默卸载（`--uninstall /S`）成功也退 0。
 - **宿主 → 页面消息**（`PostWebMessageAsJson`，**必须在 UI 线程调**；工人线程用 `WM_APP+1..4` 转一手）：
   `{"type":"progress","pct":0-100}`（只前进不倒退）· `{"type":"install-error","code","msg"}` ·
-  `{"type":"install-canceled"}` · `{"type":"install-done"}`。
+  `{"type":"install-canceled"}` · `{"type":"install-done"}`（安装收尾；卸载模式同一信号改发
+  `{"type":"uninstall-finished"}`——工人完成 ⇒ 完成屏）。
   件 2c 增：`{"type":"close-request"}`（宿主收到 WM_CLOSE 时回问页面——三路汇一的宿主半边）·
   `{"type":"version-guard","kind":"same|older","installed","incoming"}`（守卫结论，页面换守卫屏）·
   `{"type":"dir-invalid","reason":"empty|length|root|write"}`（宿主建目录/写探针失败，页面就近行内错）·

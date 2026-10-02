@@ -61,6 +61,8 @@
   "installer.uninstall.confirm.sub": "Install location: <code>{path}</code> · about {size}",
   "installer.uninstall.confirm.keepdata": "Keep my data",
   "installer.uninstall.confirm.keepdata.sub": "workspaces · settings · plugins",
+  "installer.uninstall.confirm.deleteWarn": "This deletes all workspaces, settings and installed plugins. It cannot be undone.",
+  "installer.uninstall.confirm.deleteConfirm": "I understand, delete my data",
   "installer.uninstall.confirm.uninstall": "Uninstall<span class=\"cir\">→</span>",
   "installer.uninstall.confirm.cancel": "Cancel",
   "installer.uninstall.running.title": "LinkDesk is running",

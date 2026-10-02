@@ -162,6 +162,11 @@ if ($setupTime -and (Test-Path $shellExe)) {
 }
 if ($setupTime) { Write-Host "新鲜度 OK：安装包 $setupTime ≥ 最新源 $newestName（$newest）" }
 
+# 🔴 件 2c 起版本守卫对静默装也生效（同版/降级 ⇒ 退 1602）：本脚本装的是同版本包，而机器 ARP
+#   里现登记着 0.2.33 ⇒ 每一次静默装都会被守卫拦下。这里全程摆 0.0.1（假装已装极旧版 ⇒ 放行）；
+#   守卫自身的正反路径由 guard-test.ps1 路 1/2 专测，不归本脚本。
+$env:LK_GUARD_ASSUME_VERSION = '0.0.1'
+
 $EXTS = @('.txt', '.py', '.js', '.json', '.md', '.html', '.css', '.ts', '.tsx', '.yaml', '.xml', '.csv', '.log')
 # 右键三项：键名 → command 参数。`*\` 与 `Directory\` 传的是 "%1"（被点的那一项本身），
 # `Directory\Background\` 传的是 "%V"（被点的那一层目录）。**字面 `*` 是键名、不是通配符**——

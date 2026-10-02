@@ -234,6 +234,10 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 .unwarn{font:12px/1.6 var(--sans);color:var(--txt2);background:rgba(0,0,0,.04);
         border:1px solid var(--hair);border-radius:12px;padding:10px 14px;margin:10px auto 0;max-width:44ch}
 .unwarn[hidden]{display:none}
+/* 件 2d：二次确认块——提示文字取 --danger（全屏唯一红 = 破坏性动作的语义，这里正是）；
+   复选行收紧行距（.scr.un .opt 的 22px 是给屏级选项的，块内不需要那么大） */
+.unwarn.danger{color:var(--danger)}
+#delconfirm .opt{margin-top:12px}
 /* 帧 3：PCT 68px（安装 76px）＋ 墨色 fill（不带安装的紫光晕）；分段文案色比安装亮一档 */
 .scr.un .track{width:100%}
 #s-un-progress .pct{font:200 68px/1 var(--sans);margin-bottom:26px}

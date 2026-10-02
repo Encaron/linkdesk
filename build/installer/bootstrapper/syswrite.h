@@ -76,4 +76,56 @@ DWORD EstimatedSizeKb(const std::wstring& dir);
 /** 语言持久化（**写侧**；读侧 1c 已通）：`HKCU\Software\LinkDesk\Installer → Language`。 */
 bool WriteInstallerLanguage(const std::wstring& code);
 
+// ══ 卸载侧（件 2d）════════════════════════════════════════════════════════
+// **逐条照抄 `build/installer.nsh` 的 `customUnInstall`**（key 逐条不得增删；未退役前改这里
+// 必须同笔改那里，退役后本文件即唯一真相源）。两处**有意超出** nsh 清单（出处 02 §二幕⑨
+// 「反注册：快捷方式 / 右键菜单 / 编辑器注册 / PATH 项 / 安装目录」——nsh 时代这两件由
+// electron-builder 代做，T3-b 后没人做了）：
+//   · `DeleteShortcuts`（桌面＋开始菜单 .lnk，与 CreateShortcuts 严格互逆）
+//   · `DeleteArpEntry`（nsh 的卸载器由 NSIS 生成、自动删自己的 ARP 键；自绘卸载器要自己删）
+// 安装目录与 userData 的目录树删除不在此层（归 main.cpp 的工人线程，进度要按文件计数）。
+
+/** 把引导器壳提取成 `<安装目录>\linkdesk-setup.exe`（ARP `UninstallString` 指向的那份卸载器）。
+ *  🔴 **不是整份自复制**——只写前 `shellBytes` 字节（＝纯壳，不含 7z 载荷）：
+ *    ① 体积与 NSIS 的 1MB Uninstall.exe 同量级（整份复制 = INSTDIR 白多 107MB）；
+ *    ② 2026-10-02 实测：**360 行为监控会把「安装器 CopyFileW 自己的整份映像」秒删**
+ *       （自复制＝蠕虫启发式），中性进程写出的文件没事——改自提取并实测能否过 360，
+ *       过不了就得换思路（记录在 06 2d）。
+ *  `shellBytes` = 调用方（main.cpp）的 `g_markerAt`（marker 偏移＝纯壳大小）；0 = 无载荷的开发壳
+ *  ⇒ 退化成整份复制。`selfPath` = 调用方的 `g_selfPath`。 */
+bool InstallUninstallerCopy(const std::wstring& selfPath, const std::wstring& installDir,
+                            unsigned long long shellBytes);
+
+/** 右键三键**整树删**（`*\shell` / `Directory\shell` / `Directory\Background\shell` 的
+ *  OpenWithLinkDesk）——与安装时勾没勾无关，清理要彻底（不存在则无害）。 */
+bool DeleteContextMenus();
+
+/** 文件关联反注册：13 个扩展名 × `OpenWithProgids` 值删 ＋ `Capabilities\FileAssociations` 值删
+ *  （🔴 **不动扩展名键本身**——那不是我们建的）＋ ProgId / Capabilities 键删 ＋
+ *  `Software\RegisteredApplications` 值删。 */
+bool DeleteAssociations();
+
+/** PATH 恢复——**精确匹配才恢复备份**（宁可不删，不许误伤用户改过的 PATH）。
+ *  两种可判定情形：current == 备份（我们那段已被去掉）／current == 备份;安装目录。
+ *  其余一律**不动**。`*touched` = 是否真写了 PATH（真写时本函数自己广播 WM_SETTINGCHANGE）。
+ *  无论动没动 PATH，`PathBackup`/`PathAdded` 两个标记值都会删掉（同 nsh）。 */
+bool RestorePath(bool* touched);
+
+/** 桌面 ＋ 开始菜单 `LinkDesk.lnk` 删除（与 CreateShortcuts 同路径，不存在则无害）。 */
+bool DeleteShortcuts();
+
+/** ARP 卸载项整键删（键名 = 写侧同一条 v5 UUID）。 */
+bool DeleteArpEntry();
+
+/** userData 目录 = `%APPDATA%\linkdesk`（🔴 **小写**——Electron 的 userData 取 package.json 的
+ *  `name`（`linkdesk`），不是 `productName`（`LinkDesk`）；实机目录读数就是小写，06 补记⑥）。
+ *  「保留我的数据」没勾时整目录删（删不删由调用方决定，本函数只给路径）。 */
+std::wstring UserDataDir();
+
+/** 目录像不像「装好的安装目录」——判据与安装侧 `VerifyInstall` 同一条：里面有 `LinkDesk.exe`。
+ *  🔴 卸载工人（main.cpp）拿它做**目标体检**：开发壳的 `out\`（只有 bootstrapper.exe）、
+ *  用户下载夹里的裸 setup.exe 都**没有**它 ⇒ 通过不了这道闸，一个文件、一条注册表都不许碰
+ *  ——否则从错误目录跑一次 `--uninstall` 就把那个目录（或真 userData）删了。 */
+bool DirLooksInstalled(const std::wstring& dir);
+
 #endif  // LINKDESK_SYSWRITE_H

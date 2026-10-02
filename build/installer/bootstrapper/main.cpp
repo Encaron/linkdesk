@@ -92,6 +92,10 @@ static DWORD g_closeWaitStart = 0;
 static bool g_closeAllowed = false;
 /** 版本守卫：页面回过「仍要安装」后置真，本次进程内不再拦第二次。 */
 static bool g_versionAck = false;
+// ── 件 2d · 卸载态 ────────────────────────────────────────────────────────────
+static volatile LONG g_unKeep = 1;   // 「保留我的数据」勾选态（onMsg 写，工人线程读；默认勾）
+static volatile LONG g_unBusy = 0;   // 清理已开跑（帧 3 无取消，二次触发一律吞掉）
+static void StartUninstall();        // 定义在件 2d 段（WM_TIMER 与 onMsg 都要用）
 
 // ── COM 回调（手写引用计数，Invoke 转发 lambda）───────────────────────────
 // 无参数完成回调（CapturePreview 等只回 HRESULT 的 handler）
@@ -245,6 +249,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             if (!IsAppRunning()) {
                 KillTimer(hwnd, kCloseWaitTimer);
                 PostJson(L"{\"type\":\"uninstall-closed\"}");
+                StartUninstall();   // 件 2d：对端退净 ⇒ 真正开清理（帧 3 的进度由此喂）
             } else if (GetTickCount() - g_closeWaitStart >= kCloseWaitMs) {
                 KillTimer(hwnd, kCloseWaitTimer);
                 PostJson(L"{\"type\":\"uninstall-close-timeout\"}");
@@ -298,7 +303,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         PostJson(L"{\"type\":\"install-canceled\"}");
         return 0;
     case WM_LK_DONE:
-        PostJson(L"{\"type\":\"install-done\"}");
+        // 件 2d：两种模式共用「工人收尾」这条消息，页面两套屏各认各的词
+        PostJson(g_uninstall ? L"{\"type\":\"uninstall-finished\"}" : L"{\"type\":\"install-done\"}");
         return 0;
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
@@ -427,6 +433,7 @@ static const unsigned char k7zSig[6] = { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C };
 static std::wstring g_selfPath;                  // 自身 exe 全路径（= 安装包路径）
 static bool         g_hasPayload = false;         // 带载荷 = 真安装包；不带 = 开发期壳（--preview 用）
 static PayloadMark  g_payload = {};
+static uint64_t     g_markerAt = 0;              // marker 偏移 ＝ 纯壳字节数（0 = 无载荷；卸载器自提取用）
 static std::wstring g_installDir;                 // 目标安装目录
 
 /** 命令行开关（件 2a 起） */
@@ -517,6 +524,7 @@ static bool FindPayload()
                     || !ReadFile(h, sig, 6, &sgot, nullptr) || sgot != 6) continue;
                 if (memcmp(sig, k7zSig, 6) != 0) continue;
                 g_payload = m;
+                g_markerAt = abs;
                 g_hasPayload = true;
                 found = true;
                 break;
@@ -949,6 +957,26 @@ static std::wstring ValidateInstallDir(const std::wstring& dir)
 
 /** 无界面安装（--silent ／ /S）——更新链那条路。**不建窗、不碰 WebView2**：
  *  自动更新不该因为「运行时缺失」而装不上（缺运行时是能用界面的问题，不是装不上的问题）。 */
+/** 卸载/安装工人共用的诊断落点（LK_TRACE=<path>，见 UninstallWorker 开头的说明）。 */
+static void TraceLine(const std::wstring& line)
+{
+    wchar_t tp[MAX_PATH] = {};
+    if (GetEnvironmentVariableW(L"LK_TRACE", tp, MAX_PATH) <= 0) return;
+    HANDLE f = CreateFileW(tp, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (f == INVALID_HANDLE_VALUE) return;
+    SYSTEMTIME st = {};
+    GetLocalTime(&st);
+    wchar_t ts[40] = {};
+    swprintf(ts, 40, L"[%02d:%02d:%02d.%03d] ", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    std::wstring l = std::wstring(ts) + line + L"\r\n";
+    std::string u(l.size() * 3, '\0');
+    int n = WideCharToMultiByte(CP_UTF8, 0, l.c_str(), (int)l.size(), u.data(), (int)u.size(), nullptr, nullptr);
+    DWORD w = 0;
+    WriteFile(f, u.data(), n, &w, nullptr);
+    CloseHandle(f);
+}
+
 static int RunSilentInstall()
 {
     if (!g_hasPayload) return 4;                       // 拿开发壳当安装包跑：如实失败
@@ -974,7 +1002,11 @@ static int RunSilentInstall()
     WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
     if (g_opts.path) AddToPath(g_installDir);
     CreateShortcuts(g_installDir);
+    bool unCopyOk = InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);   // 件 2d：ARP 指的卸载器
+    TraceLine(L"[install] uninstaller-copy ok=" + std::wstring(unCopyOk ? L"1" : L"0")
+              + L" dst=" + g_installDir + L"\\linkdesk-setup.exe");
     WriteArpEntry(g_installDir, PayloadVersion());
+    TraceLine(L"[install] arp written; silent install done");
     if (SUCCEEDED(hrCom)) CoUninitialize();
 
     if (g_forceRun) {
@@ -1157,6 +1189,9 @@ static void InstallWorker()
     sysOk &= WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
     if (g_opts.path) sysOk &= AddToPath(g_installDir);
     sysOk &= CreateShortcuts(g_installDir);
+    // 件 2d：把壳自己复制成 `<INSTDIR>\linkdesk-setup.exe`（ARP UninstallString 指向的那份
+    // 卸载器）——**必须排在 WriteArpEntry 之前**，ARP 的键值与 EstimatedSize 都要算上它
+    sysOk &= InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);
     sysOk &= WriteArpEntry(g_installDir, PayloadVersion());
     if (g_canceled.load()) { PostMessageW(g_hwnd, WM_LK_CANCELED, 0, 0); CoUninitialize(); return; }
     if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 92, 0);
@@ -1229,11 +1264,175 @@ static void StartInstall(const std::wstring& requestedDir, const TaskOptions& op
 }
 
 /** 取消：终止我们自己拉起的 7zr（**不是**去杀 LinkDesk——那条路的禁令见 §4.3）。
- *  已解压的文件留待 2c 的回滚分支处理；此格先如实取消。 */
+ *  已解压文件的回滚归 2d（2026-10-02 用户拍板，见 06 2d 格）；本函数只如实取消。 */
 static void CancelInstall()
 {
     g_canceled = true;
     if (g_child) TerminateProcess(g_child, 1);
+}
+
+// ════════════════════════ 件 2d · 自绘卸载器 ════════════════════════════════
+// 四段进度（阈值 60/80/92，与 1d 的帧 3 文案/分段对齐）：
+//   段 1（0–60）移除程序文件（keep=false 时 userData 一并删）→ 段 2（60–80）清理系统项
+//   （右键三键 · 编辑器注册 · 快捷方式 · ARP）→ 段 3（80–92）恢复 PATH（精确匹配）
+//   → 段 4（92–100）收尾校验（无残留）；**卸载器自删**在进程退出后由子进程收尾（05 §4.3）。
+// 清理清单 = syswrite 的卸载侧（逐条照抄 installer.nsh customUnInstall，出处见 syswrite.h）。
+
+struct TreeStat { long long total = 0, done = 0; };
+
+static long long CountFiles(const std::wstring& dir, const std::wstring& skip)
+{
+    WIN32_FIND_DATAW fd = {};
+    HANDLE h = FindFirstFileW((dir + L"\\*").c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+    long long n = 0;
+    do {
+        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
+        std::wstring p = dir + L"\\" + fd.cFileName;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            n += CountFiles(p, skip);
+        } else if (skip.empty() || _wcsicmp(p.c_str(), skip.c_str()) != 0) {
+            ++n;
+        }
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    return n;
+}
+
+/** 递归删目录树（跳过 skip = 自己那份 exe，退出后子进程收），按「完成文件数 / 总数」回报进度。
+ *  单个文件删不掉（被占用/权限）**不中断**——清理要尽力走完，跟安装侧「一项失败不中断」同口径。 */
+static void WipeTree(const std::wstring& dir, const std::wstring& skip, TreeStat& st,
+                     int pctFrom, int pctTo)
+{
+    WIN32_FIND_DATAW fd = {};
+    HANDLE h = FindFirstFileW((dir + L"\\*").c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return;
+    do {
+        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
+        std::wstring p = dir + L"\\" + fd.cFileName;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            WipeTree(p, skip, st, pctFrom, pctTo);
+            RemoveDirectoryW(p.c_str());
+        } else {
+            if (!skip.empty() && _wcsicmp(p.c_str(), skip.c_str()) == 0) continue;
+            SetFileAttributesW(p.c_str(), FILE_ATTRIBUTE_NORMAL);
+            if (DeleteFileW(p.c_str())) ++st.done;
+            if (st.total > 0 && g_hwnd)
+                PostMessageW(g_hwnd, WM_LK_PROGRESS,
+                             pctFrom + (int)((pctTo - pctFrom) * st.done / st.total), 0);
+        }
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+}
+
+static void UninstallWorker(bool keep)
+{
+    // （诊断落点 TraceLine 见 RunSilentInstall 上方：LK_TRACE=<path> ⇒ 工人每阶段落一行。
+    //   静默态没有窗，PostJson/WM_LK_* 全是哑的，工人「走到哪、为何被闸」必须有地方看。）
+
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+    // 段 1（0–60）：移除程序文件。目标 = 本 exe 所在目录（卸载器就装在 INSTDIR）；
+    // 拿不到再退 ARP（ReadInstalledDir）。进程关闭在帧 2 已经做完（优雅关，procguard）。
+    std::wstring dir = ExeDir();
+    if (dir.empty() || GetFileAttributesW(dir.c_str()) == INVALID_FILE_ATTRIBUTES)
+        dir = ReadInstalledDir();
+    // 🔴 目标体检（syswrite-test 路闸同一家法：宁可不动手，不许误删）——**只有这里真是
+    // 安装目录才碰机器**，判据 = 目录里有 LinkDesk.exe（与 VerifyInstall 同一条）。
+    // 开发壳的 out\（bootstrapper.exe 旁只有 app.html）、下载夹里的裸 setup.exe 都过不了
+    // 这道闸 ⇒ 只把四段进度演完（流程/验收缝可用），一个文件、一条注册表都不碰。
+    bool legit = DirLooksInstalled(dir);
+    TraceLine(L"[uninstall] dir=" + dir + L" legit=" + (legit ? L"1" : L"0") + L" keep=" + (keep ? L"1" : L"0"));
+    if (!legit) {
+        OutputDebugStringW(L"[installer] 卸载中止：本目录不是安装目录（无 LinkDesk.exe）——只走流程，不删任何东西\n");
+        if (g_hwnd) {
+            PostMessageW(g_hwnd, WM_LK_PROGRESS, 60, 0);
+            PostMessageW(g_hwnd, WM_LK_PROGRESS, 80, 0);
+            PostMessageW(g_hwnd, WM_LK_PROGRESS, 92, 0);
+            PostMessageW(g_hwnd, WM_LK_PROGRESS, 100, 0);
+            PostMessageW(g_hwnd, WM_LK_DONE, 0, 0);
+        }
+        CoUninitialize();
+        return;
+    }
+    TreeStat st;
+    if (!dir.empty()) {
+        st.total = CountFiles(dir, g_selfPath);
+        WipeTree(dir, g_selfPath, st, 2, 55);
+    }
+    TraceLine(L"[uninstall] 程序文件移除完成 done=" + std::to_wstring(st.done) + L"/" + std::to_wstring(st.total));
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 56, 0);
+    // 「保留我的数据」没勾：userData（%APPDATA%\linkdesk，**小写**——Electron 取 package.json
+    // 的 name）整目录删。这一步排在进程优雅关闭之后（02 §二幕⑨）。
+    if (!keep) {
+        std::wstring ud = UserDataDir();
+        TreeStat us;
+        us.total = CountFiles(ud, L"");
+        WipeTree(ud, L"", us, 56, 59);
+    }
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 60, 0);
+
+    // 段 2（60–80）：清理系统项（右键三键 · 编辑器注册 · 快捷方式 · ARP）
+    DeleteContextMenus();
+    DeleteAssociations();
+    DeleteShortcuts();
+    DeleteArpEntry();
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 80, 0);
+
+    // 段 3（80–92）：恢复 PATH（精确匹配才动，不碰用户改过的部分）
+    bool touched = false;
+    RestorePath(&touched);
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 92, 0);
+
+    // 段 4（92–100）：收尾校验（无残留）——判据 = ARP 键已消失（ReadInstalledVersion 空）。
+    // 校验失败也不拦收场（残留如实留在机器上，比卡死在 99% 强）；自删在退出后由子进程做。
+    bool ok = ReadInstalledVersion().empty();
+    if (!ok) OutputDebugStringW(L"[installer] 卸载收尾校验：ARP 键仍在（删除失败？）\n");
+    TraceLine(std::wstring(L"[uninstall] 收尾校验 arp-gone=") + (ok ? L"1" : L"0"));
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_PROGRESS, 100, 0);
+    if (g_hwnd) PostMessageW(g_hwnd, WM_LK_DONE, 0, 0);
+    CoUninitialize();
+}
+
+static void StartUninstall()
+{
+    // 帧 3 无取消（E-卸载屏 设计点③）：开跑之后再来的触发一律吞掉
+    if (InterlockedExchange(&g_unBusy, 1) != 0) return;
+    bool keep = g_unKeep != 0;
+    std::thread(UninstallWorker, keep).detach();
+}
+
+/** 无界面卸载（ARP `QuietUninstallString = … --uninstall /S`）。不建窗、不碰 WebView2。
+ *  🔴 keep 恒 = true：**静默通道永不删用户数据**（02 §二幕⑨「现状行为显性化：NSIS 卸载
+ *  从不碰 userData」）——删数据必须是用户在界面上亲眼确认过的那一次。 */
+static int RunSilentUninstall()
+{
+    HRESULT hrCom = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    UninstallWorker(true);
+    if (SUCCEEDED(hrCom)) CoUninitialize();
+    return 0;
+}
+
+/** 卸载器自删（05 §4.3：子进程 `cmd /c ping -n 2 … & del <自身>`）。
+ *  🔴 **只认产品态**：本进程 exe 名 = `linkdesk-setup.exe`（安装时 InstallUninstallerCopy
+ *  落进 INSTDIR 的那份）才删；开发壳（bootstrapper.exe / 测试副本）一律不删——否则测试
+ *  一次就把 out\ 自己端了。ping 延时给本进程留出退出时间；rd 只收已空的目录。 */
+static void SpawnSelfDelete()
+{
+    const wchar_t* base = g_selfPath.c_str();
+    for (const wchar_t* q = g_selfPath.c_str(); *q; ++q)
+        if (*q == L'\\' || *q == L'/') base = q + 1;
+    if (_wcsicmp(base, L"linkdesk-setup.exe") != 0) return;
+    std::wstring cmd = L"cmd.exe /c ping -n 3 127.0.0.1 >nul & del /f /q \"" + g_selfPath
+                     + L"\" & rd /q \"" + ExeDir() + L"\"";
+    STARTUPINFOW si = {};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi = {};
+    if (CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
+                       nullptr, nullptr, &si, &pi)) {
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+    }
 }
 
 // ── UI 资源根（件 2a）：单文件安装包旁边没有 app.html，页面必须从内嵌资源摊出来 ────
@@ -1331,6 +1530,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
 
     g_selfPath = [] { wchar_t p[MAX_PATH] = {}; GetModuleFileNameW(nullptr, p, MAX_PATH); return std::wstring(p); }();
     g_hasPayload = FindPayload();
+
+    // 件 2d：静默卸载（ARP「应用和功能」的静默卸载 = QuietUninstallString `--uninstall /S`）。
+    // 不建窗、不碰 WebView2；keep 恒 true（静默永不删用户数据，见 RunSilentUninstall）。
+    if (g_silent && g_uninstall) {
+        int rc = RunSilentUninstall();
+        SpawnSelfDelete();
+        return rc;
+    }
     if (!reqDir.empty()) g_installDir = reqDir;
 
     // ── 静默安装（--silent ／ /S）：更新链那条路 ─────────────────────────────
@@ -1475,11 +1682,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                 PostJson(IsAppRunning() ? L"{\"type\":\"uninstall-running\"}"
                                                         : L"{\"type\":\"uninstall-norun\"}");
                             } else if (m.find(L"\"uninstall-run\"") != std::wstring::npos) {
-                                // 帧 2「关闭并继续」：先请它自己退（WM_CLOSE，走它自己的保存流程），
-                                // 再靠 kCloseWaitTimer 轮询到它消失。**不强杀**——超时回「稍后」，
-                                // 用户自己关掉再点一次，或干脆取消卸载（05 §4.3 / 06 2c 原话）。
+                                // 帧 2「关闭并继续」：keep 一并带过来（「保留我的数据」默认勾，
+                                // 勾掉 = 界面上做过行内二次确认后才到这儿）。先请它自己退
+                                // （WM_CLOSE，走它自己的保存流程），再靠 kCloseWaitTimer 轮询——
+                                // **退净了才开清理**；没在跑就直接开。**不强杀**（05 §4.3）。
+                                g_unKeep = JsonGetBool(m, L"keep", true) ? 1 : 0;
                                 if (!IsAppRunning()) {
                                     PostJson(L"{\"type\":\"uninstall-closed\"}");
+                                    StartUninstall();
                                 } else {
                                     RequestAppClose();
                                     g_closeWaitStart = GetTickCount();
@@ -1551,12 +1761,24 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     }
                     if (g_previewQuery.find(L"dir=") == std::wstring::npos) {
                         std::wstring dir = g_installDir;
-                        if (dir.empty()) {
+                        if (g_uninstall) {
+                            // 件 2d：卸载态的目标 = 本 exe 所在目录（卸载器就装在 INSTDIR），
+                            // 不认 ARP（那可能是死指向/别的登记）
+                            dir = ExeDir();
+                        } else if (dir.empty()) {
                             std::wstring existing = FindInstalledDir();
                             dir = existing.empty() ? DefaultInstallDir() : existing;
                         }
                         params.push_back(L"dir=" + UrlEnc(dir));
                     }
+                    // 件 2d：卸载四帧的真数据——体积（MB，四舍去五不入）与 userData 路径
+                    if (g_uninstall && g_previewQuery.find(L"usize=") == std::wstring::npos) {
+                        wchar_t mb[32] = {};
+                        swprintf(mb, 32, L"%llu", DirBytes(ExeDir()) >> 20);
+                        params.push_back(L"usize=" + std::wstring(mb));
+                    }
+                    if (g_uninstall && g_previewQuery.find(L"udata=") == std::wstring::npos)
+                        params.push_back(L"udata=" + UrlEnc(UserDataDir()));
                     if (g_previewQuery.find(L"payload=") == std::wstring::npos)
                         params.push_back(g_hasPayload ? L"payload=1" : L"payload=0");
                     std::wstring startUrl = kStartUrl;
@@ -1589,5 +1811,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
         g_controller.Reset();
         RemoveTree(g_uiTempDir);
     }
+    // 件 2d：卸载器自删（产品态 = INSTDIR\linkdesk-setup.exe 才会真删；只认 --uninstall 路径，
+    // 安装模式绝不能走到这儿——那是用户手里的安装包本体）
+    if (g_uninstall) SpawnSelfDelete();
     return (int)msg.wParam;
 }

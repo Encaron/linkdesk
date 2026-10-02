@@ -61,6 +61,8 @@
   "installer.uninstall.confirm.sub": "安装位置：<code>{path}</code> · 约 {size}",
   "installer.uninstall.confirm.keepdata": "保留我的数据",
   "installer.uninstall.confirm.keepdata.sub": "工作区 · 设置 · 已装插件",
+  "installer.uninstall.confirm.deleteWarn": "这会删除全部工作区、设置与已装插件，不可恢复。",
+  "installer.uninstall.confirm.deleteConfirm": "我确认删除我的数据",
   "installer.uninstall.confirm.uninstall": "卸载<span class=\"cir\">→</span>",
   "installer.uninstall.confirm.cancel": "取消",
   "installer.uninstall.running.title": "LinkDesk 正在运行",

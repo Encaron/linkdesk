@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <shlobj.h>      // SHGetKnownFolderPath / IShellLinkW / CLSID_ShellLink
 #include <shlwapi.h>
+#include <vector>
 
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -413,4 +414,166 @@ bool WriteInstallerLanguage(const std::wstring& code)
 {
     if (code.empty()) return false;
     return SetStr(HKEY_CURRENT_USER, L"Software\\LinkDesk\\Installer", L"Language", code);
+}
+
+// ══ 卸载侧（件 2d）═════════════════════════════════════════════════════════
+// 清单来源：`build/installer.nsh` 的 `customUnInstall` **逐条照抄**（见 syswrite.h 的说明）。
+
+/** 删一个值（不存在算成功——清理要幂等）。 */
+static bool DelValue(HKEY root, const std::wstring& sub, const wchar_t* name)
+{
+    HKEY h = nullptr;
+    if (RegOpenKeyExW(root, sub.c_str(), 0, KEY_SET_VALUE, &h) != ERROR_SUCCESS)
+        return true;                                    // 键都没了 = 该值也没了
+    LSTATUS st = RegDeleteValueW(h, name);
+    RegCloseKey(h);
+    return st == ERROR_SUCCESS || st == ERROR_FILE_NOT_FOUND;
+}
+
+/** 整树删键（不存在算成功）。RegDeleteTreeW 连子键一起拿，等价 NSIS 的 DeleteRegKey
+ *  （NSIS 本来就递归删）。 */
+static bool DelTree(HKEY root, const std::wstring& sub)
+{
+    LSTATUS st = RegDeleteTreeW(root, sub.c_str());
+    return st == ERROR_SUCCESS || st == ERROR_FILE_NOT_FOUND || st == ERROR_PATH_NOT_FOUND;
+}
+
+bool InstallUninstallerCopy(const std::wstring& selfPath, const std::wstring& installDir,
+                            unsigned long long shellBytes)
+{
+    const std::wstring dst = installDir + L"\\" + kUninstallExe;
+    // 源 == 目标（产品态从 INSTDIR 里重跑安装包）⇒ 无事可做
+    if (_wcsicmp(selfPath.c_str(), dst.c_str()) == 0) return true;
+    // 🔴 只提取前 shellBytes 字节（纯壳，不含 7z 载荷）——360 的自复制启发式见 syswrite.h。
+    //    shellBytes=0（开发壳没载荷可量）⇒ 退化成整份复制。
+    HANDLE src = CreateFileW(selfPath.c_str(), GENERIC_READ,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                             nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (src == INVALID_HANDLE_VALUE) return false;
+    LARGE_INTEGER li = {};
+    if (!GetFileSizeEx(src, &li)) { CloseHandle(src); return false; }
+    unsigned long long total = shellBytes;
+    if (total == 0 || total > (unsigned long long)li.QuadPart) total = (unsigned long long)li.QuadPart;
+
+    HANDLE out = CreateFileW(dst.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                             FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (out == INVALID_HANDLE_VALUE) { CloseHandle(src); return false; }
+    bool ok = true;
+    std::vector<char> buf(1u << 20);
+    unsigned long long done = 0;
+    while (ok && done < total) {
+        DWORD want = (DWORD)((total - done > buf.size()) ? buf.size() : (total - done));
+        DWORD got = 0;
+        if (!ReadFile(src, buf.data(), want, &got, nullptr) || got == 0) { ok = false; break; }
+        DWORD w = 0;
+        ok &= WriteFile(out, buf.data(), got, &w, nullptr) && w == got;
+        done += got;
+    }
+    CloseHandle(out);
+    CloseHandle(src);
+    return ok;
+}
+
+bool DeleteContextMenus()
+{
+    const std::wstring cls = kClasses;
+    bool ok = DelTree(HKEY_CURRENT_USER, cls + L"\\*\\shell\\" + kMenuKey);
+    ok &= DelTree(HKEY_CURRENT_USER, cls + L"\\Directory\\shell\\" + kMenuKey);
+    ok &= DelTree(HKEY_CURRENT_USER, cls + L"\\Directory\\Background\\shell\\" + kMenuKey);
+    return ok;
+}
+
+bool DeleteAssociations()
+{
+    bool ok = true;
+    // 13 个扩展名 ×2：OpenWithProgids 值删 ＋ Capabilities\FileAssociations 值删
+    // 🔴 只删值、**不动扩展名键本身**（`.txt` 这些键不是我们建的，删了是砸别人的注册）
+    for (const wchar_t* ext : kExts) {
+        ok &= DelValue(HKEY_CURRENT_USER, std::wstring(kClasses) + L"\\" + ext + L"\\OpenWithProgids", kProgId);
+        ok &= DelValue(HKEY_CURRENT_USER, std::wstring(kCapsPath) + L"\\FileAssociations", ext);
+    }
+    ok &= DelTree(HKEY_CURRENT_USER, std::wstring(kClasses) + L"\\" + kProgId);   // ProgId 整树
+    ok &= DelTree(HKEY_CURRENT_USER, kCapsPath);                                  // Capabilities 整树
+    ok &= DelValue(HKEY_CURRENT_USER, L"Software\\RegisteredApplications", kProductName);
+    return ok;
+}
+
+bool RestorePath(bool* touched)
+{
+    if (touched) *touched = false;
+    const std::wstring added = GetStr(HKEY_CURRENT_USER, kVendor, L"PathAdded");
+    if (added.empty()) return true;                     // 没标记 = 我们没动过 PATH
+
+    DWORD curType = REG_SZ;
+    const std::wstring cur = GetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", &curType);
+    const std::wstring backup = GetStr(HKEY_CURRENT_USER, kVendor, L"PathBackup");
+    const std::wstring backupPlusAdded = backup.empty() ? added : backup + L";" + added;
+
+    bool touchedNow = false;
+    if (cur == backupPlusAdded) {
+        // 正是我们加的那一次 ⇒ 恢复备份（**类型跟当前值走**：REG_EXPAND_SZ 不能降级，同 AddToPath）
+        touchedNow = SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", backup, curType);
+    } else if (cur == added) {
+        // 装的时候 PATH 本来是空的 ⇒ 空了就删值，有备份就还原
+        if (backup.empty()) {
+            HKEY h = nullptr;
+            if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, KEY_SET_VALUE, &h) == ERROR_SUCCESS) {
+                RegDeleteValueW(h, L"Path");
+                RegCloseKey(h);
+            }
+            touchedNow = true;
+        } else {
+            touchedNow = SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", backup, curType);
+        }
+    }
+    // else：用户装后改过 PATH ⇒ **不动**（删错别家路径的代价远大于留一段死路径，同 nsh）
+
+    DelValue(HKEY_CURRENT_USER, kVendor, L"PathBackup");
+    DelValue(HKEY_CURRENT_USER, kVendor, L"PathAdded");
+    if (touchedNow) {
+        DWORD_PTR unused = 0;
+        SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"Environment",
+                            SMTO_ABORTIFHUNG, 5000, &unused);
+    }
+    if (touched) *touched = touchedNow;
+    return true;
+}
+
+bool DeleteShortcuts()
+{
+    bool ok = true;
+    // 与 CreateShortcuts 严格互逆（KnownFolder 同款；目标不存在 DeleteFileW 报
+    // ERROR_FILE_NOT_FOUND，按成功算——清理要幂等）
+    std::wstring desktop = KnownFolder(FOLDERID_Desktop);
+    if (!desktop.empty() && !DeleteFileW((desktop + L"\\" + kProductName + L".lnk").c_str())
+        && GetLastError() != ERROR_FILE_NOT_FOUND)
+        ok = false;
+    std::wstring programs = KnownFolder(FOLDERID_Programs);
+    if (!programs.empty() && !DeleteFileW((programs + L"\\" + kProductName + L".lnk").c_str())
+        && GetLastError() != ERROR_FILE_NOT_FOUND)
+        ok = false;
+    return ok;
+}
+
+bool DeleteArpEntry()
+{
+    return DelTree(HKEY_CURRENT_USER, kArpKeyPath);
+}
+
+std::wstring UserDataDir()
+{
+    // 小写 `linkdesk` = package.json 的 `name`（Electron userData 的真实来源），见 syswrite.h
+    PWSTR p = nullptr;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &p)) || !p)
+        return L"";
+    std::wstring out = p;
+    CoTaskMemFree(p);
+    return out + L"\\linkdesk";
+}
+
+bool DirLooksInstalled(const std::wstring& dir)
+{
+    // 与安装侧 VerifyInstall 同一条「装成了」判据：目录里有 kAppExe（LinkDesk.exe）
+    return !dir.empty()
+        && GetFileAttributesW((dir + L"\\" + kAppExe).c_str()) != INVALID_FILE_ATTRIBUTES;
 }

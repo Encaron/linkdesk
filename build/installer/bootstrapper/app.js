@@ -242,6 +242,9 @@ function beginInstall(allowOlder) {
   });
 })();
 
+/* 件 2d：勾回「保留我的数据」⇒ 收起并重置二次确认块 */
+$('#keepdata').addEventListener('change', paintDelConfirm);
+
 /* ── 卸载真值（2d 从宿主喂：安装位置 / 体积 / userData 路径）───────────────
  * 这里的占位值 = E-卸载屏 mockup 原文（用户名的真实路径由 2d 的宿主提供）。
  * ⚠️ confirm 的「安装位置」与完成屏的「用户数据」两条词条带 {path}/{size} 变量，
@@ -249,8 +252,19 @@ function beginInstall(allowOlder) {
 const UNINFO = {
   dir: 'C:\\Users\\fengy\\AppData\\Local\\Programs\\linkdesk',
   size: '420 MB',
-  userData: 'C:\\Users\\fengy\\AppData\\Roaming\\LinkDesk'
+  userData: 'C:\\Users\\fengy\\AppData\\Roaming\\linkdesk'   // 🔴 小写——Electron 取 package.json 的 name（2d 实测口径）
 };
+/* 行内二次确认（件 2d）：勾掉「保留我的数据」后点「卸载」⇒ 露这块；勾上「我确认删除」才放行。 */
+function keepDeleteAgreed() { return $('#keepdata').checked || $('#delagree').checked; }
+function paintDelConfirm() {
+  const box = $('#delconfirm');
+  if (!box) return;
+  const want = !$('#keepdata').checked;
+  if (!want) {                    // 勾回「保留」⇒ 收起并清掉确认勾（下次要重新确认）
+    box.hidden = true;
+    $('#delagree').checked = false;
+  }
+}
 function paintUninstall() {
   if (MODE !== 'uninstall') return;
   const sub = $('[data-i18n="installer.uninstall.confirm.sub"]');
@@ -289,9 +303,12 @@ const ACTIONS = {
   'ver-exit': function () { post({ type: 'close' }); },
   'ver-proceed': function () { beginInstall(true); },
 
-  /* ── 卸载（件 1d 静态 UI；真清理归 2d，进程检测/优雅关窗件 2c 已接）───── */
+  /* ── 卸载（件 1d 静态 UI；清理逻辑/进程检测 2c-2d 已接）───── */
   uninstall: function () {
-    // 件 2c：检测归宿主（查进程表）——本屏先按住不发话：
+    // 件 2d · 行内二次确认：勾掉「保留我的数据」⇒ 必须先勾「我确认删除」才放行
+    //（删 userData 不可逆；确认块就地露出来，不打扰想保留数据的人）
+    if (!keepDeleteAgreed()) { $('#delconfirm').hidden = false; return; }
+    // 检测归宿主（查进程表）——本屏先按住不发话：
     //   在跑 ⇒ 回 uninstall-running（停帧 2 问一句）／没在跑 ⇒ 回 uninstall-norun（直接推帧 3）
     // **不静默杀进程**（02 §三）；宿主侧见 main.cpp 的 IsAppRunning / RequestAppClose。
     post({ type: 'uninstall-start', keep: $('#keepdata').checked });
@@ -371,8 +388,13 @@ function onHostMessage(ev) {
     post({ type: 'uninstall-run', keep: $('#keepdata').checked });
     return;
   }
-  if (m.type === 'uninstall-closed') {         // 它自己退干净了：清掉超时提示，帧 3 的进度由 2d 喂
+  if (m.type === 'uninstall-closed') {         // 它自己退干净了：清掉超时提示，宿主随即开真清理
     $('#unwarn').hidden = true;
+    return;
+  }
+  if (m.type === 'uninstall-finished') {       // 件 2d：清理走完 ⇒ 完成屏（徽章按勾选态如实落）
+    setProgress(100, { force: true });
+    go('un-finish');
     return;
   }
   if (m.type === 'uninstall-close-timeout') {  // 10s 没等到（多半卡在保存对话上）——如实说，退回帧 2
@@ -585,12 +607,25 @@ document.addEventListener('click', function (e) {
 function boot() {
   if (q.get('dust') === '0') $('#dust').remove();
   if (MODE === 'uninstall') {
-    paintUninstall();                          // 真值上屏（2d 换成宿主喂的真数据）
+    // 件 2d：宿主自报家门的真值——安装目录（?dir=）· 体积（?usize=，MB）· userData（?udata=）
+    if (q.get('usize') !== null || q.get('udata')) {
+      setUninstallInfo({
+        dir: q.get('dir') || undefined,
+        size: q.get('usize') !== null ? q.get('usize') + ' MB' : undefined,
+        userData: q.get('udata') || undefined
+      });
+    }
+    paintUninstall();                          // 真值上屏
     if (q.get('keep') === '0') $('#keepdata').checked = false;
     go(q.get('screen') || 'confirm');
     if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
-    // 2c 验收缝：摆到确认帧后自动点「卸载」——宿主随即做运行中检测
-    if (q.get('autouninstall') === '1') setTimeout(function () { ACTIONS.uninstall(); }, 250);
+    // 2c/2d 验收缝：摆到确认帧后自动点「卸载」——宿主随即做运行中检测。
+    // ⚠️ 此缝**绕过**行内二次确认（keep=0 走自动路时不再等人勾「我确认删除」）：
+    //    它是自动化验收的旁路，产品运行不带这个参数。
+    if (q.get('autouninstall') === '1') {
+      if (q.get('keep') === '0') $('#delagree').checked = true;
+      setTimeout(function () { ACTIONS.uninstall(); }, 250);
+    }
     return;
   }
   setInstallDir($('[data-role=path]').value);          // 让完成屏路径与输入框同源
