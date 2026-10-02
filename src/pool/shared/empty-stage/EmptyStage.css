@@ -1,7 +1,7 @@
 /**
  * EmptyStage.css——W7b（欢迎页重设计 T12）零标签空场层。
  * 视觉契约 = mockup 场景 4 的 `.empty-stage`
- * （`docs/04-软件更新/待抉择池/欢迎标签页重设计/mockups/00-欢迎页重设计-预览.html`）。
+ * （`docs/04-软件更新/已落地/欢迎标签页重设计/mockups/00-欢迎页重设计-预览.html`）。
  *
  * 单色（设计 §三 W7）：logo 与字标同用一枚 `--text-muted`，只靠透明度分层——
  *   · logo `.14` = 装饰件（§六#1 对比度豁免），真镂空孔见 EmptyStage.tsx 的 evenodd 注释；

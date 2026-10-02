@@ -2,7 +2,7 @@
  * WelcomePoolView 样式——E5.6#16.7k-1；**W6（T13）版式重做**。
  * 全部颜色走 CSS 变量，零硬编码 hex。
  * 设计依据：[V3-Phase4-欢迎页设计.md §4] ＋ **冻结预览图**
- *   （`docs/04-软件更新/待抉择池/欢迎标签页重设计/mockups/00-欢迎页重设计-预览.html` 场景 1）。
+ *   （`docs/04-软件更新/已落地/欢迎标签页重设计/mockups/00-欢迎页重设计-预览.html` 场景 1）。
  *
  * 🔴 2026-08-14 潜伏 bug 修复：本文件原为
  *     @import "../../components/views/WelcomeView.css";
