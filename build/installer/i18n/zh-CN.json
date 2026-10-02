@@ -42,6 +42,20 @@
   "installer.error.retry": "换个安装位置<span class=\"cir\">→</span>",
   "installer.error.exit": "退出安装",
 
+  "installer.version.title.same": "已安装相同版本。",
+  "installer.version.title.older": "已装的是更新的版本。",
+  "installer.version.body.same": "这个安装包是同一个版本（{version}）。重新装一遍会覆盖现有文件——设置与数据不受影响。",
+  "installer.version.body.older": "本机装着 {installed}，而这个安装包是更旧的 {incoming}。装下去会把新版本换成旧版本。",
+  "installer.version.exit": "退出安装",
+  "installer.version.proceed": "仍要安装",
+
+  "installer.path.err.empty": "请填写安装位置。",
+  "installer.path.err.chars": "路径里含 Windows 不允许的字符（< > \" | ? *）。",
+  "installer.path.err.length": "路径太长，请换一个更短的位置。",
+  "installer.path.err.root": "请装在一个文件夹里，不要直接选整个盘。",
+  "installer.path.err.absolute": "请填写完整路径（含盘符，例如 C:\\Apps\\LinkDesk）。",
+  "installer.path.err.write": "这个位置写不进去（没有权限，或路径被占用）。换个位置再试。",
+
   "installer.uninstall.brand": "LINKDESK · UNINSTALL",
   "installer.uninstall.confirm.title": "要卸载 LinkDesk 吗？",
   "installer.uninstall.confirm.sub": "安装位置：<code>{path}</code> · 约 {size}",
@@ -53,6 +67,7 @@
   "installer.uninstall.running.sub": "关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。",
   "installer.uninstall.running.close": "关闭并继续<span class=\"cir\">→</span>",
   "installer.uninstall.running.later": "稍后",
+  "installer.uninstall.running.timeout": "等了 10 秒仍未等到 LinkDesk 退出。它可能正停在保存对话上——请手动关掉它的窗口，或点「稍后」。",
   "installer.uninstall.progress.aria": "卸载进度",
   "installer.uninstall.progress.head1": "STEP 1 / 4 · 正在移除程序文件",
   "installer.uninstall.progress.head2": "STEP 2 / 4 · 清理系统项",

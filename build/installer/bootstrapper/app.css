@@ -162,11 +162,21 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
 #s-finish .actions{justify-content:center}
 
 /* 失败分支（02-流程设计 §三 的视觉落地：磁盘空间不足示例） */
-#s-error > svg{width:44px;height:44px;margin-bottom:22px}
-#s-error h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:10px}
-#s-error .sub{font:13px/1.7 var(--sans);color:var(--txt2);margin-bottom:12px}
+/* 件 2c：版本守卫屏（#s-version）**共用这一组骨架** —— 两个 id 并列，规则体一字未改。
+   与失败屏的唯一差别在下面那条 color：守卫不是错误，图标取 --txt2 中性灰，
+   --danger 红只留给卸载那个破坏性按钮（设计 token 的分工，见 01 §3.1）。 */
+#s-error > svg,#s-version > svg{width:44px;height:44px;margin-bottom:22px}
+#s-version > svg{color:var(--txt2)}
+#s-error h1,#s-version h1{font:400 34px/1.25 var(--serif);letter-spacing:-.03em;margin-bottom:10px}
+#s-error .sub,#s-version .sub{font:13px/1.7 var(--sans);color:var(--txt2);margin-bottom:12px}
 .errcode{font:11px var(--mono);color:var(--txt3);letter-spacing:.06em;margin-bottom:24px}
-#s-error .actions{margin-top:0}
+#s-error .actions,#s-version .actions{margin-top:0}
+
+/* 件 2c · 路径行内错误：就地贴在输入框下（UX 规则「错误靠近出问题的字段」＋ role=alert）。
+   只染边框不算数——文字才是判据，颜色只是同一句判据的第二通道（对比度达标的 --danger）。 */
+.patherr{font:11px/1.5 var(--mono);color:var(--danger);letter-spacing:.04em;margin:-10px 0 14px}
+.patherr[hidden]{display:none}
+.pathrow input.bad,.pathrow input.bad:focus{border-color:var(--danger)}
 
 /* 自绘语言下拉（原生 select 画不进自绘界面；语言清单由 1c 从 build/installer/i18n/ 枚举） */
 #lkdd{position:absolute;top:8px;left:8px;z-index:40;font:12px var(--sans)}
@@ -196,9 +206,10 @@ body{background:var(--desk);font-family:var(--sans);color:var(--txt);overflow:hi
    两套屏同页共存（同一个 exe、--uninstall 切模式），所以上方 1b 已验收的安装规则一个字不动，
    卸载侧一律用 html[data-mode=uninstall] / .scr.un / #s-un-* 限定。
    卸载专属语义：破坏性动作按钮 .btn.danger、进度条墨色（收场，不用安装时的彩条与粒子）、光球更小更淡。 */
-/* 模式门禁：卸载模式收掉安装五屏（#s-home 在标记里自带 .on，只靠 JS 会闪一帧双屏同亮） */
+/* 模式门禁：卸载模式收掉安装各屏（#s-home 在标记里自带 .on，只靠 JS 会闪一帧双屏同亮） */
 html[data-mode=uninstall] #s-uac,html[data-mode=uninstall] #s-home,html[data-mode=uninstall] #s-progress,
-html[data-mode=uninstall] #s-finish,html[data-mode=uninstall] #s-error{display:none!important}
+html[data-mode=uninstall] #s-finish,html[data-mode=uninstall] #s-error,
+html[data-mode=uninstall] #s-version{display:none!important}
 html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 @keyframes rise-un{to{transform:translateY(-560px);opacity:0}}
 
@@ -218,6 +229,11 @@ html[data-mode=uninstall] .orb{width:380px;height:380px;opacity:.2}
 .scr.un .btn.ghost{padding:11px 24px;font-weight:500}
 .scr.un .opt{margin-top:22px;font:13.5px/1.5 var(--sans)}
 .scr.un .opt small{display:block;color:var(--txt3);font-size:11px}
+/* 件 2c · 卸载「运行中检测」帧的超时提示：等的过程中它自己退掉是常态，
+   所以不是错误（不取 --danger），只是一段需要读一眼的说明——安静底 + 常规字色。 */
+.unwarn{font:12px/1.6 var(--sans);color:var(--txt2);background:rgba(0,0,0,.04);
+        border:1px solid var(--hair);border-radius:12px;padding:10px 14px;margin:10px auto 0;max-width:44ch}
+.unwarn[hidden]{display:none}
 /* 帧 3：PCT 68px（安装 76px）＋ 墨色 fill（不带安装的紫光晕）；分段文案色比安装亮一档 */
 .scr.un .track{width:100%}
 #s-un-progress .pct{font:200 68px/1 var(--sans);margin-bottom:26px}

@@ -56,9 +56,13 @@
     <div id="custom">
       <div class="cust-in">
         <div class="pathrow">
-          <input data-role="path" value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false" aria-label="安装位置" data-i18n-aria="installer.custom.path">
+          <input data-role="path" value="C:\Users\fengy\AppData\Local\Programs\linkdesk" spellcheck="false" aria-label="安装位置" aria-describedby="patherr" data-i18n-aria="installer.custom.path">
           <button type="button" data-action="browse" data-i18n="installer.custom.browse">浏览…</button>
         </div>
+        <!-- 路径行内错误（件 2c）：就地贴在输入框正下方（UX 规则「错误靠近出问题的字段」），
+             role=alert 让读屏也播报；说的是**哪儿不对**，不是只把边框染红。
+             语法错由页面即时判（app.js pathSyntaxError），写不进去由宿主回 dir-invalid 判。 -->
+        <div class="patherr" id="patherr" role="alert" hidden></div>
         <div class="opts">
           <label class="opt"><input type="checkbox" data-opt="filemenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.filemenu">文件右键菜单「通过 LinkDesk 打开」</span></label>
           <label class="opt"><input type="checkbox" data-opt="dirmenu"><span class="box"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6l3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><span data-i18n="installer.opt.dirmenu">目录右键菜单「通过 LinkDesk 打开」</span></label>
@@ -74,9 +78,11 @@
     </div>
   </div>
 
-  <!-- ⑤ 进度（四段真实进度：数值与分段由件 2 的 IO 回调驱动） -->
+  <!-- ⑤ 进度（四段真实进度：数值与分段由件 2 的 IO 回调驱动）
+       件 2c：段头挂 role=status ＋ aria-live=polite——段头文案是「现在在做什么」，
+       读屏要能听到换段，但别像报警那样打断（进度条本体的 aria-valuenow 由 setProgress 写） -->
   <div class="scr" id="s-progress">
-    <div class="ph" id="ph" data-drag>STEP 1 / 4 · 正在解压文件</div>
+    <div class="ph" id="ph" role="status" aria-live="polite" data-drag>STEP 1 / 4 · 正在解压文件</div>
     <div class="pct" data-drag><span id="pn">0</span><span>%</span></div>
     <div class="track" id="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="安装进度" data-i18n-aria="installer.progress.aria"><div class="fill" id="fill"></div></div>
     <ul class="plist">
@@ -112,6 +118,22 @@
     </div>
   </div>
 
+  <!-- 版本守卫（件 2c）：同版 / 降级时先问一句再装。**复用 #s-error 的骨架**（CSS 里两个 id 并列同一组规则），
+       但语义不是「出错」——图标走 currentColor=--txt2 中性灰，不用红（--danger 只留给卸载那个破坏性按钮）。
+       层级口径：安全的「退出安装」是主按钮（Enter 也走它）——与 NSIS 版 MB_DEFBUTTON2 = 否 同一条，
+       「仍要安装」降为幽灵按钮：降级/重装是用户主动要的例外，不该是默认诱惑。
+       文案带变量 ⇒ 走 t(key, vars) 由 app.js 渲染（title/body 无 data-i18n，同段头那套兜底登记）。 -->
+  <div class="scr" id="s-version">
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6L4 42h40L24 6z"/><path d="M24 20v10"/><circle cx="24" cy="36" r="0.5" fill="currentColor"/></svg>
+    <h1 data-drag id="ver-title"></h1>
+    <div class="sub" role="alert" id="ver-sub" data-drag></div>
+    <div class="errcode" id="ver-code" data-drag></div>
+    <div class="actions">
+      <button class="btn" type="button" data-action="ver-exit" data-primary data-i18n="installer.version.exit">退出安装</button>
+      <button class="btn ghost" type="button" data-action="ver-proceed" data-i18n="installer.version.proceed">仍要安装</button>
+    </div>
+  </div>
+
   <!-- ⑦ 卸载（件 1d，直搬 mockups/E-卸载屏.html 四帧：确认 → 运行中检测 → 进度 → 完成）
        id/class 与 mockup 逐字一致，只有与安装屏重名的才改名（s-progress→s-un-progress、
        s-finish→s-un-finish、ph/pn/fill/p1..p4→uph/upn/ufill/u1..u4；#utrack 的 id 是新增的，
@@ -132,7 +154,7 @@
     </div>
   </div>
 
-  <!-- 帧 2 · 运行中检测（2d 接真 tasklist 检测；未运行则宿主直接推帧 3） -->
+  <!-- 帧 2 · 运行中检测（件 2c：宿主真查进程表；没在跑就直接推帧 3，在跑才停在这一帧） -->
   <div class="scr un" id="s-running">
     <div class="brandline" data-drag>
       <svg viewBox="0 0 100 110" aria-hidden="true"><path fill="#9a9a9a" fill-rule="evenodd" d="M50 0l43 25v50L50 110 7 75V25zM33 42a8 8 0 100 16 8 8 0 000-16zm34 0a8 8 0 100 16 8 8 0 000-16zm-17 26a8 8 0 100 16 8 8 0 000-16z"/></svg>
@@ -140,6 +162,9 @@
     </div>
     <h1 data-drag data-i18n="installer.uninstall.running.title">LinkDesk 正在运行</h1>
     <div class="sub" data-drag data-i18n="installer.uninstall.running.sub">关闭 LinkDesk 后继续卸载，未保存的工作区会先走保存流程。</div>
+    <!-- 件 2c：等了 10s 还没等到它自己退（可能正卡在保存对话框上）——如实说一句，
+         别装作还在等。role=status 让读屏播报；「稍后」按钮就在下面，出路一直在。 -->
+    <div class="unwarn" id="unwarn" role="status" aria-live="polite" hidden data-i18n="installer.uninstall.running.timeout">等了 10 秒仍未等到 LinkDesk 退出。它可能正停在保存对话上——请手动关掉它的窗口，或点「稍后」。</div>
     <div class="actions">
       <button class="btn primary" type="button" data-action="un-continue" data-primary data-i18n="installer.uninstall.running.close">关闭并继续<span class="cir">→</span></button>
       <button class="btn ghost" type="button" data-action="un-later" data-i18n="installer.uninstall.running.later">稍后</button>
@@ -148,7 +173,7 @@
 
   <!-- 帧 3 · 卸载进度（左对齐变体、墨色条；无取消——点了卸载就走完） -->
   <div class="scr un" id="s-un-progress">
-    <div class="ph" id="uph" data-drag>STEP 1 / 4 · 正在移除程序文件</div>
+    <div class="ph" id="uph" role="status" aria-live="polite" data-drag>STEP 1 / 4 · 正在移除程序文件</div>
     <div class="pct" data-drag><span id="upn">0</span><span>%</span></div>
     <div class="track" id="utrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="卸载进度" data-i18n-aria="installer.uninstall.progress.aria"><div class="fill" id="ufill"></div></div>
     <ul class="plist">

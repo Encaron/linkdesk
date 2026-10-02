@@ -29,14 +29,16 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `out\bootstrapper.exe` | 正常启动：无边框 780×570 窗口加载 `app.html` |
 | `--debug` | 开 DevTools 并自动弹出（默认关闭；顺带开右键菜单） |
 | `--uninstall` | **卸载器模式**（件 1d）：无边框 **720×540** 窗口（标题「LinkDesk 卸载」），启动 URL 自动补 `?mode=uninstall` ⇒ 页面走卸载四帧（confirm/running/progress/finish）。同一 exe、同一页面，产品化入口（ARP `UninstallString` 指向本 exe）归件 2b/2d |
-| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入）｜卸载态另有 `screen=un-confirm\|un-running\|un-progress\|un-finish`（**必须与 `--uninstall` 同给**：屏名不在当前模式的白名单里会被**静默拒绝**，症状＝实机整屏空白）与 `keep=0`（卸载完成屏「数据已一并移除」黄徽章态） |
+| `--preview=<query>` | 把 query 拼到启动 URL 上，供对照/排查直接摆屏：`screen=home\|custom\|progress\|finish\|error\|uac`（`custom` 展开自定义区）、`pct=<0-100>`（进度定格）、`dust=0`（关微尘）、`seed=1`（定序随机数）、`lang=<code>`（页面语言；词条从 `i18n/<code>.json` 取，认不得的值回落 zh-CN）、`langs=a,b`（词条清单，一般不手给——宿主扫目录后自己注入）｜卸载态另有 `screen=un-confirm\|un-running\|un-progress\|un-finish`（**必须与 `--uninstall` 同给**：屏名不在当前模式的白名单里会被**静默拒绝**，症状＝实机整屏空白）与 `keep=0`（卸载完成屏「数据已一并移除」黄徽章态）｜件 2c 增：`screen=version&kind=same\|older&from=<已装>&to=<本包>`（**版本守卫屏**取图口——真载荷的守卫在页面白名单里也认 `version`，但开发壳无载荷走不到守卫，取图走这条）、`autouninstall=1`（卸载确认屏自动点「卸载」）＋ `autocontinue=1`（摆到「正在运行」后自动点「关闭并继续」，供 `tools\guard-test.ps1`）｜⚠️ 三个 `auto*=1` 走的都是**页面真动作**（post 链同产品），不是宿主短路 |
 | `--capture=<path.png>` | 页面渲染完成后自行截图存 PNG 并退出（单屏取图口；走 WebView2 `CapturePreview`，只拍页面、**不触碰桌面**） |
 | `--capture-delay=<ms>` | 覆盖 `--capture` 的落图延时（默认 1200——i18n fetch ＋ 入场动效落定）。**要「动画跑完的定格帧」必须调大**：完成屏彩粒（`.burst`）实测 end time 995–1665ms，1.2s 拍下去拍到半空粒子（`cmp-shots.ps1` 因此传 `-SettleMs`）。非法值静默维持默认 |
-| `--silent`（或 `/S`） | **静默安装**（件 2a）：不建窗、**不碰 WebView2**（运行时缺失也装得上——那是能用界面的问题，不是装不上的问题）。解压 → 校验 → 退出码 0；失败码见 §四。更新链走的就是这条 |
+| `--silent`（或 `/S`） | **静默安装**（件 2a）：不建窗、**不碰 WebView2**（运行时缺失也装得上——那是能用界面的问题，不是装不上的问题）。解压 → 校验 → 退出码 0；失败码见 §四。更新链走的就是这条。件 2c：**版本守卫同版/降级 ⇒ 不弹窗、退 1602**（`ERROR_INSTALL_USEREXIT`，被拦时一个字节没写） |
 | `--force-run` | 装完把壳拉起来（`ShellExecute` `<安装目录>\LinkDesk.exe`）。对应用户点「运行 LinkDesk」与更新器 `app.relaunch()` 的 `${isForceRun}` 同位 |
 | `--dir=<路径>` | 指定安装目录（覆盖默认/已装目录探测）。静默与界面态都认；界面态由 `?dir=` 传给页面 |
 | `--log=<路径>` | 把每条**宿主→页面**消息落盘（一行一条 JSON）——进度不靠截图猜，直接对日志断言单调性（`tools\install-test.ps1` 的判据） |
 | `LK_FORCE_NO_RUNTIME=1`（环境变量） | 模拟 WebView2 运行时缺失 → 系统对话框＋退出码 3（件 3c 非交互测兜底路径） |
+| `LK_GUARD_ASSUME_VERSION=<ver>`（环境变量，件 2c） | 覆盖版本守卫读到的「已装版本」——不用改注册表就能摆出同版/更旧/更新三种情形（`tools\guard-test.ps1` 靠它做到**零系统写入**）。与 `LK_FORCE_NO_RUNTIME` 同族：**产品运行不带** |
+| `LK_IGNORE_CLOSE=1`（环境变量，件 2c） | 本窗**拒绝** WM_CLOSE（测试缝）：「优雅关闭超时」路径要一个真的关不掉的对端才测得出——`guard-test.ps1` 路 3c 给 replica 挂它，验「10s 超时回『稍后』且没强杀」 |
 
 验收辅助脚本（`tools/`，PS 5.1 直跑，**改完 `app.*` 必须先 `build.cmd`**——exe 只从自己所在目录读页面）：
 
@@ -51,6 +53,7 @@ node scripts\build-installer.mjs --exe out\bootstrapper.exe ^
 | `i18n-test.ps1` | 件 1c 词条装载器验收（39 断言）：探针页 iframe 实测 DOM ＋ 1px 图片信标回传（**不靠截图/OCR/时序运气**——靠本地 http.server 的访问日志），C1–C5 五路装载器 ＋ 三张 exe 实跑截图（带出注册表语言／扫目录，跑完复原注册表）；日志 `out\i18n-test.log` |
 | `install-test.ps1` | 件 2a 验收（三路，跑**真安装包**）：路 B 静默装（退出码／文件数／字节数与 marker 声明对账）· 路 A 界面态（`--log` 证进度单调不倒退、四段边界到过、收在 100）· 路 C `--force-run` 拉起壳（**按安装目录路径认进程**，不按名字）。⚠️ 三条路的 `--dir` 全指临时目录，**不碰**真装的 LinkDesk；用法 `-Setup <安装包.exe>`。🔴 **件 2b 起必须加 `-AllowSystemWrites`**——安装现在会写真机注册表（关联/右键/PATH/ARP/快捷方式），而本脚本**没有备份还原**，不给开关就直接拒绝执行 |
 | `syswrite-test.ps1` | 件 2b 验收（**七路**，跑真安装包 ＋ **真机注册表**）：装前把要碰的键**全量导出备份**（`reg.exe export` 原样往返，值的类型/编码不经脚本手）＋ 跑完全部还原并**自检还原结果**。路 1 静默（勾选值按注册表现状**反推** ⇒ 逐键跟着装前现状走）· 路 1b 静默（预置三键 ⇒ 验 `*\shell` 的**写入侧**）· 路 2 界面态覆盖装（页面不勾的项**必须没写**）· 路 3 PATH 真追加/幂等 · 路 3b PATH **类型不降级**（`REG_EXPAND_SZ` 进必 `REG_EXPAND_SZ` 出）· 路 4 界面态**全新目录**（四段进度真读数断言）。开头有**新鲜度门禁**（见坑 11）。🔴 **路 2 有「目标体检」闸**（2026-10-02）：那一路刻意不给 `--dir`（为验「覆盖装从 ARP 认目录」）⇒ 落装前先认 ARP 里的目录，**不在 `$Work` 下就跳过本路**（要拿真机目录当靶子才加 `-AllowRealInstallDir`）；为什么加这闸见**坑 15**。`-SkipRestore` 留现场、`-RestoreOnly` 按上次备份补救。**还原链自身健壮化**（2026-10-02 收口，见坑 13/14）：杀不掉进程**只警告不抛** · 还原每步套 `Restore-Step` 记账（一步失败不炸全链）· 还原自检**加断言 `UninstallString`** · 路 4 轮询带**卡死看门狗**（每 20s 打「日志静止秒数／末条 pct／进程活否／ARP 尾值」） |
+| `guard-test.ps1` | 件 2c 验收（**四路 18 断言**，🔴 **零系统写入**——不碰注册表与真装目录）：路 1 静默版本守卫（同版/更旧 ⇒ 退 **1602** 且目标目录一字节没建；更新 ⇒ 放行，用「放行后下一道闸退 5」证放行）· 路 2 界面态守卫真接线（`version-guard` 进日志 ＋ **无** `progress`）· 路 3 进程守卫三态（3a 无实例 ⇒ `uninstall-norun→closed`；3b 有实例 ⇒ 帧拦在「正在运行」＋ **replica 自己的日志出现 `close-request`**（证明走的是 WM_CLOSE 优雅关，非强杀）＋ 对端退净 ⇒ `uninstall-closed`；3c 拒关（`LK_IGNORE_CLOSE=1`）⇒ 10s 后 `uninstall-close-timeout` 且**对端还活着**）· 路 4 路径守卫宿主半边（`dir-invalid` 就近回页面）。判据全走 `--log` ＋ 退出码；replica = 壳改名 `out\LinkDesk.exe`（跑完自删），**开跑前发现有别的 `LinkDesk.exe` 在跑直接 `exit 3`**（本脚本会向每个同名进程发 WM_CLOSE，不许碰别人的）。`-Road <1..4>` 单跑、`-Keep` 留 replica |
 | `gen-ui-rc.mjs` | 生成 `out\ui.gen.rc` ＋ `out\ui.manifest`：把 `app.html/css/js` 与 `i18n/*.json` 编成 RCDATA（id 3 清单、id 10+ 文件）。**单文件产品态必须**——拼合后的 setup.exe 旁边没有 `app.html` |
 | `dom-probe.mjs` | **快速读 DOM**（见下）：在真页面里求值、算几何，不起截图不做 OCR。`--click`/`--rect`/`--text`/`--eval` **按命令行顺序**执行；`--attach` 连已在跑的实例、`--keep` 测完不关窗 |
 | `pix-diff.ps1` | 两张同尺寸 PNG 比像素：只回报差异点数／最大通道差／差异包围盒，**不落图**——回答「改了样式后哪一屏变了、变在哪一块」比人眼看图便宜得多（读图付 token）。`-A out\app-home.png -B out\base-home.png`（`-Tol` 默认 6） |
@@ -106,6 +109,16 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   = **107,333,232 字节**；解压后 439,376,833 字节。
   🔴 **但这一路差点被假绿放过**：改完 `syswrite.cpp` 忘了 `build.cmd`，harness 照样跑，绿的是**旧壳**
   ——见 §三 坑 11，那条门禁现在硬拦。
+- **守卫与进程实测（件 2c，2026-10-02，`tools\guard-test.ps1` 四路 18 断言全绿 ＋ `dom-probe` 求值）**：
+  版本守卫——静默同版/更旧退 **1602**、目标目录一字节没建、本包更新放行（退 5 证放行）；界面态
+  `version-guard(kind=same)` 真到页面且无 `progress`。semver 比较器按 `src/core/utils/plugin/semverUtils.ts`
+  的宽容口径重写（缺位补 0／release > prerelease／预发布数字<字母），**不搬运 TS**。进程守卫——replica
+  在跑 ⇒ 帧拦在「正在运行」；优雅关被 replica 自己日志里的 `close-request` 证实（只有收到 WM_CLOSE 才发）；
+  拒关 10s 后 `uninstall-close-timeout` 且**对端还活着**（禁 taskkill 的实证）。语言持久化往返——切换 →
+  注册表 `Language` 落值 → 重开窗口带出（`data-lang=zh-CN`，跑完复原）。三路汇一——`closeByStage()` 分流
+  实测：home/version ⇒ `close` · progress ⇒ `cancel` · finish ⇒ `install-done{launch}` · 卸载 progress ⇒
+  **零消息**（置灰吞掉）。防重复提交——stub 宿主回话连点三下只发出 1 条 `install-start`。DWM 圆角——
+  `DwmGetWindowAttribute(33)` 读回 `2`（DWMWCP_ROUND），Win10 无此属性号自动直角、无版本分支。
 - Per-Monitor V2：`GetProcessDpiAwareness` 实测返回 awareness=2；窗口按 `逻辑像素 × dpi/96` 建，并响应 `WM_DPICHANGED` 守回 780×570 逻辑尺寸。
 - 页面加载：`SetVirtualHostNameToFolderMapping`（`installer.local` → exe 目录）+ `https://installer.local/app.html`，`NavigationCompleted` 返回 success=1。
 - 缺运行时：系统对话框（中文警告＋官方下载按钮）＋退出码 3。
@@ -190,6 +203,15 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
     01:42 出世／`D:\01link` 01:44 被改」这个时间相邻。**通路本身仍然为真**（代码设计与 `PathAdded` 痕迹都在），
     故闸保留：它挡的是「测试往非临时目录落盘」，不是那次删除。
     **同族判据**：任何「按注册表认目录再落盘」的测试路线（不止本脚本）都要先证明目标落在临时根下。
+16. 🔴 **外部拉起本 exe 时，开关必须与 `=` 连写成单个 token**（件 2c 验收实测）：`main.cpp` 的 argv 解析
+    只认 `--preview=<q>`／`--log=<p>`／`--dir=<p>` 这种等号连写；用 `ProcessStartInfo.Arguments` 拼成
+    `"--preview" "screen=home&autoinstall=1"` 两个 token，`--preview` 会被**静默忽略**——页面回默认屏、
+    `auto*` 全不触发、无任何报错，`--log` 于是空空如也（症状与坑 7 ②「静默拒绝」同族，但更隐蔽：
+    进程活着、窗口正常，只有该发生的动作没发生）。`guard-test.ps1` 首跑四路挂了三路，全是这一根因。
+    **顺带一提**：同一天还踩了同族的另一处——`?autoinstall=1` 的旧判据是「`screen=progress` 或**没给**
+    `screen`」，钉着 `screen=home` 的取图 URL 会静默不触发（已在 app.js 改成「当前在 home/progress 就触发」，
+    取图 URL 与自动装不再互斥）。**凡「进程活着但该动的没动」，先查参数到没到（`--log` 里有没有第一行），
+    再查页面判据，最后才怀疑 C++。**
 
 ## 四、宿主契约（件 1b 起会用到）
 
@@ -202,10 +224,15 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   magic 命中 ＋ `marker末 + packed == 文件大小` ＋ 紧随其后是 6 字节 7z 签名 `37 7A BC AF 27 1C`。
   最后一条不是多余的——**壳自己的 `.rdata` 里就存着 magic 字面量**，只认 magic 会认到自己身上。
 - **退出码（静默态）**：0 成功 · 4 拿开发壳当安装包跑（无载荷）· 5 解压失败 · 6 解压后校验没找到 `LinkDesk.exe`。
-  3 = 缺 WebView2 运行时（界面态专用）。
+  3 = 缺 WebView2 运行时（界面态专用）。件 2c 增：**1602 = 版本守卫拦下**（同版/降级；＝ `ERROR_INSTALL_USEREXIT`，
+  与 NSIS 版 `installer.nsh` 同一口径；被拦时目标目录一个字节没建）。
 - **宿主 → 页面消息**（`PostWebMessageAsJson`，**必须在 UI 线程调**；工人线程用 `WM_APP+1..4` 转一手）：
   `{"type":"progress","pct":0-100}`（只前进不倒退）· `{"type":"install-error","code","msg"}` ·
   `{"type":"install-canceled"}` · `{"type":"install-done"}`。
+  件 2c 增：`{"type":"close-request"}`（宿主收到 WM_CLOSE 时回问页面——三路汇一的宿主半边）·
+  `{"type":"version-guard","kind":"same|older","installed","incoming"}`（守卫结论，页面换守卫屏）·
+  `{"type":"dir-invalid","reason":"empty|length|root|write"}`（宿主建目录/写探针失败，页面就近行内错）·
+  `{"type":"uninstall-running"|"uninstall-norun"|"uninstall-closed"|"uninstall-close-timeout"}`（进程守卫四态）。
 - **界面态安装跑在宿主进程里**（工人线程解压 → 消息回报进度），**不是**页面自己调后端：
   `?autoinstall=1` 只是让页面自动点一下「立即安装」（测试/更新链用），真实路径同一条。
 - **词条与语言（件 1c）**：源在 `build/installer/i18n/*.json`（一语言一文件，`_meta.code/label` 供下拉标签），`build.cmd`
@@ -219,7 +246,12 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
 - 页面 → 宿主消息桥（`postMessage` 一行 JSON）：`{"type":"drag"}`（拖窗）/ `{"type":"close"|"exit"|"install-done"}`（关窗）/
   `{"type":"install-start"|"browse-dir"|"cancel"|"open-license",...}`（件 2 用，先通后接）。
   件 1d 加卸载侧：页面发 `{"type":"uninstall-start"}`（确认屏「卸载」）/ `{"type":"un-run"}`（运行中屏「关闭并继续」）/
-  `{"type":"un-cancel"}`（确认屏「取消」）/ `{"type":"uninstall-done"}`（完成屏「完成」）；宿主已在关窗名单里收 `uninstall-done`，
-  **细粒度分流（回滚、置灰吞 Alt+F4、按阶段分派）归件 2c**。
+  `{"type":"un-cancel"}`（确认屏「取消」）/ `{"type":"uninstall-done"}`（完成屏「完成」）。
+  件 2c 已接细粒度分流：`install-start` 可带 `"allowOlder":true`（守卫屏「仍要安装」重发，宿主凭这一位跳过守卫）；
+  `uninstall-start` → 宿主查进程表回 `uninstall-running/norun`（**页面先按住不发话**，等回话）；`uninstall-run` → 宿主
+  `RequestAppClose()`（WM_CLOSE，**禁 taskkill**）＋ `kCloseWaitTimer` 每 250ms 轮询，退净回 `uninstall-closed`、
+  10s（`kCloseWaitMs`）没退净回 `uninstall-close-timeout`。⚠️ 宿主自己的 `WM_CLOSE` 一律**不直接销毁**：先 `PostJson(close-request)`
+  问页面，页面按当前屏回话后才 `CloseWindowNow()`（`g_closeAllowed` 置真放行）——直接 `PostMessageW(WM_CLOSE)` 会变成
+  「页面→宿主→页面」死循环；三路（✕/Alt+F4/Esc）在页面侧汇进同一个 `closeByStage()`。
 - **键盘焦点**：WebView2 不自动接手顶层窗焦点，`WM_SETFOCUS` → `MoveFocus(PROGRAMMATIC)`（controller 建好前的那次会落空，
   建好后在前台再补一次）——否则 Enter/Tab/Esc 全部进不到页面。

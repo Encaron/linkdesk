@@ -10,6 +10,7 @@
 #include <shellapi.h>
 #include <shlwapi.h>
 #include <shobjidl.h>   // 件 2b：IFileOpenDialog（browse-dir 目录对话框）
+#include <dwmapi.h>     // 件 2c：DWMWA_WINDOW_CORNER_PREFERENCE（Win11 原生圆角）
 #include <objidl.h>
 #include <string>
 #include <vector>
@@ -25,12 +26,22 @@
 
 // 件 2b：系统写入（注册表 / 快捷方式 / PATH / ARP）——清单逐 key 照抄 build/installer.nsh
 #include "syswrite.h"
+// 件 2c：进程守卫（运行中检测 ＋ 优雅关闭）
+#include "procguard.h"
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "dwmapi.lib")
+
+// ⚠️ `DWMWCP_ROUND` 是个 **enum**，不是宏 —— `#ifndef DWMWCP_ROUND` 恒为真（预处理器看不见枚举），
+// 故这里自持字面量而不是抄符号名。值取自 dwmapi.h 的 DWMWINDOWCORNERPREFERENCE 公开枚举。
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33   // 老 SDK 头上没有这个属性号
+#endif
+static const DWORD kDwmCornerRound = 2;     // DWMWCP_ROUND
 
 // ── 设计常量（05 §3.1：安装窗 780×570 逻辑像素；件 1d：卸载窗 720×540）────
 static int kWinW = 780, kWinH = 570;
@@ -70,6 +81,17 @@ static void StartInstall(const std::wstring& requestedDir, const TaskOptions& op
 static void CancelInstall();
 static void PostJson(const std::wstring& json);               // 定义在 2a 段（宿主 → 页面）
 static std::wstring JsonEsc(const std::wstring& s);           // 定义在 2a 段（WndProc 要用）
+
+// ── 件 2c · 关闭路由与版本守卫的宿主态 ─────────────────────────────────────
+static const UINT_PTR kCloseWaitTimer = 2;         // 等 LinkDesk 自己退的轮询定时器（与取图定时器 1 分开）
+static const UINT kCloseWaitMs = 10000;            // 05 §4.3：10s 超时回「稍后」
+static DWORD g_closeWaitStart = 0;
+/** 无边框窗没有系统 ✕ ⇒ ✕ / Alt+F4 / Esc 三路都先汇到页面（页面按当前屏分流：
+ *  主屏直退 · 安装进度=取消回滚 · 卸载进度=吞掉 · 完成屏=等价完成）。
+ *  本位置真 = 「页面已答复」或「宿主自己决定要关」⇒ WM_CLOSE 直通销毁，不再回问（防死循环）。 */
+static bool g_closeAllowed = false;
+/** 版本守卫：页面回过「仍要安装」后置真，本次进程内不再拦第二次。 */
+static bool g_versionAck = false;
 
 // ── COM 回调（手写引用计数，Invoke 转发 lambda）───────────────────────────
 // 无参数完成回调（CapturePreview 等只回 HRESULT 的 handler）
@@ -217,6 +239,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     switch (msg) {
     case WM_TIMER:
         if (wp == kCaptureTimer) { KillTimer(hwnd, kCaptureTimer); DoCapture(); }
+        if (wp == kCloseWaitTimer) {
+            // 件 2c：等 LinkDesk 自己退（帧 2「关闭并继续」之后）。**不强杀**——超时就回「稍后」，
+            // 用户自己关掉再点一次，或干脆取消卸载。
+            if (!IsAppRunning()) {
+                KillTimer(hwnd, kCloseWaitTimer);
+                PostJson(L"{\"type\":\"uninstall-closed\"}");
+            } else if (GetTickCount() - g_closeWaitStart >= kCloseWaitMs) {
+                KillTimer(hwnd, kCloseWaitTimer);
+                PostJson(L"{\"type\":\"uninstall-close-timeout\"}");
+            }
+        }
+        return 0;
+    case WM_CLOSE:
+        // 件 2c：三路汇一 —— Alt+F4 / SC_CLOSE / 任务栏「关闭窗口」都到这里。先问页面；
+        // 页面按当前屏回 close / cancel / install-done，宿主真关时走 g_closeAllowed 那条。
+        // 测试钩子 LK_IGNORE_CLOSE=1：本窗**拒绝**关闭 —— 「优雅关闭超时」路径要一个真的关不掉的
+        // 对端才测得出来（与 LK_FORCE_NO_RUNTIME 同族的测试缝，产品运行不带）。
+        {
+            wchar_t ig[4] = {};
+            if (GetEnvironmentVariableW(L"LK_IGNORE_CLOSE", ig, 4) > 0) return 0;
+        }
+        if (g_closeAllowed) { DestroyWindow(hwnd); return 0; }
+        PostJson(L"{\"type\":\"close-request\"}");
         return 0;
     case WM_SETFOCUS:
         // 键盘焦点必须落在网页里：WebView2 不自动接手顶层窗的焦点
@@ -257,6 +302,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         return 0;
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
+}
+
+/** 宿主已决定关窗（完成屏出口 / 未写入阶段直退）：置放行位后走 WM_CLOSE，保留既有的
+ *  WM_CLOSE → DestroyWindow → WM_DESTROY → PostQuitMessage 那条收尾链。 */
+static void CloseWindowNow()
+{
+    if (!g_hwnd) return;
+    g_closeAllowed = true;
+    PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
 }
 
 static std::wstring ExeDir()
@@ -747,12 +801,165 @@ static bool VerifyInstall()
     return attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY);
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// 件 2c · 版本守卫（E6#42d 口径移植：同版/降级都问一句，默认取消）
+//
+// 【策略出处】`build/installer.nsh` 的 `customInit`——NSIS 版原话：「更旧和同版都问一句，
+//   默认取消；静默 /S 不弹窗 ⇒ 设退出码 1602（= ERROR_INSTALL_USEREXIT）」。本格把**同一套政策**
+//   搬到引导器；「本包更新 ⇒ 一个字都不多问」那条也照旧。
+//
+// 【比较用谁】NSIS 用的是 `${VersionCompare}`（标准头 WordFunc.nsh）；自绘后没有 NSIS ⇒ 按
+//   05 §4.3「参照 `src/core/utils/plugin/semverUtils.ts`，**不搬运只对照**」重写一份**宽容**比较器：
+//   忽略 v/V 前缀、缺位补 0、按 semver 预发布规则（release > prerelease；数字 < 字母）。
+//   ⚠️ **方向决策不在这里**——主软件更新器的方向判定仍然只走 TS 那一处（E6#57.x），
+//   本处是「覆盖前问一句」的第二道闸，不参与方向决策。
+// ══════════════════════════════════════════════════════════════════════════
+
+/** 数字段：非数字/空 → 0（宽容，与 semverUtils 的 `Number(seg)` 兜底同义） */
+static int SemverNum(const std::wstring& seg)
+{
+    if (seg.empty()) return 0;
+    wchar_t* end = nullptr;
+    long v = wcstol(seg.c_str(), &end, 10);
+    return (end && end != seg.c_str() && *end == L'\0') ? (int)v : 0;
+}
+
+/** 拆成「数字核心段」＋「预发布标识符」；hasPre = 有非空预发布段 */
+static void SemverSplit(const std::wstring& v, std::vector<int>& core,
+                        std::vector<std::wstring>& pre, bool& hasPre)
+{
+    std::wstring s = v;
+    size_t b = s.find_first_not_of(L" \t");
+    s = (b == std::wstring::npos) ? std::wstring() : s.substr(b);
+    while (!s.empty() && (s.back() == L' ' || s.back() == L'\t')) s.pop_back();
+    if (!s.empty() && (s[0] == L'v' || s[0] == L'V')) s.erase(s.begin());
+    size_t dash = s.find(L'-');
+    std::wstring corePart = dash == std::wstring::npos ? s : s.substr(0, dash);
+    hasPre = dash != std::wstring::npos && dash + 1 < s.size();
+    for (size_t i = 0; ; ) {                       // 核心段按 '.' 切（含超 3 段的宽容输入）
+        size_t dot = corePart.find(L'.', i);
+        core.push_back(SemverNum(corePart.substr(i, dot == std::wstring::npos ? std::wstring::npos : dot - i)));
+        if (dot == std::wstring::npos) break;
+        i = dot + 1;
+    }
+    if (hasPre) {
+        std::wstring p = s.substr(dash + 1);
+        for (size_t j = 0; ; ) {
+            size_t dot = p.find(L'.', j);
+            pre.push_back(p.substr(j, dot == std::wstring::npos ? std::wstring::npos : dot - j));
+            if (dot == std::wstring::npos) break;
+            j = dot + 1;
+        }
+    }
+}
+
+/** 预发布逐位比较（仅核心段全等时调用；数字 < 字母；数字按值、字母按 ASCII；前缀相同者字段少者小） */
+static int ComparePrerelease(const std::vector<std::wstring>& a, const std::vector<std::wstring>& b)
+{
+    size_t len = a.size() > b.size() ? a.size() : b.size();
+    for (size_t i = 0; i < len; ++i) {
+        if (i >= a.size()) return -1;               // 1.0.0-alpha < 1.0.0-alpha.1
+        if (i >= b.size()) return 1;
+        bool na = !a[i].empty() && a[i].find_first_not_of(L"0123456789") == std::wstring::npos;
+        bool nb = !b[i].empty() && b[i].find_first_not_of(L"0123456789") == std::wstring::npos;
+        if (na && nb) {
+            long va = wcstol(a[i].c_str(), nullptr, 10), vb = wcstol(b[i].c_str(), nullptr, 10);
+            if (va != vb) return va > vb ? 1 : -1;
+        } else if (na != nb) {
+            return na ? -1 : 1;
+        } else if (a[i] != b[i]) {
+            return a[i] > b[i] ? 1 : -1;
+        }
+    }
+    return 0;
+}
+
+/** 宽容 semver 比较：>0 = a 更新，<0 = a 更旧，0 = 同版（对照 semverUtils.compareVersions） */
+static int CompareSemver(const std::wstring& a, const std::wstring& b)
+{
+    std::vector<int> ca, cb;
+    std::vector<std::wstring> pa, pb;
+    bool ha = false, hb = false;
+    SemverSplit(a, ca, pa, ha);
+    SemverSplit(b, cb, pb, hb);
+    size_t len = ca.size() > cb.size() ? ca.size() : cb.size();
+    for (size_t i = 0; i < len; ++i) {
+        int na = i < ca.size() ? ca[i] : 0;         // 缺位补 0（0.2 == 0.2.0）
+        int nb = i < cb.size() ? cb[i] : 0;
+        if (na != nb) return na > nb ? 1 : -1;
+    }
+    if (!ha && !hb) return 0;
+    if (!ha) return 1;                              // release > 带 prerelease
+    if (!hb) return -1;
+    return ComparePrerelease(pa, pb);
+}
+
+/** 守卫三态：Allow = 放行（本包更新 / 无旧版可比）；Same / Older = 要问一句 */
+enum class GuardVerdict { Allow, Same, Older };
+
+/** 已装版本（守卫用）。测试缝 `LK_GUARD_ASSUME_VERSION` 覆盖 ARP 读数——「本包更新 ⇒ 放行」
+ *  这条在真机上要换一份 ARP 才测得出来，而 2c 不为此改用户注册表（与 LK_FORCE_NO_RUNTIME 同族）。 */
+static std::wstring InstalledVersionForGuard()
+{
+    wchar_t buf[64] = {};
+    if (GetEnvironmentVariableW(L"LK_GUARD_ASSUME_VERSION", buf, 64) > 0 && buf[0])
+        return std::wstring(buf);
+    return ReadInstalledVersion();
+}
+
+static GuardVerdict VersionGuard(const std::wstring& installed, const std::wstring& incoming)
+{
+    // 无旧版可比（全新装 / 刚卸载过 / 老安装路径没写过 DisplayVersion）⇒ 放行。宁可不拦，不许误拦。
+    if (installed.empty() || incoming.empty()) return GuardVerdict::Allow;
+    int cmp = CompareSemver(incoming, installed);
+    if (cmp > 0) return GuardVerdict::Allow;
+    return cmp == 0 ? GuardVerdict::Same : GuardVerdict::Older;
+}
+
+/** 版本守卫的**页面出口**：把结论发进页面（页面用 error 骨架的确认屏问一句）。 */
+static void PostVersionGuard(GuardVerdict v)
+{
+    PostJson(L"{\"type\":\"version-guard\",\"kind\":\""
+             + std::wstring(v == GuardVerdict::Same ? L"same" : L"older")
+             + L"\",\"installed\":\"" + JsonEsc(InstalledVersionForGuard())
+             + L"\",\"incoming\":\"" + JsonEsc(PayloadVersion()) + L"\"}");
+}
+
+/** 件 2c · 路径预检（02 §三「换路径入口」的就近面）。返回空串 = 可用，否则是页面认得的 reason 码。
+ *  只做**宿主才做得了**的那部分（建目录 ＋ 真写一次探针文件）；语法部分（非法字符 / 过长 / 盘根）
+ *  由页面**即时**拦（app.js 的 pathSyntaxError）——按键就出结果，不必等一次往返。 */
+static std::wstring ValidateInstallDir(const std::wstring& dir)
+{
+    if (dir.empty()) return L"empty";
+    if (dir.size() >= MAX_PATH - 12) return L"length";
+    if (dir.size() >= 2 && dir[1] == L':'
+        && (dir.size() == 2 || (dir.size() == 3 && (dir[2] == L'\\' || dir[2] == L'/'))))
+        return L"root";                             // 盘根：7zr 会把整盘当目标铺开
+    if (!CreateDirectoryW(dir.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
+        return L"write";
+    // 建目录成功 ≠ 可写（目录可能早就存在且只读）——真写一个探针文件再删掉
+    std::wstring probe = dir + L"\\.linkdesk-wtest";
+    HANDLE h = CreateFileW(probe.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                           FILE_ATTRIBUTE_TEMPORARY, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return L"write";
+    CloseHandle(h);
+    DeleteFileW(probe.c_str());
+    return std::wstring();
+}
+
 /** 无界面安装（--silent ／ /S）——更新链那条路。**不建窗、不碰 WebView2**：
  *  自动更新不该因为「运行时缺失」而装不上（缺运行时是能用界面的问题，不是装不上的问题）。 */
 static int RunSilentInstall()
 {
     if (!g_hasPayload) return 4;                       // 拿开发壳当安装包跑：如实失败
     if (g_installDir.empty()) g_installDir = DefaultInstallDir();
+
+    // 件 2c · 版本守卫（静默）：**不弹窗**（没有人点会挂死）⇒ 按「用户取消了」办，退 1602
+    // （= ERROR_INSTALL_USEREXIT）。自动更新的方向永远是升级 ⇒ 不受影响；真要人工降级
+    // ⇒ 先卸载再装（卸载删掉 ARP 键 ⇒ 无旧版可比 ⇒ 放行）——与 NSIS 版同一条刻意留的正路。
+    // ⚠️ 排在 CreateDirectoryW 之前：被拦下时**一个字节都没动**。
+    if (VersionGuard(InstalledVersionForGuard(), PayloadVersion()) != GuardVerdict::Allow) return 1602;
+
     CreateDirectoryW(g_installDir.c_str(), nullptr);
     std::wstring err = ExtractPayload();
     if (!err.empty()) { OutputDebugStringW((L"[installer] " + err + L"\n").c_str()); return 5; }
@@ -1000,6 +1207,22 @@ static void StartInstall(const std::wstring& requestedDir, const TaskOptions& op
         SendMessageW(g_hwnd, WM_LK_FAILED, 0, 0);
         return;
     }
+
+    // 件 2c · 版本守卫（界面态）：同版/降级先问一句，默认取消；页面回过「仍要安装」才放行。
+    // ⚠️ 与静默路同一份政策（VersionGuard），只是出口不同：这里发确认屏，那边退 1602。
+    // ⚠️ 排在 CreateDirectoryW 之前 —— 被拦下时一个字节都没动（连目录都不建）。
+    if (!g_versionAck) {
+        GuardVerdict gv = VersionGuard(InstalledVersionForGuard(), PayloadVersion());
+        if (gv != GuardVerdict::Allow) { PostVersionGuard(gv); return; }
+    }
+
+    // 件 2c · 路径预检 —— 语法由页面即时拦，能落地才走到这里；宿主这里管「建得出来 / 写得进去」。
+    // 失败回 `dir-invalid`：页面**就近显示在路径行下**（规格 05 §4.3：不改全局错误屏语义）。
+    std::wstring bad = ValidateInstallDir(g_installDir);
+    if (!bad.empty()) {
+        PostJson(L"{\"type\":\"dir-invalid\",\"reason\":\"" + bad + L"\"}");
+        return;
+    }
     CreateDirectoryW(g_installDir.c_str(), nullptr);
     g_phase = Phase::Extracting;
     std::thread(InstallWorker).detach();
@@ -1139,6 +1362,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                              WS_POPUP, 0, 0, kWinW, kWinH,
                              nullptr, nullptr, hInst, nullptr);
     if (!g_hwnd) return 1;
+    // 件 2c：Win11 原生圆角。无边框窗（WS_POPUP）系统不给圆角，画出来的四角是直角，
+    // 和自绘界面里那一圈 12px 圆角对不上。⚠️ Win10 及更老没有这个属性号 ⇒ DwmSetWindowAttribute
+    // 返 E_INVALIDARG，**忽略即可**（那边本来就该是直角，不退回自绘圆角）。
+    {
+        DWORD pref = kDwmCornerRound;
+        DwmSetWindowAttribute(g_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof(pref));
+    }
     FitLogical(g_hwnd, GetDpiForWindow(g_hwnd), true);
     ShowWindow(g_hwnd, nCmdShow);
     // 无边框窗没有标题栏可点，键盘必须开箱可用（Enter=主按钮 / Tab / Esc）：
@@ -1208,6 +1438,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                     //   {"type":"browse-dir","dir":"..."} → 目录对话框（件 2b；回 `browse-dir-done`）
                     //   {"type":"set-lang","lang":"zh-CN"} → 语言持久化写侧（件 2b）
                     //   {"type":"cancel"} → 取消安装（件 2a；回滚归 2c）
+                    // ── 件 2c 新增 ────────────────────────────────────────────────
+                    //   {"type":"install-start","allowOlder":true} → 版本守卫屏上点了「仍要安装」
+                    //   {"type":"uninstall-start"} → 查有没有在跑的 LinkDesk，回 `uninstall-running` / `uninstall-norun`
+                    //   {"type":"uninstall-run"}   → 帧 2「关闭并继续」：优雅关（WM_CLOSE，**不 taskkill**）
+                    //                                关掉了回 `uninstall-closed`，10s 没关掉回 `uninstall-close-timeout`
                     auto onMsg = new ComHandlerEvt<ICoreWebView2WebMessageReceivedEventHandler,
                                                   ICoreWebView2, ICoreWebView2WebMessageReceivedEventArgs>(
                         IID_ICoreWebView2WebMessageReceivedEventHandler,
@@ -1230,7 +1465,26 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                                 o.fileMenu = JsonGetBool(m, L"filemenu", o.fileMenu);
                                 o.dirMenu  = JsonGetBool(m, L"dirmenu",  o.dirMenu);
                                 o.path     = JsonGetBool(m, L"path",     o.path);
+                                // 件 2c：版本守卫屏的「仍要安装」——放行位只对本次点击有效，
+                                // 由 StartInstall 消费后 **不清零**：守卫就发生在同一次调用的最前头。
+                                if (JsonGetBool(m, L"allowOlder", false)) g_versionAck = true;
                                 StartInstall(JsonGetString(m, L"dir"), o);
+                            } else if (m.find(L"\"uninstall-start\"") != std::wstring::npos) {
+                                // 件 2c（02 §三）：有实例在跑 ⇒ 帧 2 问一句「关闭并继续 / 稍后」；
+                                // 没在跑 ⇒ 直接推帧 3。**不静默杀进程**（taskkill 一律禁止）。
+                                PostJson(IsAppRunning() ? L"{\"type\":\"uninstall-running\"}"
+                                                        : L"{\"type\":\"uninstall-norun\"}");
+                            } else if (m.find(L"\"uninstall-run\"") != std::wstring::npos) {
+                                // 帧 2「关闭并继续」：先请它自己退（WM_CLOSE，走它自己的保存流程），
+                                // 再靠 kCloseWaitTimer 轮询到它消失。**不强杀**——超时回「稍后」，
+                                // 用户自己关掉再点一次，或干脆取消卸载（05 §4.3 / 06 2c 原话）。
+                                if (!IsAppRunning()) {
+                                    PostJson(L"{\"type\":\"uninstall-closed\"}");
+                                } else {
+                                    RequestAppClose();
+                                    g_closeWaitStart = GetTickCount();
+                                    SetTimer(g_hwnd, kCloseWaitTimer, 250, nullptr);
+                                }
                             } else if (m.find(L"\"browse-dir\"") != std::wstring::npos) {
                                 PickInstallDir(JsonGetString(m, L"dir"));
                             } else if (m.find(L"\"set-lang\"") != std::wstring::npos) {
@@ -1242,11 +1496,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int nCmdShow)
                             } else if (m.find(L"\"install-done\"") != std::wstring::npos) {
                                 // 完成屏「运行 LinkDesk」勾了才拉——装完就让人看见东西，别让他自己找图标
                                 if (JsonGetBool(m, L"launch", false)) LaunchInstalledApp();
-                                PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
+                                CloseWindowNow();
                             } else if (m.find(L"\"close\"") != std::wstring::npos
                                        || m.find(L"\"exit\"") != std::wstring::npos
                                        || m.find(L"\"uninstall-done\"") != std::wstring::npos) {
-                                PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
+                                // 件 2c：**必须走 CloseWindowNow**，不能直接 PostMessageW(WM_CLOSE)
+                                // —— WM_CLOSE 现在会先回问页面，直接发会变成「页面 → 宿主 → 页面」的死循环。
+                                CloseWindowNow();
                             }
                             return S_OK;
                         });

@@ -42,6 +42,20 @@
   "installer.error.retry": "Choose another location<span class=\"cir\">→</span>",
   "installer.error.exit": "Exit installer",
 
+  "installer.version.title.same": "This version is already installed.",
+  "installer.version.title.older": "A newer version is installed.",
+  "installer.version.body.same": "This package is the same version ({version}). Installing again overwrites the existing files — your settings and data are untouched.",
+  "installer.version.body.older": "This machine has {installed}, and this package is the older {incoming}. Continuing replaces the newer version with the older one.",
+  "installer.version.exit": "Exit installer",
+  "installer.version.proceed": "Install anyway",
+
+  "installer.path.err.empty": "Enter an install location.",
+  "installer.path.err.chars": "The path contains characters Windows doesn’t allow ( < > \" | ? * ).",
+  "installer.path.err.length": "The path is too long — pick a shorter location.",
+  "installer.path.err.root": "Pick a folder, not a whole drive.",
+  "installer.path.err.absolute": "Enter a full path with a drive letter (for example C:\\Apps\\LinkDesk).",
+  "installer.path.err.write": "This location isn’t writable (no permission, or the path is in use). Try another one.",
+
   "installer.uninstall.brand": "LINKDESK · UNINSTALL",
   "installer.uninstall.confirm.title": "Uninstall LinkDesk?",
   "installer.uninstall.confirm.sub": "Install location: <code>{path}</code> · about {size}",
@@ -53,6 +67,7 @@
   "installer.uninstall.running.sub": "Uninstalling will continue after LinkDesk closes; unsaved workspaces go through its save flow first.",
   "installer.uninstall.running.close": "Close & continue<span class=\"cir\">→</span>",
   "installer.uninstall.running.later": "Later",
+  "installer.uninstall.running.timeout": "Waited 10 seconds and LinkDesk is still running. It may be sitting on a save dialog — close its window yourself, or choose “Later”.",
   "installer.uninstall.progress.aria": "Uninstall progress",
   "installer.uninstall.progress.head1": "STEP 1 / 4 · Removing program files",
   "installer.uninstall.progress.head2": "STEP 2 / 4 · Cleaning system entries",

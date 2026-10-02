@@ -1,11 +1,14 @@
-/* LinkDesk 安装器界面逻辑（件 1b：六屏状态机接线 ／ 件 1c：i18n 装载器 ／ 件 1d：卸载四帧）
+/* LinkDesk 安装器界面逻辑（件 1b：六屏状态机接线 ／ 件 1c：i18n 装载器 ／ 件 1d：卸载四帧
+ *                        ／ 件 2c：版本守卫屏 · 路径行内校验 · 三路汇一关闭 · 运行中检测接线）
  * 来源：docs/04-软件更新/待抉择池/安装界面自绘/mockups/E-混合提案.html 与 E-卸载屏.html 的 <script>（直搬改造）
  * 拆掉的：设计注记/演示控制的写入（.cap/.note/「重新播放」/「演示：失败分支」/enUI 文案补丁）、
  *         9 秒假进度、写死的语言数组、badge() 里按下拉文字判语言的做法（改用 1c 的 t()）
  * 接上的：宿主消息桥（拖窗/关闭/件2 的安装动作）、Enter=主按钮、语言下拉（清单 = 宿主扫描 i18n/ 目录）
  * 件 2 接手点：ACTIONS.install / uninstall 后的真 IO 与进度回调（setProgress）、setInstallDir/setVersion/
  *             setError/setUninstallInfo、set-lang 的注册表持久化（HKCU\Software\LinkDesk\Installer → Language
- *             写侧）、运行时真值的本地化（onLangChange 钩子）、卸载三路关闭的宿主侧分流（2c/2d）
+ *             写侧）、运行时真值的本地化（onLangChange 钩子）
+ * 件 2c 已落：close-request 单入口分流、version-guard 确认屏、dir-invalid 行内错、uninstall-* 检测/超时；
+ *             **卸载的真清理（帧 3 进度 / 帧 4 徽章真值）仍归 2d**——这里只把进程检测与关窗接活。
  */
 (function () {
 'use strict';
@@ -51,10 +54,13 @@ if (q.get('seed')) {
 
 /* ── 屏幕状态机（类名/ID 与 mockup 一致 = 规格；两套屏按模式分流）────────── */
 const SCREENS = {
-  install: ['uac', 'home', 'progress', 'finish', 'error'],
+  install: ['uac', 'home', 'progress', 'finish', 'error', 'version'],
   uninstall: ['confirm', 'running', 'un-progress', 'un-finish']
 };
 let cur = null;
+/* 件 2c：install-start 已发出、宿主还没回话的那一小段——挡住二次提交（连点两下「立即安装」）。
+   每一次宿主的回话（progress / install-error / version-guard / dir-invalid / canceled / done）都解除它。 */
+let starting = false;
 
 function go(id) {
   if (SCREENS[MODE].indexOf(id) < 0) return;
@@ -130,6 +136,7 @@ function setInstallDir(dir) {
   if (!dir) return;
   $('[data-role=path]').value = dir;
   $('#finish-path').textContent = dir;
+  clearPathErr();     // 值被换成合法的了（浏览对话框 / 宿主的 dir=），上一句判词即刻作废
 }
 function setVersion(v) { if (v) $('#ver').textContent = 'v' + v; }
 function setError(code, msg) {
@@ -146,6 +153,94 @@ function readOpts() {
   $$('[data-opt]').forEach(function (el) { o[el.dataset.opt] = el.checked; });
   return o;
 }
+
+/* ── 件 2c · 安装路径的行内校验 ────────────────────────────────────────────
+ * 分成两半，各判各判得动的：
+ *   · **语法**（这里）—— 空 / 非法字符 / 过长 / 盘根 / 不是绝对路径。当场出结果，不必等往返。
+ *   · **能不能落地**（宿主 ValidateInstallDir）—— 建目录 ＋ 真写一个探针文件；失败回 `dir-invalid`。
+ * 判据刻意取窄：只收「一定装不进去」的，拿不准的一律放行——**宁可不拦，不许误拦**
+ * （与版本守卫同一条口径；宽判会把 D:\Apps 这种好路径也拦掉）。 */
+const WIN_BAD_CHARS = /[<>"|?*\x00-\x1f]/;
+function pathSyntaxError(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return 'empty';
+  if (s.length >= 248) return 'length';                  // 与宿主 MAX_PATH-12 同口径
+  if (/^[a-zA-Z]:$/.test(s) || /^[a-zA-Z]:[\\/]$/.test(s)) return 'root';   // 盘根：7zr 会把整盘铺开
+  if (/^\\\\/.test(s)) return WIN_BAD_CHARS.test(s) ? 'chars' : '';         // UNC \\server\share 放行
+  if (WIN_BAD_CHARS.test(s)) return 'chars';
+  if (!/^[a-zA-Z]:[\\/]/.test(s)) return 'absolute';     // 相对路径会装到安装器的工作目录里
+  return '';
+}
+const PATH_ERR_KEY = {
+  empty: 'installer.path.err.empty', chars: 'installer.path.err.chars',
+  length: 'installer.path.err.length', root: 'installer.path.err.root',
+  absolute: 'installer.path.err.absolute', write: 'installer.path.err.write'
+};
+/* 就近显示在输入框正下方；文字才是判据（只染边框等于只有视觉通道，读屏听不到）。
+   #patherr 是 role=alert —— 写进去即播报，不需要额外 announce。 */
+function showPathErr(reason) {
+  const el = $('#patherr');
+  if (!el) return;
+  el.textContent = t(PATH_ERR_KEY[reason] || PATH_ERR_KEY.write);
+  el.hidden = false;
+  $('[data-role=path]').classList.add('bad');
+}
+function clearPathErr() {
+  const el = $('#patherr');
+  if (!el || el.hidden) return;
+  el.hidden = true;
+  el.textContent = '';
+  $('[data-role=path]').classList.remove('bad');
+}
+
+/* ── 件 2c · 版本守卫屏 ────────────────────────────────────────────────────
+ * 宿主的 VersionGuard 结论（同版 / 降级）由 version-guard 消息送进来，复用失败屏骨架问一句，
+ * **默认答案是「退出安装」**（主按钮 = Enter；与 NSIS 版 MB_DEFBUTTON2 = 否 同一条）。
+ * 文案带变量 ⇒ 走 t(key, vars)；kind 留一份，切语言时按当前语言重渲染（同段头那套做法）。 */
+let verInfo = null;
+function renderVersion() {
+  if (!verInfo) return;
+  const same = verInfo.kind === 'same', v = same ? 'same' : 'older';
+  $('#ver-title').textContent = t('installer.version.title.' + v);
+  $('#ver-sub').textContent = t('installer.version.body.' + v, same
+      ? { version: verInfo.from }
+      : { installed: verInfo.from, incoming: verInfo.to });
+  // 版本对是纯标识符，不翻译：同版只写一个，降级写「已装 → 本包」
+  $('#ver-code').textContent = same ? verInfo.from
+      : (verInfo.from && verInfo.to ? verInfo.from + '  →  ' + verInfo.to : '');
+}
+function showVersionGuard(kind, from, to) {
+  verInfo = { kind: kind === 'same' ? 'same' : 'older', from: from || '', to: to || '' };
+  renderVersion();
+  go('version');
+}
+
+/* 起装的**唯一入口**（按钮 / 守卫屏「仍要安装」/ 预览自动装都走它）：
+   语法预检 → 置防重位 → 进进度屏 → 发 install-start。 */
+function beginInstall(allowOlder) {
+  if (starting) return;
+  const inp = $('[data-role=path]');
+  const bad = pathSyntaxError(inp.value);
+  if (bad) { setCustom(true); go('home'); showPathErr(bad); return; }
+  clearPathErr();
+  starting = true;
+  setCustom(false);
+  go('progress');
+  resetProgress();
+  post({ type: 'install-start', dir: inp.value, opts: readOpts(), allowOlder: !!allowOlder });
+}
+
+/* 输入框的两条事件（UX 规则「输入时/离焦判，不要只在提交时才报」）：
+   input = 边打边撤销上一次判词（别让人打到一半就被红字追着）；blur = 那时候才判、才播报。 */
+(function wirePathInput() {
+  const inp = $('[data-role=path]');
+  if (!inp) return;
+  inp.addEventListener('input', clearPathErr);
+  inp.addEventListener('blur', function () {
+    const bad = pathSyntaxError(inp.value);
+    if (bad) showPathErr(bad); else clearPathErr();
+  });
+})();
 
 /* ── 卸载真值（2d 从宿主喂：安装位置 / 体积 / userData 路径）───────────────
  * 这里的占位值 = E-卸载屏 mockup 原文（用户名的真实路径由 2d 的宿主提供）。
@@ -180,31 +275,31 @@ function setUninstallInfo(info) {
 
 /* ── 动作表（与 markup 的 data-action 一一对应）────────────────────────── */
 const ACTIONS = {
-  install: function () {
-    setCustom(false);
-    go('progress');
-    resetProgress();
-    post({ type: 'install-start', dir: $('[data-role=path]').value, opts: readOpts() });  // 件 2 接真装
-  },
+  install: function () { beginInstall(false); },
   'toggle-custom': function () { setCustom(!$('#custom').classList.contains('open')); },
   browse: function () { post({ type: 'browse-dir', dir: $('[data-role=path]').value }); },  // 目录对话框在宿主（2b）
   cancel: function () { cancelInstall(); },
-  retry: function () { setCustom(true); go('home'); },   // 02 §三：换位置直接回自定义展开屏
-  exit: function () { post({ type: 'exit' }); },         // 失败屏出口（2c：清理后退出）
+  retry: function () { clearPathErr(); setCustom(true); go('home'); },   // 02 §三：换位置直接回自定义展开屏
+  exit: function () { post({ type: 'exit' }); },         // 失败屏出口
   done: function () { post({ type: 'install-done', launch: $('#runnow').checked }); },
   license: function () { post({ type: 'open-license' }); },  // ⚠️ 许可协议地址待定（发版前定，勿硬编码假 URL）
   close: function () { closeByStage(); },
+  /* 版本守卫屏（件 2c）：默认出口 = 退出（主按钮 / Enter），「仍要安装」降为幽灵按钮，点了才带
+     allowOlder 重发一次 install-start（宿主凭这一位跳过守卫）。 */
+  'ver-exit': function () { post({ type: 'close' }); },
+  'ver-proceed': function () { beginInstall(true); },
 
-  /* ── 卸载（件 1d 静态 UI；真清理/真进程检测归 2d）──────────────────────── */
+  /* ── 卸载（件 1d 静态 UI；真清理归 2d，进程检测/优雅关窗件 2c 已接）───── */
   uninstall: function () {
+    // 件 2c：检测归宿主（查进程表）——本屏先按住不发话：
+    //   在跑 ⇒ 回 uninstall-running（停帧 2 问一句）／没在跑 ⇒ 回 uninstall-norun（直接推帧 3）
+    // **不静默杀进程**（02 §三）；宿主侧见 main.cpp 的 IsAppRunning / RequestAppClose。
     post({ type: 'uninstall-start', keep: $('#keepdata').checked });
-    // ⚠️ 2d 接真检测后这里要改成由宿主回话驱动：没在运行 → 直接推 un-progress；在运行 → 本屏（帧 2）
-    go('running');
   },
   'un-continue': function () {
     resetProgress();
     go('un-progress');
-    post({ type: 'uninstall-run', keep: $('#keepdata').checked });   // 2d：优雅关闭 → 逐条清理（禁 taskkill）
+    post({ type: 'uninstall-run', keep: $('#keepdata').checked });   // 优雅关（WM_CLOSE）→ 2d 逐条清理
   },
   'un-later': function () { go('confirm'); },                        // 原路返回，什么都没动
   'un-cancel': function () { post({ type: 'close' }); },             // 无任何写入直接退
@@ -213,20 +308,24 @@ const ACTIONS = {
 
 function cancelInstall() {
   post({ type: 'cancel' });        // 2c：回滚已解压文件
+  starting = false;
   resetProgress();
   go('home');
 }
-/* ✕ / Esc / Alt+F4 三路汇此，按阶段分流（规格 05 §4.3；细粒度回滚归 2c） */
+/* ✕ / Esc / Alt+F4 三路汇此，按阶段分流（规格 05 §4.3）。
+   件 2c：三路已全部汇到这一个函数——宿主 WM_CLOSE → close-request → 这里；Esc 与 ✕ 直接调它。 */
 function closeByStage() {
   if (MODE === 'uninstall') {
-    // 卸载进度中：✕ 置灰吞掉（go() 已 disabled；Esc/Alt+F4 的宿主侧分流归 2c）
+    // 卸载进度中：✕ 置灰吞掉（go() 已 disabled），Esc/Alt+F4 走到这里也一律不响应——
+    // 点了卸载就走完（E-卸载屏 设计点③：可取消的清理反而不干净）。
     if (cur === 'un-progress') return;
     post({ type: 'close' });   // 确认/运行中=未写入任何内容；完成=等价完成——都是直接退
     return;
   }
   if (cur === 'progress') { cancelInstall(); return; }
   if (cur === 'finish') { post({ type: 'install-done', launch: $('#runnow').checked }); return; }
-  post({ type: 'close' });         // 主屏/确认屏：未写入任何内容，直接退
+  // 主屏 / 失败屏 / 版本守卫屏：守卫屏一个字节都还没写，关窗 = 等同于退出安装
+  post({ type: 'close' });
 }
 
 /* ── 宿主 → 页面（件 2a）：安装在宿主进程里真跑，进度/成败由宿主回报 ─────────
@@ -236,14 +335,51 @@ function onHostMessage(ev) {
   if (typeof m === 'string') { try { m = JSON.parse(m); } catch (e) { return; } }
   if (!m || !m.type) return;
   if (m.type === 'progress') {
+    starting = false;   // 宿主开始干活了 ⇒ 解除防重位
     // 只前进不倒退：宿主已保证单调，这里再兜一道（IO 抖动 / 迟到消息）
     if (typeof m.pct === 'number' && m.pct > lastPct) setProgress(m.pct);
     return;
   }
-  if (m.type === 'install-error') { setError(m.code || '', m.msg || ''); return; }   // setError 内含 go('error')
-  if (m.type === 'install-canceled') { resetProgress(); go('home'); return; }
-  if (m.type === 'install-done') { setProgress(100, { force: true }); go('finish'); return; }
+  if (m.type === 'install-error') { starting = false; setError(m.code || '', m.msg || ''); return; }   // setError 内含 go('error')
+  if (m.type === 'install-canceled') { starting = false; resetProgress(); go('home'); return; }
+  if (m.type === 'install-done') { starting = false; setProgress(100, { force: true }); go('finish'); return; }
   if (m.type === 'browse-dir-done') { setInstallDir(m.dir); return; }   // 件 2b：宿主选完目录回填
+  /* ── 件 2c ────────────────────────────────────────────────────────────── */
+  if (m.type === 'close-request') { closeByStage(); return; }   // Alt+F4 / 任务栏关闭 → 按当前屏分流
+  if (m.type === 'version-guard') {                             // 同版/降级：换确认屏，默认答案是退出
+    starting = false;
+    showVersionGuard(m.kind, m.installed, m.incoming);
+    return;
+  }
+  if (m.type === 'dir-invalid') {                               // 路径写不进去（宿主真试过）
+    starting = false;
+    setCustom(true);
+    go('home');
+    showPathErr(m.reason);
+    return;
+  }
+  if (m.type === 'uninstall-running') {
+    $('#unwarn').hidden = true;
+    go('running');
+    // 2c 验收缝（同 ?autoinstall=1 口径：走的是页面真动作，不是宿主短路）
+    if (q.get('autocontinue') === '1') setTimeout(function () { ACTIONS['un-continue'](); }, 200);
+    return;
+  }
+  if (m.type === 'uninstall-norun') {          // 没在跑：不必问，直接进帧 3（宿主随即进清理）
+    resetProgress();
+    go('un-progress');
+    post({ type: 'uninstall-run', keep: $('#keepdata').checked });
+    return;
+  }
+  if (m.type === 'uninstall-closed') {         // 它自己退干净了：清掉超时提示，帧 3 的进度由 2d 喂
+    $('#unwarn').hidden = true;
+    return;
+  }
+  if (m.type === 'uninstall-close-timeout') {  // 10s 没等到（多半卡在保存对话上）——如实说，退回帧 2
+    $('#unwarn').hidden = false;
+    go('running');
+    return;
+  }
 }
 if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener('message', onHostMessage);
@@ -272,9 +408,15 @@ document.addEventListener('mousedown', function (e) {
   post({ type: 'drag' });
 });
 
-/* ── 键盘：Enter = 当前屏主按钮（控件自身处理时不抢）─────────────────── */
+/* ── 键盘：Enter = 当前屏主按钮（控件自身处理时不抢）／Esc = 收下拉，否则按屏分流 ──── */
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') { openDd(false); return; }
+  if (e.key === 'Escape') {
+    // 件 2c：Esc 是「三路汇一」的第三路。弹层开着时先收弹层（Esc 的通用语义），
+    // 没收的就按当前屏分流——和 ✕ / Alt+F4 走同一个 closeByStage。
+    if ($('#lkdd').classList.contains('open')) { openDd(false); return; }
+    closeByStage();
+    return;
+  }
   if (e.key !== 'Enter' || e.ctrlKey || e.altKey || e.metaKey) return;
   const t = e.target;
   if (t && t.closest && t.closest('button,a,input,label,select,textarea')) return;
@@ -311,6 +453,19 @@ $$('[data-i18n]', document.body).forEach(function (el) { AUTHORED[el.dataset.i18
  ['installer.uninstall.progress.head2', 'STEP 2 / 4 · 清理系统项'],
  ['installer.uninstall.progress.head3', 'STEP 3 / 4 · 恢复 PATH'],
  ['installer.uninstall.progress.head4', 'STEP 4 / 4 · 收尾校验']].forEach(function (p) { AUTHORED[p[0]] = p[1]; });
+/* 件 2c：版本守卫屏的标题/正文与路径行内错**标记里没有挂点**（都是 app.js 填的），
+   同样登记进兜底层——词条目录整个缺失时也该看到中文，而不是 key 名。
+   ⚠️ 与 i18n/zh-CN.json 的 installer.version.* / installer.path.err.* 逐字一致（改词条时同笔改这里） */
+[['installer.version.title.same', '已安装相同版本。'],
+ ['installer.version.title.older', '已装的是更新的版本。'],
+ ['installer.version.body.same', '这个安装包是同一个版本（{version}）。重新装一遍会覆盖现有文件——设置与数据不受影响。'],
+ ['installer.version.body.older', '本机装着 {installed}，而这个安装包是更旧的 {incoming}。装下去会把新版本换成旧版本。'],
+ ['installer.path.err.empty', '请填写安装位置。'],
+ ['installer.path.err.chars', '路径里含 Windows 不允许的字符（< > " | ? *）。'],
+ ['installer.path.err.length', '路径太长，请换一个更短的位置。'],
+ ['installer.path.err.root', '请装在一个文件夹里，不要直接选整个盘。'],
+ ['installer.path.err.absolute', '请填写完整路径（含盘符，例如 C:\\Apps\\LinkDesk）。'],
+ ['installer.path.err.write', '这个位置写不进去（没有权限，或路径被占用）。换个位置再试。']].forEach(function (p) { AUTHORED[p[0]] = p[1]; });
 
 function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) {
@@ -402,6 +557,7 @@ function selectLang(code) {
 }
 function onLangChange(/* code */) {
   paintUninstall();   // 卸载侧带 {path}/{size} 的真值文案随语言重渲染（静态补丁填不了变量）
+  if (cur === 'version') renderVersion();   // 件 2c：守卫屏整屏都是运行时文案（无 data-i18n 挂点）
   /* 件 2：运行时真值（错误码文案 / 路径 / 版本）的本地化挂这里 */
 }
 
@@ -421,9 +577,11 @@ document.addEventListener('click', function (e) {
 
 /* ── 启动（等词条到位再首帧；字典坏了也照常起——回落链兜住文案）────────────
  * 预览参数（开发/验收用；产品运行不带）：
- * ?mode=uninstall（宿主 --uninstall 注入）、?screen=uac|home|progress|finish|error|confirm|running|
+ * ?mode=uninstall（宿主 --uninstall 注入）、?screen=uac|home|progress|finish|error|version|confirm|running|
  * un-progress|un-finish、?custom=1、?pct=0..100、?keep=0（预览不保留数据的黄徽章）、?dust=0、?seed=1、
- * ?lang=、?langs=（宿主注入） */
+ * ?lang=、?langs=（宿主注入）、?kind=same|older&from=&to=（?screen=version 的守卫屏取图入口）、
+ * ?autoinstall=1（安装侧摆好后自动点「立即安装」）、?autouninstall=1&autocontinue=1（卸载侧同规，
+ * 供 2c 的进程守卫验收——两点都走**页面真动作**，测的是产品那条路） */
 function boot() {
   if (q.get('dust') === '0') $('#dust').remove();
   if (MODE === 'uninstall') {
@@ -431,19 +589,28 @@ function boot() {
     if (q.get('keep') === '0') $('#keepdata').checked = false;
     go(q.get('screen') || 'confirm');
     if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
+    // 2c 验收缝：摆到确认帧后自动点「卸载」——宿主随即做运行中检测
+    if (q.get('autouninstall') === '1') setTimeout(function () { ACTIONS.uninstall(); }, 250);
     return;
   }
   setInstallDir($('[data-role=path]').value);          // 让完成屏路径与输入框同源
   // 件 2a：宿主自报家门的真值 —— 目标目录（可能来自上次安装的注册表）与版本（marker 里读的）
   if (q.get('dir')) setInstallDir(q.get('dir'));
   if (q.get('ver')) setVersion(q.get('ver'));
-  go(q.get('screen') || 'home');
+  // 件 2c：版本守卫屏的取图入口（宿主没带 payload 时走不到守卫，这条路专供逐屏对照/目检）
+  if (q.get('screen') === 'version') {
+    showVersionGuard(q.get('kind') === 'same' ? 'same' : 'older', q.get('from') || '', q.get('to') || '');
+  } else {
+    go(q.get('screen') || 'home');
+  }
   if (q.get('custom') === '1') setCustom(true);
   if (q.get('pct') !== null) setProgress(+q.get('pct'), { force: true });
-  // 开发/验收开关：摆到进度屏后自动点「立即安装」，走的是**页面真动作**（post install-start），
+  // 开发/验收开关：摆到 home/progress 后自动点「立即安装」，走的是**页面真动作**（post install-start），
   // 不是宿主短路——这样测的就是产品那条路。产品运行不带此参数。
-  if (q.get('autoinstall') === '1') {
-    if (q.get('screen') === 'progress' || !q.get('screen')) setTimeout(function () { ACTIONS.install(); }, 250);
+  // ⚠️ 判「当前在 home 或 progress」而不是「没给 screen」：钉着 screen=home 的取图 URL 也要能自动装
+  //  （2026-10-02 实测踩过：`screen=home&autoinstall=1` 在旧判据下静默不触发，guard-test 路 2/4 因此空转）。
+  if (q.get('autoinstall') === '1' && (cur === 'home' || cur === 'progress')) {
+    setTimeout(function () { ACTIONS.install(); }, 250);
   }
 }
 
@@ -470,6 +637,8 @@ window.__lk = {
   mode: MODE,
   go: go, setProgress: setProgress, readOpts: readOpts, setLang: selectLang, t: t,
   setUninstallInfo: setUninstallInfo, badge: badge,
+  // 件 2c：3c 的验收腿要能直接摆出守卫屏 / 问出路径判据 / 走一次汇一关闭
+  showVersionGuard: showVersionGuard, pathSyntaxError: pathSyntaxError, closeByStage: closeByStage,
   state: function () { return cur; },
   i18n: function () { return { lang: lang, state: i18nState, langs: LANGS.map(function (l) { return l.code; }) }; }
 };
