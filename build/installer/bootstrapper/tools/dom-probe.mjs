@@ -34,6 +34,10 @@
 //                   于是拿到的是它的 target —— 报错只有「target 有 2 个但都不是 app.html」，
 //                   查半天才发现压根不是我们的窗。换成 9440 + 预探。）
 //   --settle <ms>  等加载/动画，默认 2500（点击后另等 400ms 让 0.2s 过渡跑完）
+//   --wait <ms>    等 CDP 页面**出现**的上限，默认 90000（与 install-test.ps1 的 90s 窗口口径一致）。
+//                  🔴 2026-10-02 CI 实测：默认原先 15s，在 windows-latest 上第一条就红——
+//                  本脚本常是**全场第一个起 WebView2 的**（`npm run check` 不碰 exe），
+//                  一次性 VM 上冷启动远超本机那 2–3 秒。成功即返回，加长不影响快路径。
 //   --click <sel>  求值前先点一下（可重复，按命令行顺序）
 //   --rect <sel>   {x,y,w,h,right,bottom,outL,outR,outB,vis,win,text}——元素在**窗口坐标系**里的实际几何
 //                  （out* = 出窗左/右/下三向，「面板展开有没有被裁」就看它；win = 视口尺寸）
@@ -60,6 +64,7 @@ const one = (n, d = null) => { const i = argv.indexOf(n); return i >= 0 ? argv[i
 const exe = one('--exe', path.join(here, '..', 'out', 'bootstrapper.exe'));
 const port = Number(one('--port', '9440'));
 const settle = Number(one('--settle', '2500'));
+const wait = Number(one('--wait', '90000'));
 const keep = has('--keep');
 const attach = has('--attach');
 
@@ -130,19 +135,38 @@ const portListening = (p) => new Promise((res) => {
   s.setTimeout(1200, () => done(false));
 });
 
+/** 壳进程退了吗（还活着 = null）。CDP 等不到时，靠它把「窗口压根没起来」与「窗口起了但端口没开」分开 */
+let childExit = null;
+
 async function pageTarget(timeoutMs) {
   const t0 = Date.now();
   let last = '';
   while (Date.now() - t0 < timeoutMs) {
+    if (childExit !== null) {
+      throw new Error(
+        `起的壳自己退出了（退出码 ${childExit}）——窗口没起来，${port} 上自然没人听。\n` +
+        `  排查：WebView2 运行时装了吗？壳路径对吗？（起进程本身失败会另打「起窗失败」一行）`
+      );
+    }
     try {
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
       const pages = list.filter((t) => t.type === 'page' && /app\.html/.test(t.url));
       if (pages.length) return pages[pages.length - 1];   // 多个就取最新的
       last = `target 有 ${list.length} 个但都不是 app.html`;
-    } catch (e) { last = e.message; }
+    } catch (e) {
+      // 🔴 别只留 undici 那句 "fetch failed"（它把底层 errno 藏在 cause 里）：
+      //    ECONNREFUSED = 端口上没人听，与「连上了但不是我们的窗」是两回事。
+      //    2026-10-02 CI 第一次跑时日志里就只有 "fetch failed"，只能靠猜。
+      const c = e.cause && (e.cause.code || e.cause.message);
+      last = e.message + (c ? `（${c}）` : '');
+    }
     await sleep(200);
   }
-  throw new Error(`等不到 CDP 页面（端口 ${port}）：${last}\n  排查：窗口起来了吗？端口被占？宿主是否自己设了 AdditionalBrowserArguments？`);
+  throw new Error(
+    `等不到 CDP 页面（端口 ${port}，等了 ${Math.round((Date.now() - t0) / 1000)}s）：${last}\n` +
+    `  排查：窗口起来了吗？端口被占？宿主是否自己设了 AdditionalBrowserArguments？\n` +
+    `  壳进程：${childExit === null ? '仍在跑 ⇒ 窗口起了但端口没开（多半是宿主顶掉了那个环境变量）' : '已退出，码 ' + childExit}`
+  );
 }
 
 let child = null;
@@ -169,9 +193,10 @@ try {
       stdio: 'ignore',
     });
     child.on('error', (e) => { console.error('起窗失败：' + e.message); });
+    child.on('exit', (code) => { childExit = code; });
   }
 
-  const target = await pageTarget(settle + 15000);
+  const target = await pageTarget(wait);
   const cdp = await Cdp.connect(target.webSocketDebuggerUrl);
   await sleep(settle);                                  // 等词条装载 + 入场动效落定
 
