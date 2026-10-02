@@ -18,12 +18,19 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));            // …/bootstrapper/tools
 const root = dirname(here);                                       // …/bootstrapper
-const outPath = process.argv[2] ||
-  join(root, '..', '..', '..', 'docs', '04-软件更新', '待抉择池', '安装界面自绘', '3d-九幕评审.html');
+/* 参数（都可省；**不带参数 = 老行为**，写安装界面自绘的定版评审页）：
+     --out=<路径>          改输出位置（相对 cwd 解析）
+     --only=<屏key,屏key>   只抽指定屏 —— 给**别的任务**做聚焦设计页用。
+   ⚠️ 纪律（2026-10-02 用户拍板）：`安装界面自绘/3d-九幕评审.html` 是该任务的**定版参考**，
+      别的任务（如「通用组缓存配置项」）在**自己文件夹里**出图，不往那页上叠。 */
+const flag = k => (process.argv.find(a => a.startsWith('--' + k + '=')) || '').slice(k.length + 3);
+const only = flag('only') ? flag('only').split(',').map(s => s.trim()).filter(Boolean) : null;
+const outPath = flag('out') ? resolve(flag('out')) : (process.argv[2] ||
+  join(root, '..', '..', '..', 'docs', '04-软件更新', '待抉择池', '安装界面自绘', '3d-九幕评审.html'));
 
 const html = readFileSync(join(root, 'app.html'), 'utf8');
 let css = readFileSync(join(root, 'app.css'), 'utf8');
@@ -287,8 +294,15 @@ const sections = [
    包裹、#16 谢谢→感谢）与文件末尾整块「3d 评审·待落地改动」CSS 已一并撤除——那三处标记手术与
    #1~#18 的样式现都已是产品源（app.html / app.css / app.js）原文，本页只做忠实抽取，不再打补丁。 */
 
+/* --only：只抽指定屏（见文件头参数说明）——按原顺序保留命中的组，不命中不出现。 */
+const shown = only
+  ? sections.map(g => Object.assign({}, g, { items: g.items.filter(it => only.includes(it.key)) }))
+            .filter(g => g.items.length)
+  : sections;
+const pageTitle = only ? '安装器 UI · 聚焦评审（生成于产品源）' : '安装器全 UI 评审 · 3d';
+
 let body = '';
-for (const g of sections) {
+for (const g of shown) {
   body += `\n<h1 class="group">${g.group}</h1>\n`;
   for (const it of g.items) {
     const un = it.key.startsWith('un-') || ['confirm', 'running'].includes(it.key);
@@ -359,7 +373,7 @@ const out = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>3d · 安装器全 UI 评审（生成于产品源）</title>
+<title>${pageTitle}</title>
 <style>
 ${css}
 </style>
@@ -386,7 +400,7 @@ body{background:#22222a;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
 .look{font:12px/1.8 Consolas,monospace;color:#a8a49d;margin:0}
 .look::before{content:'看';display:inline-block;background:#8a6ff0;color:#fff;border-radius:4px;padding:1px 5px;margin-right:8px;font-size:10px}
 .look.prop::before{content:'案';background:#2fbf8a}
-/* 评审壳（R2）「帧间过渡实演」那一节的控件——在页面顶部，方便一眼看到；不属产品样式、不进 app.css */
+${only ? '' : `/* 评审壳（R2）「帧间过渡实演」那一节的控件——在页面顶部，方便一眼看到；不属产品样式、不进 app.css */
 .demo-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
 .demo-bar.sec{margin-top:26px}      /* 第二个窗（卸载）与上方安装窗拉开 */
 .demo-lab{font:12px/1 Consolas,monospace;color:#8d8880;margin-right:2px}
@@ -395,20 +409,19 @@ body{background:#22222a;padding:28px 32px 80px;max-width:1040px;margin:0 auto}
 .dbtn:hover{color:#fff;border-color:rgba(255,255,255,.32)}
 .dbtn.on{color:#fff;background:#4a3f7a;border-color:#8a6ff0}
 .dbtn.play{background:#8a6ff0;color:#fff;border-color:#8a6ff0}
-.dbtn.play.playing{background:#5c4bb0}
+.dbtn.play.playing{background:#5c4bb0}`}
 
 </style>
 </head>
 <body>
-<h1 style="font:400 20px/1.4 Consolas,monospace;color:#f5f2ed">安装器全 UI 评审 · 3d</h1>
+<h1 style="font:400 20px/1.4 Consolas,monospace;color:#f5f2ed">${pageTitle}</h1>
 <p class="lead">本页每节＝<b>一扇完整真窗口</b>：噪点、光球、玻璃壳、微尘、语言面板、✕，全部取自产品源
 （app.html/app.css）原文，只点亮目标屏——<b>非手抄、非暗色变体</b>。改 UI 后重跑
 <code>node tools/gen-review.mjs</code> 同步。窗角那圈系统小圆角已去掉（件 3d-2／#2 已落地：真窗口逐像素透明，
-轮廓＝玻璃壳自己的 32px 弧线，窗外露出的深色＝评审页底板顶当的「桌面」）。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成（唯一例外＝顶部
-「帧间过渡实演」一节，那几颗按钮只为演示切帧动画）——
+轮廓＝玻璃壳自己的 32px 弧线，窗外露出的深色＝评审页底板顶当的「桌面」）。定格静态：按钮不可点、语言切换不可用、完成屏彩带由 JS 生成${only ? '' : '（唯一例外＝顶部「帧间过渡实演」一节，那几颗按钮只为演示切帧动画）'}——
 <b>交互态/真机态</b>用 <code>E:\\linkdesk-build\\_3d-ui\\</code> 里的 bat（01 真流程 / 15 真卸载）。
 验收基线：04 审计 18/20 不跌破。在 ZCode 内置浏览器里直接点元素留言即可。</p>
-${demoHtml}
+${only ? '' : demoHtml}
 ${body}
 <script>
 /* 微尘照抄 app.js 的 dust()：同取数顺序（左→时长→延迟→透明度）＋固定 seed ⇒ 每次打开图样一致 */
@@ -430,7 +443,7 @@ ${body}
   });
 })();
 
-/* 帧间过渡实演（R2）：切帧＝摘/加 .on，与产品 app.js go(id) 同一套机制 ⇒ 入场动画由产品 CSS 真播。
+/* 切帧＝摘/加 .on，与产品 app.js go(id) 同一套机制 ⇒ 入场动画由产品 CSS 真播${only ? '' : '（顶部「帧间过渡实演」那几颗按钮走的就是这条）'}。
    安装窗的「⑤ 装好了」另按 app.js burst() 的原参数补发彩粒（#confetti 只写在真源 #s-finish 里）。 */
 (function () {
   var seed = 0x9E3779B9;
@@ -495,4 +508,4 @@ ${body}
 </html>
 `;
 writeFileSync(outPath, out);
-console.log('写出 ' + outPath + ' (' + out.length + ' 字节, ' + sections.reduce((a, g) => a + g.items.length, 0) + ' 幕)');
+console.log('写出 ' + outPath + ' (' + out.length + ' 字节, ' + shown.reduce((a, g) => a + g.items.length, 0) + ' 幕' + (only ? ' · --only=' + only.join(',') : '') + ')');
