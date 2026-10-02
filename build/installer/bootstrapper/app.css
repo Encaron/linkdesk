@@ -28,9 +28,13 @@
   --ink:#111111; --line:#EAEAEA; --danger:#B3261E;
   --orb1:#b9a8f5; --orb2:#9fe8c8;
   /* ── 台账 §五 E（2026-10-02）：原先散在各规则里的裸色/半透明色，**值一个都没改**，只收进 token。
-        三层命名：① 语义（--brand/--ok/--ver-*/--kept-*/--gone-*/--danger-a28/--ring-*）
+        🔴 写本注释的铁律：正文里**不许出现「星号＋斜杠」**——CSS 注释在第一个「星号斜杠」处就结束，
+           后面那半截会被当成坏声明，一路吞到下个分号。0.2.35 就是这么把 --brand 吞掉的：
+           `.fill` 的 background:linear-gradient(…,var(--brand),var(--ok)) 整条作废 ⇒ 填充透明 ⇒ 只剩灰轨道。
+           门禁 scripts/check-css-hardcode.mjs 判据②「注释语法配平」已钉死这一类。
+        三层命名：① 语义（--brand · --ok · --ver-* · --kept-* · --gone-* · --danger-a28 · --ring-*）
                   ② 叠加阶梯（--shade-N = 黑 N% / --frost-N = 白 N%，N = 百分数去掉小数点）
-                  ③ 面与线（--surface/--glass-win/--line-*）
+                  ③ 面与线（--surface / --glass-win / --line-*）
         🔴 门禁 scripts/check-css-hardcode.mjs 从这一笔起也扫本目录（含 app.html）：裸 hex 回潮即红。
         ⚠️ 残余（已记档，未纳入）——app.js 里两处**运行时**配色（彩粒色板、语言下拉对勾）不进本表：
            JS 不消费 CSS 变量，硬凑反而多一层运行期耦合。 */

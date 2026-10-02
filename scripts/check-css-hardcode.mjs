@@ -16,6 +16,11 @@
  *      c. 文档化路径白名单（下表）——token 值单一权威文件 + 取色器颜色模型固有基色 + 插件配置数据。
  *   4. `var(--x, #hex)` 幽灵 fallback **不豁免**（Exempt-1 只认 `--name:` 定义，var() 内 fallback 是
  *      #128.7 消灭过的幽灵 token——回潮即红灯）。
+ *   5. 🔴 **判据②（2026-10-02，进度条变灰的根因）**：**CSS 注释必须配平**——剥完注释仍残留注释记号即红灯。
+ *      典型形态：注释正文里写了「星号＋斜杠」（例 `--ver-*` 紧跟斜杠）⇒ 注释在中途就结束 ⇒ 后半截
+ *      落进声明区被当坏声明，**一路吞到下个分号**。0.2.35 实测吞掉了 `--brand` 的定义，于是
+ *      `.fill` 的 `background:linear-gradient(…,var(--brand),var(--ok))` 整条作废 ⇒ 填充透明 ⇒ 灰轨道。
+ *      只对 `.css` 生效（TS/JS 里字符串含注释记号是合法的，不是本类 bug）。
  *
  * 🔴 2026-10-02（发版后问题台账 §五 E）：扫描域加上**安装器自绘界面** `build/installer/bootstrapper`
  *   （css + **html 内联 SVG 的 fill/stroke**）——那套界面自成一页、不消费壳的主题变量，此前在门外，
@@ -146,6 +151,26 @@ export function colorViolations(src) {
   return out;
 }
 
+const COMMENT_SYNTAX_RE = /\/\*|\*\//;
+
+/**
+ * 纯判据②：**注释语法自伤**（1-based 行号）。
+ * 浏览器口径的 `stripComments` 应当吃掉全部块注释；剥完还剩下注释起始/结束记号，
+ * 说明注释没配平——典型形态（0.2.35 实测）：注释正文里写了「星号＋斜杠」，注释于是在中途结束，
+ * 后半截落进声明区被当坏声明，**一路吞到下个分号**（那次吞掉了 `--brand` 的定义 ⇒
+ * `.fill` 的 background 整条作废 ⇒ 填充透明 ⇒ 用户看到灰轨道）。
+ * 只对 `.css` 生效——TS/JS 字符串里含注释记号是合法的，不属本类。
+ */
+export function commentSyntaxViolations(src) {
+  const out = [];
+  stripComments(src)
+    .split("\n")
+    .forEach((line, i) => {
+      if (COMMENT_SYNTAX_RE.test(line)) out.push({ line: i + 1, text: line.trim().slice(0, 100) });
+    });
+  return out;
+}
+
 // ────────────────────────────────── 自测 ──────────────────────────────────
 
 function runSelfTest() {
@@ -192,9 +217,34 @@ function runSelfTest() {
       `${pass ? "✅" : "🔴"} ${tag} —— 实得 ${got.length} 处${pass ? "" : `（应 ${want} 处：${got.map((v) => `第 ${v.line} 行 ${v.color}`).join(" / ") || "无命中"}）`}\n`,
     );
   }
+  const syntaxCases = [
+    ["正控①：配平的块注释 ⇒ 0 处", "/* 归到 #112233 那次改动 */\n.a { color: var(--x); }\n", 0],
+    ["正控②：注释体含「星号」或「斜杠」但不相邻 ⇒ 0 处", "/* 命名：--ver-* · --kept-* */\n.a { color: var(--x); }\n", 0],
+    ["正控③：多行注释首尾配平 ⇒ 0 处", "/* 第一行\n   第二行 */\n.a { color: var(--x); }\n", 0],
+    ["正控④：注释全部剥净后只剩声明 ⇒ 0 处", ".a { color: #fff; }\n", 0],
+    [
+      "负控①：🔴 0.2.35 实测原样（注释体里「星号＋斜杠」提前结束注释，残渣落进声明区）⇒ 1 处",
+      "/* 命名 ① 语义（--ver-*/--kept-*） */\n  --brand:#8a6ff0;\n",
+      1,
+    ],
+    ["负控②：注释后有游离结束记号 `b */` ⇒ 1 处", "/* a */ b */\n", 1],
+    ["负控③：注释未闭合（只剩起始记号）⇒ 1 处", "/* 没有结尾\n.a { color: var(--x); }\n", 1],
+  ];
+
+  let syntaxBad = 0;
+  for (const [tag, src, want] of syntaxCases) {
+    const got = commentSyntaxViolations(src);
+    const pass = got.length === want;
+    if (!pass) syntaxBad++;
+    process.stdout.write(
+      `${pass ? "✅" : "🔴"} ${tag} —— 实得 ${got.length} 处${pass ? "" : `（应 ${want} 处：${got.map((v) => `第 ${v.line} 行`).join(" / ") || "无命中"}）`}\n`,
+    );
+  }
+  bad += syntaxBad;
+
   process.stdout.write(
     bad === 0
-      ? `\n✅ check-css-hardcode self-test 全过（${cases.length} 例：正控绿 / 负控红）——尺子不是在恒绿。\n`
+      ? `\n✅ check-css-hardcode self-test 全过（${cases.length} + ${syntaxCases.length} = ${cases.length + syntaxCases.length} 例：正控绿 / 负控红）——尺子不是在恒绿。\n`
       : `\n🔴 check-css-hardcode self-test ${bad} 例不符。\n`,
   );
   process.exit(bad === 0 ? 0 : 1);
@@ -204,6 +254,7 @@ function main() {
   if (process.argv.includes("--self-test")) return runSelfTest();
 
   const violations = [];
+  const syntaxViolations = [];
   let scannedFiles = 0;
 
   for (const dir of SCAN_DIRS) {
@@ -219,7 +270,23 @@ function main() {
       for (const v of colorViolations(src)) {
         violations.push(`${r}:${v.line}: ${v.text}  ← 硬编码 ${v.color}（应走 CSS 变量 var(--xxx)）`);
       }
+      // 判据②只对 .css：注释没配平会静默吞掉后面的声明（吞 token 定义＝整条规则作废，且无任何报错）
+      if (r.endsWith(".css")) {
+        for (const v of commentSyntaxViolations(src)) {
+          syntaxViolations.push(
+            `${r}:${v.line}: ${v.text}  ← 注释语法没配平（注释体里出现「星号＋斜杠」或注释未闭合），会吞掉后面的声明`,
+          );
+        }
+      }
     }
+  }
+
+  if (syntaxViolations.length) {
+    console.error(
+      `❌ CSS 注释语法审计失败——${syntaxViolations.length} 处（注释提前结束会把后续声明当坏声明吞到下一个分号：2026-10-02 实测吞掉 --brand ⇒ 安装进度条填充变透明只剩灰轨道）：`,
+    );
+    for (const v of syntaxViolations) console.error(`   ${v}`);
+    process.exit(1);
   }
 
   if (violations.length) {
@@ -228,7 +295,9 @@ function main() {
     if (violations.length > 60) console.error(`   …（共 ${violations.length} 处，其余略）`);
     process.exit(1);
   }
-  console.log(`✅ 硬编码颜色审计通过——${scannedFiles} 个生产文件零硬编码（token 定义/测试/豁免除外，E5.8#130）`);
+  console.log(
+    `✅ 硬编码颜色审计通过——${scannedFiles} 个生产文件零硬编码（token 定义/测试/豁免除外，E5.8#130）；判据②注释语法配平零违规`,
+  );
 }
 
 main();
