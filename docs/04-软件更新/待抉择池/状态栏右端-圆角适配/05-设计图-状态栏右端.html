@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>状态栏右端三件 · 圆角适配设计图</title>
+<style>
+  :root{
+    --bg:#17171b; --card:#202027; --line2:#33333d; --txt:#e9e9ec; --txt2:#b3ada4;
+    --acc:#8a6ff0; --ok:#2fbf8a; --warn:#ff9375;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 30px 64px;background:var(--bg);color:var(--txt);font:14px/1.75 var(--sans)}
+  h1{margin:0 0 10px;font:600 23px/1.35 var(--sans)}
+  h2{margin:42px 0 6px;font:600 17px/1.4 var(--sans);padding-bottom:8px;border-bottom:1px solid var(--line2)}
+  p{margin:10px 0;max-width:88ch}
+  .lead{color:var(--txt2)}
+  .quote{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line2);border-radius:8px;background:#1d1d23;
+         color:var(--txt2);font-size:13px;max-width:88ch}
+  code{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:var(--txt)}
+  b.hot{color:var(--warn)} b.good{color:var(--ok)}
+  .note{color:var(--txt2);font-size:12.5px;margin:8px 0;max-width:88ch}
+  .panel{border:1px solid var(--line2);border-radius:10px;background:var(--card);padding:18px 20px;margin-top:14px}
+
+  /* ══ 演示根 ══ */
+  .demo{
+    /* 产品 token 的本地替身（示意值） */
+    --win:#1E1E1E; --sep:#3c3c3c; --ink:#cccccc; --ink2:#999999; --ink-strong:#e6e6e6;
+    --hoverbg:#2a2a2a; --badge-txt:#ffffff; --sc:1;
+    --r:0px;   /* ← --surface-radius 替身，跟滑杆走 */
+  }
+  .demo[data-theme="light"]{--win:#F5F5F5;--sep:#d9d9de;--ink:#3c3c46;--ink2:#75757f;--ink-strong:#1f1f24;--hoverbg:#e8e8ee}
+
+  .ctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--line2);border-radius:10px;
+    background:#1b1b21;padding:12px 16px;margin-top:12px}
+  .ctl .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .ctl .seg button{border:0;background:transparent;color:var(--txt2);padding:5px 13px;font:600 12.5px var(--sans);
+    cursor:pointer;border-right:1px solid var(--line2)}
+  .ctl .seg button:last-child{border-right:0}
+  .ctl .seg button.on{background:var(--acc);color:#fff}
+  .ctl label{display:flex;align-items:center;gap:8px;font:12.5px var(--mono);color:var(--txt2)}
+  .ctl input[type=range]{width:170px;accent-color:var(--acc)}
+  .ctl .read{font:600 12.5px var(--mono);color:var(--acc);min-width:56px}
+  .ctl .presets{display:flex;gap:4px}
+  .ctl .presets button{border:1px solid var(--line2);background:transparent;color:var(--txt2);border-radius:6px;
+    padding:3px 9px;font:600 11.5px var(--mono);cursor:pointer}
+  .ctl .presets button:hover{border-color:var(--acc);color:var(--txt)}
+
+  /* 舞台：背景图 + 底部一条状态栏（玻璃态下 bg-window 半透明＋磨砂） */
+  .stage{position:relative;height:130px;border:1px solid var(--line2);border-radius:12px;overflow:hidden;margin-top:12px;
+    background:
+      radial-gradient(600px 260px at 15% 10%, rgba(255,154,98,.7), transparent 62%),
+      radial-gradient(520px 240px at 85% 18%, rgba(106,193,255,.55), transparent 62%),
+      linear-gradient(150deg,#3a2f55 0%,#1c2f4a 55%,#0f2027 100%)}
+  .demo.glass{--win:color-mix(in srgb, #1E1E1E 55%, transparent);--hoverbg:rgba(255,255,255,.10)}
+  .demo.glass[data-theme="light"]{--win:color-mix(in srgb, #F5F5F5 55%, transparent);--hoverbg:rgba(0,0,0,.07)}
+
+  /* ── 状态栏：StatusBarZone.css:12-24 一比一（radius 跟滑杆） ── */
+  .sbar{position:absolute;left:14px;right:14px;bottom:12px;display:flex;align-items:center;
+    height:calc(22px*var(--sc));padding:0 8px;background:var(--win);border-top:1px solid var(--sep);
+    gap:6px;font-size:13px;color:var(--ink2);border-radius:var(--r);
+    box-shadow:0 1px 6px rgba(0,0,0,.25)}
+  .demo.glass .sbar{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12)}
+  .sbar .left{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+  .sbar .txt{color:var(--ink2);font-size:13px}
+  .sbar .right{display:flex;align-items:center;gap:6px}
+  .sbar .divider{width:1px;height:14px;background:var(--sep);margin:0 2px}
+
+  /* ── 右端三件：StatusBarZone.css:62-78 一比一（全高方块 hover·radius 0）── */
+  .sbtn{background:none;border:none;color:var(--ink2);font-size:13px;padding:0 6px;
+    height:calc(22px*var(--sc));line-height:calc(22px*var(--sc));border-radius:0;cursor:pointer;
+    transition:background 120ms,color 120ms;display:inline-flex;align-items:center;gap:3px}
+  .sbtn:hover{background:var(--hoverbg);color:var(--ink-strong)}
+  .sbtn .ico{font-size:14px;line-height:1;display:inline-flex}
+  .sbtn .ico svg{display:block}
+  .sbtn .badge{position:relative;top:-6px;left:-1px;font-size:9px;font-weight:600;background:var(--acc);
+    color:var(--badge-txt);border-radius:99px;min-width:12px;height:12px;line-height:12px;text-align:center;
+    padding:0 2px;display:inline-block}
+
+  /* ══ A 案 · 内缩药片：按钮 18px＋药片 hover＋padding 让位 ══ */
+  .v-a .sbar{padding:0 max(8px, var(--r))}
+  .v-a .sbtn{height:calc(18px*var(--sc));line-height:calc(18px*var(--sc));border-radius:99px;padding:0 7px}
+  .v-a .sbtn:hover{filter:none}
+  .v-a .sbtn .badge{top:-5px}
+
+  /* ══ B 案 · 整高裁角：栏加 overflow:hidden，按钮不动 ══ */
+  .v-b .sbar{overflow:hidden}
+
+  /* ══ C 案 · 右端内舱：三件装进内缩舱（透明底）＋ padding 让位 ══ */
+  .v-c .sbar{padding:0 max(8px, var(--r))}
+  .v-c .sbar .right{padding:2px;border-radius:99px}
+  .v-c .sbtn{height:calc(18px*var(--sc));line-height:calc(18px*var(--sc));border-radius:99px;padding:0 7px}
+
+  /* 放大镜 */
+  .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:12px}
+  .cap{font:600 12.5px var(--mono);letter-spacing:.04em;margin:14px 2px 0}
+  .cap.no{color:var(--warn)} .cap.ok{color:var(--ok)} .cap.mut{color:var(--txt2);font-weight:400}
+  table.cmp{max-width:980px;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+  table.cmp th,table.cmp td{border:1px solid var(--line2);padding:8px 11px;text-align:left;vertical-align:top}
+  table.cmp th{background:#23232b;font-weight:600}
+  table.cmp td.k{font:12.5px var(--mono);white-space:nowrap}
+  .yes{color:var(--ok);font-weight:600} .no{color:var(--warn);font-weight:600}
+  footer{margin-top:40px;color:var(--txt2);font-size:12.5px;max-width:88ch;border-top:1px solid var(--line2);padding-top:16px}
+  .lab{font:600 12.5px var(--mono);color:#8b8794;letter-spacing:.04em;margin:14px 2px 0}
+</style>
+</head>
+<body>
+
+<h1>状态栏右端三件（语言 / 主题 / 铃铛）—— 圆角模式下为什么显得又大又穿帮</h1>
+<p class="lead">本页是<b>局部图</b>：只画状态栏。现状列是<b>照产品 CSS 一比一</b>复刻的（<code>StatusBarZone.css</code>）——右端三件你可以<b>真 hover</b>：直角半径下一切正常，把半径拖到 8 以上，hover 的方底当场<b>盖出圆角曲线外</b>（玻璃态下角落透着背景图，最刺眼）。</p>
+
+<div class="quote">你的原话（2026-10-03）：<b>「状态栏右边的选择语言，选择主题，铃铛是不是有点太大了？是状态栏在圆角模式下太小了吗？为了适配圆角，需要做调整。」</b></div>
+
+<div class="ctl" id="ctl">
+  <div class="seg" id="segTheme">
+    <button data-v="dark" class="on">深色</button><button data-v="light">浅色</button><button data-v="glass">自定义·玻璃</button>
+  </div>
+  <label>app.surfaceRadius <input type="range" id="rngR" min="0" max="32" value="12"><span class="read" id="ro">12px</span></label>
+  <div class="presets" id="presets"><button data-r="0">0</button><button data-r="8">8</button><button data-r="16">16</button><button data-r="32">32</button></div>
+</div>
+
+<h2>① 现状 —— 形状语言打架：全高方块 × 圆角栏</h2>
+<p class="note">先把结论说破：<b>状态栏高度没有变小</b>（22px×scale，契约未动）。是三件事叠出了「太大」的读感：按钮<b>吃满栏高（22/22）</b>、hover 是<b>顶天立地的方底</b>（<code>border-radius: 0</code>）、栏四角却按 <code>app.surfaceRadius</code> 全圆了而<b>没有 overflow 裁剪</b>——半径一大，直角方块与圆角曲线打架，右端的铃铛正压在曲线上。</p>
+
+<div class="demo" data-theme="dark" id="demo">
+  <div class="stage">
+    <div class="sbar">
+      <div class="left"><span class="txt">⎇ main*</span><span class="txt">⓪ 0 ⚠ 0</span></div>
+      <div class="right">
+        <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.6" ry="6"/><path d="M2 8h12"/></svg></span></button>
+        <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.6A6.4 6.4 0 008 14.4z" fill="currentColor"/><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span></button>
+        <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5c-2.5 0-4 1.8-4 4v3l-1.2 2.2c-.2.4 0 .8.5.8h9.4c.5 0 .7-.4.5-.8L12 8.5v-3c0-2.2-1.5-4-4-4zM6.5 12.5a1.5 1.5 0 003 0z"/></svg></span><span class="badge">3</span></button>
+      </div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:10px">👀 操作指引：<b>hover 右端任意一件</b>（尤其铃铛）→ 方底盖出曲线外；切到<b>自定义·玻璃</b> → 栏变半透明磨砂、角落透出背景图，穿帮最清楚；拖半径到 <b>32</b> → 22px 的栏近乎胶囊，右端两枚钮顶进弧里。左区文字条目不受影响（对照）。</p>
+</div>
+
+<h2>② 病灶证据（file:line）</h2>
+<div class="panel">
+  <table class="cmp">
+    <tr><th>#</th><th>症状</th><th>证据</th></tr>
+    <tr><td class="k">①</td><td>hover 方底盖出圆角外</td><td><code>StatusBarZone.css:62-78</code> 按钮 <code>height: 22px×scale ＝ 栏高</code>、hover 整块 <code>--tab-hover-bg</code>、<code>border-radius: 0</code> × <code>:12-24</code> 栏无 overflow × <code>index.css:406</code> 栏四角 <code>var(--surface-radius)</code> 全圆</td></tr>
+    <tr><td class="k">②</td><td>「太大」读感</td><td>按钮吃满栏高 22/22＋铃铛 <code>--font-size-lg</code>(14px) 图标（:86-88）；圆角把栏四角削小 ⇒ 全高方块反差放大。<b>高度契约本身没动</b></td></tr>
+    <tr><td class="k">③</td><td>半径一大右端顶进曲线</td><td>栏 <code>padding: 0 8px</code> 死值（:16）不让位；半径 ≥8 时铃铛 hover 区正压曲线</td></tr>
+    <tr><td class="k">附</td><td>三件的身份</td><td>语言/主题＝壳固定项（<code>statusbar.ts:53-54</code>，globe→selectLanguage · color-mode→theme.pick）；铃铛＝StatusBarZone.tsx:245——三者同用 <code>.ldk-status-bar-btn</code></td></tr>
+  </table>
+</div>
+
+<h2>③ 三案同台 —— 半径拉满，看谁不崩</h2>
+<p class="note"><b class="good">判据</b>：半径 0→32 全程，(a) hover 底任何时刻都<b>在圆角内</b>；(b) hover 形状与栏的形状语言一致（圆角栏配药片）；(c) 半径 0 时<b>回到现状零变化</b>。把半径拖到 32、hover 每案右端铃铛现场比。</p>
+
+<div class="duo">
+  <div>
+    <p class="cap ok">A 案 · 内缩药片（建议）——按钮 18px＋药片 hover＋padding 让位</p>
+    <div class="demo v-a" data-theme="dark" id="demoA">
+      <div class="stage">
+        <div class="sbar">
+          <div class="left"><span class="txt">⎇ main*</span><span class="txt">⓪ 0 ⚠ 0</span></div>
+          <div class="right">
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.6" ry="6"/><path d="M2 8h12"/></svg></span></button>
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.6A6.4 6.4 0 008 14.4z" fill="currentColor"/><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span></button>
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5c-2.5 0-4 1.8-4 4v3l-1.2 2.2c-.2.4 0 .8.5.8h9.4c.5 0 .7-.4.5-.8L12 8.5v-3c0-2.2-1.5-4-4-4zM6.5 12.5a1.5 1.5 0 003 0z"/></svg></span><span class="badge">3</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="note">按钮 22→18px（栏内上下各留 2px）、hover 变药片、栏 <code>padding: 0 max(8px, var(--surface-radius))</code>（半径 0＝现状零变化）。只动 StatusBarZone.css 一个文件。</p>
+    </div>
+  </div>
+  <div>
+    <p class="cap mut">B 案 · 整高裁角——栏 overflow:hidden</p>
+    <div class="demo v-b" data-theme="dark" id="demoB">
+      <div class="stage">
+        <div class="sbar">
+          <div class="left"><span class="txt">⎇ main*</span><span class="txt">⓪ 0 ⚠ 0</span></div>
+          <div class="right">
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.6" ry="6"/><path d="M2 8h12"/></svg></span></button>
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.6A6.4 6.4 0 008 14.4z" fill="currentColor"/><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span></button>
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5c-2.5 0-4 1.8-4 4v3l-1.2 2.2c-.2.4 0 .8.5.8h9.4c.5 0 .7-.4.5-.8L12 8.5v-3c0-2.2-1.5-4-4-4zM6.5 12.5a1.5 1.5 0 003 0z"/></svg></span><span class="badge">3</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="note">一行改动：出界部分被栏圆角裁掉。但角落 hover 被裁出<b>直角断口</b>——穿帮换了个位置，形状语言还是打架（半径大时更明显，hover 铃铛看右下角）。</p>
+    </div>
+  </div>
+  <div>
+    <p class="cap mut">C 案 · 右端内舱——三件装进内缩舱</p>
+    <div class="demo v-c" data-theme="dark" id="demoC">
+      <div class="stage">
+        <div class="sbar">
+          <div class="left"><span class="txt">⎇ main*</span><span class="txt">⓪ 0 ⚠ 0</span></div>
+          <div class="right">
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.6" ry="6"/><path d="M2 8h12"/></svg></span></button>
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.6A6.4 6.4 0 008 14.4z" fill="currentColor"/><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span></button>
+            <button class="sbtn"><span class="ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5c-2.5 0-4 1.8-4 4v3l-1.2 2.2c-.2.4 0 .8.5.8h9.4c.5 0 .7-.4.5-.8L12 8.5v-3c0-2.2-1.5-4-4-4zM6.5 12.5a1.5 1.5 0 003 0z"/></svg></span><span class="badge">3</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="note">右端整体进一个内缩容器（药片底/透明），形状最整；但结构多一层、收益与 A 重合——除非将来右端要长出更多件（开关面板等）才值得。</p>
+    </div>
+  </div>
+</div>
+
+<h2>④ 决策点速览</h2>
+<table class="cmp">
+  <tr><th>#</th><th>问</th><th>建议</th><th>为什么</th></tr>
+  <tr><td class="k">D1</td><td>hover 形态</td><td class="yes">A 内缩药片</td><td>B 的裁角断口＝把穿帮换位置；A 让 hover 形状与圆角栏同一语言，半径 0 时零变化。</td></tr>
+  <tr><td class="k">D2</td><td>右端让位</td><td class="yes">padding 随半径（max(8px, 半径)）</td><td>半径 0 回现状；半径大时右端自动躲开曲线，无需主题判断。</td></tr>
+  <tr><td class="k">D3</td><td>图标/字号降档</td><td>不降</td><td>「太大」的根是全高方块不是内容；降档伤可读性，半径适配后重新目视再议。</td></tr>
+  <tr><td class="k">D4</td><td>铃铛徽章位置</td><td>随钮内缩＋实机核</td><td>徽章钉钮角（top/right 1px）；按钮 18px 后照旧，实机看一眼是否顶到栏缘。</td></tr>
+</table>
+
+<footer>
+  <b>本页是示意图，产品代码一个字未动。</b>证据：StatusBarZone.css:12-24（栏）· :62-78（全高方块按钮·radius 0）· :86-88（铃铛 lg 图标）· index.css:406（栏四角 var(--surface-radius)）· statusbar.ts:53-54（语言/主题＝壳固定项）。
+  ⛔ 配色为示意替身——落地一律走 CSS 变量（硬约束 1）；18px/让位公式落地前实机核（含玻璃态 hover 底对比度）。
+</footer>
+
+<script>
+  const roots = [document.getElementById("demo"), document.getElementById("demoA"),
+                 document.getElementById("demoB"), document.getElementById("demoC")];
+  const rngR = document.getElementById("rngR"), ro = document.getElementById("ro");
+  function paint(){
+    roots.forEach(r => r.style.setProperty("--r", rngR.value + "px"));
+    ro.textContent = rngR.value + "px";
+  }
+  rngR.addEventListener("input", paint);
+  document.getElementById("presets").addEventListener("click", (e) => {
+    const r = e.target.dataset && e.target.dataset.r;
+    if (r){ rngR.value = r; paint(); }
+  });
+  document.getElementById("segTheme").addEventListener("click", (e) => {
+    const v = e.target.dataset && e.target.dataset.v;
+    if (!v) return;
+    document.querySelectorAll("#segTheme button").forEach(b => b.classList.toggle("on", b === e.target));
+    roots.forEach(r => {
+      if (v === "glass"){ r.classList.add("glass"); r.dataset.theme = "dark"; }
+      else { r.classList.remove("glass"); r.dataset.theme = v; }
+    });
+  });
+  paint();
+</script>
+
+</body>
+</html>

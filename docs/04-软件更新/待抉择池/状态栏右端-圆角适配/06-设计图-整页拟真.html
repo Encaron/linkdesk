@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · 整页拟真图 · 状态栏右端三件 × 圆角适配</title>
+<!--
+  类型：集成切换（单工作台 + 控件切换观察）。走 /impeccable ＋ /ui ux pro max ＋ html-blueprint（施工总序 §〇·7 硬门）。
+  ⚠️ mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine（硬约束 1）。
+  颜色全走壳真实 token（值取自 src/index.css）——零硬编码 hex（除 token 定义处本身）。
+  zone 尺寸量自壳源码：titlebar 30px（TitleBarZone.css:10）· icon-bar 42px（IconBarZone.css:15）
+  · sidebar 示意 216px · tabbar 35px（GroupTabBar.css:8）· statusbar 22px（StatusBarZone.css:15）。
+  状态栏自裁（index.css:426-429 overflow:hidden）——本图按真实现状画（含裁切），不放大。
+-->
+<style>
+/* ═══════════ 壳真实 token（暗色；值取自 src/index.css）═══════════ */
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-titlebar:#252526; --bg-icon-bar:#18181B;
+  --bg-side-panel:#1E1E22; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A; --text-on-accent:#FFFFFF;
+  --accent:#0078D4; --accent-hover:#1A8CE8; --separator:#474747; --tab-hover-bg:#353535;
+  --hover-overlay:rgba(255,255,255,.06); --badge-text:var(--text-on-accent);
+  --radius-xs:2px; --radius-sm:4px; --radius-md:6px; --radius-pill:999px;
+  --ui-scale:1;
+
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:34px 30px 72px;background:#17171b;color:#e9e9ec;font:14px/1.75 var(--sans)}
+h1{margin:0 0 10px;font:600 23px/1.35 var(--sans)}
+h2{margin:44px 0 6px;font:600 17px/1.4 var(--sans);padding-bottom:8px;border-bottom:1px solid #33333d}
+p{margin:10px 0;max-width:92ch}
+.lead{color:#b3ada4}
+.quote{margin:14px 0 0;padding:11px 14px;border:1px solid #33333d;border-radius:8px;background:#1d1d23;color:#b3ada4;font-size:13px;max-width:92ch}
+code{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:#e9e9ec}
+b.hot{color:#ff9375} b.good{color:#2fbf8a} b.warn{color:#ffc06e}
+.note{color:#b3ada4;font-size:12.5px;margin:8px 0;max-width:96ch}
+.panel{border:1px solid #33333d;border-radius:10px;background:#202027;padding:16px 20px;margin-top:14px}
+
+/* ═══════════ 控件条 ═══════════ */
+.ctl{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border:1px solid #33333d;border-radius:10px;
+  background:#1b1b21;padding:12px 16px;margin-top:14px;position:sticky;top:0;z-index:5}
+.ctl .grp{display:flex;align-items:center;gap:8px}
+.ctl .lbl{font:11px var(--mono);color:#8b8794;letter-spacing:.05em;text-transform:uppercase}
+.ctl .seg{display:flex;border:1px solid #33333d;border-radius:7px;overflow:hidden}
+.ctl .seg button{border:0;background:transparent;color:#b3ada4;padding:5px 12px;font:600 12.5px var(--sans);cursor:pointer;border-right:1px solid #33333d}
+.ctl .seg button:last-child{border-right:0}
+.ctl .seg button.on{background:var(--accent);color:#fff}
+.ctl label.chk{display:flex;align-items:center;gap:7px;font:12.5px var(--sans);color:#b3ada4;cursor:pointer}
+.ctl input[type=range]{width:150px;accent-color:var(--accent)}
+.ctl .read{font:600 12.5px var(--mono);color:var(--accent);min-width:52px}
+.ctl .presets{display:flex;gap:4px}
+.ctl .presets button{border:1px solid #33333d;background:transparent;color:#b3ada4;border-radius:6px;padding:3px 9px;font:600 11.5px var(--mono);cursor:pointer}
+.ctl .presets button:hover{border-color:var(--accent);color:#e9e9ec}
+
+/* ═══════════ 舞台 + 应用窗口（完整软件轮廓）═══════════ */
+.stage{position:relative;margin-top:16px;padding:26px;border:1px solid #33333d;border-radius:14px;overflow:hidden;
+  background:
+    radial-gradient(720px 300px at 12% 8%, rgba(255,154,98,.55), transparent 60%),
+    radial-gradient(620px 280px at 88% 14%, rgba(106,193,255,.45), transparent 62%),
+    linear-gradient(150deg,#2b2544 0%,#182a42 55%,#0d1a20 100%)}
+.stage.round{padding:34px}
+
+.app{position:relative;display:flex;flex-direction:column;gap:calc(2 * var(--inset));
+  width:100%;height:560px;padding:var(--inset);
+  background:var(--bg-window);border-radius:calc(var(--r,0px) + var(--inset));
+  box-shadow:0 18px 60px rgba(0,0,0,.45);overflow:hidden}
+.app[data-theme="light"]{
+  --bg-window:#FFFFFF; --bg-card:#F5F5F5; --bg-titlebar:#DDDDDD; --bg-icon-bar:#F0F0F0;
+  --bg-side-panel:#F5F5F5; --bg-input:#FFFFFF;
+  --text-primary:#2D2D2D; --text-secondary:#5A5A5A; --text-muted:#767676;
+  --accent:#0078D4; --accent-hover:#106EBE; --separator:#E8E8E8; --tab-hover-bg:#E8E8E8;
+  --hover-overlay:rgba(0,0,0,.04)}
+/* 玻璃态：--bg-* 合成半透明（对标 ThemeEngine 玻璃激活），表面磨砂 */
+.app.glass{--bg-window:color-mix(in srgb,#1E1E1E 52%,transparent);--bg-card:color-mix(in srgb,#2D2D2D 52%,transparent);
+  --bg-titlebar:color-mix(in srgb,#252526 52%,transparent);--bg-icon-bar:color-mix(in srgb,#18181B 52%,transparent);
+  --bg-side-panel:color-mix(in srgb,#1E1E22 52%,transparent);--tab-hover-bg:rgba(255,255,255,.12)}
+.app.glass[data-theme="light"]{--bg-window:color-mix(in srgb,#FFFFFF 55%,transparent);--bg-card:color-mix(in srgb,#F5F5F5 55%,transparent);
+  --bg-titlebar:color-mix(in srgb,#DDDDDD 55%,transparent);--bg-icon-bar:color-mix(in srgb,#F0F0F0 55%,transparent);
+  --bg-side-panel:color-mix(in srgb,#F5F5F5 55%,transparent);--tab-hover-bg:rgba(0,0,0,.08)}
+.app.glass .surf{backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3)}
+
+.surf{border-radius:var(--r,0px);position:relative;overflow:hidden}
+/* ── 标题栏 30px ── */
+.titlebar{height:30px;flex-shrink:0;background:var(--bg-titlebar);display:flex;align-items:center}
+.tb-logo{width:18px;height:18px;margin:0 8px;border-radius:var(--radius-xs);background:var(--accent);display:flex;align-items:center;justify-content:center;
+  font:700 9px var(--sans);color:var(--text-on-accent)}
+.tb-menu{padding:0 8px;height:30px;display:flex;align-items:center;font-size:12.5px;color:var(--text-secondary)}
+.tb-menu.cur{background:var(--hover-overlay);color:var(--text-primary);border-radius:var(--radius-sm)}
+.tb-drag{flex:1}
+.tb-slot{width:28px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)}
+.wc{display:flex;flex-shrink:0}
+.wc button{width:38px;height:30px;border:0;background:none;color:var(--text-secondary);display:flex;align-items:center;justify-content:center}
+.wc button:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.wc .close:hover{background:#c42b1c;color:#fff}
+/* ── 主体 ── */
+.body{flex:1;display:flex;gap:calc(2 * var(--inset));min-height:0}
+.iconbar{width:42px;flex-shrink:0;background:var(--bg-icon-bar);display:flex;flex-direction:column;align-items:center;
+  justify-content:space-between;padding:4px 0}
+.ib-top,.ib-bot{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ib-btn{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);position:relative}
+.ib-btn.active{color:var(--text-primary)}
+.ib-btn.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;background:var(--accent);border-radius:0 var(--radius-xs) var(--radius-xs) 0}
+.sidebar{width:216px;flex-shrink:0;background:var(--bg-side-panel);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sb-title{font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--text-secondary)}
+.sb-search{height:24px;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--separator);
+  display:flex;align-items:center;padding:0 8px;font-size:12px;color:var(--text-muted)}
+.sb-row{font-size:12.5px;color:var(--text-secondary);padding:5px 6px;border-radius:var(--radius-sm);display:flex;align-items:center;gap:6px}
+.sb-row.on{background:var(--hover-overlay);color:var(--text-primary)}
+.main{flex:1;min-width:0;background:var(--bg-window);display:flex;flex-direction:column}
+.tabbar{height:35px;flex-shrink:0;background:var(--bg-card);display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--separator)}
+.tab{display:flex;align-items:center;gap:7px;padding:0 12px;font-size:12.5px;color:var(--text-muted);border-right:1px solid var(--separator);position:relative}
+.tab.active{background:var(--bg-window);color:var(--text-primary)}
+.tab.active::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:var(--accent)}
+.tab .x{opacity:.5;font-size:11px}
+.content{flex:1;padding:18px 20px;color:var(--text-secondary);font-size:12.5px;overflow:hidden}
+.content .kbd{font:11px var(--mono);background:var(--bg-input);border:1px solid var(--separator);border-radius:var(--radius-sm);padding:1px 6px;color:var(--text-secondary)}
+
+/* ═══════════ 状态栏（StatusBarZone.css 一比一 + A 案覆盖）═══════════ */
+.statusbar{height:22px;flex-shrink:0;display:flex;align-items:center;gap:6px;
+  padding:0 8px;                         /* 现状：死值 8px */
+  background:var(--bg-window);border-top:1px solid var(--separator);
+  font-size:13px;color:var(--text-muted);line-height:22px;
+  border-radius:var(--r,0px);
+  overflow:hidden;                       /* 🔴 真实现状：index.css:426-429 自裁（立案初稿漏了这条）*/
+  margin:0}
+.sb-left{display:flex;align-items:center;gap:6px;flex:1;min-width:0;color:var(--text-secondary)}
+.sb-right{display:flex;align-items:center;gap:6px}
+.sb-sep{width:1px;height:14px;background:var(--separator)}
+.sb-ico{display:inline-flex;align-items:center}
+.sbtn{background:none;border:none;color:var(--text-secondary);font-size:13px;padding:0 6px;
+  height:22px;line-height:22px;border-radius:0;cursor:pointer;
+  display:inline-flex;align-items:center;gap:3px;transition:background 120ms,color 120ms}
+.sbtn:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.sbtn .bell{font-size:14px}
+.notif{position:relative}
+.badge{position:absolute;top:1px;right:1px;font:600 9px/12px var(--sans);background:var(--accent);color:var(--badge-text);
+  border-radius:var(--radius-pill);min-width:12px;height:12px;text-align:center;padding:0 2px;box-sizing:content-box}
+
+/* A 案：按钮 18px · hover 药片 · 栏 padding 让位真实圆角（钳到 11px×scale＝栏半高） */
+.app[data-variant="a"] .sbtn{height:18px;line-height:18px;border-radius:var(--radius-pill);padding:0 6px}
+.app[data-variant="a"] .statusbar{padding:0 max(8px, min(var(--r,0px), calc(11px * var(--ui-scale))))}
+
+/* 强制 hover（截图/静态展示用；页面内也可真 hover） */
+.force-hover .sbtn{background:var(--tab-hover-bg);color:var(--text-primary)}
+.force-hover .sbtn:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+
+/* ═══════════ 三档条带（半径 0 / 12 / 32 · 现状 vs A 案）═══════════ */
+.threeup{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px;margin-top:14px}
+.col{border:1px solid #33333d;border-radius:10px;background:#202027;padding:14px 16px 16px}
+.col h3{margin:0 0 10px;font:600 13px/1.4 var(--sans);color:#e9e9ec}
+.col h3 span{font:600 12.5px var(--mono);color:var(--accent)}
+.stripwrap{margin:9px 0}
+.striplbl{font:11px var(--mono);color:#8b8794;letter-spacing:.04em;margin-bottom:4px}
+.strip{display:flex;align-items:center;gap:6px;background:var(--bg-window);border-top:1px solid var(--separator);
+  height:calc(22px * var(--sc));padding:0 calc(8px * var(--sc));color:var(--text-muted);
+  font-size:calc(13px * var(--sc));line-height:calc(22px * var(--sc));overflow:hidden;border-radius:var(--rc);
+  --half:calc(11px * var(--sc))} /* 22px 栏的浏览器圆角真实上限＝半高，随缩放档走 */
+.striphost{border-radius:var(--rc);overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.3);
+  background:
+    radial-gradient(280px 90px at 12% 10%, rgba(255,154,98,.55), transparent 62%),
+    linear-gradient(120deg,#232a3f 0%,#141c2a 70%)}
+.strip .sb-right{margin-left:auto}
+.strip .sbtn{font-size:calc(13px * var(--sc));padding:0 calc(6px * var(--sc));height:calc(22px * var(--sc));line-height:calc(22px * var(--sc));border-radius:0}
+.strip[data-variant="a"] .sbtn{height:calc(18px * var(--sc));line-height:calc(18px * var(--sc));border-radius:var(--radius-pill);padding:0 calc(6px * var(--sc))}
+.strip[data-variant="a"]{padding:0 max(calc(8px * var(--sc)), min(var(--rc,0px), var(--half)))}
+.strip .badge{position:relative;top:calc(-6px * var(--sc));left:calc(-1px * var(--sc));font-size:calc(9px * var(--sc));
+  min-width:calc(12px * var(--sc));height:calc(12px * var(--sc));line-height:calc(12px * var(--sc));border-radius:var(--radius-pill)}
+.strip.force-hover .sbtn{background:var(--tab-hover-bg);color:var(--text-primary)}
+
+/* ═══════════ 表 ═══════════ */
+table.cmp{max-width:1000px;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+table.cmp th,table.cmp td{border:1px solid #33333d;padding:8px 11px;text-align:left;vertical-align:top}
+table.cmp th{background:#23232b;font-weight:600}
+table.cmp td.k{font:12.5px var(--mono);white-space:nowrap;color:#b3ada4}
+.yes{color:#2fbf8a;font-weight:600} .no{color:#ff9375;font-weight:600}
+.cap{font:600 12.5px var(--mono);letter-spacing:.04em;margin:14px 2px 0}
+.cap.ok{color:#2fbf8a} .cap.mut{color:#8b8794;font-weight:400}
+.geo{font:12.5px var(--mono);color:#8b8794;margin:10px 0 0;max-width:none}
+.geo b{color:var(--accent)}
+footer{margin-top:44px;color:#b3ada4;font-size:12.5px;max-width:96ch;border-top:1px solid #33333d;padding-top:16px}
+</style>
+</head>
+<body>
+
+<h1>状态栏右端三件（语言 / 主题 / 铃铛）× 圆角适配 —— 整页拟真图</h1>
+<p class="lead">本页是<b>施工用整页拟真图</b>（<a href="05-设计图-状态栏右端.html" style="color:#8ab4f8">05 局部图</a> 是立案用，只画状态栏）。这里是<b>完整软件轮廓</b>：标题栏（30px）→ 图标栏（42px）→ 侧栏 → 主区（页签栏 35px ＋ 内容）→ 状态栏（22px）。右端三件是本次落点（A 案）。比例与配色量自壳源码，颜色走真实 token。</p>
+
+<div class="quote">用户原话（2026-10-03）：<b>「状态栏右边的选择语言，选择主题，铃铛是不是有点太大了？是状态栏在圆角模式下太小了吗？为了适配圆角，需要做调整。」</b></div>
+
+<div class="panel" style="border-color:#4a3f2a;background:#241f16">
+  <b class="warn">⚠️ 动工前复核订正（2026-10-03 · 已获用户认可）</b>
+  <p class="note" style="margin:8px 0 0">立案初稿的症状 ① 写「栏无 <code>overflow</code> 约束 ⇒ hover 方底盖出曲线外、透出背景图」——<b class="hot">这条不成立</b>：状态栏<b>按设计自裁剪</b>，<code>index.css:426-429</code> 对 <code>.ldk-status-bar</code> 下的正是 <code>overflow: hidden</code>（自 2026-08-26 起），且有设计档案明令表面必须自裁剪（<code>14-主题配置参考系根治档案.md:439</code>）。所以现状 hover 方底的出界部分<b>是被栏圆角裁掉的</b>（亚像素级断口），<b>不是</b>穿帮到背景；05 局部图的「现状」列漏画这条 overflow，把表现放大了。本图（下图）按<b>真实现状</b>画，你会看到它其实基本不穿帮——真正要治的是「<b>全高方块 vs 圆角栏</b>」的形状语言打架 ＋ 用户实感的「太大」。</p>
+</div>
+
+<h2>① 整页拟真 · 交互工作台</h2>
+<p class="note">操作：<b>主题</b>（深/浅/玻璃）· <b>形态</b>（现状 / A 案）· <b>半径</b>（0–32 拖拽 + 预设）· <b>强制 hover 右端三件</b>（静态截图用；鼠标真移上去也行）。<b class="hot">注意看右下角</b>：把半径拖到 32、切玻璃态、hover 铃铛——现状是「被裁的全高方块」，A 案是「内缩药片」。</p>
+
+<div class="ctl" id="ctl">
+  <div class="grp">
+    <span class="lbl">主题</span>
+    <div class="seg" id="segTheme">
+      <button data-v="dark" class="on">深色</button><button data-v="light">浅色</button><button data-v="glass">玻璃</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="lbl">形态</span>
+    <div class="seg" id="segVariant">
+      <button data-v="cur" class="on">现状</button><button data-v="a">A 案</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="lbl">半径</span>
+    <label style="display:flex;align-items:center;gap:8px;font:12.5px var(--mono);color:#b3ada4">
+      <input type="range" id="rngR" min="0" max="32" value="12"><span class="read" id="ro">12px</span>
+    </label>
+    <div class="presets" id="presets"><button data-r="0">0</button><button data-r="12">12</button><button data-r="32">32</button></div>
+  </div>
+  <label class="chk"><input type="checkbox" id="chkHover"> 强制 hover 右端三件</label>
+</div>
+
+<div class="stage round">
+  <div class="app" id="app" data-theme="dark" data-variant="cur">
+    <!-- 标题栏 30px -->
+    <div class="titlebar surf">
+      <div class="tb-logo">LD</div>
+      <div class="tb-menu cur">文件</div>
+      <div class="tb-menu">查看</div>
+      <div class="tb-menu">帮助</div>
+      <div class="tb-drag"></div>
+      <div class="tb-slot" title="插件槽位"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2v12M2 8h12"/></svg></div>
+      <div class="wc">
+        <button title="最小化"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6h8" stroke="currentColor" stroke-width="1.2"/></svg></button>
+        <button title="最大化"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.4" y="2.4" width="7.2" height="7.2"/></svg></button>
+        <button class="close" title="关闭"><svg width="11" height="11" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.3"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+      </div>
+    </div>
+    <!-- 主体：图标栏 42px · 侧栏 216px · 主区 -->
+    <div class="body">
+      <div class="iconbar surf">
+        <div class="ib-top">
+          <div class="ib-btn active" title="资源管理器"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6.5A1.5 1.5 0 014.5 5h4l2 2.5h8A1.5 1.5 0 0120 9v8.5A1.5 1.5 0 0118.5 19h-14A1.5 1.5 0 013 17.5z"/></svg></div>
+          <div class="ib-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></div>
+          <div class="ib-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg></div>
+        </div>
+        <div class="ib-bot">
+          <div class="ib-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5l1.4 2.4 2.7-.6 1 2.6 2.7.7-.6 2.7 2.4 1.4-2.4 1.4.6 2.7-2.7.7-1 2.6-2.7-.6L12 20.5l-1.4-2.4-2.7.6-1-2.6-2.7-.7.6-2.7L2.4 12l2.4-1.4-.6-2.7 2.7-.7 1-2.6 2.7.6z"/></svg></div>
+        </div>
+      </div>
+      <div class="sidebar surf">
+        <div class="sb-title">资源管理器</div>
+        <div class="sb-search"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="margin-right:6px"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>搜索文件</div>
+        <div class="sb-row on"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4.5A1 1 0 013 3.5h3l1.4 1.6H13a1 1 0 011 1v6.4A1 1 0 0113 13.5H3a1 1 0 01-1-1z"/></svg>src</div>
+        <div class="sb-row" style="padding-left:20px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2.5h6l4 4v7H3z"/><path d="M9 2.5v4h4"/></svg>main.ts</div>
+        <div class="sb-row" style="padding-left:20px"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2.5h6l4 4v7H3z"/><path d="M9 2.5v4h4"/></svg>index.css</div>
+        <div class="sb-row"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4.5A1 1 0 013 3.5h3l1.4 1.6H13a1 1 0 011 1v6.4A1 1 0 0113 13.5H3a1 1 0 01-1-1z"/></svg>docs</div>
+      </div>
+      <div class="main surf">
+        <div class="tabbar">
+          <div class="tab active"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2.5h6l4 4v7H3z"/><path d="M9 2.5v4h4"/></svg>main.ts<span class="x"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l6 6M9 3l-6 6"/></svg></span></div>
+          <div class="tab"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2.5h6l4 4v7H3z"/><path d="M9 2.5v4h4"/></svg>index.css<span class="x"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l6 6M9 3l-6 6"/></svg></span></div>
+        </div>
+        <div class="content">
+          <div style="color:var(--text-primary);font-weight:600;margin-bottom:6px">设置 · 外观</div>
+          主题 / 圆角 / 玻璃 等配置在此面板；状态栏右侧三件（语言 · 主题 · 铃铛）为壳固定项＋通知中心入口。<br><br>
+          快捷键示例：<span class="kbd">Ctrl</span> ＋ <span class="kbd">K</span> 打开命令面板。
+        </div>
+      </div>
+    </div>
+    <!-- 状态栏 22px -->
+    <div class="statusbar surf" id="heroBar">
+      <div class="sb-left">
+        <span class="sb-ico"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="8" r="1.6"/><path d="M4 5v6M5.4 4.6l5.2 2.6"/></svg></span>main*
+        <span class="sb-sep"></span>0 <span class="sb-ico"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2l6 11H2z"/><path d="M8 6.5v3M8 11.4v.1"/></svg></span>
+      </div>
+      <div class="sb-right">
+        <button class="sbtn" title="选择语言"><span class="sb-ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.6" ry="6"/><path d="M2 8h12"/></svg></span></button>
+        <button class="sbtn" title="切换主题"><span class="sb-ico"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.6A6.4 6.4 0 008 14.4z" fill="currentColor"/><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span></button>
+        <button class="sbtn notif" id="bell" title="通知" aria-label="3 条通知"><span class="bell sb-ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5c-2.5 0-4 1.8-4 4v3l-1.2 2.2c-.2.4 0 .8.5.8h9.4c.5 0 .7-.4.5-.8L12 8.5v-3c0-2.2-1.5-4-4-4zM6.5 12.5a1.5 1.5 0 003 0z"/></svg></span><span class="badge" id="heroBadge">3</span></button>
+      </div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:12px">👀 试试：半径拖到 <b class="hot">32</b> ＋ 切<b>玻璃</b> ＋ 勾「强制 hover」——现状列右下角是<b>被栏圆角裁切的全高方块</b>（直边抵弧线）；切到 <b class="good">A 案</b> 变成<b>内缩药片</b>，圆角让位把右端整体带离弧线。</p>
+  <p class="geo" id="geo"></p>
+</div>
+
+<h2>② 右端三件 · 半径 0 / 12 / 32 的真实形态（现状 vs A 案 · 已强制 hover）</h2>
+<p class="note">三个半径档，每档上下对照：<b>现状</b>（全高方块 hover，被栏圆角裁切）／<b class="good">A 案</b>（18px 药片 hover，栏 padding 让位真实圆角）。判据：<b>让位量</b>在半径 0 回到零（两案栏 padding 都是 8px＝现状），半径 ≥12 时 A 案让位到 11px（钳位上限），主动把右端带离弧线；<b>按钮形状</b>（22px 全高方块 → 18px 药片）是 D1 的固定改法、<b>与半径无关，0 档也生效</b>——这是「为适配圆角」之外的独立收益。<b class="warn">注意 12 与 32 两档在栏上长得一样</b>——22px 栏的圆角被浏览器钳到半高 11px 上限（条带已按「先钳位再放大」画，与实机同形），这正是 D2 要把让位量也钳到 11px 的原因：不钳的话半径 32 会把内容推到 32px 处，是回归。</p>
+<div class="threeup" id="threeup"></div>
+
+<h2>③ 病灶与证据（含 2026-10-03 复核订正）</h2>
+<table class="cmp">
+  <tr><th>#</th><th>症状（复核后口径）</th><th>根因</th><th>证据</th></tr>
+  <tr><td class="k">①</td><td>圆角模式右端 hover 的<b>全高方块被栏圆角裁切</b>——直边抵住弧线，亚像素级断口（<b>非穿帮到背景</b>）</td><td>按钮全高 22＝栏高 ＋ hover 方底 <code>border-radius:0</code>；靠栏 <code>overflow:hidden</code> 兜底裁切 ⇒ 形状语言不一致</td><td class="k">StatusBarZone.css:62-78 × index.css:409 + <b>:426-429</b></td></tr>
+  <tr><td class="k">②</td><td><b>「太大」读感（用户真实诉求）</b></td><td>按钮吃满栏高 22/22 ＋ 铃铛 <code>--font-size-lg</code>(14px)；圆角把栏四角削小、实感变小 ⇒ 全高方块反差被放大。<b>高度契约没动</b></td><td class="k">StatusBarZone.css:15,62-69,86-88</td></tr>
+  <tr><td class="k">③</td><td>半径一大，右端 hover 方块右缘直边与圆角弧线错位</td><td>栏 padding <code>0 8px</code> 死值不让位；半径被浏览器钳到 ≤11px（栏仅 22px 高），错位幅度小但存在</td><td class="k">StatusBarZone.css:16 × index.css:409</td></tr>
+</table>
+
+<h2>④ 决策点 D1–D4（✅ 2026-10-03 全定 · 整案走 A）</h2>
+<table class="cmp">
+  <tr><th>#</th><th>问</th><th>定稿（✅）</th></tr>
+  <tr><td class="k">D1</td><td>整体改法</td><td class="yes">A · 内缩药片</td></tr>
+  <tr><td class="k">D2</td><td>右端让位</td><td class="yes">padding 随半径 · <b>钳到真实圆角</b>：<code>max(8px, min(var(--surface-radius), calc(11px * var(--ui-scale))))</code>（原式用未钳的 0–32px 会在半径 &gt;11 时过度内缩 ＝ 回归）</td></tr>
+  <tr><td class="k">D3</td><td>内容降档</td><td>不降——「太大」的根是全高方块不是内容</td></tr>
+  <tr><td class="k">D4</td><td>铃铛徽章</td><td class="yes">随钮内缩</td></tr>
+</table>
+
+<footer>
+  <b>本页是整页拟真图（施工用），产品代码改动只落 <code>StatusBarZone.css</code> 一个文件。</b>
+  证据：StatusBarZone.css:12-24（栏）· :62-78（全高方块按钮·radius 0）· :86-88（铃铛 lg 图标）· index.css:409（栏四角 <code>var(--surface-radius)</code>）· <b>index.css:426-429（栏 <code>overflow:hidden</code> 自裁）</b>· statusbar.ts:53-54（语言/主题＝壳固定项）。
+  ⛔ 配色为真实 token 值示意——落地一律走 CSS 变量（硬约束 1）；18px／让位公式落地后实机核（含玻璃态 hover 底对比度）。
+  门：<code>/impeccable</code> ＋ <code>/ui ux pro max</code> ＋ <code>html-blueprint</code>。
+</footer>
+
+<script>
+  var apps = [document.getElementById("app")];
+  var rng = document.getElementById("rngR"), ro = document.getElementById("ro");
+  var state = { theme: "dark", variant: "cur", r: 12, hover: false };
+
+  function applyApp(app){
+    app.dataset.theme = state.theme === "glass" ? "dark" : state.theme;
+    app.classList.toggle("glass", state.theme === "glass");
+    app.dataset.variant = state.variant;
+    app.classList.toggle("force-hover", state.hover);
+    app.style.setProperty("--r", state.r + "px");
+    app.style.setProperty("--inset", (state.r > 0 ? 2 : 0) + "px");
+  }
+  function paint(){
+    apps.forEach(applyApp);
+    ro.textContent = state.r + "px";
+    // 三档条带：先按真实钳位（22px 栏的圆角上限＝半高 11px），再整体放大 --sc 倍 ⇒ 与实机同形
+    document.querySelectorAll("#threeup .strip").forEach(function(s){
+      s.style.setProperty("--rc", "calc(" + Math.min(+s.dataset.fixedR, 11) + "px * var(--sc))");
+    });
+    geo();
+  }
+  function geo(){
+    var bar = document.getElementById("heroBar");
+    var btn = bar.querySelector(".sbtn");
+    var cs = getComputedStyle(bar), cb = getComputedStyle(btn);
+    var el = document.getElementById("geo");
+    if (el) el.innerHTML = "📐 读数（对账用，非肉眼）：栏高 <b>" + cs.height +
+      "</b> · 栏圆角声明值 <b>" + cs.borderTopLeftRadius +
+      "</b>（渲染时被浏览器钳到 ≤11px＝半高，故 12 与 32 同形）· 栏 padding 左 <b>" + cs.paddingLeft +
+      "</b> · 按钮高 <b>" + cb.height + "</b> · 按钮圆角 <b>" + cb.borderTopLeftRadius +
+      "</b> · 栏 overflow <b>" + cs.overflow + "</b>（现状应为 hidden = 自裁）";
+  }
+
+  document.getElementById("segTheme").addEventListener("click", function(e){
+    if (!e.target.dataset.v) return;
+    state.theme = e.target.dataset.v;
+    this.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b === e.target); });
+    paint();
+  });
+  document.getElementById("segVariant").addEventListener("click", function(e){
+    if (!e.target.dataset.v) return;
+    state.variant = e.target.dataset.v;
+    this.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b === e.target); });
+    paint();
+  });
+  rng.addEventListener("input", function(){ state.r = +rng.value; paint(); });
+  document.getElementById("presets").addEventListener("click", function(e){
+    if (!e.target.dataset.r) return;
+    rng.value = e.target.dataset.r; state.r = +rng.value; paint();
+  });
+  document.getElementById("chkHover").addEventListener("change", function(){ state.hover = this.checked; paint(); });
+
+  // ── 三档条带：半径 0 / 12 / 32，每档 现状 + A 案（已强制 hover）──
+  var ICON_GLOBE = '<span class="sb-ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.6" ry="6"/><path d="M2 8h12"/></svg></span>';
+  var ICON_THEME = '<span class="sb-ico"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.6A6.4 6.4 0 008 14.4z" fill="currentColor"/><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>';
+  var ICON_BELL  = '<span class="bell sb-ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5c-2.5 0-4 1.8-4 4v3l-1.2 2.2c-.2.4 0 .8.5.8h9.4c.5 0 .7-.4.5-.8L12 8.5v-3c0-2.2-1.5-4-4-4zM6.5 12.5a1.5 1.5 0 003 0z"/></svg></span>';
+  function stripHtml(radius, variant){
+    return '<div class="stripwrap">' +
+      '<div class="striplbl">' + (variant === "a" ? "A 案" : "现状") + ' · 半径 ' + radius + 'px</div>' +
+      '<div class="striphost">' +
+        '<div class="strip force-hover" data-variant="' + variant + '" data-fixed-r="' + radius + '" style="--sc:1.7;--rc:calc(' + Math.min(radius, 11) + 'px * var(--sc))">' +
+          '<div class="sb-left" style="color:var(--text-secondary)"><span class="sb-ico"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="8" r="1.6"/><path d="M4 5v6M5.4 4.6l5.2 2.6"/></svg></span>main*</div>' +
+          '<div class="sb-right">' +
+            '<button class="sbtn">' + ICON_GLOBE + '</button>' +
+            '<button class="sbtn">' + ICON_THEME + '</button>' +
+            '<button class="sbtn notif">' + ICON_BELL + '<span class="badge">3</span></button>' +
+          '</div>' +
+        '</div>' +
+      '</div></div>';
+  }
+  var radii = [0, 12, 32];
+  var host = document.getElementById("threeup");
+  host.innerHTML = radii.map(function(rr){
+    return '<div class="col"><h3>半径 <span>' + rr + 'px</span></h3>' +
+      stripHtml(rr, "cur") + stripHtml(rr, "a") + '</div>';
+  }).join("");
+
+  paint();
+</script>
+</body>
+</html>
