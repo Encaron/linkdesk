@@ -904,7 +904,7 @@ export interface PanelSwitcherItem {
     viewId: string;
     /** 视图名——壳 t() 已解析（显示文本铁律） */
     title: string;
-    /** 所属插件 ID——sub 标签（如 "panel-demo"） */
+    /** 所属插件 ID——sub 标签（如 "demo-plugin"） */
     pluginId: string;
     /** 当前可见性——✓ 勾选 = 可见 */
     visible: boolean;

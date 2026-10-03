@@ -103,7 +103,7 @@ Changing the contents of `README.md` / `CHANGELOG.md` **= a content change = you
 
 > 🔥 **2026-09-14**. This section answers a question that had never been written down before: **which repo does the plugin source live in?** How to lay out the local directory and how to create the repo → [15-multi-repo-and-local-workspace](15-multi-repo-and-local-workspace.md).
 
-1. **The source of truth for source code = the plugin's own repo** (`github.com/<owner>/<repo>`), **not the shell repo**. The shell repo's `plugins/` allows only two kinds of things: **fixtures** (demos that don't ship, e.g. `panel-demo`) and **build artifacts** (`bundled-plugins/<id>.linkdesk-plugin`).
+1. **The source of truth for source code = the plugin's own repo** (`github.com/<owner>/<repo>`), **not the shell repo**. The shell repo's `plugins/` allows only two kinds of things: **fixtures** (scratch demos that don't ship) and **build artifacts** (`bundled-plugins/<id>.linkdesk-plugin`).
 2. **The semantics of `bundled-plugins/<id>.linkdesk-plugin` in the shell repo = the seed snapshot used for factory shipping**, with its version accounted for by `bundled-plugins.lock.json`. It is **not a second copy of the source** — if the source changes you must change it back in the plugin repo, then run the publish chain to refresh the seed.
 3. **The chain from source to a user's desktop**: plugin repo → `npm run build` → `<id>.linkdesk-plugin` (zip) → GitHub Release asset → catalog entry → user install. **Not one step passes through the shell repo.**
 4. **Plugin identity (id) is immutable forever**; the display name (`name`) can change; the repo name can change — the three-way rule and all naming criteria → [16-naming-conventions](16-naming-conventions.md).

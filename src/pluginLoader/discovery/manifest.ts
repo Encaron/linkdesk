@@ -71,8 +71,7 @@ const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  *
  * 校验规则：
  *   - pluginId 裁决：manifest.pluginId 优先（支持目录名 ≠ pluginId 的正确安装）；
- *     缺省回退源目录名——loader 惯例 pluginId = 目录名（lang-defaults/panel-demo
- *     等 manifest 无 pluginId 字段，强制要求会误拒合法插件）
+ *     缺省回退源目录名——loader 惯例 pluginId = 目录名（存量插件可省此字段，强制要求会误拒合法插件）
  *   - 两条路径的 id 都必须过 SAFE_PLUGIN_ID（禁止路径字符/空白/中文目录名兜底）
  *   - version 必填（版本处理的前置）
  *   - name 缺省回退 pluginId

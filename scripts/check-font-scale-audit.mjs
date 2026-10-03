@@ -39,7 +39,7 @@
  *   这是白名单宽松侧的已知边界，自测负控⑥ 把它记成事实。
  */
 
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync, readdirSync, existsSync } from "fs";
 import { resolve, dirname, join, relative } from "path";
 import { fileURLToPath } from "url";
 
@@ -264,16 +264,19 @@ function main() {
       for (const v of fontScaleViolationsInTsx(readFileSync(f, "utf-8"))) violations.push({ file: f, ...v });
     }
   }
-  // 仓库内插件：plugins/<id> 的 src CSS（2026-09-05 塌平单根——原 builtin/user 双目录废除；
+  // 仓库内插件位：plugins/<id> 的 src CSS（2026-09-05 塌平单根——原 builtin/user 双目录废除；
   // dist 构建产物跳过；.disabled 等点目录跳过，同旧双目录不扫墓地语义）
   //
-  // 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：本段**保留**，对象 = 开发夹具 panel-demo
-  //   的 CSS。18 只发货插件的字号/行高红线随各插件仓自己的 CI 走（7.5 轮落）；仓内不是真空，故无需黄灯。
+  // 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：本段**保留**——今日壳内 plugins/ 已无插件源码（全部外移独立仓），
+  //   本段是**空扫**；18 只发货插件的字号/行高红线随各插件仓自己的 CI 走（7.5 轮落）。
+  //   目录缺席按空目录容错（下方 existsSync），未来若有插件落回壳内则自动受管。
   const pluginsDir = resolve(ROOT, "plugins");
-  for (const dir of readdirSync(pluginsDir, { withFileTypes: true })) {
-    if (!dir.isDirectory() || dir.name.startsWith(".")) continue;
-    for (const f of collectFiles(resolve(pluginsDir, dir.name), [".css"], ["node_modules", "dist"])) {
-      for (const v of fontScaleViolationsInCss(readFileSync(f, "utf-8"))) violations.push({ file: f, ...v });
+  if (existsSync(pluginsDir)) {
+    for (const dir of readdirSync(pluginsDir, { withFileTypes: true })) {
+      if (!dir.isDirectory() || dir.name.startsWith(".")) continue;
+      for (const f of collectFiles(resolve(pluginsDir, dir.name), [".css"], ["node_modules", "dist"])) {
+        for (const v of fontScaleViolationsInCss(readFileSync(f, "utf-8"))) violations.push({ file: f, ...v });
+      }
     }
   }
 

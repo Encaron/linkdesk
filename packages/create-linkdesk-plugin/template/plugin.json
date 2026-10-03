@@ -72,7 +72,7 @@
       }
     ],
     // ── 需要「侧栏 / 底部面板 / 辅助侧栏」分区视图时：取消注释，在 src/views/ 放对应组件，
-    //    容器 key 与 view id 用你的 pluginId 做前缀防撞（对标 plugins/panel-demo）──
+    //    容器 key 与 view id 用你的 pluginId 做前缀防撞──
     // "viewsContainers": { "{{pluginName}}-sidebar": { "title": "{{displayName}}", "location": "sidebar" } },
     // "views": {
     //   "{{pluginName}}-sidebar": [

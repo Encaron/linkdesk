@@ -53,7 +53,7 @@ my-plugin/
 | Source root | Location | Form | HMR | Who lives here |
 |------|------|------|:--:|------|
 | **The plugin's own repo** | GitHub `Encaron/linkdesk-plugin-<id>` (clone it into any local directory you like) | source + SDK build (`npm run build` → `<id>.linkdesk-plugin`) | ✅ (`linkdesk-plugin-sdk dev`) | **every shipped plugin**—one repo each, and the only source of truth for their source |
-| **Shell repo fixtures** | `<shell repo>/plugins/<id>/` (`env.appPluginsDir`) | source + Vite on-the-fly compilation | ✅ (`npm run dev` hot reload) | only the remaining **dev fixture**: `panel-demo` (not shipped, not in the zip) |
+| **Shell repo fixtures** | `<shell repo>/plugins/<id>/` (`env.appPluginsDir`) | source + Vite on-the-fly compilation | ✅ (`npm run dev` hot reload) | currently **empty**—every plugin's source lives in its own repo; a scratch fixture may be dropped here during development (never shipped, never in the zip) |
 | **Installed state** | `{userData}/plugins/<id>/` | pre-built bundle unpacked from the zip | ❌ (changing the package means rebuild + reinstall/rematerialize) | every plugin installed on the user's machine |
 
 > 🔴 **Why a shipped plugin's source can't be kept in both places**: as soon as the shell repo and the plugin repo each hold a copy, changing one leaves the other stale, and **no gate can detect the divergence** (the content-fingerprint gate only covers zip contents, not source) ⇒ the source of truth must be unique. What the shell repo keeps are **artifacts** (`bundled-plugins/*.linkdesk-plugin`) and **documentation archives**, not source.

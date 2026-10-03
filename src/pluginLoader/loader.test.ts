@@ -180,7 +180,7 @@ describe("E5.7#81 安装包装", () => {
       expect(r).toEqual({ pluginId: "my-plugin", version: "1.0.0", name: "我的插件" });
     });
 
-    it("manifest 缺 pluginId → 目录名兜底（loader 惯例——lang-defaults/panel-demo 无此字段）", () => {
+    it("manifest 缺 pluginId → 目录名兜底（loader 惯例——存量插件可省此字段）", () => {
       const r = validateInstallManifest({ version: "1.0.0" }, "my-dir");
       expect(r.pluginId).toBe("my-dir");
       expect(r.name).toBe("my-dir");

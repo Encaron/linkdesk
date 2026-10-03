@@ -29,8 +29,8 @@ describe("getFloatingPanelViewId（E5.8#39.5 子项 C——标签页右键注入
   });
 
   it("声明 contributes.floatingPanel.viewId → 返回 viewId（注入「在悬浮面板中打开」）", () => {
-    disposers.push(registerPlugin("panel-demo", "panel-demo-view"));
-    expect(getFloatingPanelViewId("panel-demo")).toBe("panel-demo-view");
+    disposers.push(registerPlugin("demo-plugin", "demo-plugin-view"));
+    expect(getFloatingPanelViewId("demo-plugin")).toBe("demo-plugin-view");
   });
 
   it("未声明 floatingPanel → null（不注入——多数插件无此声明）", () => {

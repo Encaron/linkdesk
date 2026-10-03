@@ -34,7 +34,7 @@
 └──────────────────────────────────────┘
 ```
 
-- **ViewContainer** = 侧栏/面板的一个"频道"。点图标栏切换。如 `explorer` / `marketplace` / `serial-monitor` / `panel-demo`。
+- **ViewContainer** = 侧栏/面板的一个"频道"。点图标栏切换。如 `explorer` / `marketplace` / `serial-monitor`，或你自己的 `<pluginId>`。
 - **View** = 容器里的一个可折叠 section。如 `folders` / `sessions` / `settings`。
 - **任何插件** 都可以往别人的容器里注册 view。容器的主人不知道、不关心。
 - **渲染位置由 `location` 决定**：`"sidebar"` → 左侧栏 SidebarZone；`"panel"` → 底部面板 PanelZone（标签栏切换视图）；`"auxiliarybar"` → 右侧辅助侧栏 RightSidebarZone——⚠ **壳当前未接线（不渲染，区域 dormant）**：声明 auxiliarybar 容器/视图 = 无表面不可见。第三方侧栏/面板需求请用 `"sidebar"`/`"panel"`。所有区都用同一个 `PoolSectionStack` 渲染 view（SidebarSection 自动包裹）。
@@ -81,7 +81,7 @@
 | `hideIfEmpty` | ❌ | boolean | 无活跃 view 时自动隐藏。默认 `false` |
 | `order` | ❌ | number | 同位置容器排序。小值靠前 |
 | `icon` | ❌ | string | 容器图标——覆盖插件自身图标 |
-| `mergeHeaderWhenSingle` | ❌ | boolean | 容器内只有一个 view 时，隐藏 view 折叠头——标题合并到容器 header。对标 VS Code `mergeViewWithContainerWhenSingleView`（`panel-demo` 侧栏容器即用此模式） |
+| `mergeHeaderWhenSingle` | ❌ | boolean | 容器内只有一个 view 时，隐藏 view 折叠头——标题合并到容器 header。对标 VS Code `mergeViewWithContainerWhenSingleView`（只装一个 view 的侧栏容器即用此模式） |
 
 ### views 字段（全表）
 
@@ -121,7 +121,7 @@
 
 **widget 字段：** `id`（唯一）、`command`（点击执行的命令 ID）、`args`（可选——`executeCommand(command, args)` 单个位置参数透传）、`icon`（codicon 类名，如 `"codicon-add"`）、`title`（tooltip/aria-label/无 icon 时的文本）、`items`（dropdown/split 的备选条目 `{ label, command, args }`）。
 
-### 真实示例——panel-demo（官方验证插件）
+### 实例——声明 titleActions 的面板视图
 
 ```json
 {
@@ -133,20 +133,20 @@
     {
       "type": "split",
       "id": "add-log",
-      "command": "panel-demo.addLog",
+      "command": "demo-plugin.addLog",
       "icon": "codicon-add",
       "title": "添加演示日志",
       "args": { "level": "info", "text": "主按钮——添加信息日志" },
       "items": [
-        { "label": "添加信息", "command": "panel-demo.addLog", "args": { "level": "info" } },
-        { "label": "添加警告", "command": "panel-demo.addLog", "args": { "level": "warn" } },
-        { "label": "添加错误", "command": "panel-demo.addLog", "args": { "level": "error" } }
+        { "label": "添加信息", "command": "demo-plugin.addLog", "args": { "level": "info" } },
+        { "label": "添加警告", "command": "demo-plugin.addLog", "args": { "level": "warn" } },
+        { "label": "添加错误", "command": "demo-plugin.addLog", "args": { "level": "error" } }
       ]
     },
     {
       "type": "icon",
       "id": "clear-log",
-      "command": "panel-demo.clearLog",
+      "command": "demo-plugin.clearLog",
       "icon": "codicon-clear-all",
       "title": "清空输出"
     }
@@ -159,17 +159,17 @@
 `titleActions` 声明的 `command` 执行真相源 = **池侧命令注册表**（`executeCommand` 池侧优先、壳 IPC fallback）。命令 handler 在 view 组件里注册：
 
 ```tsx
-// DemoOutputView.tsx（panel-demo 真实写法）
+// DemoOutputView.tsx
 useEffect(() => {
   const api = window.linkdesk?.commands;
   api?.registerCommand?.(
-    "panel-demo.addLog",
+    "demo-plugin.addLog",
     (args?: { level?: LogLevel; text?: string }) => {
       addLine(args?.level ?? "info", args?.text ?? "");
     },
     // 池侧 registerCommand 注册——when 交给声明制；when:"false" = 纯程序化命令不进命令面板（titleActions 专属）
   );
-  api?.registerCommand?.("panel-demo.clearLog", () => clearLines());
+  api?.registerCommand?.("demo-plugin.clearLog", () => clearLines());
 }, []);
 ```
 
@@ -246,21 +246,21 @@ await window.linkdesk.panel.reveal("demo-output");  // 聚焦底部面板的 dem
 - 面板已显示 → 切换聚焦
 - `viewId` 不在 panel 容器 → **no-op**（不报错）
 
-**完整面板容器示例——panel-demo：**
+**完整面板容器示例——同一个插件同时声明面板容器与侧栏容器：**
 
 ```json
 {
   "contributes": {
     "viewsContainers": {
-      "panel-demo": { "title": "面板演示", "location": "panel" },
-      "panel-demo-sidebar": { "title": "面板演示", "location": "sidebar" }
+      "demo-plugin": { "title": "面板演示", "location": "panel" },
+      "demo-plugin-sidebar": { "title": "面板演示", "location": "sidebar" }
     },
     "views": {
-      "panel-demo": [
+      "demo-plugin": [
         { "id": "demo-output", "title": "输出", "render": "src/views/DemoOutputView.tsx", "order": 0, "titleActions": [/* §三 */] },
         { "id": "demo-todo", "title": "待办", "render": "src/views/DemoTodoView.tsx", "order": 1 }
       ],
-      "panel-demo-sidebar": [
+      "demo-plugin-sidebar": [
         { "id": "demo-sidebar", "title": "侧栏演示", "render": "src/views/DemoSidebarView.tsx", "order": 0, "titleActions": [/* §三 */] }
       ]
     }

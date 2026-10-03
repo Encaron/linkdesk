@@ -22,16 +22,17 @@
  *   的 ⚠️ 提示是全链的诚实样板，**保持不动**。
  */
 
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync, readdirSync, existsSync } from "fs";
 import { resolve, dirname, join, relative } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
-/** 收集 plugins/ 下所有 themes/*.json（排除 node_modules） */
+/** 收集 plugins/ 下所有 themes/*.json（排除 node_modules）；仓内插件位缺席 = 空目录容错 */
 function collectThemeFiles(dir) {
   const files = [];
+  if (!existsSync(dir)) return files;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory() && entry.name !== "node_modules") {
@@ -188,7 +189,7 @@ function main() {
   if (themeFiles.length === 0) {
     console.log(
       "⚠ 覆盖域变更（E6#99）：仓内 plugins/ 下 0 个主题文件——本门禁当前**无对象**（≠「主题都合规」）。" +
-        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓只剩一只不含 themes/ 的开发夹具（panel-demo）。" +
+        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓 plugins/ 已不存放任何插件源码（壳内插件位为空）。" +
         "\n   去向：主题数据检查随插件走，由各插件仓自己的 CI 负责（7.5 轮落）。"
     );
   }

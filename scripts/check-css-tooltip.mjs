@@ -50,14 +50,14 @@
  * 退出码 0 = 无违规；1 = 有违规（打印到 stderr）。
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
-// 域 = 壳侧样式（池层 ＋ 共享件）＋ 仓内开发夹具（照 check-native-title 的 SCAN_DIRS 口径）
+// 域 = 壳侧样式（池层 ＋ 共享件）＋ 仓内插件位（今日为空——插件源码全在独立仓；照 check-native-title 的 SCAN_DIRS 口径）
 const SCAN_DIRS = ["src", "plugins"];
 const SKIP_DIRS = new Set(["node_modules", "dist", "dist-electron", ".git", ".vite", "coverage", "out"]);
 const EXT_RE = /\.css$/;
@@ -155,8 +155,9 @@ export function judge(sites) {
   return violations;
 }
 
-/** 递归收集域内 `.css` */
+/** 递归收集域内 `.css`；目录缺席 = 空目录容错 */
 function collectCss(dir, out = []) {
+  if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = resolve(dir, entry.name);
     if (entry.isDirectory()) {

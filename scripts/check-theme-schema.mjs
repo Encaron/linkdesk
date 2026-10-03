@@ -155,6 +155,7 @@ export function createValidator(rootSchema) {
 /* ── 收集插件 plugin.json ── */
 
 function collectPluginJson(dir, acc = []) {
+  if (!existsSync(dir)) return acc; // 仓内插件位缺席 = 空目录容错
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name === "dist") continue;
     const full = join(dir, entry.name);
@@ -197,7 +198,7 @@ function runSelfTest() {
       },
     },
   };
-  const FULL_OK = { id: "panel-demo", mode: "dark", stops: ["#000", "#fff"], badge: { glyph: "★" } };
+  const FULL_OK = { id: "demo-plugin", mode: "dark", stops: ["#000", "#fff"], badge: { glyph: "★" } };
 
   const ANYOF = {
     type: "object",
@@ -227,7 +228,7 @@ function runSelfTest() {
     ["正控②：enum 合规（取值在表内）⇒ 0 错", { type: "object", properties: { mode: { enum: ["light", "dark"] } } }, { mode: "light" }, 0],
     ["正控③：anyOf 命中第一分支（字符串）⇒ 0 错", ANYOF, { badge: "ok" }, 0],
     ["正控④：anyOf 命中第二分支（对象带 glyph）⇒ 0 错", ANYOF, { badge: { glyph: "★" } }, 0],
-    ["正控⑤：`$defs` + 本地 `$ref` 可解析且合规 ⇒ 0 错", REF_OK, { id: "panel-demo", brand: "#fff" }, 0],
+    ["正控⑤：`$defs` + 本地 `$ref` 可解析且合规 ⇒ 0 错", REF_OK, { id: "demo-plugin", brand: "#fff" }, 0],
     [
       "正控⑥：`additionalProperties` 为子 schema（未列字段按子 schema 过）⇒ 0 错",
       { type: "object", properties: { id: { type: "string" } }, additionalProperties: { type: "number" } },
@@ -250,7 +251,7 @@ function runSelfTest() {
     [
       "负控①：缺 required（少 mode）⇒ 报「缺必需字段」",
       FULL,
-      { id: "panel-demo", stops: ["#000", "#fff"], badge: "ok" },
+      { id: "demo-plugin", stops: ["#000", "#fff"], badge: "ok" },
       1,
       '缺必需字段 "mode"',
     ],
@@ -389,7 +390,7 @@ function main() {
 
   // 🔴 E6#109p-b（1.28）：**覆盖域变更要明说，不许真空绿灯**——照 check-theme-audit.mjs 的 E6#99 那段
   //   同款措辞（那是全链的诚实样板）。本门禁扫 contributes.themes / contributes.iconThemes 指向的数据
-  //   文件，而主题/图标集插件源码已外移各自独立仓 ⇒ 仓内开发夹具 panel-demo 不含 themes/ ⇒ 扫描数归零。
+  //   文件，而主题/图标集插件源码已外移各自独立仓 ⇒ 仓内 plugins/ 已无插件源码（壳内插件位为空）⇒ 扫描数归零。
   //   归零（themes 与 iconThemes 双双为 0）时，下面这段必须在 ✅ **之前**打印——否则
   //   「theme.schema.json 0 个主题文件、icon-theme.schema.json 0 个图标主题 mappings全部合规」
   //   会被读者读成「都查过了」。
@@ -397,7 +398,7 @@ function main() {
     console.log(
       "⚠ 覆盖域变更（E6#109p-b，照 check-theme-audit 的 E6#99 样板）：仓内 plugins/ 下 0 个主题/图标数据文件——" +
         "本门禁当前**无对象**（≠「主题/图标都合规」）。" +
-        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓只剩一只不含 themes/ 的开发夹具（panel-demo）。" +
+        "\n   原因：主题/图标集插件的源码已外移各自独立仓，本仓 plugins/ 已不存放任何插件源码（壳内插件位为空）。" +
         "\n   去向：主题/图标 schema 检查随插件走，由各插件仓自己的 CI 负责。"
     );
   }

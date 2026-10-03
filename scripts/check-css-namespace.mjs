@@ -451,10 +451,11 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
     }
   }
 
-  // ⑪ 的**壳内夹具**（E6#109o-b）：`plugins/**` ＋ `dev-fixtures/**` 的 CSS 里没有「基线区块」这个概念
-  //    ⇒ 任何**无锚选择器**站点 ⇒ 红（插件侧 R2）。今天实测 0 处（纯预防）。
-  //    ⚠️ 夹具的 `dist/`（构建产物）由 `walk()` 跳过——产物不该被源码门禁管（那是打包期的事）。
-  //    ⚠️ R3（跨方命中必须自带自有命名空间）在夹具侧**不做**：它需要「本仓 pluginId」，而夹具不是
+  // ⑪ 的**壳内插件位 ＋ dev-fixtures 夹具**（E6#109o-b）：`plugins/**`（今日为空——插件源码全在独立仓）
+  //    ＋ `dev-fixtures/**` 的 CSS 里没有「基线区块」这个概念 ⇒ 任何**无锚选择器**站点 ⇒ 红（插件侧 R2）。
+  //    今天实测 0 处（纯预防）。
+  //    ⚠️ 构建产物 `dist/` 由 `walk()` 跳过——产物不该被源码门禁管（那是打包期的事）。
+  //    ⚠️ R3（跨方命中必须自带自有命名空间）在此侧**不做**：它需要「本仓 pluginId」，而这里不是
   //       插件工程（没有可解析的 plugin.json 身份链）⇒ 如实登记为边界（32 号档 §七 的夹具那行只点 ⑪）。
   const fixtureCss = [
     ...walk(join(root, "plugins"), (n) => n.endsWith(".css")),
@@ -473,7 +474,7 @@ export function runChecks(root = ROOT, registry = loadRegistry(root)) {
           `元素 / 通配 / 属性 / 伪类 / 伪元素 / **id** 一视同仁；顶层或限定一律禁）。插件视图的一张样式表里同时装着 ` +
           `宿主 ＋ 共享组件 ＋ **所有已加载插件**的 CSS ⇒ 这类选择器命中「该文档里所有那一类元素」，与谁渲染无关` +
           `${byId ? "（id 还额外是全局的、可猜的，优先级高于类）" : ""}。` +
-          `改法：挂在自己的根类之下（\`.panel-demo-root input { … }\`／用类替掉 id）。`,
+          `改法：挂在自己的根类之下（\`.demo-plugin-root input { … }\`／用类替掉 id）。`,
       });
     }
   }

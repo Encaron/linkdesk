@@ -49,12 +49,12 @@ function installCommandsApi(): void {
 }
 /* jscpd:ignore-end */
 
-/** 构造侧栏 view meta（panel-demo demo-sidebar 同款形状） */
+/** 构造侧栏 view meta（demo-plugin demo-sidebar 同款形状） */
 function makeView(overrides: Partial<SidebarViewMeta> = {}): SidebarViewMeta {
   return {
     id: "demo-sidebar",
     title: "侧栏演示",
-    pluginId: "panel-demo",
+    pluginId: "demo-plugin",
     renderPath: "demo-render",
     ...overrides,
   };
@@ -62,7 +62,7 @@ function makeView(overrides: Partial<SidebarViewMeta> = {}): SidebarViewMeta {
 
 /** demo-sidebar 的 titleActions 声明（plugin.json 同源形状） */
 const ACTIONS: TitleActionWidget[] = [
-  { type: "icon", id: "sidebar-clear-log", command: "panel-demo.sidebarClearLog", icon: "codicon-clear-all", title: "侧栏清空输出" },
+  { type: "icon", id: "sidebar-clear-log", command: "demo-plugin.sidebarClearLog", icon: "codicon-clear-all", title: "侧栏清空输出" },
 ];
 
 describe("PoolSectionStack（E5.8#36.6 侧栏 section header 动作区）", () => {
@@ -79,7 +79,7 @@ describe("PoolSectionStack（E5.8#36.6 侧栏 section header 动作区）", () =
     render(
       <PoolSectionStack
         views={[makeView({ titleActions: ACTIONS })]}
-        containerId="panel-demo-sidebar"
+        containerId="demo-plugin-sidebar"
         toolbarHeight={0}
         onSidebarAction={vi.fn()}
       />,
@@ -88,14 +88,14 @@ describe("PoolSectionStack（E5.8#36.6 侧栏 section header 动作区）", () =
     const btn = screen.getByLabelText("侧栏清空输出");
     expect(btn).toBeTruthy();
     fireEvent.click(btn);
-    expect(mockExecuteCommand).toHaveBeenCalledWith("panel-demo.sidebarClearLog");
+    expect(mockExecuteCommand).toHaveBeenCalledWith("demo-plugin.sidebarClearLog");
   });
 
   it("无 titleActions 声明 → header 无动作区（右侧空白——现状保持）", () => {
     render(
       <PoolSectionStack
         views={[makeView()]}
-        containerId="panel-demo-sidebar"
+        containerId="demo-plugin-sidebar"
         toolbarHeight={0}
         onSidebarAction={vi.fn()}
       />,
@@ -108,7 +108,7 @@ describe("PoolSectionStack（E5.8#36.6 侧栏 section header 动作区）", () =
     render(
       <PoolSectionStack
         views={[makeView({ titleActions: ACTIONS })]}
-        containerId="panel-demo-sidebar"
+        containerId="demo-plugin-sidebar"
         toolbarHeight={0}
         onSidebarAction={onSidebarAction}
       />,

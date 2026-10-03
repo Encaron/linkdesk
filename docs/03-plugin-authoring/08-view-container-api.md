@@ -34,7 +34,7 @@
 └────────────────────────────────────────┘
 ```
 
-- **ViewContainer** = one "channel" of the sidebar/panel. Click the icon in the icon bar to switch. Examples: `explorer` / `marketplace` / `serial-monitor` / `panel-demo`.
+- **ViewContainer** = one "channel" of the sidebar/panel. Click the icon in the icon bar to switch. Examples: `explorer` / `marketplace` / `serial-monitor`, or your own `<pluginId>`.
 - **View** = one collapsible section inside a container. Examples: `folders` / `sessions` / `settings`.
 - **Any plugin** can register views into someone else's container. The container's owner neither knows nor cares.
 - **Where it renders is decided by `location`**: `"sidebar"` → the left sidebar SidebarZone; `"panel"` → the bottom panel PanelZone (the tab bar switches views); `"auxiliarybar"` → the right auxiliary sidebar RightSidebarZone — ⚠ **not wired up in the shell today (it does not render; the region is dormant)**: declaring an auxiliarybar container/view = no surface, nothing visible. For third-party sidebar/panel needs use `"sidebar"`/`"panel"`. Every region renders views with the same `PoolSectionStack` (SidebarSection is wrapped automatically).
@@ -81,7 +81,7 @@
 | `hideIfEmpty` | ❌ | boolean | Hide automatically when there are no active views. Defaults to `false` |
 | `order` | ❌ | number | Ordering among containers in the same location. Smaller values come first |
 | `icon` | ❌ | string | Container icon — overrides the plugin's own icon |
-| `mergeHeaderWhenSingle` | ❌ | boolean | When the container holds only one view, hide the view's collapse header — the title merges into the container header. Aligned with VS Code's `mergeViewWithContainerWhenSingleView` (the `panel-demo` sidebar container uses exactly this mode) |
+| `mergeHeaderWhenSingle` | ❌ | boolean | When the container holds only one view, hide the view's collapse header — the title merges into the container header. Aligned with VS Code's `mergeViewWithContainerWhenSingleView` (a sidebar container holding a single view uses exactly this mode) |
 
 ### views fields (full table)
 
@@ -121,7 +121,7 @@
 
 **Widget fields:** `id` (unique), `command` (the command ID executed on click), `args` (optional — passed through as the single positional argument of `executeCommand(command, args)`), `icon` (a codicon class name, e.g. `"codicon-add"`), `title` (tooltip/aria-label/text when there is no icon), `items` (the alternative entries of a dropdown/split: `{ label, command, args }`).
 
-### A real example — panel-demo (the official verification plugin)
+### A worked example — a panel view with titleActions
 
 ```json
 {
@@ -133,20 +133,20 @@
     {
       "type": "split",
       "id": "add-log",
-      "command": "panel-demo.addLog",
+      "command": "demo-plugin.addLog",
       "icon": "codicon-add",
       "title": "Add a demo log",
       "args": { "level": "info", "text": "The primary button — add an info log" },
       "items": [
-        { "label": "Add info", "command": "panel-demo.addLog", "args": { "level": "info" } },
-        { "label": "Add warning", "command": "panel-demo.addLog", "args": { "level": "warn" } },
-        { "label": "Add error", "command": "panel-demo.addLog", "args": { "level": "error" } }
+        { "label": "Add info", "command": "demo-plugin.addLog", "args": { "level": "info" } },
+        { "label": "Add warning", "command": "demo-plugin.addLog", "args": { "level": "warn" } },
+        { "label": "Add error", "command": "demo-plugin.addLog", "args": { "level": "error" } }
       ]
     },
     {
       "type": "icon",
       "id": "clear-log",
-      "command": "panel-demo.clearLog",
+      "command": "demo-plugin.clearLog",
       "icon": "codicon-clear-all",
       "title": "Clear output"
     }
@@ -159,18 +159,18 @@
 The source of truth for executing a `command` declared in `titleActions` = **the pool-side command registry** (`executeCommand` prefers the pool side, with shell IPC as fallback). Command handlers are registered inside the view component:
 
 ```tsx
-// DemoOutputView.tsx (the real panel-demo code)
+// DemoOutputView.tsx
 useEffect(() => {
   const api = window.linkdesk?.commands;
   api?.registerCommand?.(
-    "panel-demo.addLog",
+    "demo-plugin.addLog",
     (args?: { level?: LogLevel; text?: string }) => {
       addLine(args?.level ?? "info", args?.text ?? "");
     },
     // Registered through the pool-side registerCommand — `when` is left to the declaration system;
     // when:"false" = a purely programmatic command that does not enter the command palette (titleActions-only)
   );
-  api?.registerCommand?.("panel-demo.clearLog", () => clearLines());
+  api?.registerCommand?.("demo-plugin.clearLog", () => clearLines());
 }, []);
 ```
 
@@ -248,21 +248,21 @@ await window.linkdesk.panel.reveal("demo-output");  // focus the demo-output vie
 - Panel already shown → switch focus
 - `viewId` not in a panel container → **no-op** (no error)
 
-**Complete panel container example — panel-demo:**
+**Complete panel container example — one plugin declaring both a panel and a sidebar container:**
 
 ```json
 {
   "contributes": {
     "viewsContainers": {
-      "panel-demo": { "title": "Panel Demo", "location": "panel" },
-      "panel-demo-sidebar": { "title": "Panel Demo", "location": "sidebar" }
+      "demo-plugin": { "title": "Panel Demo", "location": "panel" },
+      "demo-plugin-sidebar": { "title": "Panel Demo", "location": "sidebar" }
     },
     "views": {
-      "panel-demo": [
+      "demo-plugin": [
         { "id": "demo-output", "title": "Output", "render": "src/views/DemoOutputView.tsx", "order": 0, "titleActions": [/* §3 */] },
         { "id": "demo-todo", "title": "To-do", "render": "src/views/DemoTodoView.tsx", "order": 1 }
       ],
-      "panel-demo-sidebar": [
+      "demo-plugin-sidebar": [
         { "id": "demo-sidebar", "title": "Sidebar Demo", "render": "src/views/DemoSidebarView.tsx", "order": 0, "titleActions": [/* §3 */] }
       ]
     }

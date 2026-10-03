@@ -60,15 +60,6 @@ const EXCLUDE_FILES = [
 
 // 文件内行区间排除——[起, 止] 闭区间（1 基）
 const EXCLUDE_RANGES = {
-  // DemoOutputView 日志池 + 初始 useState：作者注释 :30 明示"text 是演示数据
-  // （输出面板的内容 = 数据，不属 UI 文字铁律范围）"——设计裁决跳过，非漏翻。
-  // 2026-09-05 塌平单根：plugins/panel-demo（原 plugins/user/panel-demo）
-  "plugins/panel-demo/src/views/DemoOutputView.tsx": [[42, 57]],
-  // DemoSidebarView SIDEBAR_POOL / DemoTodoView SEED_TODOS：演示日志池/种子待办——
-  // 与 DemoOutputView:42-57 同类（演示数据 = 日志/内容，非 UI 文字）。作者注释明示
-  // "内容 = 数据，不属 UI 文字铁律范围"。设计裁决跳过，非漏翻。
-  "plugins/panel-demo/src/views/DemoSidebarView.tsx": [[29, 35]],
-  "plugins/panel-demo/src/views/DemoTodoView.tsx": [[24, 28]],
   // registerBuiltinProtocols 方括号协议 name：主进程注册的**协议元数据**（id="bracket"
   // 才是身份，name 仅描述）。当前 listProtocols() 零显示消费方——纯注册表数据，非渲染文本。
   // 且本文件运行于主进程（E5.7#49），不能 import 渲染进程 i18n（react-i18next）。补译归
@@ -130,9 +121,8 @@ const SEED_DIR = "bundled-plugins";
 const SEED_DICT_ENTRIES = ["en.json", "i18n/en.json"];
 const APP_DICT_SEED = `${SEED_DIR}/lang-defaults.linkdesk-plugin`;
 
-// 仓内夹具的字典——**仍在仓内**，照旧按路径读（演示插件 UI 串归插件自持）
+// 仓内插件位夹具的字典——照旧按路径读（今日为空：`plugins/` 已不存放任何插件源码，插件字典全随源码住各自独立仓）
 const I18N_FILES = [
-  "plugins/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
   // 🔥 2026-09-28：`plugins/floating-panel-demo/i18n/en.json` 条目已删——插件本体（含其市场条目、
   //   GitHub 仓、本仓 `plugins/floating-panel-demo/`）由用户拍板整套移除，此路径永不再存在。
   //   与下面两条同一处置：**死路径不留待复活**（它会让每次 check 白打一行 `⚠ 缺失:`）。
@@ -336,7 +326,7 @@ function judgeRepo(dir, manifest, label, kind) {
 }
 
 const judged = [];
-// ① 仓内夹具（`plugins/<id>`——演示插件仍住本仓）
+// ① 仓内插件位（`plugins/<id>`——今日为空：插件源码全在各自独立仓）
 if (existsSync("plugins")) {
   for (const e of readdirSync("plugins", { withFileTypes: true })) {
     if (!e.isDirectory()) continue;

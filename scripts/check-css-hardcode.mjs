@@ -43,9 +43,10 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-// 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：`plugins/` 保留在扫描域内——18 只发货插件搬走后仓内仍有两只
-//   开发夹具（panel-demo——2026-09-28 floating-panel-demo 已随插件下架删除），它同样不许裸写 hex；发货插件的硬编码色改由
-//   各插件仓自己的审计管（7.5 轮落）。白名单里指向发货插件的两条死路径已同笔删除（见下）。
+// 🔴 E6#99（L7 第 7.2 轮）覆盖域结论：`plugins/` 保留在扫描域内——18 只发货插件搬走后壳内 plugins/
+//   今日已无插件源码（最后的开发夹具亦已下架），本域对插件位是**空扫**；发货插件的硬编码色改由
+//   各插件仓自己的审计管（7.5 轮落）。目录缺席按空目录容错（下方 existsSync 守卫），未来有插件落回即自动受管。
+//   白名单里指向发货插件的两条死路径已同笔删除（见下）。
 //   🔴 2026-10-02（台账 §五 E）：加 `build/installer/bootstrapper`——安装器自绘界面。
 //   它不消费壳的主题变量（自成一页），故有权**自带 token 表**（app.css 顶部，定义行照常豁免）；
 //   受审的是消费面：页内任何裸 hex/rgba 都该走它自己的 var(--x)。

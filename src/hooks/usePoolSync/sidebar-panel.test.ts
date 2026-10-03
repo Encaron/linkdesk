@@ -27,11 +27,11 @@ function makeView(overrides: Partial<ViewDescriptor> = {}): ViewDescriptor {
   };
 }
 
-/** 注册一个含 2 视图的 panel 容器（同 panel-demo 形状） */
+/** 注册一个含 2 视图的 panel 容器（同 demo-plugin 形状） */
 function registerPanelContainer(): void {
-  ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
-  ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
-  ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-todo", title: "待办" }));
+  ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "demo-plugin", title: "面板演示", location: "panel" });
+  ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-output", title: "输出" }));
+  ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-todo", title: "待办" }));
 }
 
 describe("buildPanelSwitcherGroups（E5.8#34 容器切换器 DTO）", () => {
@@ -46,7 +46,7 @@ describe("buildPanelSwitcherGroups（E5.8#34 容器切换器 DTO）", () => {
     const groups = buildPanelSwitcherGroups(id, "demo-output");
     expect(groups).toEqual([
       {
-        containerId: "panel-demo",
+        containerId: "demo-plugin",
         containerTitle: "面板演示",
         items: [
           { viewId: "demo-output", title: "输出", pluginId: PLUGIN_ID, visible: true, active: true },
@@ -58,7 +58,7 @@ describe("buildPanelSwitcherGroups（E5.8#34 容器切换器 DTO）", () => {
 
   it("含隐藏视图——visible:false 标记，getActiveViews 不含但仍在下拉", () => {
     registerPanelContainer();
-    ViewContainerService.setVisible("panel-demo", "demo-todo", false);
+    ViewContainerService.setVisible("demo-plugin", "demo-todo", false);
 
     const groups = buildPanelSwitcherGroups(id, "demo-output");
     const todo = groups[0].items.find((i) => i.viewId === "demo-todo");
@@ -78,12 +78,12 @@ describe("buildPanelSwitcherGroups（E5.8#34 容器切换器 DTO）", () => {
 
   it("空容器（无注册视图）跳过——不列空组", () => {
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "empty-c", title: "空容器", location: "panel" });
-    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
-    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "demo-plugin", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-output", title: "输出" }));
 
     const groups = buildPanelSwitcherGroups(id, "");
     expect(groups).toHaveLength(1);
-    expect(groups[0].containerId).toBe("panel-demo");
+    expect(groups[0].containerId).toBe("demo-plugin");
   });
 
   it("非 panel 容器不列（location 过滤）", () => {
@@ -104,8 +104,8 @@ describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions �
     const titleActions: TitleActionWidget[] = [
       { type: "icon", id: "clear", command: "demo.clear", icon: "codicon-clear-all", title: "清空输出" },
     ];
-    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
-    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出", titleActions }));
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "demo-plugin", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-output", title: "输出", titleActions }));
 
     const metas = buildPanelViewMetas((k) => k);
     expect(metas).toHaveLength(1);
@@ -114,8 +114,8 @@ describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions �
   });
 
   it("面板视图——无 titleActions 声明 → 字段缺省（右侧空白）", () => {
-    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
-    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "demo-plugin", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-output", title: "输出" }));
 
     const metas = buildPanelViewMetas((k) => k);
     expect(metas[0].titleActions).toBeUndefined();
@@ -132,8 +132,8 @@ describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions �
   });
 
   it("🔥 title 壳 t() 解析后推送（E5.8#37.9 P2 回归——侧栏/面板标题此前原样推中文）", () => {
-    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
-    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "demo-plugin", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-output", title: "输出" }));
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "explorer", title: "资源管理器", location: "sidebar" });
     ViewContainerService.registerView(PLUGIN_ID, "explorer", makeView({ id: "folders", title: "文件夹" }));
 
@@ -196,8 +196,8 @@ describe("buildEffectiveCollapsedViewIds（04 有效折叠集——三类真相�
   });
 
   it("只收 sidebar/auxiliarybar——面板容器不参与（面板无 section 折叠语义）", () => {
-    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
-    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出", collapsed: true }));
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "demo-plugin", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "demo-plugin", makeView({ id: "demo-output", title: "输出", collapsed: true }));
     expect(buildEffectiveCollapsedViewIds()).toEqual([]);
   });
 

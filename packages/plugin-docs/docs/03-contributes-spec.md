@@ -708,16 +708,16 @@ The file-tree plugin needs zero changes.
     {
       "type": "split",
       "id": "add-log",
-      "command": "panel-demo.addLog",
+      "command": "demo-plugin.addLog",
       "icon": "codicon-add",
       "title": "Add demo log",
       "args": { "level": "info" },
       "items": [
-        { "label": "Add info", "command": "panel-demo.addLog", "args": { "level": "info" } },
-        { "label": "Add warning", "command": "panel-demo.addLog", "args": { "level": "warn" } }
+        { "label": "Add info", "command": "demo-plugin.addLog", "args": { "level": "info" } },
+        { "label": "Add warning", "command": "demo-plugin.addLog", "args": { "level": "warn" } }
       ]
     },
-    { "type": "icon", "id": "clear-log", "command": "panel-demo.clearLog", "icon": "codicon-clear-all", "title": "Clear output" }
+    { "type": "icon", "id": "clear-log", "command": "demo-plugin.clearLog", "icon": "codicon-clear-all", "title": "Clear output" }
   ]
 }
 ```
@@ -725,7 +725,7 @@ The file-tree plugin needs zero changes.
 **Command registration (the source of truth for executing a titleActions command = the pool-side command registry):**
 ```typescript
 useEffect(() => {
-  window.linkdesk.commands.registerCommand("panel-demo.addLog", (args) => { addLine(args.level, args.text); });
+  window.linkdesk.commands.registerCommand("demo-plugin.addLog", (args) => { addLine(args.level, args.text); });
 }, []);
 ```
 > **`when: "false"` = a purely programmatic command that stays out of the command palette** — titleActions-only commands are declared this way, which keeps them from cluttering Ctrl+Shift+P. The shell's unified renderer `ViewTitleActions.tsx` has two consumers: the panel tab bar (the active view) + the sidebar section collapse header. For a real example see `08 §3`.

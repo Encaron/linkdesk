@@ -60,6 +60,7 @@ const BINARY_EXT = /\.(js|mjs|cjs|cmd|exe|bat)$/i;
 const SHELL_BUILTINS = new Set(["node", "npm", "npx", "python", "python3", "py", "bash", "sh", "cmd", "powershell", "pwsh"]);
 
 function collectFiles(dir, extSet, out) {
+  if (!existsSync(dir)) return out; // 仓内插件位缺席 = 空目录容错
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git") continue;

@@ -696,16 +696,16 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
     {
       "type": "split",
       "id": "add-log",
-      "command": "panel-demo.addLog",
+      "command": "demo-plugin.addLog",
       "icon": "codicon-add",
       "title": "添加演示日志",
       "args": { "level": "info" },
       "items": [
-        { "label": "添加信息", "command": "panel-demo.addLog", "args": { "level": "info" } },
-        { "label": "添加警告", "command": "panel-demo.addLog", "args": { "level": "warn" } }
+        { "label": "添加信息", "command": "demo-plugin.addLog", "args": { "level": "info" } },
+        { "label": "添加警告", "command": "demo-plugin.addLog", "args": { "level": "warn" } }
       ]
     },
-    { "type": "icon", "id": "clear-log", "command": "panel-demo.clearLog", "icon": "codicon-clear-all", "title": "清空输出" }
+    { "type": "icon", "id": "clear-log", "command": "demo-plugin.clearLog", "icon": "codicon-clear-all", "title": "清空输出" }
   ]
 }
 ```
@@ -713,7 +713,7 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 **命令注册（titleActions 的 command 执行真相源 = 池侧命令注册表）：**
 ```typescript
 useEffect(() => {
-  window.linkdesk.commands.registerCommand("panel-demo.addLog", (args) => { addLine(args.level, args.text); });
+  window.linkdesk.commands.registerCommand("demo-plugin.addLog", (args) => { addLine(args.level, args.text); });
 }, []);
 ```
 > **`when: "false"` = 纯程序化命令不进命令面板**——titleActions 专属命令都这样声明，防止在 Ctrl+Shift+P 里刷屏。壳统一渲染器 `ViewTitleActions.tsx` 两处消费：面板标签栏（活动视图）+ 侧栏 section 折叠头。真实示例见 `08 §三`。
