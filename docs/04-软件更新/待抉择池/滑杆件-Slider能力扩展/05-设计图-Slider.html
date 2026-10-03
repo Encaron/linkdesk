@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · 设计图 · Slider 能力扩展（单位值标签 ＋ 细调步进）</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   本页自身的外观：数值一律取自 src/index.css——
+   暗 = :root（#1E1E1E/#2D2D2D/#D4D4D4/#9D9D9D/#0078D4/#3C3C3C）
+   亮 = [data-theme="light"]（#FFFFFF/#F5F5F5/#2D2D2D/#5A5A5A/#0078D4/#D4D4D4）
+   字号档 = --font-size-xs/sm/md（12/13/14）· 圆角 = --radius-sm/md（4/6）
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0078D4; --accent-hover:#1A8CE8; --border:#3C3C3C;
+  --radius-sm:4px; --radius-md:6px; --shadow-tiny:0 0 2px rgba(0,0,0,.5);
+  --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px;
+  --ui-scale:1;
+}
+html[data-theme="light"]{
+  --bg-window:#FFFFFF; --bg-card:#F5F5F5; --bg-input:#FFFFFF;
+  --text-primary:#2D2D2D; --text-secondary:#5A5A5A; --text-muted:#767676;
+  --accent:#0078D4; --accent-hover:#106EBE; --border:#D4D4D4;
+}
+/* 对比度测量锚：亮暗两面各自钉死一组 token，不随本页主题开关漂移 */
+.m-dark{--bg-card:#2D2D2D;--bg-input:#3C3C3C;--text-primary:#D4D4D4;--text-secondary:#9D9D9D;--accent:#0078D4;--border:#3C3C3C}
+.m-light{--bg-card:#F5F5F5;--bg-input:#FFFFFF;--text-primary:#2D2D2D;--text-secondary:#5A5A5A;--accent:#0078D4;--border:#D4D4D4}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-window); color:var(--text-primary);
+  font:var(--font-size-md)/1.6 "Segoe UI",system-ui,-apple-system,"Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent);color:#FFFFFF}
+main{max-width:980px;margin:0 auto;padding:40px 28px 96px}
+h1{font-size:26px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:17px;margin:52px 0 12px;letter-spacing:-.005em}
+h3{font-size:var(--font-size-md);margin:26px 0 8px;color:var(--text-primary)}
+p{margin:10px 0;max-width:74ch}
+.lede{color:var(--text-secondary);max-width:74ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
+.meta li{
+  font-size:var(--font-size-xs);color:var(--text-secondary);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:3px 9px;background:var(--bg-card);
+}
+.note{border-left:1px solid var(--accent);padding:2px 0 2px 12px;color:var(--text-secondary);max-width:74ch}
+.ban{color:var(--text-secondary)}
+.ban b{color:var(--text-primary)}
+code,kbd{
+  font-family:"Cascadia Mono",Consolas,"Courier New",monospace;
+  font-size:12.5px;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:1px 5px;
+}
+kbd{color:var(--text-secondary)}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:var(--font-size-sm)}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--text-secondary);font-weight:600}
+td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl-wrap{overflow-x:auto}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px 20px;margin:16px 0}
+.panel > h3:first-child{margin-top:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:14px 0 4px;font-size:var(--font-size-sm)}
+.toolbar label{display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary)}
+.toolbar input[type="text"]{
+  font:inherit;color:var(--text-primary);background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px 7px;width:78px;
+}
+.toolbar select{
+  font:inherit;color:var(--text-primary);background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px 6px;
+}
+.toolbar input[type="range"]{width:120px}
+.btn{
+  font:inherit;color:var(--text-primary);background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:3px 10px;cursor:pointer;
+}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,select:focus-visible,input:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+[aria-pressed="true"].btn{border-color:var(--accent);color:var(--text-primary)}
+.stage{border:1px dashed var(--border);border-radius:var(--radius-md);padding:16px;background:var(--bg-window)}
+.stage + .stage{margin-top:12px}
+.stage-cap{font-size:var(--font-size-xs);color:var(--text-secondary);margin:0 0 10px}
+.row{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.row + .row{margin-top:8px}
+.row-label{font-size:var(--font-size-sm);color:var(--text-primary);flex:0 1 auto}
+.row-grip{flex:0 0 auto;min-width:0;display:flex;justify-content:flex-end}   /* 行内 width 即真实列宽：360px 控制列就是 360px */
+.badge{
+  font-size:var(--font-size-xs);color:var(--text-secondary);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:1px 6px;font-variant-numeric:tabular-nums;
+}
+
+/* ── 滑杆本体（照抄 src/components/shared/slider/Slider.css，仅把硬编码宽变成可覆盖） ── */
+.ldk-slider{
+  -webkit-appearance:none;appearance:none;
+  width:130px;height:4px;margin:0;
+  border-radius:var(--radius-sm);
+  background:linear-gradient(to right,var(--accent) var(--slider-pct,0%),var(--border) var(--slider-pct,0%));
+  cursor:pointer;outline-offset:4px;
+}
+.ldk-slider:disabled{opacity:.4;cursor:default}
+.ldk-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--text-primary);
+  box-shadow:var(--shadow-tiny);
+  cursor:grab;
+}
+.ldk-slider::-webkit-slider-thumb:active{cursor:grabbing}
+
+/* ── 拟定的新结构（本图核心）── */
+/* unitPosition ＝ 标签绕着轨道转：左右贴「按钮对」外侧，上下居中压在轨道中线上 */
+.ldk-slider-root{
+  --ldk-slider-gap:calc(6px * var(--ui-scale));
+  --ldk-slider-btn:calc(20px * var(--ui-scale));
+  display:inline-grid;
+  grid-template-columns:auto minmax(0,1fr) auto;   /* − | 轨道 | ＋ */
+  align-items:center;
+  column-gap:var(--ldk-slider-gap);
+  row-gap:calc(2px * var(--ui-scale));
+  max-width:100%;
+}
+.ldk-slider-root[data-fill="true"]{width:100%}
+.ldk-slider-root[data-fill="true"] .ldk-slider{width:100%;min-width:0}
+.ldk-slider-value{
+  min-width:calc(44px * var(--ui-scale));
+  font-size:calc(var(--font-size-sm) * var(--ui-scale));
+  font-variant-numeric:tabular-nums;color:var(--text-secondary);
+  white-space:nowrap;
+}
+.ldk-slider-step{
+  width:var(--ldk-slider-btn);height:var(--ldk-slider-btn);
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg-input);color:var(--text-primary);cursor:pointer;
+}
+.ldk-slider-step svg{width:calc(10px * var(--ui-scale));height:calc(10px * var(--ui-scale));display:block}
+.ldk-slider-step:hover:not(:disabled){border-color:var(--accent)}
+.ldk-slider-step:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ldk-slider-step:disabled{opacity:.4;cursor:default}
+.ldk-slider-root[data-stepper="false"] .ldk-slider-step{display:none}
+/* after（缺省）/ before：标签落在「按钮对」的外侧 —— after 在 ＋ 之后、before 在 − 之前，与轨道同一行 */
+.ldk-slider-root[data-pos="after"]{grid-template-columns:auto minmax(0,1fr) auto auto}
+.ldk-slider-root[data-pos="after"] .ldk-slider-step[data-dir="-1"]{grid-row:1;grid-column:1}
+.ldk-slider-root[data-pos="after"] .ldk-slider{grid-row:1;grid-column:2}
+.ldk-slider-root[data-pos="after"] .ldk-slider-step[data-dir="1"]{grid-row:1;grid-column:3}
+.ldk-slider-root[data-pos="after"] .ldk-slider-value{grid-row:1;grid-column:4}
+.ldk-slider-root[data-pos="before"]{grid-template-columns:auto auto minmax(0,1fr) auto}
+.ldk-slider-root[data-pos="before"] .ldk-slider-value{grid-row:1;grid-column:1}
+.ldk-slider-root[data-pos="before"] .ldk-slider-step[data-dir="-1"]{grid-row:1;grid-column:2}
+.ldk-slider-root[data-pos="before"] .ldk-slider{grid-row:1;grid-column:3}
+.ldk-slider-root[data-pos="before"] .ldk-slider-step[data-dir="1"]{grid-row:1;grid-column:4}
+/* above / below：标签脱离行内流，整行居中压在轨道中线上（轨道不被压短） */
+.ldk-slider-root[data-pos="above"] .ldk-slider-value,
+.ldk-slider-root[data-pos="below"] .ldk-slider-value{
+  grid-column:2;justify-self:center;text-align:center;min-width:0;
+}
+.ldk-slider-root[data-pos="above"] .ldk-slider-value{grid-row:1}
+.ldk-slider-root[data-pos="above"] .ldk-slider-step[data-dir="-1"]{grid-row:2;grid-column:1}
+.ldk-slider-root[data-pos="above"] .ldk-slider{grid-row:2;grid-column:2}
+.ldk-slider-root[data-pos="above"] .ldk-slider-step[data-dir="1"]{grid-row:2;grid-column:3}
+.ldk-slider-root[data-pos="below"] .ldk-slider-step[data-dir="-1"]{grid-row:1;grid-column:1}
+.ldk-slider-root[data-pos="below"] .ldk-slider{grid-row:1;grid-column:2}
+.ldk-slider-root[data-pos="below"] .ldk-slider-step[data-dir="1"]{grid-row:1;grid-column:3}
+.ldk-slider-root[data-pos="below"] .ldk-slider-value{grid-row:2}
+/* 不声明 stepper：没有那两个按钮列，标签直接贴轨道（老观感） */
+.ldk-slider-root[data-stepper="false"][data-pos="after"]{grid-template-columns:minmax(0,1fr) auto}
+.ldk-slider-root[data-stepper="false"][data-pos="after"] .ldk-slider{grid-row:1;grid-column:1}
+.ldk-slider-root[data-stepper="false"][data-pos="after"] .ldk-slider-value{grid-row:1;grid-column:2}
+.ldk-slider-root[data-stepper="false"][data-pos="before"]{grid-template-columns:auto minmax(0,1fr)}
+.ldk-slider-root[data-stepper="false"][data-pos="before"] .ldk-slider-value{grid-row:1;grid-column:1}
+.ldk-slider-root[data-stepper="false"][data-pos="before"] .ldk-slider{grid-row:1;grid-column:2}
+.ldk-slider-root[data-stepper="false"][data-pos="above"] .ldk-slider-value,
+.ldk-slider-root[data-stepper="false"][data-pos="below"] .ldk-slider-value{grid-column:1;justify-self:center}
+.ldk-slider-root[data-stepper="false"][data-pos="above"] .ldk-slider{grid-column:1;grid-row:2}
+.ldk-slider-root[data-stepper="false"][data-pos="below"] .ldk-slider{grid-column:1;grid-row:1}
+.ldk-slider-root[data-stepper="false"][data-pos="above"] .ldk-slider-value{grid-row:1}
+.ldk-slider-root[data-stepper="false"][data-pos="below"] .ldk-slider-value{grid-row:2}
+
+/* ── 挤不挤：三种控制列宽度 ── */
+.cols{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.col{background:var(--bg-window);border:1px dashed var(--border);border-radius:var(--radius-md);padding:12px}
+.col-cap{font-size:var(--font-size-xs);color:var(--text-secondary);margin:0 0 8px;font-variant-numeric:tabular-nums}
+.col[data-w="360"]{width:360px} .col[data-w="240"]{width:240px} .col[data-w="180"]{width:180px}
+.state{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+.state figure{margin:0}
+.state figcaption{font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:6px}
+.hairline{height:1px;background:var(--border)}
+.chain{display:grid;gap:10px;grid-template-columns:1fr 1fr 1fr}
+@media (max-width:760px){.chain{grid-template-columns:1fr}}
+.lane{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px}
+.lane h3{margin:0 0 8px;font-size:var(--font-size-sm);color:var(--text-secondary);font-weight:600}
+.lane ul{margin:0;padding-left:18px}
+.lane li{font-size:var(--font-size-sm);margin:6px 0}
+.hot{border-color:var(--accent)}
+.hot h3{color:var(--text-primary)}
+footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--border);color:var(--text-secondary);font-size:var(--font-size-xs)}
+@media (prefers-reduced-motion:no-preference){
+  .col,.ldk-slider-step{transition:border-color .15s ease-out,background-color .15s ease-out}
+}
+</style>
+</head>
+<body>
+<main>
+<span class="m-dark" id="m-dark" aria-hidden="true" hidden></span>
+<span class="m-light" id="m-light" aria-hidden="true" hidden></span>
+
+<h1>Slider 能力扩展：单位值标签 ＋ 细调步进</h1>
+<p class="lede">壳共享件 <code>src/components/shared/slider/</code>（随 <code>@linkdesk/ui</code> 发布）的能力扩展示意。本图给的是<b>形</b>——单位标签放哪、−/＋ 长什么样、挤到窄列怎么办、亮暗两面是否都过。数值与颜色全部取自 <code>src/index.css</code> 的真实 token，对比度是本页现场算出来的，不是估的。</p>
+<ul class="meta">
+  <li>布置任务阶段 · 本图不落产品代码</li>
+  <li>依据：<a href="04-任务清单.md">04 §一 D1–D4</a>（✅ 2026-10-03 全定）</li>
+  <li>契约：<a href="01-方案与落点契约.md">01 §一 API 正表</a></li>
+  <li>边缘项：<a href="02-边缘情况清单.md">02</a></li>
+</ul>
+<p class="note">读法：① 先看现状（今天这两根滑杆各长什么样）② 再看三 props 正表 ③–⑤ 是四种方位、细调、挤窄三组现场（本页可拖可点，键盘也能走）⑥–⑧ 是亮暗／字号／实测对比度 ⑨ 是声明链（谁声明、谁传递）⑩ 是落地判据。</p>
+
+<h2>① 现状：今天的两根滑杆，值标签不属于组件</h2>
+<p>组件本体是一根裸 <code>&lt;input type="range"&gt;</code>，自带 <b>130px 固定宽</b>、4px 圆角轨道、12px 圆点 thumb；「当前值＋单位」那块文字住在<b>设置仓的包裹层</b>里（<code>settings-slider-control</code> ＋ <code>sliderValueLabel.ts</code>）。所以同一根滑杆，在设置页和在任何别的地方长得不一样。</p>
+<div class="stage">
+  <p class="stage-cap">A · 脱离设置插件：组件自带宽度 130px，没有值标签，没有细调（＝第三方插件今天拿到的全部）</p>
+  <div class="row"><span class="row-label">玻璃不透明度</span><span class="row-grip"><span class="ldk-slider-root" data-fill="false" data-stepper="false" data-pos="after"><input class="ldk-slider" type="range" min="0" max="1" step="0.05" value="0.5" aria-label="玻璃不透明度（现状·裸滑杆）"></span></span></div>
+  <p class="stage-cap" style="margin-top:14px">B · 设置在设置页里（包裹层补的）：轨道撑满控制列，右侧 Span 加出「值＋单位」——<b>能力长在使用者手里</b></p>
+  <div class="row"><span class="row-label">玻璃不透明度</span><span class="row-grip" style="width:360px"><span style="display:flex;align-items:center;gap:10px;width:100%"><input class="ldk-slider" type="range" min="0" max="1" step="0.05" value="0.5" style="flex:1;min-width:0" aria-label="玻璃不透明度（现状·设置页包裹层）"><span class="ldk-slider-value" style="text-align:right">0.5</span></span></span></div>
+</div>
+
+<h2>② 新能力正表：三个 prop，全部可选，不声明＝旧版</h2>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>prop</th><th>类型</th><th>缺省</th><th>语义（D1–D3 定稿）</th></tr></thead>
+  <tbody>
+    <tr><td><code>unit</code></td><td>string</td><td>无</td><td>单位文案（<code>px</code>／<code>ms</code>／<code>FPS</code>／<code>×</code>／<code>毫米</code>…由声明者自定）。<b>声明了才有标签（D6）</b>：未声明 ＝ 不渲染标签（＝① 那根裸滑杆）；<code>""</code> ＝ 有标签、无单位（＝④ 玻璃不透明度那行的 <code>0.5</code>）。⚠️ 空串 ≠ 未声明</td></tr>
+    <tr><td><code>unitPosition</code></td><td>"before" | "after" | "above" | "below"</td><td><code>"after"</code></td><td>标签方位。<code>before</code>/<code>after</code> 贴「按钮对」<b>外侧</b>（before 在 − 之前、after 在 ＋ 之后，与轨道同一行）；<code>above</code>/<code>below</code> 脱离行内流、<b>整行居中压在轨道中线上</b>、不挤轨道。配置键一律用缺省 after</td></tr>
+    <tr><td><code>stepper</code></td><td>boolean</td><td><code>false</code></td><td>轨道两侧 −/＋ 真按钮，<b>常驻</b>（D2）；单击单发、按 step 步进、min/max 夹取、触边置灰；不声明则一个 DOM 都不多</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note"><b>能力归属（D3 口径）</b>：单位与步进<b>都是 Slider 组件自带的常驻能力</b>——任何使用方声明即显、不声明即无。设置仓与任何渲染方都<b>只传递、不决定</b>。⛔ 不存在「某个使用方硬写 stepper」这种做法。</p>
+
+<h2>③ 单位值标签：四种方位现场</h2>
+<p>值标签文案 ＝ 迁入组件的 <code>formatSliderValue</code>（继承 E5.8#77：<code>×</code> 走倍数去尾零、其余单位数值去尾零后接后缀、无单位裸数值）。<b>方位＝标签绕着轨道转</b>：<code>before</code>/<code>after</code> 落在「按钮对」的<b>外侧</b>（before 在 − 之前、after 在 ＋ 之后，与轨道同一行、垂直居中），<code>above</code>/<code>below</code> 脱离行内流、<b>整行居中压在轨道中线上</b>。下面能改单位文案、能换方位，四个方位是同一根滑杆的同一份状态。</p>
+<div class="toolbar">
+  <label>单位 <input type="text" id="unit-input" value="px" maxlength="6" aria-label="单位文案"></label>
+  <label>方位 <select id="pos-select" aria-label="值标签方位">
+    <option value="after" selected>after · 后</option>
+    <option value="before">before · 前</option>
+    <option value="above">above · 上</option>
+    <option value="below">below · 下</option>
+  </select></label>
+  <label><input type="checkbox" id="stepper-toggle" checked> <code>stepper</code></label>
+  <label>字号档 <select id="scale-select" aria-label="字号档">
+    <option value="1" selected>100%</option>
+    <option value="1.25">125%</option>
+    <option value="1.5">150%</option>
+  </select></label>
+  <span class="badge" id="value-out">32 px</span>
+</div>
+<div class="stage" id="stage-main">
+  <p class="stage-cap">设置页真实行宽（360px 控制列）· 与上面的工具条联动</p>
+  <div class="row"><span class="row-label">表面圆角</span>
+    <span class="row-grip" style="width:360px">
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="main" data-unit="px">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少">
+          <svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+          <input class="ldk-slider" type="range" min="0" max="32" step="1" value="16" aria-label="表面圆角（示意）">
+
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加">
+          <svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button><span class="ldk-slider-value">16 px</span>
+      </span>
+    </span>
+  </div>
+</div>
+<p class="stage-cap">把上面的方位切过去看：<code>before</code>/<code>after</code> 时标签在「按钮对」外侧（− 之前 / ＋ 之后），与轨道同一行、垂直居中对齐；<code>above</code>/<code>below</code> 时标签离开行内流、整行居中压在轨道中线上，轨道本身不被压短。</p>
+
+<h2>④ 细调：常驻两侧、单击单发、触边置灰</h2>
+<p>−/＋ 是<b>辅助通道</b>，不接管拖拽——原生 <code>range</code> 的键盘与无障碍一个不动。按钮按 <code>step</code> 步进、按 <code>min/max</code> 夹取，值触边时对应按钮<b>置灰</b>（「点了没反应」是可用性缺陷）；<code>disabled</code> 时滑杆与按钮一起灰。</p>
+<div class="stage">
+  <p class="stage-cap">下面全是真的：可拖、可点 −/＋、可 Tab。到边界时对应按钮会灰掉。</p>
+  <div class="row"><span class="row-label">玻璃不透明度 <span style="color:var(--text-secondary);font-size:var(--font-size-xs)">step 0.05</span></span>
+    <span class="row-grip" style="width:300px">
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="alpha" data-unit="">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少玻璃不透明度">
+          <svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+          <input class="ldk-slider" type="range" min="0" max="1" step="0.05" value="0.5" aria-label="玻璃不透明度">
+
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加玻璃不透明度">
+          <svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button><span class="ldk-slider-value">0.5</span>
+      </span>
+    </span>
+  </div>
+  <div class="row" style="margin-top:14px"><span class="row-label">禁用态（<code>disabled</code>）</span>
+    <span class="row-grip" style="width:300px">
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-unit="px">
+        <button class="ldk-slider-step" type="button" disabled aria-label="减少（禁用）">
+          <svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+          <input class="ldk-slider" type="range" min="0" max="32" step="1" value="16" disabled aria-label="表面圆角（禁用）">
+
+        <button class="ldk-slider-step" type="button" disabled aria-label="增加（禁用）">
+          <svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button><span class="ldk-slider-value">16 px</span>
+      </span>
+    </span>
+  </div>
+</div>
+<p class="note">尺寸拟定：按钮 <code>20 × 20px × --ui-scale</code>、圆角 <code>--radius-sm</code>、1px <code>--border</code> 描边、底 <code>--bg-input</code>、字形 <code>currentColor</code>（自带图标走同一墨色）；与轨道间距 <code>6px × scale</code>；值标签 <code>min-width 44px × scale</code>、<code>tabular-nums</code>（数字跳动不推宽度）。全部乘 <code>--ui-scale</code>——字号缩放铁律，⛔ 不许裸 px。</p>
+
+<h2>⑤ 挤不挤：三种控制列宽度 × 三档字号</h2>
+<p>−/＋ 与值标签都长在组件里之后，这根滑杆要能在窄列里活。360 / 240 / 180 三档并排，拖上方的「字号档」能同时看 150% 时的余量——<b>180px 列是下限探针</b>：若轨道被压到 40px 以下，就该由使用方决定「这一列不放细调」，而不是组件自己缩到不能拖。</p>
+<div class="toolbar">
+  <label>字号档（本组联动）<select id="scale-select-2" aria-label="字号档（窄列组）">
+    <option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option>
+  </select></label>
+</div>
+<div class="stage">
+  <div class="cols" id="cols-stage">
+    <div class="col" data-w="360"><p class="col-cap">控制列 360px（值在 max ⇒ ＋ 已置灰）</p>
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="c360" data-unit="px">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少（360 列）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="ldk-slider" type="range" min="0" max="32" step="1" value="32" aria-label="表面圆角（360 列）">
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加（360 列）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">32 px</span>
+      </span>
+    </div>
+    <div class="col" data-w="240"><p class="col-cap">控制列 240px</p>
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="c240" data-unit="px">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少（240 列）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="ldk-slider" type="range" min="0" max="32" step="1" value="16" aria-label="表面圆角（240 列）">
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加（240 列）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">16 px</span>
+      </span>
+    </div>
+    <div class="col" data-w="180"><p class="col-cap">控制列 180px（下限探针）</p>
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="c180" data-unit="px">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少（180 列）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="ldk-slider" type="range" min="0" max="32" step="1" value="16" aria-label="表面圆角（180 列）">
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加（180 列）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">16 px</span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<h2>⑥ 亮暗两面：一根滑杆的全部着色来源</h2>
+<p>切换只改 token，不改结构——这正是「只增宣言」该有的样子。切到亮面时看两件事：值标签还读得清吗（下面 ⑧ 有实测）、−/＋ 的字形有没有跟着墨色翻。</p>
+<div class="toolbar">
+  <button class="btn" type="button" id="theme-btn" aria-pressed="false">切到亮面</button>
+  <span style="color:var(--text-secondary);font-size:var(--font-size-xs)">← 只切本页；组件在 app 里由 <code>data-theme</code> 驱动</span>
+</div>
+<div class="stage" id="stage-theme">
+  <div class="row"><span class="row-label">表面圆角 <span class="badge">来源：用户覆盖</span></span>
+    <span class="row-grip" style="width:340px">
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="t1" data-unit="px">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少（亮暗对照）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="ldk-slider" type="range" min="0" max="32" step="1" value="24" aria-label="表面圆角（亮暗对照）">
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加（亮暗对照）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">24 px</span>
+      </span>
+    </span>
+  </div>
+  <div class="row"><span class="row-label">UI 字号缩放</span>
+    <span class="row-grip" style="width:340px">
+      <span class="ldk-slider-root" data-fill="true" data-pos="after" data-stepper="true" data-demo="t2" data-unit="％">
+        <button class="ldk-slider-step" type="button" data-dir="-1" aria-label="减少 UI 字号缩放"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="ldk-slider" type="range" min="85" max="150" step="5" value="100" aria-label="UI 字号缩放">
+        <button class="ldk-slider-step" type="button" data-dir="1" aria-label="增加 UI 字号缩放"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">100％</span>
+      </span>
+    </span>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>部位</th><th>token</th><th>暗面实际值</th><th>亮面实际值</th></tr></thead>
+    <tbody>
+      <tr><td>填充段</td><td><code>--accent</code></td><td class="num">#0078D4</td><td class="num">#0078D4</td></tr>
+      <tr><td>未填充段</td><td><code>--border</code></td><td class="num">#3C3C3C</td><td class="num">#D4D4D4</td></tr>
+      <tr><td>thumb / 按钮字形</td><td><code>--text-primary</code></td><td class="num">#D4D4D4</td><td class="num">#2D2D2D</td></tr>
+      <tr><td>值标签</td><td><code>--text-secondary</code></td><td class="num">#9D9D9D</td><td class="num">#5A5A5A</td></tr>
+      <tr><td>行底</td><td><code>--bg-card</code></td><td class="num">#2D2D2D</td><td class="num">#F5F5F5</td></tr>
+      <tr><td>按钮底</td><td><code>--bg-input</code></td><td class="num">#3C3C3C</td><td class="num">#FFFFFF</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<h2>⑦ 键盘：一行三个 Tab 站，焦点环必须看得见</h2>
+<p>顺序是 <kbd>Tab</kbd> − → <kbd>Tab</kbd> 轨道 → <kbd>Tab</kbd> ＋（＝视觉顺序，从左到右同一条线）；轨道上 <kbd>←</kbd><kbd>→</kbd>（及 Home/End/PageUp/PageDown）按 step 走，−/＋ 上 <kbd>Enter</kbd>/<kbd>Space</kbd> 单击单发。焦点环走 <code>--accent</code>、<code>outline-offset:2px</code>。</p>
+<div class="state">
+  <figure><span class="ldk-slider-root" data-fill="false" data-pos="after" data-stepper="true" data-unit="px"><button class="ldk-slider-step" type="button" tabindex="-1" aria-label="减少（焦点示意）" style="outline:2px solid var(--accent);outline-offset:2px"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><input class="ldk-slider" type="range" min="0" max="32" step="1" value="20" tabindex="-1" aria-label="焦点示意：− 获得焦点"><button class="ldk-slider-step" type="button" tabindex="-1" aria-label="增加（焦点示意）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">20 px</span></span><figcaption>− 聚焦：环贴按钮外 2px</figcaption></figure>
+  <figure><span class="ldk-slider-root" data-fill="false" data-pos="after" data-stepper="true" data-unit="px"><button class="ldk-slider-step" type="button" tabindex="-1" aria-label="减少（焦点示意二）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><input class="ldk-slider" type="range" min="0" max="32" step="1" value="20" tabindex="-1" style="outline:2px solid var(--accent);outline-offset:4px" aria-label="焦点示意：轨道获得焦点"><button class="ldk-slider-step" type="button" tabindex="-1" aria-label="增加（焦点示意二）"><svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5v7M1.5 5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><span class="ldk-slider-value">20 px</span></span><figcaption>轨道聚焦：沿用既有 <code>outline-offset:4px</code></figcaption></figure>
+</div>
+<p class="ban">已知代价（<a href="02-边缘情况清单.md">02 E5</a>）：一行从 1 个 Tab 站变成 3 个，设置页现有 8 根滑杆 ⇒ 键盘用户的 Tab 次数明显变长。这是买「细调可达」付的价，接受；<b>⛔ 不许用「按钮不可聚焦」去省这一步。</b></p>
+
+<h2>⑧ 实测对比度：现场算，不是估的</h2>
+<p>下表由本页脚本按 WCAG 相对亮度公式（sRGB 线性化 → <code>0.2126R+0.7152G+0.0722B</code> → <code>(Lmax+0.05)/(Lmin+0.05)</code>）从当前主题的 CSS 变量现算。非文本图形按 <b>3:1</b> 判、正文文本按 <b>4.5:1</b> 判。</p>
+<div class="tbl-wrap"><table id="cr-table">
+  <thead><tr><th>组合</th><th class="num">暗面 CR</th><th class="num">亮面 CR</th><th>判读</th></tr></thead>
+  <tbody></tbody>
+</table></div>
+<p class="note">表里会看到一件要紧的事：<b>轨道「未填充段」贴着行底几乎看不见</b>（暗 1.25／亮 1.36）——用户其实是靠 accent 填充段的长度在判断值的。所以<b>值标签不是锦上添花，它就是补这个信息缺口的</b>；同时这也记成了边缘项（<a href="02-边缘情况清单.md">02 E14</a>，是否提亮余段另议，本轮不改轨道视觉）。</p>
+
+<h2>⑨ 声明链：谁声明、谁传递、谁渲染</h2>
+<p>这张图是 D3 更正后的口径。要点：<b>能力在第三格里，前两格谁都不造能力</b>——第一格只写「我要这个能力」，第二格原样搬运。</p>
+<div class="chain">
+  <div class="lane"><h3>① 声明者</h3><ul>
+    <li>壳：外观键在自己的配置声明上写 <code>unit</code>／<code>stepper</code>（<b>第一批使用者</b>）</li>
+    <li>插件作者：自己 <code>package.json</code> 的配置键上写同样两个字段</li>
+    <li>自绘界面：直接在 JSX 上传 props</li>
+  </ul></div>
+  <div class="lane"><h3>② 传递者（零知识）</h3><ul>
+    <li>宿主 config API：把属性对象交给设置面</li>
+    <li>设置仓 <code>renderControl</code>：<code>&lt;Slider unit={prop.unit} stepper={prop.stepper} … /&gt;</code></li>
+    <li>⛔ 它不判键名、不做决定、不再自己画标签（包裹层删除）</li>
+  </ul></div>
+  <div class="lane hot"><h3>③ 能力本体（Slider）</h3><ul>
+    <li>值标签格式化 ＋ 四方位排布</li>
+    <li>−/＋ 按钮、夹取、置灰、aria</li>
+    <li>声明就显、不声明就没有</li>
+  </ul></div>
+</div>
+<p class="note"><b>🔴 这一格是拍板时顺带挖出来的</b>：<code>unit</code> 此前<b>从未进过作者面 schema</b>（<code>public/schemas/plugin.schema.json</code> 里出现 0 次，而配置属性对象是 <code>additionalProperties:false</code>）⇒ 第三方作者今天写 <code>unit</code> 会被校验打红——「单位由插件作者自己决定」此前<b>只对壳成立</b>。所以声明面要两处同笔补：宿主 <code>ConfigProperty</code> ＋ 作者面 schema（含 <code>docs/03-插件制造/</code> 与 <code>packages/plugin-sdk/schemas/</code> 两份字节拷贝），并随 plugin-sdk 发版才到作者手里（<a href="02-边缘情况清单.md">02 E10/E11</a>）。</p>
+
+<h2>⑩ 落地判据（照 <a href="01-方案与落点契约.md">01 §四</a>）</h2>
+<ol>
+  <li><b>旧观感零回归</b>：设置页现有滑杆键不声明新 props 的过渡期，逐键目视＝现状。</li>
+  <li><b>新能力四形态</b>：after／before／above／below ＋ stepper ＋ 组合，各一现场。</li>
+  <li><b>键盘全链</b>：不碰鼠标能改到值（本节 ⑦ 的顺序）。</li>
+  <li><b>脱离设置页成立</b>：任一非配置页场景直接 <code>&lt;Slider unit="ms" stepper /&gt;</code> 成立。</li>
+  <li><code>npm run check</code> 全绿（含 <code>api-surface-additive</code>）＋ token 快照——标签与按钮零硬编码。</li>
+  <li><b>第三方声明链通</b>：作者 schema 补齐后，插件声明 <code>unit</code>＋<code>stepper</code> 能长出控件。</li>
+</ol>
+<p class="ban">本图未决、已记录的边缘项：值标签与设置行<b>行尾生效值徽标</b>可能同屏两个数字（<a href="02-边缘情况清单.md">02 E1</a>，归「设置行」案统筹）；组件根节点由「一根 input」变成「一个包裹盒」（<a href="02-边缘情况清单.md">02 E13</a>）——<code>.settings-slider-control .ldk-slider{flex:1}</code> 靠后代选择器仍匹配，但 130px 固定宽要让位给可伸缩。</p>
+
+<footer>
+  05-设计图-Slider.html · 布置任务阶段产物，⛔ 不随产品代码走 · 出稿流程：<code>/impeccable</code> ＋ <code>/ui ux pro max</code>（用户 2026-10-03 明令的壳共享 UI 规矩）· 数值取自 <code>src/index.css</code>，对比度为页内实时计算
+</footer>
+
+</main>
+<script>
+function readVar(el, name){ return getComputedStyle(el).getPropertyValue(name).trim(); }
+function toLum(hex){
+  var h = hex.replace('#','').trim();
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var c = [0,2,4].map(function(i){
+    var v = parseInt(h.substr(i,2),16)/255;
+    return v <= 0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+  });
+  return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
+}
+function cr(a,b){
+  var x = toLum(a), y = toLum(b);
+  return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);
+}
+function fmt(n){ return n.toFixed(2); }
+
+/* 按 token 名字现算 —— 与组件着色来源同源，换主题即重算 */
+function measure(el){
+  var p = readVar(el,'--text-primary'), s = readVar(el,'--text-secondary');
+  var acc = readVar(el,'--accent'), bor = readVar(el,'--border');
+  var card = readVar(el,'--bg-card'), input = readVar(el,'--bg-input');
+  return {
+    label:  cr(s, card),      /* 值标签：text-secondary on bg-card */
+    fill:   cr(acc, card),    /* 填充段：accent on bg-card */
+    rest:   cr(bor, card),    /* 未填充段：border on bg-card */
+    thumb:  cr(p, card),      /* thumb：text-primary on bg-card */
+    glyph:  cr(p, input),     /* 按钮字形：text-primary on bg-input */
+    box:    cr(input, card)   /* 步进按钮底：bg-input on bg-card（E15） */
+  };
+}
+function verdict(ratio, kind){
+  var need = kind === 'graphic' ? 3 : 4.5;
+  if (ratio >= need) return '过 ' + need + ':1';
+  if (ratio >= need*0.85) return '擦线（' + need + ':1）';
+  return '不足 ' + need + ':1';
+}
+function renderCR(){
+  var dark = measure(document.getElementById('m-dark'));
+  var light = measure(document.getElementById('m-light'));
+  var rows = [
+    ['值标签文字（text-secondary / bg-card）','label','text'],
+    ['−/＋ 字形（text-primary / bg-input）','glyph','graphic'],
+    ['滑杆 thumb（text-primary / bg-card）','thumb','graphic'],
+    ['已填充轨道（accent / bg-card）','fill','graphic'],
+    ['未填充轨道（border / bg-card）','rest','graphic'],
+    ['步进按钮底（bg-input / bg-card）','box','graphic']
+  ];
+  var body = document.querySelector('#cr-table tbody');
+  body.innerHTML = '';
+  rows.forEach(function(r){
+    var kind = r[2];
+    var note;
+    if (kind === 'graphic') {
+      note = (dark[r[1]] >= 3 && light[r[1]] >= 3) ? '两面都过 3:1'
+           : (dark[r[1]] < 3 && light[r[1]] < 3) ? '两面都不到 3:1 —— 本轮不改，只记录' : '只有一面过';
+    } else {
+      note = '正文文本门槛 4.5:1';
+    }
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + r[0] + '</td>'
+      + '<td class="num">' + fmt(dark[r[1]]) + '　<span style="color:var(--text-secondary)">' + verdict(dark[r[1]], kind) + '</span></td>'
+      + '<td class="num">' + fmt(light[r[1]]) + '　<span style="color:var(--text-secondary)">' + verdict(light[r[1]], kind) + '</span></td>'
+      + '<td style="color:var(--text-secondary)">' + note + '</td>';
+    body.appendChild(tr);
+  });
+}
+
+/* formatSliderValue 的迁移语义：× 走倍数去尾零、其余去尾零接后缀、无单位裸值 */
+function formatValue(v, unit){
+  if (!isFinite(v)) return '';
+  var text = unit === '×' ? v.toFixed(1) : String(Number(v.toFixed(2)));
+  if (!unit) return text;
+  return unit === '×' ? unit + text : text + unit;
+}
+/* 按 step 的小数位收敛，避免 0.15000000000000002 */
+function snap(v, step){
+  var dec = (String(step).split('.')[1] || '').length;
+  return Number(v.toFixed(Math.max(dec, 0)));
+}
+function syncPct(input){
+  var min = Number(input.min), max = Number(input.max), v = Number(input.value);
+  var pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+  input.style.setProperty('--slider-pct', pct + '%');
+}
+/* 一根演示滑杆：接线轨道 ↔ −/＋ ↔ 值标签 ↔ 边界置灰。
+   接线只做一次；换单位走 root._unit，⛔ 不重复 addEventListener（否则点一下走 N 步）。 */
+function wire(root){
+  var input = root.querySelector('.ldk-slider');
+  var label = root.querySelector('.ldk-slider-value');
+  var minus = root.querySelector('.ldk-slider-step[data-dir="-1"]');
+  var plus  = root.querySelector('.ldk-slider-step[data-dir="1"]');
+  if (!input || !label) return;
+  function unit(){
+    return root._unit !== undefined ? root._unit : (root.getAttribute('data-unit') || '');
+  }
+  function refresh(){
+    var min = Number(input.min), max = Number(input.max), step = Number(input.step) || 1;
+    var v = snap(Number(input.value), step);
+    if (String(v) !== input.value) input.value = String(v);
+    label.textContent = formatValue(v, unit());
+    syncPct(input);
+    if (minus) minus.disabled = !!input.disabled || v <= min;
+    if (plus)  plus.disabled  = !!input.disabled || v >= max;
+  }
+  function nudge(dir){
+    var min = Number(input.min), max = Number(input.max), step = Number(input.step) || 1;
+    var next = Math.min(max, Math.max(min, snap(Number(input.value) + dir*step, step)));
+    input.value = String(next);
+    refresh();
+  }
+  if (minus) minus.addEventListener('click', function(){ nudge(-1); });
+  if (plus)  plus.addEventListener('click', function(){ nudge(1); });
+  input.addEventListener('input', refresh);
+  root._refresh = refresh;
+  refresh();
+}
+
+/* ① ③ 的工具条：单位／方位／stepper／字号档 → 驱动 360px 那根 */
+(function(){
+  var stage = document.getElementById('stage-main');
+  var root = stage.querySelector('[data-demo="main"]');
+  var unitInput = document.getElementById('unit-input');
+  var posSelect = document.getElementById('pos-select');
+  var stepToggle = document.getElementById('stepper-toggle');
+  var scaleSelect = document.getElementById('scale-select');
+  var out = document.getElementById('value-out');
+  var demoInput = root.querySelector('.ldk-slider');
+  function apply(){
+    var unit = unitInput.value.trim();
+    root.setAttribute('data-pos', posSelect.value);
+    root.setAttribute('data-stepper', stepToggle.checked ? 'true' : 'false');
+    stage.style.setProperty('--ui-scale', scaleSelect.value);
+    root._unit = unit;              /* 接线只做过一次：换单位只换口径，⛔ 不重新 wire */
+    root._refresh();
+    out.textContent = formatValue(snap(Number(demoInput.value), Number(demoInput.step) || 1), unit);
+  }
+  unitInput.addEventListener('input', apply);
+  posSelect.addEventListener('change', apply);
+  stepToggle.addEventListener('change', apply);
+  scaleSelect.addEventListener('change', apply);
+  wire(root);
+  apply();
+})();
+
+/* ⑤ 窄列组的字号档 */
+(function(){
+  var sel2 = document.getElementById('scale-select-2');
+  var stage = document.getElementById('cols-stage');
+  sel2.addEventListener('change', function(){
+    stage.style.setProperty('--ui-scale', sel2.value);
+  });
+})();
+
+/* ⑥ 亮暗切换（只切本页；组件在 app 里由 data-theme 驱动） */
+(function(){
+  var btn = document.getElementById('theme-btn');
+  btn.addEventListener('click', function(){
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+    btn.setAttribute('aria-pressed', light ? 'false' : 'true');
+    btn.textContent = light ? '切到亮面' : '切回暗面';
+    renderCR();
+  });
+})();
+
+/* ④ 其余演示滑杆一律接线 */
+document.querySelectorAll('.ldk-slider-root[data-stepper]').forEach(function(root){
+  if (!root._refresh) wire(root);
+});
+/* ① 里那两根「现状」滑杆不在 root 结构里，但填充比例仍要算（否则填充段恒 0%） */
+document.querySelectorAll('.ldk-slider').forEach(syncPct);
+renderCR();
+</script>
+</body>
+</html>
