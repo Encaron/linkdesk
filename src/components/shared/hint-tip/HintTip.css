@@ -18,9 +18,10 @@
    也是本件避免"提示变成菜单"的边界）。
 
    玻璃：本件是 `OverlayPortal` 的 `[data-overlay-wrapper]` 直接子 ⇒ 按 `src/index.css`
-   深度 3 结构规则会拿到 `backdrop-filter`。**不关掉它**——宁可吃一口无观感的 GPU 开销
-   （`--bg-card` 不透明 ⇒ 模糊滤不出任何东西），也不为一件开结构例外（地板是"进层即隔离"
-   的结构事实，开口子就会有人问"为什么它特殊"）。⛔ 本文件不写 backdrop-filter 任何形态。 */
+   深度 3 结构规则拿到 `backdrop-filter`（条身）；**尾巴是条身的子＝深度 4，够不着结构规则**。
+   2026-10-03 拍板（任务夹「HintTip尖角-玻璃态叠影」D1＝A 案）：尾巴自备磨砂＋clip-path 半菱
+   裁剪，见下方 `.ldk-hint-tip-tail`——本文件因此**开写** backdrop-filter，例外依据＝尾巴嵌套
+   深度 4 结构规则天然够不着（同 index.css 已档先例 `.ldk-floating-panel-act.tip::after` 深度 5）。 */
 .ldk-hint-tip {
   position: fixed;
   z-index: var(--z-dropdown);
@@ -49,9 +50,15 @@
 }
 
 /* ── 气泡尖角（装饰；方位与沿边落位都由渲染器给：`data-tip-placement` ＋ 内联 left/top）──
-   8×8 正方形绕心 `rotate(45deg)` ＝ 菱形，露出"指向锚"的那半个角；
-   两半里**藏在条内的那一半**靠条自身的背景盖住，所以这里只需裁掉两条**不该露**的边。
-   主轴那一侧的偏移写在这里（-5px ＝ 只露半个角），副轴那一维的值一律由渲染器内联写。 */
+   8×8 正方形绕心 `rotate(45deg)` ＝ 菱形，露出"指向锚"的那半个角。
+   🔴 玻璃态穿帮修复（2026-10-03 D1＝A 案「半菱裁剪＋尾巴自带磨砂」）：旧机制靠"条身背景
+   盖住藏进条里的半张"隐身——玻璃态把 `--bg-card` 合成半透明后，那半张从"盖住"变"叠上去"
+   （菱形暗斑／清晰菱形／边框发虚三症状同源）。改两条腿：
+   ① `clip-path`（四条方位规则各一条）把藏进条里的半张**从几何上裁掉**——沿对角线切半，
+      只留含"指向锚的尖"那半；不透明主题下视觉与旧机制全同（藏的半张本来就被盖住）。
+   ② 偏移 -5px→-4px：菱形中心骑到条身边框线上，裁出的对角直边与边框线重合故不露；
+      尾巴尖随之矮 ≈1px（D2 已拍：维持 8×8 不补）。
+   主轴那一侧的偏移写在这里（-4px），副轴那一维的值一律由渲染器内联写。 */
 .ldk-hint-tip-tail {
   position: absolute;
   width: 8px;
@@ -59,28 +66,42 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   transform: rotate(45deg);
+  /* 磨砂自备：尾巴深度 4 吃不到 index.css 结构规则，玻璃态下露出的半张必须与条身吃
+     同一口磨砂，糊面才对得上。公式与 index.css 深度 3 结构规则**逐字同源**（blur 地板
+     先行＋saturate 照条身；`--float-blur-floor` 定义在 #ld-float-layer 上，变量继承可读）。
+     非玻璃主题 `--bg-card` 不透明 ⇒ 模糊滤不出任何东西＝无观感（与条身同一逻辑）。 */
+  backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor))) saturate(var(--glass-saturate, 1));
+  -webkit-backdrop-filter: blur(max(var(--glass-blur, 0px), var(--float-blur-floor)));
 }
 
 .ldk-hint-tip[data-tip-placement="top"] .ldk-hint-tip-tail {
-  bottom: -5px;
+  bottom: -4px;
   border-top: none;
   border-left: none;
+  /* rotate(45deg) 后正方形 bottom-right 角＝菱形下尖：裁掉上半，留含下尖的对角半 */
+  clip-path: polygon(0 100%, 100% 100%, 100% 0);
 }
 
 .ldk-hint-tip[data-tip-placement="bottom"] .ldk-hint-tip-tail {
-  top: -5px;
+  top: -4px;
   border-bottom: none;
   border-right: none;
+  /* top-left 角＝菱形上尖：裁掉下半 */
+  clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
 .ldk-hint-tip[data-tip-placement="left"] .ldk-hint-tip-tail {
-  right: -5px;
+  right: -4px;
   border-bottom: none;
   border-left: none;
+  /* top-right 角＝菱形右尖：裁掉左半 */
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
 .ldk-hint-tip[data-tip-placement="right"] .ldk-hint-tip-tail {
-  left: -5px;
+  left: -4px;
   border-top: none;
   border-right: none;
+  /* bottom-left 角＝菱形左尖：裁掉右半 */
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
 }
