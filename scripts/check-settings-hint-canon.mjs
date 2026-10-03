@@ -2,7 +2,7 @@
 /**
  * check-settings-hint-canon.mjs —— 设置控件词表正典的两条轻门禁（阶段 4.4）。
  *
- * 案情见 docs/04-软件更新/待抉择池/设置控件-词表正典与共享化/：
+ * 案情见 docs/04-软件更新/已落地/设置控件-词表正典与共享化/：
  *   · 01 §0.3 门禁：「改正典 hint 名单而不动作者面 description 时 npm run check 要红」
  *   · 01 §0.2 正典表 13 条 ＋ 02 E4d（renderHint 是 3 值）
  *   · 02 E4 哨兵字面量收敛门禁
@@ -174,7 +174,7 @@ function run() {
     console.error("\n" + problems.join("\n") + "\n");
     console.error("   修法：① 名单与 description 互相对齐（description 锚点＝「Known hints: a, b, c.」）");
     console.error("        ② 用 `import { CONFIG_NONE_SENTINEL } from \"@linkdesk/ui\"`（或壳内正典件）取值");
-    console.error("  说明：见 docs/04-软件更新/待抉择池/设置控件-词表正典与共享化/02-边缘情况清单.md E3/E4\n");
+    console.error("  说明：见 docs/04-软件更新/已落地/设置控件-词表正典与共享化/02-边缘情况清单.md E3/E4\n");
     return 1;
   }
   console.log(
