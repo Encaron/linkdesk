@@ -18,6 +18,7 @@ import {
   registerTitleBarContribution,
 } from "../../core/registry/commands/MenuRegistry";
 import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.8#37.6：when 过滤全局 context key
+import { registerKeybinding, clearKeybindings } from "../../core/registry/commands/KeybindingRegistry"; // 2026-10-04：顶部菜单栏键帽
 import { registerShellMenus } from "../../core/commands/input-bindings/shellMenus"; // E6#57.10：帮助组真源
 import { registerUpdateCommands } from "../../core/commands/shell/updateCommands"; // E6#57.10：命令 title 回退源
 import { registerReleaseNotesCommands } from "../../core/commands/shell/releaseNotesCommands"; // E6#57.13g：帮助菜单首项的命令
@@ -426,5 +427,143 @@ describe("E6#57.11 真源声明——更新按钮（无更新不占位 / 有更�
     expect(btn.label).toBe("下载更新");
     expect(btn.title).toBe("处理更新"); // 命令自报 title（E6#57.10 注册），不是命令 id
     expect(btn.icon).toBeUndefined(); // 全文字按钮不渲染 icon
+  });
+});
+
+/**
+ * 2026-10-04：汉堡同组成员折进「组标签容器」——修「插件贡献的 `group:"file"` 项与「文件」同级平铺」。
+ *
+ * 现象（用户原话）：「汉堡菜单现在把"新建文件，新建文件夹，关闭文件夹，编辑"等这些文件树的东西
+ * 平铺在和文件同级的目录了，明明顶部显示的是在文件这个菜单的内部的」。
+ * 根因：顶栏**一个 group ＝ 一个下拉**（按钮即组标签）⇒ 整组天然落进下拉；汉堡把组内成员**逐条**
+ * 画在一级、只有「组标签容器的 children」进子面板 ⇒ 同组其他贡献者留在一级。
+ * 判据：折进容器后 ☰「文件」面板 = 顶栏「文件」下拉（**同序同物**）。
+ */
+describe("2026-10-04 汉堡同组成员折进「组标签容器」", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+  });
+
+  /** 一个 group 里同时有「组标签容器」与同组其他贡献者——生产里 = 壳「文件」容器 ＋ 文件树插件的 6 条 */
+  function registerFileGroupMixed(): void {
+    registerMenuItems(MENU_SLOTS.MenuBar, SHELL, [
+      { command: "", label: "文件", group: "file", children: [{ command: "demo.export", group: "file" }] },
+    ]);
+    registerMenuItems(MENU_SLOTS.MenuBar, PLUGIN, [
+      { command: "demo.newFile", label: "新建文件", group: "file" },
+      { command: "demo.newFolder", label: "新建文件夹", group: "file" },
+      {
+        command: "",
+        label: "编辑",
+        group: "file",
+        children: [{ command: "demo.cut", group: "edit" }, { command: "demo.copy", group: "edit" }],
+      },
+    ]);
+    registerCommand(SHELL, { id: "demo.export", title: "导出工作区", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "demo.newFile", title: "新建文件", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "demo.newFolder", title: "新建文件夹", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "demo.cut", title: "剪切", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "demo.copy", title: "复制", handler: async () => {} });
+  }
+
+  it("正控——汉堡一级只剩「文件」容器；插件项与「编辑」父项都进了它的 children", () => {
+    registerFileGroupMixed();
+
+    const file = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    expect(file.items).toHaveLength(1); // 一级只有容器——插件项不再与它同级平铺
+    expect(file.items[0]).toMatchObject({ label: "文件", command: "" });
+    expect(file.items[0].children!.map((c) => c.label)).toEqual(["导出工作区", "新建文件", "新建文件夹", "编辑"]);
+    // 折进来的「编辑」父项照旧自带 children（嵌套不许被压平）
+    expect(file.items[0].children!.find((c) => c.label === "编辑")!.children!.map((c) => c.label)).toEqual(["剪切", "复制"]);
+  });
+
+  it("正控——顶栏仍是平铺下拉，且两面**同序同物**（修完不再漂移）", () => {
+    registerFileGroupMixed();
+
+    const top = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    expect(top.items.map((i) => i.label)).toEqual(["导出工作区", "新建文件", "新建文件夹", "编辑"]);
+
+    const ham = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    expect(ham.items[0].children!.map((i) => i.label)).toEqual(top.items.map((i) => i.label));
+  });
+
+  it("负控——没有容器的组（只由插件项构成）仍一级平铺，不被折走", () => {
+    registerMenuItems(MENU_SLOTS.MenuBar, PLUGIN, [{ command: "demo.term", label: "新建终端", group: "panel" }]);
+    registerCommand(PLUGIN, { id: "demo.term", title: "新建终端", handler: async () => {} });
+
+    const panel = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "panel")!;
+    expect(panel.items.map((i) => i.label)).toEqual(["新建终端"]);
+  });
+
+  it("边界——容器自己被 when 过滤掉 ⇒ 整组原样返回（同组其他项不许跟着一起消失）", () => {
+    registerMenuItems(MENU_SLOTS.MenuBar, SHELL, [
+      { command: "", label: "文件", group: "file", when: "neverTrue", children: [{ command: "demo.export", group: "file" }] },
+    ]);
+    registerMenuItems(MENU_SLOTS.MenuBar, PLUGIN, [{ command: "demo.newFile", label: "新建文件", group: "file" }]);
+    registerCommand(SHELL, { id: "demo.export", title: "导出工作区", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "demo.newFile", title: "新建文件", handler: async () => {} });
+
+    const file = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    expect(file.items.map((i) => i.label)).toEqual(["新建文件"]);
+  });
+});
+
+/**
+ * 2026-10-04：顶部菜单栏**恢复**快捷键显示——顶栏 ctx 原先不传 keybindings（E3h #65 的
+ * `showKeybindings=false` 口径），现与汉堡同源同函数（`resolveItemNode` 里 `kb?.key` 判空）。
+ * 判据：同一命令在两面 shortcut **逐字相同**；无绑定的项**不带**该字段（不是空串占位）。
+ */
+describe("2026-10-04 顶部菜单栏快捷键显示（与汉堡同源）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    clearKeybindings();
+  });
+
+  /** 同一个「文件」组里一条有绑定 + 一条无绑定（顶栏展平后是同级两项） */
+  function registerFileGroupWithBindings(): void {
+    registerMenuItems(MENU_SLOTS.MenuBar, SHELL, [
+      {
+        command: "",
+        label: "文件",
+        group: "file",
+        children: [
+          { command: "demo.openSettings", label: "打开设置", group: "file" },
+          { command: "demo.noKey", label: "无键命令", group: "file" },
+        ],
+      },
+    ]);
+    registerCommand(SHELL, { id: "demo.openSettings", title: "打开设置", handler: async () => {} });
+    registerCommand(SHELL, { id: "demo.noKey", title: "无键命令", handler: async () => {} });
+    registerKeybinding({ command: "demo.openSettings", key: "ctrl+,", source: "builtin" });
+  }
+
+  it("正控——有绑定 ⇒ 顶栏项带 shortcut；无绑定 ⇒ 不带该字段", () => {
+    registerFileGroupWithBindings();
+
+    const top = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    expect(top.items.find((i) => i.command === "demo.openSettings")!.shortcut).toBe("Ctrl+,");
+    expect("shortcut" in top.items.find((i) => i.command === "demo.noKey")!).toBe(false);
+  });
+
+  it("正控——顶栏与汉堡同源同格式（同一条 formatKeyLabel 链，两处逐字相同）", () => {
+    registerFileGroupWithBindings();
+
+    const top = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    const ham = buildHamburgerMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    const topItem = top.items.find((i) => i.command === "demo.openSettings")!;
+    const hamItem = ham.items[0].children!.find((c) => c.command === "demo.openSettings")!;
+    expect(hamItem.shortcut).toBe(topItem.shortcut);
+  });
+
+  it("两段和弦照显示（不被并成一段）", () => {
+    registerFileGroupWithBindings();
+    registerKeybinding({ command: "demo.noKey", key: "ctrl+k ctrl+t", source: "builtin" });
+
+    const top = buildTitleBarMenuGroups(id, VIS(true, true)).find((g) => g.group === "file")!;
+    expect(top.items.find((i) => i.command === "demo.noKey")!.shortcut).toBe("Ctrl+K Ctrl+T");
   });
 });

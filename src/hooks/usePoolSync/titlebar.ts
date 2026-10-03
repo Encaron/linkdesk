@@ -56,7 +56,7 @@ function resolveVisibilityChecked(commandId: string, vis: ZoneVisibility): boole
 /** E5.8#55-C：菜单项 → PoolMenuItem 共用解析上下文（顶部/汉堡共用 resolveItemNode） */
 interface ResolveItemCtx {
   t: (key: string) => string;
-  /** 快捷键查找源——汉堡 showKeybindings=true 传入；顶部菜单栏无快捷键显示不传 */
+  /** 快捷键查找源——顶栏与汉堡**都**传入（2026-10-04 恢复顶栏键帽；此前仅汉堡 = E3h #65 口径） */
   keybindings?: ReturnType<typeof getKeybindings>;
   /** E5.8#148：显隐勾选谓词——命令 → 当前勾选态（zone 可见 = ✓）。undefined = 不显示 ✓ */
   resolveChecked?: (commandId: string) => boolean | undefined;
@@ -117,9 +117,12 @@ function resolveGroupLabel(
 
 export function buildTitleBarMenuGroups(t: (key: string) => string, vis: ZoneVisibility): PoolMenuGroup[] {
   const { groups, sortedGroupNames } = collectMenuBarGroups();
-  // E5.8#55-C：顶部菜单栏无快捷键显示（壳原语义）——ctx 不传 keybindings
+  // 2026-10-04：顶部菜单栏**恢复**快捷键显示（用户立案）——ctx 带 keybindings，与汉堡同源同函数。
+  // 原先「顶部无快捷键」不是丢了：E3h `09-美化专题` §二 #65 把菜单快捷键显示统一成 MenuRenderer 的
+  // `showKeybindings` 开关时，给顶栏定了 false（「标题栏 → 文件▼ → 不显示快捷键」）。用户裁定恢复。
+  // 显示规则不变：只显示**真有绑定**的项（resolveItemNode 里 `kb?.key` 判空，无绑定不带 shortcut）。
   // E5.8#148：resolveChecked 绑定 zone 可见性——查看→界面→主侧栏/面板 勾选态
-  const ctx: ResolveItemCtx = { t, resolveChecked: (cmd) => resolveVisibilityChecked(cmd, vis) };
+  const ctx: ResolveItemCtx = { t, keybindings: getKeybindings(), resolveChecked: (cmd) => resolveVisibilityChecked(cmd, vis) };
   // E5.8#55：展平组标签容器（label = 组标签——点组按钮直接平铺命令，VS Code 顶部行为）；
   // 保留嵌套子菜单（label ≠ 组标签的无 command 父项，如「外观」→「活动栏位置」）——
   // 顶部下拉换 ContextMenu 后出嵌套子菜单（对标 VS Code：查看→外观→活动栏位置）。
@@ -160,10 +163,47 @@ export function buildTitleBarMenuGroups(t: (key: string) => string, vis: ZoneVis
 }
 
 /**
+ * 2026-10-04：汉堡组内成员序列化——把「组标签容器」**以外**的同组成员折进容器的 children。
+ *
+ * 🔴 为什么必须折：顶栏把**一个 group 当一个下拉**（按钮本身就是「文件」）⇒ 组里有什么，全在它的
+ * 下拉里（`flattenGroupItems` 把容器 children 平铺、其余成员当条目排进去）。汉堡没有「文件」这个
+ * 按钮位，它把组内成员**逐条**画在一级 ⇒ 只有容器的 children 进了子面板，**同组的其他贡献者留在一级**
+ * ——插件往 `group: "file"` 塞的命令项与父项，于是与「文件」**同级平铺**（2026-10-04 用户立案：
+ * 「明明顶部显示的是在文件这个菜单的内部的」）。折进容器后，☰ 的「文件」面板内容 = 顶栏「文件」
+ * 下拉内容（同序同物，两面不再漂移）。
+ *
+ * 判据与顶栏同一条（`!command && label === 组标签`——无命令父项且标签即组标签）。没有这样的容器
+ * （如只由插件项构成的 `group: "panel"`）⇒ 原样返回（一级平铺：本来就没有可折的壳）。
+ * ⚠️ 容器自己被 when 过滤掉 ⇒ 同样原样返回——否则整组会跟着容器一起凭空消失。
+ * 折进去的项照旧走 `resolveItemNode` ⇒ 各自的 `group`（分隔线依据）与 `when` 过滤天然保留。
+ */
+function buildHamburgerGroupItems(
+  groupItems: Array<MenuItem & { pluginId: string }>,
+  ctx: ResolveItemCtx,
+  groupLabel: string
+): PoolMenuItem[] {
+  const resolved = groupItems
+    .map((item) => ({ raw: item, node: resolveItemNode(item, ctx) }))
+    .filter((x): x is { raw: MenuItem & { pluginId: string }; node: PoolMenuItem } => x.node !== null);
+  const containerRaw = groupItems.find((i) => !i.command && i.label === groupLabel);
+  const container = containerRaw ? resolved.find((x) => x.raw === containerRaw) : undefined;
+  if (!container) return resolved.map((x) => x.node);
+  // 容器**原序位置**不动（原位替换）——折进来的成员排在容器自有 children 之后（与顶栏展平序一致）；
+  // 其余同组成员**只作为 children 出现**，一级列表里不再各自占位。
+  const folded = resolved.filter((x) => x.raw !== containerRaw).map((x) => x.node);
+  const children = [...(container.node.children ?? []), ...folded];
+  const containerNode: PoolMenuItem = { ...container.node, ...(children.length ? { children } : {}) };
+  return resolved
+    .map((x) => (x.raw === containerRaw ? containerNode : null))
+    .filter((x): x is PoolMenuItem => x !== null);
+}
+
+/**
  * E5.7#6：☰ 汉堡菜单序列化——壳 HamburgerMenu 的 MenuRenderer 语义照搬：
  * showGroups（组标题）+ showKeybindings（快捷键）+ checkWhen（when 灰显）。
- * 与 titlebar 关键差异：**不展平**——无 command 父项（"文件"/"查看"）保留为
- * 带 children 的父项，hover 弹出子面板（壳 titlebar 下拉则展平为平铺列表）。
+ * 与 titlebar 关键差异：**组标签容器保留为父项**（"文件"/"查看"带 children、hover 弹子面板；
+ * 壳 titlebar 下拉则展平为平铺列表）；⚠️ 2026-10-04 起同组其他贡献者**折进该容器**——
+ * 见 `buildHamburgerGroupItems`（此前它们与容器同级平铺）。
  */
 export function buildHamburgerMenuGroups(t: (key: string) => string, vis: ZoneVisibility): PoolMenuGroup[] {
   const { groups, sortedGroupNames } = collectMenuBarGroups();
@@ -175,10 +215,11 @@ export function buildHamburgerMenuGroups(t: (key: string) => string, vis: ZoneVi
   // disabled 字段随此次移除（PoolMenuItem/MenuItemList/CSS 同步删——无生产者即成死代码）
   return sortedGroupNames.map((groupName) => {
     const groupItems = groups.get(groupName)!;
+    const groupLabel = resolveGroupLabel(groupItems, groupName);
     return {
       group: groupName,
-      label: t(resolveGroupLabel(groupItems, groupName)),
-      items: groupItems.map((item) => resolveItemNode(item, ctx)).filter((x): x is PoolMenuItem => x !== null),
+      label: t(groupLabel),
+      items: buildHamburgerGroupItems(groupItems, ctx, groupLabel),
     };
   });
 }

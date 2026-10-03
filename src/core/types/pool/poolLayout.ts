@@ -426,12 +426,12 @@ export interface PoolMenuItem {
    * ⚠️ 子菜单 children 上的 group 会被 ContextMenu 换成父项 group（mapChildren 语义）——分组只在**顶层菜单项**生效。
    */
   group?: string;
-  /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
+  /** 快捷键文本（formatKeyLabel 后）——顶栏与汉堡**都**显示（2026-10-04 恢复顶栏键帽）；无绑定不带此字段 */
   shortcut?: string;
   /** E5.8#148：当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
    *  序列化（zone 可见 = ✓）。显示文本铁律：池哑渲染原文，壳只推布尔。 */
   checked?: boolean;
-  /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
+  /** 子菜单——titlebar 仅 command+children 父项携带；汉堡：组标签容器保留为父项，同组成员折进它（2026-10-04） */
   children?: PoolMenuItem[];
 }
 
@@ -509,7 +509,7 @@ export interface IconBarLayout {
   hamburgerVisible: boolean;
   /** 导航 aria-label——壳 t("导航")（显示文本铁律） */
   navLabel: string;
-  /** ☰ 下拉——壳 MenuRenderer showGroups+showKeybindings+checkWhen 语义（不展平父项），仅 hamburgerVisible 时推 */
+  /** ☰ 下拉——壳 MenuRenderer showGroups+showKeybindings+checkWhen 语义：组标签容器保留为父项、同组成员折进它（2026-10-04）；仅 hamburgerVisible 时推 */
   hamburger?: {
     /** ☰ tooltip——壳 t("菜单") */
     title: string;
