@@ -538,6 +538,11 @@ try {
     appearance: {
       revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
     },
+    // ── 存储（「打开缓存目录」设置行——壳侧命令执行用；池不注入：消费方 handler 跑在壳进程）──
+    storage: {
+      revealCache: () => ipcRenderer.invoke(IPC.storage.revealCache),
+      cacheDir: () => ipcRenderer.invoke(IPC.storage.cacheDir),
+    },
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke(IPC.env.get, pluginId),

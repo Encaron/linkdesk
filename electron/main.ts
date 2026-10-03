@@ -25,6 +25,7 @@ import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js'
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
 import { registerAppearanceHandlers } from './ipc/handlers/appearance-handlers.js'; // E5.8#50.11：外观资产
+import { registerStorageHandlers } from './ipc/handlers/storage-handlers.js'; // 「打开缓存目录」设置行（主进程解析生效缓存目录并 openPath）
 import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
 import { registerPluginInstallHandlers } from './ipc/handlers/plugin-install-handlers.js'; // E6#11/#13（1.2-5）：装卸更主进程 fs/net 段
@@ -142,6 +143,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   registerHotExitHandlers();   // E5.7#38
   registerAppearanceHandlers(); // E5.8#50.11：外观资产——选择图片拷贝入库
+  registerStorageHandlers(); // 「打开缓存目录」设置行——生效缓存目录读数 + 先建目录再 openPath
 
   // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）
   windowManager = new WindowManager(win);

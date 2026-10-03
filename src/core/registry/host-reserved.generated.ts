@@ -52,6 +52,8 @@ export const HOST_RESERVED_CONFIG_KEYS: readonly string[] = [
   "app.osIntegration.fileAssoc",
   "app.osIntegration.fileMenu",
   "app.schemaVersion",
+  "app.storage.cacheDir",
+  "app.storage.openCacheDir",
   "app.surfaceRadius",
   "app.theme",
   "app.themeColor",

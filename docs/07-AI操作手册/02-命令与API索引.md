@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 92 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 94 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -135,7 +135,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（25）
+### 首选项（27）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -152,6 +152,8 @@
 | `aiBridge.statusCli` | CLI 通道状态 | CLI 通道实时状态（只读数据源：CLI 与 MCP 共用同一个内核监听，状态同源） | —— | —— |
 | `aiBridge.statusDebug` | 调试端口状态 | CDP 调试端口实况（只读数据源：argv 是唯一真相，与命令行实况一致不猜） | —— | —— |
 | `aiBridge.statusMcp` | MCP 通道状态 | MCP 通道实时状态（只读数据源：返回「运行中 · 地址」等状态文本，供设置页状态行取用） | —— | —— |
+| `storage.cacheDirStatus` | 缓存目录 | 当前生效的缓存目录路径（只读数据源，供设置页状态行取用） | —— | —— |
+| `storage.openCacheDir` | 打开缓存目录 | 在系统资源管理器中打开当前生效的缓存目录（目录不存在时先建再开） | —— | —— |
 | `workbench.action.clearConfiguration` | 清除配置项覆盖 | 删掉一个配置键的用户覆盖（user scope）——回到该键的默认值，是 workbench.action.setConfiguration 的反动作；同样按声明面校验（未声明／ai.* 禁写／显示槽一律拒），回执带清掉前后的值与本次顺带… | `key`: string 必填 — 配置键，如 app.glassBlur（键名清单：workbench.action.listConfigurations） | —— |
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
@@ -185,7 +187,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**15 个域接口 → 46 个命名空间 / 252 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**16 个域接口 → 47 个命名空间 / 254 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -229,6 +231,7 @@
 | `serial` | DataAPI | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
 | `settings` | SettingsAPI | 3 | `list` `getActive` `setActive` | —— |
 | `shell` | ShellAPI | 6 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 |
+| `storage` ⚠️ | StorageAPI | 2 | `revealCache` `cacheDir` | —— |
 | `tabs` | TabsAPI | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `theme` | AppearanceAPI | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `update` | UpdateAPI | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态）。 |
@@ -236,7 +239,7 @@
 | `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） |
 | `workspace` | WorkspaceAPI | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | 工作区——池 preload 注入（壳侧经 WorkspaceService 直用）。池权威命名空间——插件必用面（file-tree），必选 |
 
-⚠️ = 契约里的**可选命名空间**（只在一侧 preload 注入）：`bridge` `hotExit`——用前先判存在，另一侧是 `undefined`。
+⚠️ = 契约里的**可选命名空间**（只在一侧 preload 注入）：`bridge` `hotExit` `storage`——用前先判存在，另一侧是 `undefined`。
 ° = 契约标 `?` 的成员：只在一侧 preload 注入（几乎都是壳侧独有）。**插件跑在池侧** ⇒ 调用前先判存在。
 
 <!-- END API-INDEX -->

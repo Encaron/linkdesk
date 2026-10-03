@@ -35,6 +35,7 @@ import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import { registerAppearanceConfiguration } from "./config/appearance";
 import { registerUpdateConfiguration } from "./config/update";
 import { registerAiBridgeConfiguration } from "./config/aiBridge";
+import { registerStorageConfiguration } from "./config/storage";
 import { initReleaseNotesOnLaunch } from "./releaseNotesOnLaunch";
 import { initVersionDowngradeNotice } from "./versionDowngradeNotice";
 
@@ -193,6 +194,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // 「AI 接入」配置组声明（M4 AI#38.1：独立 pluginId "ai-bridge"——挂 app 会并进「通用」，
       // 导航项永不出现）——三开关默认 false = 门锁语义，内核 resolveBridgeConfig 按同键读取。
       registerAiBridgeConfiguration(t);
+
+      // 「存储」两键归并进「通用」（同 pluginId 二次注册 merge，对标 config/update.ts；
+      // 04-软件更新/待抉择池/设置页-打开缓存目录 阶段 3，2026-10-03）——按钮行在上、只读路径行在下。
+      registerStorageConfiguration(t);
 
       // Phase 5：初始化 context key 核心状态
       ContextKeyService.initCoreKeys();

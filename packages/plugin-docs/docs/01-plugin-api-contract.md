@@ -17,7 +17,7 @@
 | **Core knows nothing** | The shell doesn't recognize any plugin's pluginId |
 | **Contract first** | Plugins go through `window.linkdesk.*`, not `import @src/core` |
 | **Sync first** | APIs that can be synchronous aren't wrapped asynchronously (`path` is pure functions, no IPC) |
-| **Security** | The plugin preload is narrower than the shell's — **the only missing namespace is `bridge`** (shell-main-control only: the envelope for plugin IPC requests that the main process forwards to shell-side services); and the preload sandbox has zero Node capability (no `require`/`fs`/`child_process`) |
+| **Security** | The plugin preload is narrower than the shell's — **the only missing namespaces are `bridge` and `storage`** (shell-main-control only: the envelope for plugin IPC requests that the main process forwards to shell-side services); and the preload sandbox has zero Node capability (no `require`/`fs`/`child_process`) |
 
 ---
 
@@ -29,7 +29,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 | Fact | Explanation |
 |------|------|
-| **The contract has 46 namespaces** | The pool injects 45 (the only missing one is `bridge`); the shell injects 25; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
+| **The contract has 47 namespaces** | The pool injects 45 (shell-only faces `bridge` and `storage` are not injected into the pool); the shell injects 26; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
 | **Pool = the plugin runtime source of truth** | Plugins run in the pool preload — namespaces injected by the pool are **required**; `bridge` is real-shell-only |
 | **"Shell-only" ≠ plugins can't call it** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` **are actually injected in the pool** — the older version's ❌ shell-only marking for those surfaces was wrong |
 | **Contract required-surface drift is now zero** | `env.get(pluginId)` forwarding, `clipboard.readText` shell completion, `dialog.openFile` shell completion — all three are implemented, with no `?` degradation |
@@ -44,7 +44,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 **Every method signature, parameter, return value, and payload type for `window.linkdesk.*` = [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts)** (auto-generated; do not hand-edit).
 
-- **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (15 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
+- **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (16 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
 - **Generator:** `scripts/generate-contract.mjs` (Route C — the contract type file is the source; pure types bundled into a single file)
 - **Mechanical gate:** the preload on both sides `satisfies` the contract surface types → tsc drift gate; `contracts:check` byte-compares hashes inside `npm run check`
 - **Coverage matrix:** every namespace × pool/shell/mock coverage → [Namespace Matrix §2](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)

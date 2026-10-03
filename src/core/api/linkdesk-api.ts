@@ -31,6 +31,7 @@
 
 import type { CommandsAPI } from "./linkdesk-api/commands";
 import type { AppearanceAPI } from "./linkdesk-api/appearance";
+import type { StorageAPI } from "./linkdesk-api/storage";
 import type { TabsAPI } from "./linkdesk-api/tabs";
 import type { KeybindingsAPI } from "./linkdesk-api/keybindings";
 import type { UiAPI } from "./linkdesk-api/ui";
@@ -54,7 +55,7 @@ import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8：update 域�
  * E5.8#0d.10-9e：由 15 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 
 // ── 独立类型接口 re-export（types.ts 基座）──
 

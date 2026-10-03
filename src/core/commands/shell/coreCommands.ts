@@ -455,6 +455,7 @@ import { registerManualCommands } from "./manualCommands"; // M3 AI#16：AI 操�
 import { registerWelcomeCommands } from "./welcomeCommands"; // 欢迎页重设计 W4a：app.openWelcome（帮助菜单/+/命令面板三入口共用）
 import { registerAiBridgeCommands } from "./aiBridgeCommands"; // M4 AI#38：AI 接入（状态出口＋设置页动作按钮）
 import { registerReadCommands } from "./readCommands"; // M2 AI#62：读数命令族（配置读／布局读／容器与视图读）
+import { registerStorageCommands } from "./storageCommands"; // 设置页「存储」——打开缓存目录按钮行＋只读路径行出口
 import { registerShellMenus } from "../input-bindings/shellMenus";
 import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
 import { showCommandPalette } from "../palette/commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
@@ -478,6 +479,7 @@ export function ensureCoreCommands(): void {
   registerWelcomeCommands(); // 欢迎页重设计 W4a：app.openWelcome（打开；帮助菜单/+/命令面板三入口共用）
   registerAiBridgeCommands(); // M4 AI#38：AI 接入（五条状态出口 ＋ 七条动作按钮）
   registerReadCommands(); // M2 AI#62：读数命令族（配置读／布局读／容器与视图读——写侧 AI#21 的读侧补齐）
+  registerStorageCommands(); // 设置页「存储」——打开缓存目录（action）＋生效路径读数（statusCommand）
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──

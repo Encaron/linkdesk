@@ -29,7 +29,7 @@
 
 | 事实 | 说明 |
 |------|------|
-| **契约 46 命名空间** | 池注入 45（唯一缺 `bridge`）；壳注入 25；mock 注入 13——**以 `check-namespace-matrix` 门禁的活读数为准**（本行已由它机械对账，⛔ 别照 `surfaces.ts` 里的注释抄，那份也在漂） |
+| **契约 47 命名空间** | 池注入 45（壳侧独有面 `bridge`、`storage` 不进池）；壳注入 26；mock 注入 13——**以 `check-namespace-matrix` 门禁的活读数为准**（本行已由它机械对账，⛔ 别照 `surfaces.ts` 里的注释抄，那份也在漂） |
 | **池 = 插件运行时真相源** | 插件运行在池（pool）preload——池注入的命名空间为 **required**；`bridge` 真壳独有 |
 | **「仅壳」≠ 插件不可调** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` 池**实有注入**——旧版把这几面标 ❌ 仅壳是错的 |
 | **契约必选面漂移已清零** | `env.get(pluginId)` 转发、`clipboard.readText` 壳补、`dialog.openFile` 壳补——三项都已补齐实现，无 `?` 降级 |
@@ -44,7 +44,7 @@
 
 **`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts)**（自动生成，勿手改）。
 
-- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（15 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
+- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（16 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
 - **生成器：** `scripts/generate-contract.mjs`（Route C——契约类型文件为源，纯类型打包单文件）
 - **机械门禁：** preload 双端 `satisfies` 契约面类型 → tsc 漂移门禁；`npm run check` 内 `contracts:check` hash 字节比对
 - **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](https://github.com/Encaron/linkdesk/blob/electron/docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)

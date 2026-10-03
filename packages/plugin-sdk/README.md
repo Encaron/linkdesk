@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**15 个域接口 → 46 个命名空间 / 252 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
+**16 个域接口 → 47 个命名空间 / 254 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -28,6 +28,7 @@ npm install -D @linkdesk/plugin-sdk
 | `theme` | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `language` | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
 | `appearance` | 2 | `importImage` `revealStorage` | 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
+| `storage` ⚠️ | 2 | `revealCache` `cacheDir` | —— |
 | `tabs` | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `keybindings` | 12 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
 | `notifications` | 3 | `show` `list` `subscribe` | 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.wind… |
@@ -69,7 +70,7 @@ npm install -D @linkdesk/plugin-sdk
 | `app` | 1 | `getVersion` | app 命名空间——只读产品身份 |
 | `update` | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态） |
 
-⚠️ = optional namespace in the contract (injected on one side only): `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
+⚠️ = optional namespace in the contract (injected on one side only): `storage` `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
 ° = member marked `?` in the contract: injected in one side's preload only (almost always shell-side). **Your plugin runs in the pool** — check for existence before calling.
 
 <!-- END API-CHEATSHEET -->

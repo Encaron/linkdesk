@@ -36,6 +36,8 @@
     "app.osIntegration.fileAssoc",
     "app.osIntegration.fileMenu",
     "app.schemaVersion",
+    "app.storage.cacheDir",
+    "app.storage.openCacheDir",
     "app.surfaceRadius",
     "app.theme",
     "app.themeColor",

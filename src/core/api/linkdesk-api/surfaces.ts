@@ -43,12 +43,14 @@ export type PoolExposed = Pick<LinkDeskAPI,
   pool: Pick<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };
 
-/** 壳 preload 必暴露面（25；bridge 真壳独有）。commands/tabs/pool/appearance 命名空间方法级子集：
+/** 壳 preload 必暴露面（26；bridge 真壳独有；storage 壳侧独有——池不注入，面本身 `?` 可选）。commands/tabs/pool/appearance 命名空间方法级子集：
  *  commands 壳 = 注册面（execute/executeCommand/unregisterCommands/getCommands 为池侧执行面，壳不实现）
  *  tabs 壳缺 onDidChangeActiveTab（池侧订阅面——壳是标签权威自身，无订阅需求）
  *    ＋ M1 AI#3 的 list（读取面——壳自己手上就是这份 state，不绕 IPC 问自己）
  *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现）
  *    ＋ M1 AI#4 的 getLayout（池侧读数面——同上）
+ *  storage 壳 = 全部两方法（壳侧独有面——设置页 action/status 命令 handler 跑在壳进程；
+ *    池不注入，故 LinkDeskAPI 里该命名空间 `?` 可选，这里 Pick 进来）
  *  appearance 壳 = 仅 revealStorage（E5.8#153：齿轮命令 handler 在壳进程执行，需壳侧触发主进程 openPath；
  *    importImage 池独有——选图拷贝入库只在池设置 UI 发生）
  *  update 壳 = getState 契约面 + 写命令三条与 onStateChanged 壳内私有扩展（E6#57.9c/d——见下方 update 段）
@@ -62,7 +64,7 @@ export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
-  | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update"> & {
+  | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update" | "storage"> & {
   /**
    * dialog 壳内私有扩展（04「工作区导入导出-布局恢复断线」）——照 update 段先例（契约面 &
    * 壳私有扩展交叉）。文件选择必须走主进程 showOpenDialog：壳树 input.click() 的文件对话框

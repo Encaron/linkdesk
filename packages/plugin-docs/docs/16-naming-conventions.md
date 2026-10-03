@@ -111,6 +111,7 @@ The table below is **reconciled name by name** against it (gate `scripts/check-r
 | Host config key | `app.language` | UI language |
 | Host config key | `app.osIntegration.dirMenu`、`app.osIntegration.fileAssoc`、`app.osIntegration.fileMenu` | OS integration (context menu, file associations) |
 | Host config key | `app.update.mode`、`app.update.showReleaseNotes` | Update channel |
+| Host config key | `app.storage.cacheDir`、`app.storage.openCacheDir` | Cache folder — the two rows under Settings → General → Storage (open-cache-folder button / read-only path) |
 | Host recipe id | `dark`、`light` | The **fallback values** of `app.theme`. ⚠️ `light` also carries a **grant**: the official `theme-defaults` plugin is the official implementer of the host's light fallback, so only it may declare that id |
 | Host colorway id | `dark-fallback`、`light` | Fallback values of `app.themeColor` and of the colorway source space |
 | Host icon theme id | `default` | The fallback value of `app.iconTheme` |

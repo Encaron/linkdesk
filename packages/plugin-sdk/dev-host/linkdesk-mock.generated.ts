@@ -81,6 +81,10 @@ export const linkdeskMock: Record<string, unknown> = {
     importImage: async (..._args: unknown[]) => { console.info("[linkdesk-mock] appearance.importImage", ..._args); return ""; },
     revealStorage: async (..._args: unknown[]) => { console.info("[linkdesk-mock] appearance.revealStorage", ..._args); },
   },
+  storage: {
+    revealCache: async (..._args: unknown[]) => { console.info("[linkdesk-mock] storage.revealCache", ..._args); },
+    cacheDir: async (..._args: unknown[]) => { console.info("[linkdesk-mock] storage.cacheDir", ..._args); return ""; },
+  },
   tabs: {
     create: async (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.create", ..._args); },
     openOrFocus: async (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.openOrFocus", ..._args); },

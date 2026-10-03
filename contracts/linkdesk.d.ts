@@ -323,6 +323,17 @@ export interface AppearanceAPI {
         revealStorage(): Promise<void>;
     };
 }
+/** 存储命名空间面——当前生效缓存目录的读数口与打开口（解析单点在主进程 storage-handlers） */
+export interface StorageAPI {
+    storage?: {
+        /** 打开缓存目录（资源管理器窗口，非模态）——主进程解析当前生效路径，**先建目录再开**
+         *  （目录缺省也建——刚装完没跑过也有得开，绝不弹"找不到"）；openPath 失败抛错 fail-loud */
+        revealCache(): Promise<void>;
+        /** 当前生效的缓存目录绝对路径——settings.json 的 `app.storage.cacheDir`（空/缺 = userData 默认位）；
+         *  🔴 解析唯一入口（落点契约铁律 3：任何地方不存第二份路径，取不抄） */
+        cacheDir(): Promise<string>;
+    };
+}
 /**
  * 跨模块共享窗口类型。core/types = 跨模块共享 type（壳目录规范：只放类型）。
  *
@@ -2992,7 +3003,7 @@ export interface UpdateAPI {
  * 由 15 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 /** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
 export interface IconThemeGlyph {
     /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
