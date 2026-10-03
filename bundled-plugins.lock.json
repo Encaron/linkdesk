@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-10-01T16:09:20.108Z",
+  "syncedAt": "2026-10-03T13:25:55.521Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -14,9 +14,9 @@
     {
       "id": "file-tree",
       "repo": "Encaron/linkdesk-plugin-file-tree",
-      "version": "1.0.22",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-file-tree/releases/download/v1.0.22/file-tree.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:7e2d646d52f3083badba031a74edf9284a2e817f7fd87bf6f0a927313eecf6c7\nFoldersView-CflKlifF.js:7e1f04e1b7f6958471b9ebc124d64c9aa8af1b40b0ee879a61dbf6d387c0a4e8\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:2d31eed0abc9ac8cb673250518c77410625c7fc0cdc6c1acf79da739c95e7619\nSearchView-hPYEeBht.js:95292b53b9fb1a03f2e8c61e52bf2f9d4d74e0a8b3aca033df45eceac9c2365b\ni18n/en.json:66aff705d818c5b912f2079d1a4b9b7ea32adef6b3ce9286dbcb48f12d43dcd0\nindex.bundle.css:a3260544c28ef8e3064f5cb60f049aa881d4f278c4070005a7aca2fa445d74db\nindex.bundle.js:2783c19afaf7881b53ed411ebe3127d658fdcf6393839c8771e6770a799d5ac9\npathUtils-CXlP_7um.js:4474617d74430d524275e135dc224280ebeabc4f931697e99ba06b1a152c0d1c\nplugin.json:27d62a9b254f072dc2446c0472397f0c9e21acb76becf184d7317afedbc46a60\nresources/cover.svg:6e2b3e4fddfbb423af2fc38d357dabd9cea9220f19ff96becacf380b7561e732\nresources/icon-bar.svg:d04e6780472456215402e224a3edf9cf44573a09472dc42d9b56a70b4185d301\nresources/icon.svg:a9e02c9cc50e20b5e662c8c88d7aaf9ed2f0e182494127c27022ce2d3af2148c\nviews/FoldersView.bundle.js:7dac4333c0ec6e6af46c53da2c496e8b1dd77b51b364dbf8249eb98e29718222\nviews/OpenFolderView.bundle.js:c42c7e45813459d2cc28c3b2f980b0786698f326b082762ee9d58a2a80d10aff\nviews/SearchView.bundle.js:105af47ba329cdf27a106551157484a632df0e5c88fe99a2993b23b1d90adc02",
+      "version": "1.0.23",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-file-tree/releases/download/v1.0.23/file-tree.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:6f377772c515a00e63bb4301ef4bb61bd4400d8c87f71985d13fad67756e0a93\nFoldersView-BXFi-ULm.js:ac991b30924068f0ed31e374272b143d3dc502e07aedc54765073082bdf49988\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:2d31eed0abc9ac8cb673250518c77410625c7fc0cdc6c1acf79da739c95e7619\nSearchView-DBs11kq-.js:606f0f569da6f23bc611975407b56065751a74d72df2f3a7f5602a6891698e6a\ni18n/en.json:66aff705d818c5b912f2079d1a4b9b7ea32adef6b3ce9286dbcb48f12d43dcd0\nindex.bundle.css:9d0455ce9f84c48f7dcb8269c07259b04b84a3e4aaab17f530834991e70b5302\nindex.bundle.js:99fed5e806ff962602b4386d41a6601b8eb9c2242c0c22e246fcad35b2124032\npathUtils-CXlP_7um.js:4474617d74430d524275e135dc224280ebeabc4f931697e99ba06b1a152c0d1c\nplugin.json:71c8d73de5c977fa46c9153df192d9cea5619cb2d66e7b5bf14171f2e19eaa94\nresources/cover.svg:6e2b3e4fddfbb423af2fc38d357dabd9cea9220f19ff96becacf380b7561e732\nresources/icon-bar.svg:d04e6780472456215402e224a3edf9cf44573a09472dc42d9b56a70b4185d301\nresources/icon.svg:a9e02c9cc50e20b5e662c8c88d7aaf9ed2f0e182494127c27022ce2d3af2148c\nviews/FoldersView.bundle.js:4dfd37fd8031c68e96e6e74af9064811fd8a4e091308a62887f3a331139ad308\nviews/OpenFolderView.bundle.js:c42c7e45813459d2cc28c3b2f980b0786698f326b082762ee9d58a2a80d10aff\nviews/SearchView.bundle.js:db9ab27b817dc00da5e75d6c6721d46363947e88f1a11a80e9b76ee98d95cb79",
       "seed": true
     },
     {
@@ -54,9 +54,9 @@
     {
       "id": "settings",
       "repo": "Encaron/linkdesk-plugin-settings",
-      "version": "1.0.26",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.26/settings.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:1319611705be42b3e4fc072f1eb0161621a38f37a7089d3c32eebc6d32d116dc\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-CUOoA4OZ.js:1c0907446d0f00ac5f9f382316c2517c41a549e26656526d04447429d9645f80\ni18n/en.json:264309e954c2a6f4b41a4584b2e6b49b9ebc9ce147d81422f2390c1144a8b0a2\nindex.bundle.css:50043ffd2736c8655f5e75555945bcbbf8c34d16761b99e3e3818e50cbe3f975\nindex.bundle.js:750c47ba37d8fbbe1371b3706bec87eca2474d5dfb4b3f3911f337a048957e05\nplugin.json:77b98a6c66cad1ede8c38aad0245779bd01658428829c5260cfbd216cfde0e9e\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:7a37f2698a40897f5ca76628b11e45d685b5d85c5368a8a4977366f640015af3",
+      "version": "1.0.27",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.27/settings.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:d674d1d99cff67ba2e7d0223f7064c288f11070bb8ea67651866b8e4563a3987\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-Bl4ytNaA.js:c61a6e9d5816ae6c27dfd0ce1de7a519dc31d271df1401b141b50640abf85638\ni18n/en.json:264309e954c2a6f4b41a4584b2e6b49b9ebc9ce147d81422f2390c1144a8b0a2\nindex.bundle.css:8910a91193a363a813eb30b91331fa3b537b919a0db8d6d52065fff371365b9a\nindex.bundle.js:7194ff09d96b6a36d3cb7d4ce34925e6ecaade521888677d38de322a6583956c\nplugin.json:2ab4c485ee992da84227ea494d393f4d37daa0175597ce1602ab969f5de963cb\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:ac8193d3b136cf72b46ebec30ff19e6818a509e31c63296a724ea1b0aecc7888",
       "seed": true
     },
     {
