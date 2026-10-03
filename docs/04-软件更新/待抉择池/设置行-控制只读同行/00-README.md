@@ -143,14 +143,14 @@
 
 ### 八·补3 · 阶段 3 验收（2026-10-04 · AI-6 · dev 实机）
 
-**方法（隔离实例，⛔ 没碰用户正在用的那只）**：用户那只 Vite 占着 1420 ⇒ 自起 **第二台 Vite 1421**，起前设 `LINKDESK_USER_PLUGINS_HOME=<隔离实例>/plugins`（`vite.config.ts:24` 允许清单的唯一口子）；隔离实例 `electron . --remote-debugging-port=9345 --user-data-dir=E:	mp\ldk-a6-profile`。
+**方法（隔离实例，⛔ 没碰用户正在用的那只）**：用户那只 Vite 占着 1420 ⇒ 自起 **第二台 Vite 1421**，起前设 `LINKDESK_USER_PLUGINS_HOME=<隔离实例>/plugins`（`vite.config.ts:24` 允许清单的唯一口子）；隔离实例 `electron . --remote-debugging-port=9345 --user-data-dir=E:\tmp\ldk-a6-profile`。
 🔴 **关键技巧（留给下一棒）**：`DEV_SERVER_URL` 在 `electron/constants.ts:23` 是**硬编码 1420、无 env 口**，而 1420 那台 Vite 的 `fs.allow` 不含隔离插件家（表现为 `Failed to fetch dynamically imported module … /@fs/E:/tmp/…/settings/index.bundle.js`，403）⇒ 用 CDP `Page.navigate` 把 **pool 目标导航到 1421**：主进程的插件扫描不变（仍扫 `{userData}/plugins`），渲染面走允许清单里那台 Vite。第三方假键用 `scripts/dev/fixtures/status-demo` 改一版（3 个新键：开关＋伴生只读／数值＋值标签＋伴生只读／字符串＋伴生按钮）放进隔离插件家，**夹具不进仓**。
 
 **① 3.1 三例（实键实况读数）**
 
 | 例 | 实测（DOM 读数） | 结论 |
 |:--|:--|:--|
-| ① 缓存目录一行 | `app.storage.openCacheDir` 控制区 ＝ `ldk-button + settings-row-companion`；伴生件内层 `ldk-readonly-text`，文案 ＝ **`E:	mp\ldk-a6-profile`**（该实例真缓存目录）；同组**无** `app.storage.cacheDir` 行 | ✅ 一行（按钮＋路径读数），退役键在页面上消失 |
+| ① 缓存目录一行 | `app.storage.openCacheDir` 控制区 ＝ `ldk-button + settings-row-companion`；伴生件内层 `ldk-readonly-text`，文案 ＝ **`E:\tmp\ldk-a6-profile`**（该实例真缓存目录）；同组**无** `app.storage.cacheDir` 行 | ✅ 一行（按钮＋路径读数），退役键在页面上消失 |
 | ② ai.mcp 一行 | `ai.mcp.enabled` ＝ `ldk-toggle + settings-row-companion`，伴生读数「已关闭」；`ai.cli.enabled`「已关闭」；**`ai.debug.remoteDebugging` ＝「已开启 · 9345」**（＝该实例真 CDP 端口，证明读数来自运行时命令而非配置值）；`ai.auditLog.enabled`「未开启」。AI 接入组**共 14 行**、四个 `.status` 键全无 | ✅ 四组「开关＋状态」合并成四行；组说明＝「开关右边的灰字是实时读数（来自运行时命令），不是配置值」 |
 | ③ 第三方假键 | 夹具 `demo-a6.toggle`（toggle＋伴生只读 122×13）、`demo-a6.sliderCompanion`（`ldk-number-input` ＋ 伴生只读）、`demo-a6.actionCompanion`（`ldk-input` ＋ 伴生**按钮** 230×29）。**同夹具里 `status-demo.live`（readonly 主件）与 `status-demo.poke`（action 主件）各只一件、零重复伴生** | ✅ 任何插件声明即得，无特权；主件本身即该件时不重复渲染 |
 
@@ -158,5 +158,33 @@
 
 **③ 3.3 token 快照**：切主题（dark→light）前后——token **名集**只增不减（+11 枚 `--bg-*-solid`／`--bg-status`／`--drop-indicator`／`--received`，全部是**目标主题自己**定义的），值变 46 枚（全是主题驱动）；**行内定义的 token ＝ 0**（设置行内 3 处含 `var(` 的内联样式全在主题选择器的预览条上，与伴生件无关）；**伴生件节点零内联样式、零自定义属性** ⇒ 伴生声明不碰 token 面。
 
-**④ 3.4 目视**：三张截图在 `E:	mp\ldk-a6\shots\`（`通用-缓存一行-scrolled.png`／`AI接入-四组并一行.png`／`夹具-第三方伴生件.png`，1400×900 深色，真实例渲染）——**这一格等用户点头**。
+**④ 3.4 目视**：三张截图在 `E:\tmp\ldk-a6\shots\`（`通用-缓存一行-scrolled.png`／`AI接入-四组并一行.png`／`夹具-第三方伴生件.png`，1400×900 深色，真实例渲染）——**这一格等用户点头**。
 ⚠️ 一处如实记的观察：伴生**按钮**文案 ＝ `t(description)` ⇒ 描述很长时按钮撑宽（夹具那条长描述的按钮实测 230px＋，右端出界）；官方各键描述都短，本轮**未处置**（要收窄得动 `description` 文案或共享件按钮）。
+
+### 八·补4 · 用户目视当场抓到的一条：读数补「待重启」态（2026-10-04 · AI-6）
+
+**用户实报（原话）**：「比如说 ai.mcp.enabled 这个，我明明关闭了按钮，为什么后面的文字仍旧是运行中」。
+
+**先取证再定性**（三处独立读数，⛔ 没猜）：
+
+| 证据 | 读数 | 说明 |
+|:--|:--|:--|
+| `%APPDATA%\linkdesk\ai-bridge.json` | `{"mode":"tcp","pid":13708,"enabled":true,"listening":true,"endpoint":"127.0.0.1:62021"}` | **启动那一刻开关是开的**，监听真在跑 |
+| `settings.json` mtime | `03:03:26`（实例启动于 `02:55:03`） | 用户是**启动之后**才关的按钮 |
+| 进程命令行 | `electron.exe . --remote-debugging-port=9222` | 普通 dev 启动，**不是** env 覆盖（用户级/机器级 `LINKDESK_AIBRIDGE` 都没设） |
+
+⇒ **读数没说谎，是缺一句话。** `electron/services/aiBridge/index.ts:512` 的 `resolveBridgeConfig()` **只在启动时读一次** `settings.json`、之后无 watcher；`src/core/commands/shell/aiBridgeCommands.ts` 的 `channelStatus` 在 `info.listening` 分支**无条件报地址**，那句「重启生效」只写在描述里 ⇒ 关着的开关右边贴着「运行中」，看着就是 bug。旁证：`ai.debug.remoteDebugging` 同样已关，9333 端口**照样在听**（同一个 pid）。
+
+**归本案**：D4 之前 `ai.mcp.status` 是独立一行，意图与实况隔着距离、不一致反而读得出信息；挪到开关右侧同排之后，这个缺口是本案造成的。
+
+**修法**（用户当场拍板选「读数补待重启态」）：读数按「本行键 ＋ 兄弟键」拆三态——
+
+1. 本行键开着 → 常态「运行中 · 地址」；
+2. 本行键关着、**兄弟键开着** → 「运行中 · 与 CLI 通道共用」（监听是另一条通道撑着的，**重启也不会停** ⇒ 此时说「重启后关闭」就是假承诺）；
+3. 两个都关着 → 「运行中 · 重启软件后关闭」（待重启关闭的残留）。
+
+`statusDebug` 同理补同一态（端口在听、开关已关 ⇒「已开启 · 重启软件后关闭」）。后两种**不再报地址**：那种状态下地址即将失效，且短句才塞得进伴生只读的宽度上限（超宽静默截断 ＝ 2.2b 实测）；地址没丢——盘上 `ai-bridge.json` 有、`linkdeskctl status` 也报。`statusAuditLog` **不动**：它的读数是**配置值**不是运行时值（`getConfigurationValue("ai.auditLog.enabled")`）⇒ 与自己的开关永远一致，不存在这个矛盾。
+
+**落仓与发版**：壳侧 `aiBridgeCommands.ts`（含 `ChannelPeer` 三态注释）**只落仓攒批**（⛔ 软件本体不发版）；外仓 lang-defaults **1.0.49**（四条：两条带 `{{}}` 的话术模板 ＋ `MCP 通道`/`CLI 通道`）已 publish → 官方目录收录 **a905aa3** → `sync:bundled --latest` 种子追新。
+
+**顺带记一处别人的账（只记不改）**：官方目录候选里 **file-tree 同版元数据漂移**——file-tree 仓自己产出的 `1.0.18` / `1.0.19` 两条历史版本的 `changelog` 变成了 `null`，采纳会抹掉两条**已发布**的更新日志 ⇒ 本笔**原样保留目录现状**，归 file-tree 仓自查。

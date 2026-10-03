@@ -40,12 +40,37 @@ function endpointText(info: AiBridgeInfo): string {
     : `${info.endpoint.host}:${info.endpoint.port}`;
 }
 
-/** MCP/CLI 共用的通道状态话术（两张皮共用同一个内核监听——状态天然同源） */
-async function channelStatus(configKey: string, readyWord: string): Promise<string> {
+/** 一条通道对另一条通道的指认（「与 X 通道共用」里那个 X；键与显示名一处定义） */
+interface ChannelPeer {
+  key: string;
+  label: string;
+}
+
+/**
+ * MCP/CLI 共用的通道状态话术（两张皮共用同一个内核监听——状态天然同源）。
+ *
+ * 🔴 **读数是实况、开关是意图，两者允许不同；不同时必须说出来。** 内核只在启动时读那两把开关
+ * （`electron/services/aiBridge/index.ts` 的 `resolveBridgeConfig`），监听要重启才松手。
+ * 2026-10-04 用户实报：关掉 `ai.mcp.enabled` 后右边仍写「运行中」——因为**它真的还在跑**，
+ * 而旧话术在 listening 分支无条件报地址，把那句「重启生效」藏在了描述里 ⇒ 贴脸看像 bug。
+ * 故此处按「本行键 ＋ 兄弟键」三分：
+ *   · 本行键开着 → 常态「运行中 · 地址」；
+ *   · 本行键关着、兄弟键开着 → 监听是兄弟撑着的，**重启也不会停** ⇒ 「与 X 通道共用」（说错就成假承诺）；
+ *   · 两个都关着 → 待重启关闭的残留 ⇒ 「重启软件后关闭」。
+ * ⚠️ 后两种**不再报地址**：那种状态下它即将失效，且短句才塞得进伴生只读的宽度上限
+ *   （超宽静默截断，见设置行案 2.2b 实测）；地址本身没丢——盘上 `ai-bridge.json` 有、`linkdeskctl status` 也报。
+ */
+async function channelStatus(configKey: string, readyWord: string, peer: ChannelPeer): Promise<string> {
   const info = await infoOrNull();
   if (!info) return "";
   if (!info.present) return i18n.t("未就绪");
-  if (info.listening) return `${readyWord} · ${endpointText(info)}`;
+  if (info.listening) {
+    if (getConfigurationValue<boolean>(configKey) === true) return `${readyWord} · ${endpointText(info)}`;
+    if (getConfigurationValue<boolean>(peer.key) === true) {
+      return i18n.t("{{state}} · 与 {{peer}} 共用", { state: readyWord, peer: peer.label });
+    }
+    return i18n.t("{{state}} · 重启软件后关闭", { state: readyWord });
+  }
   if (info.lastError) return `${i18n.t("启动失败")}：${info.lastError}`;
   if (getConfigurationValue<boolean>(configKey) === true) return i18n.t("已开启，重启软件后生效");
   return i18n.t("已关闭");
@@ -53,6 +78,9 @@ async function channelStatus(configKey: string, readyWord: string): Promise<stri
 
 export function registerAiBridgeCommands(): void {
   const PID = "ai-bridge";
+  // 同一个内核监听的两张皮——各自要知道「撑着它的是不是另一条通道」（channelStatus 第三态用）
+  const mcp: ChannelPeer = { key: "ai.mcp.enabled", label: i18n.t("MCP 通道") };
+  const cli: ChannelPeer = { key: "ai.cli.enabled", label: i18n.t("CLI 通道") };
 
   // ── 状态五条（只读数据出口；设置页只读状态行按 statusCommand 调用）──
   registerCommand(PID, {
@@ -61,7 +89,7 @@ export function registerAiBridgeCommands(): void {
     category: "首选项",
     description: "MCP 通道实时状态（只读数据源：返回「运行中 · 地址」等状态文本，供设置页状态行取用）",
     params: [],
-    handler: async () => channelStatus("ai.mcp.enabled", i18n.t("运行中")),
+    handler: async () => channelStatus(mcp.key, i18n.t("运行中"), cli),
   });
 
   registerCommand(PID, {
@@ -70,7 +98,7 @@ export function registerAiBridgeCommands(): void {
     category: "首选项",
     description: "CLI 通道实时状态（只读数据源：CLI 与 MCP 共用同一个内核监听，状态同源）",
     params: [],
-    handler: async () => channelStatus("ai.cli.enabled", i18n.t("已就绪")),
+    handler: async () => channelStatus(cli.key, i18n.t("已就绪"), mcp),
   });
 
   registerCommand(PID, {
@@ -82,7 +110,13 @@ export function registerAiBridgeCommands(): void {
     handler: async () => {
       const info = await infoOrNull();
       if (!info) return "";
-      if (info.debugPort != null) return `${i18n.t("已开启")} · ${info.debugPort}`;
+      if (info.debugPort != null) {
+        // 端口在听、开关却已关 ⇒ argv 只在启动时装一次，这是待重启关闭的残留（同 channelStatus 第三态）
+        if (getConfigurationValue<boolean>("ai.debug.remoteDebugging") !== true) {
+          return i18n.t("{{state}} · 重启软件后关闭", { state: i18n.t("已开启") });
+        }
+        return `${i18n.t("已开启")} · ${info.debugPort}`;
+      }
       if (getConfigurationValue<boolean>("ai.debug.remoteDebugging") === true) {
         return i18n.t("已开启，重启软件后生效");
       }
@@ -125,7 +159,7 @@ export function registerAiBridgeCommands(): void {
     handler: async () => {
       const info = await infoOrNull();
       if (!info) return;
-      const status = await channelStatus("ai.mcp.enabled", i18n.t("运行中"));
+      const status = await channelStatus(mcp.key, i18n.t("运行中"), cli);
       const { alert } = await import("../../services/ui/DialogService");
       await alert({
         title: i18n.t("通道详情"),
