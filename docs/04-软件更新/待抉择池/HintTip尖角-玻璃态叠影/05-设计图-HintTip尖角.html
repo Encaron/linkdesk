@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>HintTip 尖角 · 玻璃态叠影设计图</title>
+<style>
+  :root{
+    --bg:#17171b; --card:#202027; --line2:#33333d; --txt:#e9e9ec; --txt2:#b3ada4;
+    --acc:#8a6ff0; --ok:#2fbf8a; --warn:#ff9375;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 30px 64px;background:var(--bg);color:var(--txt);font:14px/1.75 var(--sans)}
+  h1{margin:0 0 10px;font:600 23px/1.35 var(--sans)}
+  h2{margin:42px 0 6px;font:600 17px/1.4 var(--sans);padding-bottom:8px;border-bottom:1px solid var(--line2)}
+  h3{margin:24px 0 6px;font:600 14.5px/1.4 var(--sans)}
+  p{margin:10px 0;max-width:88ch}
+  .lead{color:var(--txt2)}
+  .quote{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line2);border-radius:8px;background:#1d1d23;
+         color:var(--txt2);font-size:13px;max-width:88ch}
+  code{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:var(--txt)}
+  b.hot{color:var(--warn)} b.good{color:var(--ok)}
+  .note{color:var(--txt2);font-size:12.5px;margin:8px 0;max-width:88ch}
+  ul{margin:8px 0;padding-left:20px;max-width:88ch} li{margin:5px 0}
+
+  /* ════ 演示舞台 ════ 主题三态由 .demo 根上的 data-theme / .glass 驱动 */
+  .demo{
+    /* 产品 token 的本地替身（示意值，非产品真值）——浅色/深色取 index.css 的 --bg-card 两端 */
+    --card-solid:#2D2D2D; --bd:#45454d; --ink:#e9e9ec; --kbd:#3a3a44;
+    --ga:1;                    /* 表面不透明度：非玻璃 = 1；玻璃 = 滑杆值 */
+    --fblur:16px;              /* 浮层保底模糊（index.css:564 --float-blur-floor） */
+    --tipfill:color-mix(in srgb, var(--card-solid) calc(var(--ga)*100%), transparent);
+  }
+  .demo[data-theme="light"]{--card-solid:#F5F5F5;--bd:#d2d2d8;--ink:#1f1f24;--kbd:#e4e4ea}
+  .demo[data-theme="dark"] {--card-solid:#2D2D2D;--bd:#45454d;--ink:#e9e9ec;--kbd:#3a3a44}
+  .demo.glass[data-theme="light"]{--bd:#c9c9d2}
+
+  .stage{position:relative;height:200px;border:1px solid var(--line2);border-radius:10px;overflow:hidden;margin-top:12px;
+    background:
+      radial-gradient(900px 420px at 18% 8%, rgba(255,154,98,.75), transparent 62%),
+      radial-gradient(700px 380px at 82% 16%, rgba(106,193,255,.6), transparent 62%),
+      radial-gradient(820px 520px at 58% 96%, rgba(124,247,196,.5), transparent 66%),
+      linear-gradient(155deg,#3a2f55 0%,#1c2f4a 55%,#0f2027 100%)}
+  /* 背景里的"锐利细节"——玻璃下应被磨糊；透过没磨砂的尾巴却清晰可见（病灶②的证人） */
+  .stage .bgtxt{position:absolute;left:16px;right:16px;top:118px;color:rgba(255,255,255,.85);
+    font:600 13px/1.9 var(--mono);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+  .stage .bgtxt i{font-style:normal;color:#ffd9a8}
+
+  /* 图标栏（玻璃面示意——index.css 的 ::before 玻璃层模型简化版） */
+  .iconbar{position:absolute;left:14px;top:14px;display:flex;align-items:center;gap:4px;padding:5px 10px;
+    border-radius:8px;color:#fff;
+    background:color-mix(in srgb, #202027 calc(var(--ga)*55%), transparent);
+    backdrop-filter:blur(calc(var(--fblur)*.7)) saturate(1.1);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px rgba(255,255,255,.08), 0 1px 6px rgba(0,0,0,.25)}
+  .iconbar .ic{min-width:26px;padding:0 4px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;
+    font-size:13px;color:rgba(255,255,255,.75);position:relative;white-space:nowrap}
+  .iconbar .ic.on{color:#fff;background:rgba(255,255,255,.16)}
+
+  /* ── HintTip：现状一比一（HintTip.css:24-86 抄录；--ga 在玻璃态由合成层等价引入） ── */
+  .tip{position:absolute;display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;
+    padding:5px 12px;border:1px solid var(--bd);border-radius:4px;background:var(--tipfill);color:var(--ink);
+    box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap;
+    backdrop-filter:blur(var(--fblur)) saturate(1.05);   /* 深度 3 结构规则（index.css:567） */
+    -webkit-backdrop-filter:blur(var(--fblur)) saturate(1.05)}
+  .tip kbd{font:600 11px var(--mono);background:var(--kbd);color:var(--ink);border-radius:3px;padding:0 5px;
+    border:1px solid var(--bd)}
+  .anchor{position:absolute;width:34px;height:20px;border-radius:5px;background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.35);color:#fff;font:600 11px/1 var(--sans);display:flex;
+    align-items:center;justify-content:center;pointer-events:none}
+  .tail{position:absolute;width:8px;height:8px;background:var(--tipfill);border:1px solid var(--bd);
+    transform:rotate(45deg)}
+  .v-now[data-p="top"]    .tail{bottom:-5px;border-top:none;border-left:none}
+  .v-now[data-p="bottom"] .tail{top:-5px;border-bottom:none;border-right:none}
+  .v-now[data-p="left"]   .tail{right:-5px;border-bottom:none;border-left:none}
+  .v-now[data-p="right"]  .tail{left:-5px;border-top:none;border-right:none}
+
+  /* ── A 案 · 半菱裁剪＋尾巴自带磨砂：只动四条方位规则 ──
+     ① 中心骑到边框线上（-5px→-4px）；② clip-path 裁掉藏进条里的半张 ⇒ 不再叠第二层；
+     ③ 尾巴自备同款磨砂 ⇒ 露出的半张与条连续（深度 4 例外，先例 = .ldk-floating-panel-act.tip::after） */
+  .v-a[data-p="top"]    .tail{bottom:-4px;border-top:none;border-left:none;
+    clip-path:polygon(0 100%,100% 100%,100% 0);backdrop-filter:blur(var(--fblur)) saturate(1.05);
+    -webkit-backdrop-filter:blur(var(--fblur)) saturate(1.05)}
+  .v-a[data-p="bottom"] .tail{top:-4px;border-bottom:none;border-right:none;
+    clip-path:polygon(0 0,100% 0,0 100%);backdrop-filter:blur(var(--fblur)) saturate(1.05);
+    -webkit-backdrop-filter:blur(var(--fblur)) saturate(1.05)}
+  .v-a[data-p="left"]   .tail{right:-4px;border-bottom:none;border-left:none;
+    clip-path:polygon(0 0,100% 0,100% 100%);backdrop-filter:blur(var(--fblur)) saturate(1.05);
+    -webkit-backdrop-filter:blur(var(--fblur)) saturate(1.05)}
+  .v-a[data-p="right"]  .tail{left:-4px;border-top:none;border-right:none;
+    clip-path:polygon(0 0,0 100%,100% 100%);backdrop-filter:blur(var(--fblur)) saturate(1.05);
+    -webkit-backdrop-filter:blur(var(--fblur)) saturate(1.05)}
+
+  /* ── B 案 · 玻璃态收尖：玻璃激活 ⇒ 不出尾巴（非玻璃主题照旧） ── */
+  .demo.glass .v-b .tail{display:none}
+
+  /* ── C 案 · 一体成型：clip-path 裁整泡 ＋ SVG 同形描边（示意；真实实现需渲染器喂 path） ── */
+  .tipC{position:absolute;width:196px;height:37px}
+  .tipC .glass{position:absolute;inset:0;backdrop-filter:blur(var(--fblur)) saturate(1.05);
+    -webkit-backdrop-filter:blur(var(--fblur)) saturate(1.05);
+    clip-path:path("M0,10 A4,4 0 0 1 4,6 L90.3,6 L98,0.4 L105.7,6 L192,6 A4,4 0 0 1 196,10 L196,33 A4,4 0 0 1 192,37 L4,37 A4,4 0 0 1 0,33 Z")}
+  .tipC svg{position:absolute;inset:0;width:100%;height:100%}
+  .tipC .lb{position:absolute;left:13px;right:13px;top:6px;bottom:1px;display:flex;align-items:center;gap:6px;
+    color:var(--ink);font-size:13px;white-space:nowrap}
+  .tipC kbd{font:600 11px var(--mono);background:var(--kbd);color:var(--ink);border-radius:3px;padding:0 5px;
+    border:1px solid var(--bd)}
+
+  /* 控制台 */
+  .ctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--line2);border-radius:10px;
+    background:#1b1b21;padding:12px 16px;margin-top:12px}
+  .ctl .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .ctl .seg button{border:0;background:transparent;color:var(--txt2);padding:5px 13px;font:600 12.5px var(--sans);
+    cursor:pointer;border-right:1px solid var(--line2)}
+  .ctl .seg button:last-child{border-right:0}
+  .ctl .seg button.on{background:var(--acc);color:#fff}
+  .ctl label{display:flex;align-items:center;gap:8px;font:12.5px var(--mono);color:var(--txt2)}
+  .ctl input[type=range]{width:150px;accent-color:var(--acc)}
+  .ctl .read{font:600 12.5px var(--mono);color:var(--acc);min-width:52px}
+  .ctl .dis{opacity:.35;pointer-events:none}
+
+  .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin-top:12px}
+  .duo .cell{margin:0}
+  .cap{font:600 12.5px var(--mono);color:var(--muted,#8b8794);letter-spacing:.04em;margin:14px 2px 0}
+  .cap.no{color:var(--warn)} .cap.ok{color:var(--ok)} .cap.mut{color:var(--txt2);font-weight:400}
+
+  .zoombox{zoom:3;zoom-origin:left top}
+  table.cmp{max-width:980px;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+  table.cmp th,table.cmp td{border:1px solid var(--line2);padding:8px 11px;text-align:left;vertical-align:top}
+  table.cmp th{background:#23232b;font-weight:600}
+  table.cmp td.k{font:12.5px var(--mono);white-space:nowrap}
+  .yes{color:var(--ok);font-weight:600} .no{color:var(--warn);font-weight:600}
+  .panel{border:1px solid var(--line2);border-radius:10px;background:var(--card);padding:18px 20px;margin-top:14px}
+  footer{margin-top:40px;color:var(--txt2);font-size:12.5px;max-width:88ch;border-top:1px solid var(--line2);padding-top:16px}
+</style>
+</head>
+<body>
+
+<h1>HintTip 尖角 —— 玻璃态下的「菱形叠影」怎么来、怎么治</h1>
+<p class="lead">本页是<b>局部图</b>：只画这一条提示气泡，不画整个壳。第 ① 节的「病灶现场」是<b>照产品 CSS 一比一</b>复刻的（<code>HintTip.css:24-86</code>），主题三态可切、玻璃两根滑杆可拖——切到<b>自定义·玻璃</b>，菱形当场现形。第 ③ 节给三个修案同台对比。</p>
+
+<div class="quote">你的原话（2026-10-03）：<b>「HintTip的小箭头和方框本身看着其实是叠加关系，这个东西在一般无玻璃型主题（如普通light/dark）时候是正常的气泡样。但是一旦我选择app.appearanceMode为自定义，然后调控玻璃，背景图等，就会发现HintTip的小箭头实际是菱形，一部分和方框本身有重叠。我调控好的当前状态hover在图标栏后显示的最为明显，这里玻璃效果和背景可以衬托这个。」</b></div>
+
+<h2>① 病灶现场 —— 切到「自定义·玻璃」，菱形现形</h2>
+<p class="note">舞台上：背景图（示意壁纸）＋ 一条玻璃图标栏 ＋ 一枚悬停提示条（现状实现，照抄产品 CSS）。提示条下面特意垫了一行<b>锐利的背景小字</b>——玻璃态下透过条身看它应是<b>糊的</b>；透过尖角露出的半张看它却是<b>清晰的</b>，这是第二个病灶的证人。切主题、拖滑杆，现场看：</p>
+
+<div class="ctl" id="ctl1">
+  <div class="seg" data-role="theme">
+    <button data-v="light">浅色</button><button data-v="dark" class="on">深色</button><button data-v="glass">自定义·玻璃</button>
+  </div>
+  <label class="glassonly dis">玻璃面不透明度 <input type="range" min="10" max="100" value="50" id="ga1"><span class="read" id="gao1">α 0.50</span></label>
+  <label class="glassonly dis">玻璃模糊 <input type="range" min="0" max="40" value="18" id="gb1"><span class="read" id="gbo1">18px</span></label>
+  <label style="margin-left:auto">放大 <input type="range" min="1" max="4" step="1" value="1" id="zm1"><span class="read" id="zmo1">1×</span></label>
+</div>
+
+<div class="demo" data-theme="dark" id="demo1">
+  <div class="stage" id="stage1">
+    <div class="bgtxt">settings.json — <i>"editor.fontSize": 14, "workbench.colorTheme": "Aurora"</i> …</div>
+    <div class="iconbar">
+      <span class="ic">⌂</span><span class="ic">⌕</span><span class="ic on">⚙ 提示锚</span><span class="ic">◫</span><span class="ic">✕</span>
+    </div>
+    <div class="tip v-now" data-p="bottom" style="left:46px;top:52px">
+      <span>设置</span><kbd>Ctrl+,</kbd>
+      <span class="tail" style="left:66px"></span>
+    </div>
+  </div>
+</div>
+<p class="note">👀 玻璃态下看三处：<b class="hot">菱形暗斑</b>——条身内、尾巴根上那一小块颜色更实（两层半透明叠出来的）；<b class="hot">清晰菱形</b>——尾巴露在条外的半张没磨砂，背景小字透过它是锐利的，与条身的糊面对不上；<b class="hot">边框发虚</b>——尾巴根压住的那段 1px 边框被半透明贴片蒙了一层。浅色/深色（不透明）下这三处全部隐身——因为隐身机制靠的正是「同色不透明」。</p>
+
+<h2>② 机理拆解 —— 一张 8×8 的牌，怎么打成菱形的</h2>
+
+<div class="panel">
+  <h3 style="margin-top:0">几何：旋转 45° 的正方形，「藏一半、露一半」</h3>
+  <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+    <svg width="620" height="230" viewBox="0 0 620 230" style="flex:0 0 auto">
+      <!-- 条身 -->
+      <rect x="20" y="20" width="290" height="52" rx="4" fill="#2b2b34" stroke="#555" stroke-dasharray="4 3"/>
+      <text x="30" y="45" fill="#b3ada4" font-size="12" font-family="monospace">条身（--bg-card ＋ 磨砂 blur≥16px）</text>
+      <!-- 菱形（8×8 → 12×）：中心骑在条身底边线上（真实几何） -->
+      <g transform="translate(150,72)">
+        <g transform="rotate(45)">
+          <rect x="-30" y="-30" width="60" height="60" fill="rgba(255,147,117,.28)"/>
+          <line x1="-30" y1="-30" x2="30" y2="-30" stroke="#ff9375" stroke-width="2"/>
+          <line x1="30" y1="-30" x2="30" y2="30" stroke="#ff9375" stroke-width="2"/>
+          <line x1="-30" y1="-30" x2="30" y2="30" stroke="#8a6ff0" stroke-width="1.5" stroke-dasharray="5 4"/>
+        </g>
+      </g>
+      <text x="250" y="100" fill="#ff9375" font-size="12" font-family="monospace">保留的两条边（bottom＋right）</text>
+      <text x="250" y="120" fill="#b3ada4" font-size="12" font-family="monospace">rotate(45deg) 后 = 露出的 V</text>
+      <text x="250" y="146" fill="#8a6ff0" font-size="12" font-family="monospace">对角线（藏/露的分界）</text>
+      <text x="30" y="196" fill="#b3ada4" font-size="12" font-family="monospace">上三角 = 藏进条里的半张：靠「条自己的背景盖住」隐身</text>
+      <text x="30" y="214" fill="#ff9375" font-size="12" font-family="monospace">下三角 = 露出的半张：指向锚</text>
+    </svg>
+    <div style="flex:1;min-width:300px">
+      <p class="note" style="margin-top:0"><b>产品几何（HintTip.css:55-86）</b>：尾巴是 8×8 正方形 <code>rotate(45deg)</code> 成菱形，<code>bottom:-5px</code> 让中心落在条底边外 1px——露出的不是正好一半，是「一半再多 1px」。藏进条里的那半张<b>没有从几何上消失</b>，它还在那儿，只是被条自身的背景盖住。</p>
+      <p class="note">不透明主题里，盖住 ＝ 隐身（同色）；边框也只留露出那两条（<code>border-top/left:none</code>），藏着的两条干脆不画 ⇒ 看起来是个干净的三角尖。</p>
+      <p class="note" style="color:var(--warn)">玻璃态把前提抽走了：<code>synthesizeGlassSurfaces</code>（tokens.ts，激活＝presence 门控，seeds.ts:193-205）把 8 个 <code>bg-*</code> 表面键合成半透明——<code>--bg-card</code> 一透明，「盖住」就变成了「<b>叠上去</b>」。</p>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h3 style="margin-top:0">分层：尾巴是一张「没磨砂的半透明贴片」</h3>
+  <p class="note" style="margin-top:4px">结构磨砂规则（index.css:566-570）只够到<b>深度 3</b>（wrapper 的直接子＝条身）；尾巴是条身的子（深度 4），<b>吃不到</b> backdrop-filter。于是玻璃态下叠出三层两种质感：</p>
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:560px;font:12.5px var(--mono)">
+    <div style="border:1px dashed #6a6a78;border-radius:8px;padding:9px 13px">第 3 层 · 尾巴贴片 —— 半透明 --bg-card，<b style="color:var(--warn)">无磨砂</b>（深度 4，规则够不着）⇒ 露出的半张透出<b style="color:var(--warn)">清晰</b>背景，藏进的半张叠在条身上 ⇒ <b style="color:var(--warn)">双层玻璃暗斑</b>，还顺手蒙花那段 1px 边框</div>
+    <div style="border:1px solid #6a6a78;border-radius:8px;padding:9px 13px;background:#23232b">第 2 层 · 条身玻璃面 —— 半透明 --bg-card ＋ backdrop-filter blur(≥16px)（深度 3，结构规则给）⇒ 背景透进来是<b style="color:var(--ok)">糊的</b></div>
+    <div style="border:1px solid #6a6a78;border-radius:8px;padding:9px 13px;background:linear-gradient(120deg,#3a2f55,#0f2027)">第 1 层 · 背景图（清晰细节文字/影像）</div>
+  </div>
+  <p class="note">不透明主题下这三层照样叠，但每层都不透光 ⇒ 叠加无效、清晰/糊面对不上也看不见——「正常的气泡样」是<b>巧合的隐身</b>，不是几何正确。</p>
+</div>
+
+<h2>③ 修案同台 —— 同一根滑杆，四种尾巴</h2>
+<p class="note">下排四个舞台共享顶部控制台的主题与玻璃参数：第一个是<b>现状</b>（对照），后三个是修案。<b class="good">判据</b>：玻璃态下，条身与尖角应当读成<b>一块连续的玻璃</b>——无暗斑、无清晰/糊缝、边框全程实线。</p>
+
+<div class="ctl" id="ctl2">
+  <div class="seg" data-role="theme">
+    <button data-v="light">浅色</button><button data-v="dark">深色</button><button data-v="glass" class="on">自定义·玻璃</button>
+  </div>
+  <label class="glassonly">玻璃面不透明度 <input type="range" min="10" max="100" value="50" id="ga2"><span class="read" id="gao2">α 0.50</span></label>
+  <label class="glassonly">玻璃模糊 <input type="range" min="0" max="40" value="18" id="gb2"><span class="read" id="gbo2">18px</span></label>
+</div>
+
+<div class="demo glass" data-theme="glass" id="demo2">
+  <div class="duo">
+    <div class="cell">
+      <p class="cap no">现状 · 藏一半露一半（对照）</p>
+      <div class="stage">
+        <div class="bgtxt">settings.json — <i>"editor.fontSize": 14, …</i></div>
+        <div class="iconbar"><span class="ic">⌂</span><span class="ic">⌕</span><span class="ic on">⚙</span><span class="ic">◫</span></div>
+        <div class="tip v-now" data-p="bottom" style="left:29px;top:52px"><span>设置</span><kbd>Ctrl+,</kbd><span class="tail" style="left:64px"></span></div>
+      </div>
+      <p class="note">暗斑 ＋ 清晰菱形 ＋ 边框发虚，三处全在。</p>
+    </div>
+    <div class="cell">
+      <p class="cap ok">A 案 · 半菱裁剪 ＋ 尾巴自带磨砂（✅ 已拍 D1）</p>
+      <div class="stage">
+        <div class="bgtxt">settings.json — <i>"editor.fontSize": 14, …</i></div>
+        <div class="iconbar"><span class="ic">⌂</span><span class="ic">⌕</span><span class="ic on">⚙</span><span class="ic">◫</span></div>
+        <div class="tip v-a" data-p="bottom" style="left:29px;top:52px"><span>设置</span><kbd>Ctrl+,</kbd><span class="tail" style="left:64px"></span></div>
+      </div>
+      <p class="note">藏的那半张从几何上裁掉（clip-path），露的半张自备同款磨砂；尾巴尖只矮 1px。非玻璃主题照常是气泡样。</p>
+    </div>
+    <div class="cell">
+      <p class="cap mut">B 案 · 玻璃态收尖（备选）</p>
+      <div class="stage">
+        <div class="bgtxt">settings.json — <i>"editor.fontSize": 14, …</i></div>
+        <div class="iconbar"><span class="ic">⌂</span><span class="ic">⌕</span><span class="ic on">⚙</span><span class="ic">◫</span></div>
+        <div class="tip v-now v-b" data-p="bottom" style="left:29px;top:48px"><span>设置</span><kbd>Ctrl+,</kbd><span class="tail" style="left:64px"></span></div>
+      </div>
+      <p class="note">玻璃激活 ⇒ 干脆不出尾巴（贴紧 6px 自己承担归属感；Win11/macOS 的 tooltip 同此相）。切到浅色/深色可见尾巴回来。<b>依赖一个「玻璃激活」标记</b>（渲染器读配置或壳写 root 属性）。</p>
+    </div>
+    <div class="cell">
+      <p class="cap mut">C 案 · 一体成型 clip-path ＋ SVG 描边（留档）</p>
+      <div class="stage">
+        <div class="bgtxt">settings.json — <i>"editor.fontSize": 14, …</i></div>
+        <div class="iconbar"><span class="ic">⌂</span><span class="ic">⌕</span><span class="ic on">⚙</span><span class="ic">◫</span></div>
+        <div class="tipC" style="left:0;top:46px">
+          <div class="glass"></div>
+          <svg viewBox="0 0 196 37">
+            <path d="M0,10 A4,4 0 0 1 4,6 L90.3,6 L98,0.4 L105.7,6 L192,6 A4,4 0 0 1 196,10 L196,33 A4,4 0 0 1 192,37 L4,37 A4,4 0 0 1 0,33 Z"
+                  style="fill:var(--tipfill);stroke:var(--bd);stroke-width:1"/>
+          </svg>
+          <span class="lb"><span>设置</span><kbd>Ctrl+,</kbd></span>
+        </div>
+      </div>
+      <p class="note">整泡一条路径裁出，玻璃最连续、边框含尖角全程实线——几何上最正。但渲染器要把 tail 偏移喂进 <code>path()</code> 并随换行/测宽重算，改动面最大；示意里尖角偏移是写死的。</p>
+    </div>
+  </div>
+</div>
+
+<h2>④ A 案 · 四方位全检 —— 尖角「留哪两条边」与裁哪半张是配套的</h2>
+<p class="note">现状的规则是「留 bottom＋right ＝ 指向正下」（HintTip.css:12-14 的配套禁令）。A 案在每条方位规则上各加<b>一条 clip-path ＋ 一行磨砂</b>、偏移 -5px→-4px，边框留法一字不动。下面固定玻璃态，四方位各放一枚（A 案）：</p>
+<div class="demo glass" data-theme="glass">
+  <div class="duo">
+    <div class="cell"><p class="cap">top（默认）</p>
+      <div class="stage" style="height:150px">
+        <div class="bgtxt">background detail line —— <i>should look blurred</i></div>
+        <div class="tip v-a" data-p="top" style="left:64px;top:56px"><span>顶部提示</span><span class="tail" style="left:30px"></span></div>
+        <span class="anchor" style="left:81px;top:96px">锚</span>
+      </div></div>
+    <div class="cell"><p class="cap">bottom（翻面）</p>
+      <div class="stage" style="height:150px">
+        <div class="bgtxt">background detail line —— <i>should look blurred</i></div>
+        <span class="anchor" style="left:81px;top:38px">锚</span>
+        <div class="tip v-a" data-p="bottom" style="left:64px;top:64px"><span>底部提示</span><span class="tail" style="left:30px"></span></div>
+      </div></div>
+    <div class="cell"><p class="cap">left（条在左、尖朝右）</p>
+      <div class="stage" style="height:150px">
+        <div class="bgtxt">background detail line —— <i>should look blurred</i></div>
+        <div class="tip v-a" data-p="left" style="left:24px;top:60px"><span>左侧提示</span><span class="tail" style="top:12px"></span></div>
+        <span class="anchor" style="left:112px;top:66px">锚</span>
+      </div></div>
+    <div class="cell"><p class="cap">right（条在右、尖朝左）</p>
+      <div class="stage" style="height:150px">
+        <div class="bgtxt">background detail line —— <i>should look blurred</i></div>
+        <span class="anchor" style="left:64px;top:66px">锚</span>
+        <div class="tip v-a" data-p="right" style="left:110px;top:60px"><span>右侧提示</span><span class="tail" style="top:12px"></span></div>
+      </div></div>
+  </div>
+</div>
+
+<h2>⑤ 决策点速览</h2>
+<table class="cmp">
+  <tr><th>#</th><th>问</th><th>建议</th><th>为什么</th></tr>
+  <tr><td class="k">D1</td><td>主案选哪个</td><td class="yes">A 半菱裁剪＋自带磨砂</td><td>三个病灶全治；保住 2026-09-27「要尖角」拍板在<b>所有主题</b>下的形态；只动 <code>HintTip.css</code> 一个文件（四条方位规则），placement.ts / 渲染器 / 主题系统零接触；磨砂例外有先例（<code>.ldk-floating-panel-act.tip::after</code>，深度 5 都开过）。B 需要玻璃激活标记；C 改动面最大。</td></tr>
+  <tr><td class="k">D2</td><td>尾巴变矮 1px 怎么办</td><td class="yes">维持 8×8 不补</td><td>中心骑线后露出 ≈5.7px（今天 ≈6.7px），1px 无感；要补回得动 <code>TAIL_SIZE_PX</code>（placement.ts）＝牵动夹紧区间，不值。</td></tr>
+  <tr><td class="k">D3</td><td>B 案要不要立项</td><td>不立（随 D1 作废）</td><td>「玻璃态收尖」相上最省事，但依赖玻璃激活标记（渲染器读配置或壳写 root 属性）＝多一条跨面依赖；且丢了「尖角指向锚」的归属感拍板。</td></tr>
+  <tr><td class="k">D4</td><td>C 案留不留</td><td class="yes">✅ 留档（未来不排除启用）</td><td>几何最正、玻璃最连续，但 tail 偏移要进 <code>path()</code>、随换行重算，渲染器改动面与其收益不配；<b>用户 2026-10-03 明示未来不排除启用</b>——若未来尖角要变造型（弧尾/大尾）或 A 案实机欠佳，回头启它。</td></tr>
+  <tr><td class="k">D5</td><td>clip-path ＋ backdrop-filter 同元素的行为</td><td>落地前实机核一次</td><td>本图在 Chromium 里示意成立；产品里尾巴还要吃 <code>--glass-saturate</code> 等主题增强，落地时按「blur(地板) 先行、增强照条身」核对一遍读数。</td></tr>
+</table>
+
+<p class="note" style="margin-top:14px">✅ <b>2026-10-03 拍板：D1–D5 全定、均按建议值</b>——A 半菱裁剪＋自带磨砂 · 维持 8×8 不补 · B 不立项 · C 留档（<b>用户明示未来不排除启用</b>）· D5 落地前实机核。⛔ 产品代码仍未动工，动工等用户发话。</p>
+
+<footer>
+  <b>本页是示意图，产品代码一个字未动（含主题系统）。</b>病灶证据：HintTip.css:55-86（尾巴几何）· index.css:566-570（深度 3 结构磨砂）· index.css:561-565（--float-blur-floor=16px 保底）· seeds.ts:193-205（玻璃 presence 门控）· constants.ts:84-86（合成只碰 8 个 bg-*)。
+  ⛔ 本页配色/背景图为示意替身——落地一律走 CSS 变量（硬约束 1），尾巴磨砂参数必须与条身同源（同一 blur 公式，不抄字面量）。
+</footer>
+
+<script>
+  function bindPanel(ctlId, demoId, opts){
+    const ctl = document.getElementById(ctlId), demo = document.getElementById(demoId);
+    const themeBtns = ctl.querySelectorAll('[data-role=theme] button');
+    const gaIn = ctl.querySelector('#' + (opts.ga)), gbIn = ctl.querySelector('#' + (opts.gb));
+    const gaOut = ctl.querySelector('#' + (opts.gaOut)), gbOut = ctl.querySelector('#' + (opts.gbOut));
+    const glassLbs = ctl.querySelectorAll('.glassonly');
+    function isGlass(){ return demo.classList.contains('glass'); }
+    function paintTheme(){
+      const mode = demo.dataset.theme === 'glass' ? 'glass' : demo.dataset.theme;
+      themeBtns.forEach(b => b.classList.toggle('on', b.dataset.v === mode));
+      glassLbs.forEach(l => l.classList.toggle('dis', !isGlass()));
+    }
+    themeBtns.forEach(b => b.addEventListener('click', () => {
+      if(b.dataset.v === 'glass'){ demo.classList.add('glass'); demo.dataset.theme = 'glass'; }
+      else { demo.classList.remove('glass'); demo.dataset.theme = b.dataset.v; }
+      paintTheme();
+    }));
+    function paintGlass(){
+      demo.style.setProperty('--ga', gaIn.value / 100);
+      demo.style.setProperty('--fblur', Math.max(16, Number(gbIn.value)) + 'px');
+      gaOut.textContent = 'α ' + (gaIn.value / 100).toFixed(2);
+      gbOut.textContent = Math.max(16, Number(gbIn.value)) + 'px' + (Number(gbIn.value) < 16 ? '（地板）' : '');
+    }
+    gaIn.addEventListener('input', paintGlass); gbIn.addEventListener('input', paintGlass);
+    if(opts.zoom){
+      const zm = ctl.querySelector('#' + opts.zoom), zmo = ctl.querySelector('#' + opts.zoomOut);
+      const stage = document.getElementById(opts.zoomStage);
+      zm.addEventListener('input', () => { stage.style.zoom = zm.value; zmo.textContent = zm.value + '×'; });
+    }
+    paintTheme(); paintGlass();
+  }
+  bindPanel('ctl1', 'demo1', {ga:'ga1', gaOut:'gao1', gb:'gb1', gbOut:'gbo1', zoom:'zm1', zoomOut:'zmo1', zoomStage:'stage1'});
+  bindPanel('ctl2', 'demo2', {ga:'ga2', gaOut:'gao2', gb:'gb2', gbOut:'gbo2'});
+</script>
+
+</body>
+</html>

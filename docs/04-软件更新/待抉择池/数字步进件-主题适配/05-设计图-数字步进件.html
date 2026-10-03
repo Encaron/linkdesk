@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>NumberInput（数字步进件）· 主题适配设计图</title>
+<style>
+  :root{
+    --bg:#17171b; --card:#202027; --line:#33333d; --txt:#e9e9ec; --txt2:#b3ada4;
+    --ink:#161616; --acc:#8a6ff0; --ok:#2fbf8a; --warn:#ff9375;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+
+    /* 产品侧 token 的本地替身（示意色，非产品真值）——组件演示只读这几个 */
+    --bd:#3a3a46; --field-bg:#1b1b21; --hover-bg:#2b2b34; --muted:#8b8794; --fg:#e9e9ec;
+    --r:0px;                     /* ← 演示用圆角，跟着滑杆走（等价于产品里的 --radius-sm） */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 30px 64px;background:var(--bg);color:var(--txt);font:14px/1.75 var(--sans)}
+  h1{margin:0 0 10px;font:600 23px/1.35 var(--sans)}
+  h2{margin:40px 0 6px;font:600 17px/1.4 var(--sans);padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{margin:24px 0 6px;font:600 14.5px/1.4 var(--sans)}
+  p{margin:10px 0;max-width:84ch}
+  .lead{color:var(--txt2)}
+  .quote{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:#1d1d23;
+         color:var(--txt2);font-size:13px;max-width:84ch}
+  code{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:var(--txt)}
+  b.hot{color:var(--warn)}
+  b.good{color:var(--ok)}
+  .note{color:var(--txt2);font-size:12.5px;margin:8px 0;max-width:84ch}
+  .note .sys{color:var(--warn);font:500 12px/1.6 var(--mono)}
+  ul{margin:8px 0;padding-left:20px;max-width:84ch}
+  li{margin:5px 0}
+
+  /* ── 组件：现状（照产品 CSS 一比一，含"死代码"那条的真实胜者） ───────── */
+  .now .grp{display:inline-flex;align-items:center;gap:0}
+  .now .btn{display:flex;align-items:center;justify-content:center;width:22px;height:24px;padding:0;
+            border:1px solid var(--bd);background:var(--field-bg);color:var(--fg);font-size:16px;line-height:1;user-select:none}
+  .now .btn:first-child{border-radius:var(--r) 0 0 var(--r);border-right:none}
+  .now .btn:last-child {border-radius:0 var(--r) var(--r) 0;border-left:none}
+  .now .fld{border:1px solid var(--bd);background:var(--field-bg);border-radius:var(--r);  /* ← 实际生效的那条 */
+            padding:4px 8px;width:56px;text-align:center;font-size:13px;line-height:1.25;color:var(--fg)}
+  .now .unit{margin:0 6px 0 8px;color:var(--muted);font-size:13px;line-height:1;user-select:none}
+
+  /* ── 组件：A 案 · 分段式（单一容器） ─────────────────────────────── */
+  .fixA .grp{display:inline-flex;align-items:stretch;height:26px;border:1px solid var(--bd);
+             border-radius:var(--r);background:var(--field-bg);overflow:hidden}
+  .fixA .btn{position:relative;display:flex;align-items:center;justify-content:center;width:22px;
+             border:0;background:transparent;color:var(--fg);font-size:16px;line-height:1;user-select:none}
+  .fixA .btn::after{content:"";position:absolute;top:4px;bottom:4px;width:1px;background:var(--bd)}
+  .fixA .btn.d::after{right:0}
+  .fixA .btn.u::after{left:0}
+  .fixA .cell{display:flex;align-items:center;justify-content:center;gap:2px;min-width:46px;padding:0 6px}
+  .fixA .fld{width:34px;border:0;background:transparent;outline:none;text-align:center;font-size:13px;color:var(--fg);padding:0}
+  .fixA .unit{color:var(--muted);font-size:13px;line-height:1;user-select:none}
+
+  /* ── 组件：B 案 · 幽灵式（同容器，无分隔线，按钮静默） ────────────── */
+  .fixB .grp{display:inline-flex;align-items:stretch;height:26px;border:1px solid var(--bd);
+             border-radius:var(--r);background:var(--field-bg);overflow:hidden}
+  .fixB .btn{display:flex;align-items:center;justify-content:center;width:26px;border:0;background:transparent;
+             color:var(--muted);font-size:16px;line-height:1;transition:background 150ms,color 150ms}
+  .fixB .btn:hover{background:var(--hover-bg);color:var(--fg)}
+  .fixB .cell{display:flex;align-items:center;justify-content:center;gap:2px;min-width:46px;padding:0 6px}
+  .fixB .fld{width:34px;border:0;background:transparent;outline:none;text-align:center;font-size:13px;color:var(--fg);padding:0}
+  .fixB .unit{color:var(--muted);font-size:13px;line-height:1;user-select:none}
+
+  /* ── 五态（A 案） ─────────────────────────────────────────────── */
+  .st-hover .btn.u{background:var(--hover-bg)}
+  .st-press .btn.u{background:var(--acc);color:var(--ink)}
+  .st-off   .btn.d{opacity:.3}
+  .st-focus .grp{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+
+  /* ── 面板与网格 ─────────────────────────────────────────────── */
+  .panel{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:20px 22px;margin-top:14px}
+  .lab{font:600 12.5px var(--mono);color:var(--muted);letter-spacing:.04em;margin:0 0 6px}
+  .lab.ok{color:var(--ok)} .lab.no{color:var(--warn)}
+  .stage{display:flex;flex-wrap:wrap;gap:26px 34px;align-items:flex-start}
+  .cellw{display:flex;flex-direction:column;align-items:center;gap:10px}
+
+  .matrix{border-collapse:collapse;margin-top:10px}
+  .matrix th,.matrix td{border:1px solid var(--line);padding:10px 14px;text-align:center;vertical-align:middle}
+  .matrix th{background:#23232b;font:600 12.5px var(--mono);color:var(--txt2)}
+  .matrix th.rowh{background:#23232b;text-align:left;font:600 12.5px var(--mono);color:var(--txt)}
+  .matrix td{background:#1c1c22;min-width:150px}
+
+  /* 爆炸图 */
+  .boom{display:flex;align-items:flex-start;gap:0;flex-wrap:wrap}
+  .prow{height:26px;display:flex;align-items:center}          /* 四块高度不一（22/24/26）也共用一条水平中轴 */
+  .piece{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 6px}
+  .piece .tag{font:11.5px/1.55 var(--mono);color:var(--muted);text-align:center;white-space:nowrap}
+  .piece .tag b{display:block;color:var(--txt);font:600 12px var(--mono)}
+  .piece .tag span{display:block;color:var(--muted)}
+  .piece .tag i{display:block;color:var(--warn);font-style:normal}
+  .pbox{display:flex;align-items:center;justify-content:center;background:var(--field-bg);color:var(--fg);
+        border:1px solid var(--bd);font-size:16px}
+  .pbtn{width:24px;height:24px}
+  .pfld{width:62px;height:26px;font-size:13px}
+  .punit{width:26px;height:22px;border-color:transparent;background:transparent;color:var(--muted);font-size:13px}
+  .plus{font:600 20px/1 var(--mono);color:var(--muted);height:26px;display:flex;align-items:center;padding:0 2px}
+  .r-note{font:11.5px/1.6 var(--mono);color:var(--txt2)}
+
+  /* 滑杆区 */
+  .live{border:1px solid var(--line);border-radius:10px;background:#1b1b21;padding:18px 22px;margin-top:14px}
+  .live .ctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .live input[type=range]{width:340px;accent-color:var(--acc)}
+  .live .read{font:600 13px var(--mono);color:var(--acc);min-width:120px}
+  .live .pair{display:flex;gap:40px;flex-wrap:wrap;margin-top:20px}
+  .live .pair>div{display:flex;flex-direction:column;gap:9px}
+
+  table.cmp{max-width:900px;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+  table.cmp th,table.cmp td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  table.cmp th{background:#23232b;font-weight:600}
+  table.cmp td.k{font:12.5px var(--mono)}
+  .yes{color:var(--ok);font-weight:600} .no{color:var(--warn);font-weight:600}
+  footer{margin-top:40px;color:var(--txt2);font-size:12.5px;max-width:84ch;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+
+<h1>NumberInput（数字步进件）—— 长什么样、圆角怎么跟</h1>
+<p class="lead">本页是<b>局部图</b>：只画这一件控件，不画整个设置页。左半「现状」是<b>照产品 CSS 一比一</b>复刻的（含那条"死代码"的真实胜者），右半是两案改后。第 ③ 节有<b>可拖的圆角滑杆</b>，拖一下就能现场比出"跟不跟得上主题"。</p>
+
+<div class="quote">你的原话（2026-10-03）：<b>「① 首先 app.surfaceRadius 为 0，也就是直角时候，NumberInput 的加减号就和中间的不匹配，像不连着一样；② surfaceRadius 为圆角的时候更是惨不忍睹，加和减就是两个半圆在两边，中间是个胶囊，十分不协调；③ 它不适配很多情况，比如 app.uiFontScale，它所使用的 NumberInput 就很怪，％ 甚至在外面。」</b></div>
+
+<h2>① 今天长什么样：三个盒子硬拼，谁也不管谁</h2>
+<p class="note">整件不是"一个控件"，是 <b>4 块东西排成一条线</b>：两个按钮盒、一个借了全仓输入框类的字段盒、一个裸的单位文字。下面的爆炸图把它们拆开，每块标出<b>它的圆角/边框从哪来</b>。</p>
+
+<div class="panel">
+  <p class="lab no">现状 · 结构爆炸图（每块自己算自己的）</p>
+  <div class="boom">
+    <div class="piece">
+      <div class="prow"><div class="pbox pbtn" style="border-radius:4px 0 0 4px;border-right:none">−</div></div>
+      <div class="tag"><b>按钮盒</b><span>border 1px · 高 24px</span><i>圆角只圆外侧（first-child 写死）</i></div>
+    </div>
+    <div class="plus">+</div>
+    <div class="piece">
+      <div class="prow"><div class="pbox pfld" style="border-radius:4px">0</div></div>
+      <div class="tag"><b>字段盒（借 .ldk-input）</b><span>padding 4px 8px · 高 ≈26px</span><i>圆角来自 .ldk-input 一条独立规则</i></div>
+    </div>
+    <div class="plus">+</div>
+    <div class="piece">
+      <div class="prow"><div class="pbox punit">％</div></div>
+      <div class="tag"><b>裸的文字</b><span>不属于任何盒子</span><i>浮在两格之间的缝里</i></div>
+    </div>
+    <div class="plus">+</div>
+    <div class="piece">
+      <div class="prow"><div class="pbox pbtn" style="border-radius:0 4px 4px 0;border-left:none">+</div></div>
+      <div class="tag"><b>按钮盒</b><span>border 1px · 高 24px</span><i>圆角只圆外侧（last-child 写死）</i></div>
+    </div>
+  </div>
+  <p class="note">⬆ 四块<b>各有一个 1px 边框</b>、<b>各算一次高度</b>、<b>各写一处圆角</b>——没有任何一块是"外框"。下面两张图是同一堆东西在滑杆两端的两种死法。</p>
+</div>
+
+<div class="panel">
+  <div class="stage">
+    <div class="cellw">
+      <p class="lab no">症状① · 直角档（surfaceRadius = 0）</p>
+      <div class="now"><div class="grp" style="--r:0px">
+        <div class="btn">−</div><input class="fld" value="0" readonly><div class="btn">+</div>
+      </div></div>
+      <div class="r-note">字段比按钮高 ⇒ 上下各冒出一截；<br>没有圆角可"糊"接缝 ⇒ 读成三块。</div>
+    </div>
+    <div class="cellw">
+      <p class="lab no">症状② · 大圆角档（surfaceRadius = 32）</p>
+      <div class="now"><div class="grp" style="--r:32px">
+        <div class="btn">−</div><input class="fld" value="0" readonly><div class="btn">+</div>
+      </div></div>
+      <div class="r-note">按钮外侧被钳成<b class="hot">半圆</b>，字段四角被钳成<b class="hot">胶囊</b>——<br>三个形状，不是一个控件。</div>
+    </div>
+    <div class="cellw">
+      <p class="lab no">症状③ · 单位掉在外面（app.uiFontScale）</p>
+      <div class="now"><div class="grp" style="--r:8px">
+        <div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div>
+      </div></div>
+      <div class="r-note">％ 夹在字段与「+」之间的缝里，<br>而「+」又不画左边框 ⇒ 缝直接开口。</div>
+    </div>
+  </div>
+
+  <p class="lab no" style="margin-top:22px">为什么②会发生：那一句 <code>border-radius: 0</code> 是死代码</p>
+  <p class="note">产品的 <code>NumberInput.css</code> 里写着"字段圆角归零、好跟按钮拼成一条"，但同特异性下<b>后加载的规则赢</b>，而产物里两条规则的加载顺序是反的：</p>
+  <div class="panel" style="background:#1b1b21;padding:14px 18px">
+    <p class="lab"><code>dist/pool.html</code></p>
+    <p class="note" style="font-family:var(--mono)">第 21 行　<code>@linkdesk/ui.css</code>　→　<code>.ldk-number-input-field{ border-radius: 0 }</code><br>
+    第 25 行　<code>pool-*.css</code>　　　→　<code>.ldk-input{ border-radius: var(--radius-sm) }</code>　<b class="hot">← 后加载，赢</b></p>
+    <p class="note">两条都是<b>单类名</b>、特异性相同 ⇒ 排在后面的 <code>.ldk-input</code> 胜。所以字段实际带着 <code>var(--radius-sm)</code> 的<b>四角圆角</b>——这正是"中间是个胶囊"的来源。<b>症状②的根不是"圆角写错了"，是"有两套圆角规则在抢，而且抢输了"。</b></p>
+  </div>
+</div>
+
+<h2>② 改后：一个盒子装三段</h2>
+<p>边框、圆角、高度<b>各只有一处来源</b>——都写在外框上。内部三段零圆角、零边框，被外框的圆角裁出来；单位搬进"值单元格"，跟值同一个盒子。</p>
+
+<div class="panel">
+  <div class="stage">
+    <div class="cellw">
+      <p class="lab ok">A 案 · 分段式（建议）</p>
+      <div class="fixA"><div class="grp" style="--r:8px">
+        <div class="btn d">−</div>
+        <div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div>
+        <div class="btn u">+</div>
+      </div></div>
+      <div class="r-note">内缩竖线分三段；<br>「值＋％」作为一个词居中。</div>
+    </div>
+    <div class="cellw">
+      <p class="lab">B 案 · 幽灵式（备选）</p>
+      <div class="fixB"><div class="grp" style="--r:8px">
+        <div class="btn">−</div>
+        <div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div>
+        <div class="btn">+</div>
+      </div></div>
+      <div class="r-note">无分隔线；−/+ 静默灰、悬停才亮。<br>更轻，但"能点"的可供性弱一档。</div>
+    </div>
+  </div>
+
+  <p class="lab ok" style="margin-top:24px">改后 · 结构（对照上面的爆炸图）</p>
+  <div class="boom">
+    <div class="piece">
+      <div class="pbox" style="width:150px;height:52px;border-radius:8px 0 0 8px;position:relative">
+        <span style="position:absolute;left:0;top:0;bottom:0;width:40px;display:flex;align-items:center;justify-content:center;font-size:16px">−</span>
+        <span style="position:absolute;left:40px;top:0;bottom:0;width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:13px">100<span style="color:var(--muted)">％</span></span>
+        <span style="position:absolute;right:0;top:0;bottom:0;width:40px;display:flex;align-items:center;justify-content:center;font-size:16px">+</span>
+        <span style="position:absolute;left:40px;top:7px;bottom:7px;width:1px;background:var(--bd)"></span>
+        <span style="position:absolute;right:40px;top:7px;bottom:7px;width:1px;background:var(--bd)"></span>
+      </div>
+      <div class="tag"><b>一个外框</b>border 1px / 高 26px<b>圆角唯一 → var(--radius-sm)</b><i>内部三段：零圆角、零边框</i></div>
+    </div>
+  </div>
+  <p class="note">⬆ 滑杆怎么拉，动的都是那<b>一个</b>圆角；内部结构一动不动。这就是"跟得上主题"的全部含义。</p>
+</div>
+
+<div class="panel">
+  <p class="lab ok">A 案 · 五态（形状永不参与状态表达）</p>
+  <div class="stage">
+    <div class="cellw"><div class="fixA"><div class="grp" style="--r:6px"><div class="btn d">−</div><div class="cell"><input class="fld" value="0" readonly></div><div class="btn u">+</div></div></div><div class="r-note">默认</div></div>
+    <div class="cellw"><div class="fixA st-hover"><div class="grp" style="--r:6px"><div class="btn d">−</div><div class="cell"><input class="fld" value="0" readonly></div><div class="btn u">+</div></div></div><div class="r-note">悬停「+」</div></div>
+    <div class="cellw"><div class="fixA st-press"><div class="grp" style="--r:6px"><div class="btn d">−</div><div class="cell"><input class="fld" value="0" readonly></div><div class="btn u">+</div></div></div><div class="r-note">按下「+」</div></div>
+    <div class="cellw"><div class="fixA st-off"><div class="grp" style="--r:6px"><div class="btn d">−</div><div class="cell"><input class="fld" value="-8" readonly></div><div class="btn u">+</div></div></div><div class="r-note">到下限：只灰「−」，<br>外框与另一端不变</div></div>
+    <div class="cellw"><div class="fixA st-focus"><div class="grp" style="--r:6px"><div class="btn d">−</div><div class="cell"><input class="fld" value="0" readonly></div><div class="btn u">+</div></div></div><div class="r-note">键盘聚焦：<b class="good">整组一个环</b><br>（今天只亮中间那格）</div></div>
+  </div>
+</div>
+
+<h2>③ 圆角适配对照 —— 拖一下滑杆，现场比</h2>
+<p>上排是<b>现状</b>，下排是<b>A 案</b>。拖滑杆＝拖设置里的「组件圆角」（0 → 32）。看两件事：现状在两端各崩一次；A 案整条线上始终是<b>一个形状</b>。</p>
+
+<div class="live">
+  <div class="ctl">
+    <span class="lab" style="margin:0">app.surfaceRadius（等价）</span>
+    <input id="rng" type="range" min="0" max="32" step="1" value="0">
+    <span class="read" id="readout">0px　直角</span>
+  </div>
+  <div class="pair">
+    <div>
+      <p class="lab no">现状</p>
+      <div class="now"><div class="grp" id="liveNow" style="--r:0px">
+        <div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div>
+      </div></div>
+    </div>
+    <div>
+      <p class="lab ok">A 案</p>
+      <div class="fixA"><div class="grp" id="liveFix" style="--r:0px">
+        <div class="btn d">−</div>
+        <div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div>
+        <div class="btn u">+</div>
+      </div></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:16px">⚠️ 现状那排的"高度差"是按产品 CSS 推导的（按钮写死 24px、字段由 padding ＋ 字号撑出 ≈26px），<b>具体 px 待实机量一次</b>；圆角与边框的差异则是一比一复刻。</p>
+</div>
+
+<div class="panel">
+  <p class="lab">五档静态对照（存档用——同一批形状，钉在纸面上）</p>
+  <table class="matrix">
+    <tr><th class="rowh">滑杆</th><th>现状</th><th>A 案 · 分段式</th><th>B 案 · 幽灵式</th></tr>
+    <tr>
+      <th class="rowh">0px</th>
+      <td><div class="now"><div class="grp" style="--r:0px"><div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div></div></div></td>
+      <td><div class="fixA"><div class="grp" style="--r:0px"><div class="btn d">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn u">+</div></div></div></td>
+      <td><div class="fixB"><div class="grp" style="--r:0px"><div class="btn">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn">+</div></div></div></td>
+    </tr>
+    <tr>
+      <th class="rowh">4px</th>
+      <td><div class="now"><div class="grp" style="--r:4px"><div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div></div></div></td>
+      <td><div class="fixA"><div class="grp" style="--r:4px"><div class="btn d">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn u">+</div></div></div></td>
+      <td><div class="fixB"><div class="grp" style="--r:4px"><div class="btn">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn">+</div></div></div></td>
+    </tr>
+    <tr>
+      <th class="rowh">8px</th>
+      <td><div class="now"><div class="grp" style="--r:8px"><div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div></div></div></td>
+      <td><div class="fixA"><div class="grp" style="--r:8px"><div class="btn d">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn u">+</div></div></div></td>
+      <td><div class="fixB"><div class="grp" style="--r:8px"><div class="btn">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn">+</div></div></div></td>
+    </tr>
+    <tr>
+      <th class="rowh">16px</th>
+      <td><div class="now"><div class="grp" style="--r:16px"><div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div></div></div></td>
+      <td><div class="fixA"><div class="grp" style="--r:16px"><div class="btn d">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn u">+</div></div></div></td>
+      <td><div class="fixB"><div class="grp" style="--r:16px"><div class="btn">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn">+</div></div></div></td>
+    </tr>
+    <tr>
+      <th class="rowh">32px<br><span style="font-weight:400;color:var(--muted)">（拉满）</span></th>
+      <td><div class="now"><div class="grp" style="--r:32px"><div class="btn">−</div><input class="fld" value="100" readonly><span class="unit">％</span><div class="btn">+</div></div></div></td>
+      <td><div class="fixA"><div class="grp" style="--r:32px"><div class="btn d">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn u">+</div></div></div></td>
+      <td><div class="fixB"><div class="grp" style="--r:32px"><div class="btn">−</div><div class="cell"><input class="fld" value="100" readonly><span class="unit">％</span></div><div class="btn">+</div></div></div></td>
+    </tr>
+  </table>
+  <p class="note"><b>判据</b>：从 0 拉到 32 的整条线上，控件的外轮廓应当是<b>一个连续、单调变圆的形状</b>；内部只应看到"被外轮廓裁出来的窄段 ＋ 内缩竖线"，<b>不应出现任何独立成形的第二、第三个圆角块</b>。32px 那一格是三案差异最大处——</p>
+  <ul>
+    <li><b class="hot">现状</b>：半圆 ＋ 胶囊 ＋ 半圆（三个形状）。</li>
+    <li><b class="good">A 案</b>：一个胶囊，里面三条窄段——浏览器把 32px 按半高钳成胶囊，这是<b>要的</b>（拉满＝要最圆）。</li>
+    <li>B 案：同 A，只是段与段之间没有竖线，靠灰字形暗示热区。</li>
+  </ul>
+</div>
+
+<h2>④ 尺寸与字号档（症状③ 的正面回答）</h2>
+<p>产品的度量体系里，一切尺寸乘 <code>--ui-scale</code>、字号走 <code>--font-size-*</code>。今天的病根是<b>按钮乘了、字段的 padding 没乘</b>——所以放大字号后两段错位。改后容器高度是<b>唯一来源</b>，三段用 <code>align-items: stretch</code> 永远等高。</p>
+<div class="panel">
+  <div class="stage">
+    <div class="cellw">
+      <p class="lab">100%　（默认）</p>
+      <div class="fixA" style="zoom:1"><div class="grp" style="--r:6px;height:26px;font-size:1em">
+        <div class="btn d" style="width:22px">−</div><div class="cell" style="min-width:46px"><input class="fld" style="width:34px;font-size:13px" value="100" readonly><span class="unit" style="font-size:13px">％</span></div><div class="btn u" style="width:22px">+</div>
+      </div></div>
+      <div class="r-note">高 26px · 值 13px</div>
+    </div>
+    <div class="cellw">
+      <p class="lab">125%</p>
+      <div class="fixA" style="zoom:1.25"><div class="grp" style="--r:6px;height:26px">
+        <div class="btn d" style="width:22px">−</div><div class="cell" style="min-width:46px"><input class="fld" style="width:34px;font-size:13px" value="100" readonly><span class="unit" style="font-size:13px">％</span></div><div class="btn u" style="width:22px">+</div>
+      </div></div>
+      <div class="r-note">整体等比 —— 三段仍等高</div>
+    </div>
+    <div class="cellw">
+      <p class="lab">150%</p>
+      <div class="fixA" style="zoom:1.5"><div class="grp" style="--r:6px;height:26px">
+        <div class="btn d" style="width:22px">−</div><div class="cell" style="min-width:46px"><input class="fld" style="width:34px;font-size:13px" value="150" readonly><span class="unit" style="font-size:13px">％</span></div><div class="btn u" style="width:22px">+</div>
+      </div></div>
+      <div class="r-note">三位数 ＋ ％ 完整可见</div>
+    </div>
+    <div class="cellw">
+      <p class="lab">无单位（window.zoomLevel）</p>
+      <div class="fixA"><div class="grp" style="--r:6px">
+        <div class="btn d">−</div><div class="cell"><input class="fld" value="0" readonly></div><div class="btn u">+</div>
+      </div></div>
+      <div class="r-note">不渲 ％；值居中在格内</div>
+    </div>
+  </div>
+  <p class="note">⚠️ 上图用 <code>zoom</code> 只作<b>等比示意</b>；产品里是各尺寸 <code>calc(Npx * var(--ui-scale))</code>，效果相同但机制不同。⚠️ <code>--radius-sm</code> <b>不随字号缩放</b>（它是绝对 px 标尺）——所以大字档下控件更快接近胶囊态，那是对的，不是 bug。</p>
+</div>
+
+<h2>⑤ 决策点速览</h2>
+<table class="cmp">
+  <tr><th>#</th><th>问</th><th>建议</th><th>为什么</th></tr>
+  <tr><td class="k">D1</td><td>走 A 还是 B</td><td class="yes">A 分段式</td><td>三症状全治；"这两处能点"的可供性最强。B 更轻但低对比主题下会显得点不着。</td></tr>
+  <tr><td class="k">D2</td><td>容器高度 24/26/28</td><td class="yes">26</td><td>今天按钮 24、字段 ≈26，取大者视觉跳变最小。⚠️ 待实机量完定。</td></tr>
+  <tr><td class="k">D3</td><td>有单位时值格怎么给位</td><td class="yes">固定最小宽（46×scale）</td><td>同一页两行控件宽度不跳；代价是总宽略增。</td></tr>
+  <tr><td class="k">D4</td><td>有没有分隔线</td><td class="yes">内缩 1px 竖线</td><td>直角档靠它撑起"三段可点"的读法；胶囊档被外轮廓裁着也不切弧。</td></tr>
+  <tr><td class="k">D5</td><td>聚焦怎么表达</td><td class="yes">整组 accent 环</td><td>今天"只亮中间那格"本身就是症状之一。</td></tr>
+  <tr><td class="k">D6</td><td>顺带补 aria-label？补测试？</td><td>①要 ②先不要</td><td>①白捡的 a11y；②会给这件挂测试债，宁可单独立件。</td></tr>
+</table>
+
+<p class="note" style="margin-top:14px">✅ <b>2026-10-03 六项全部拍定，均按建议值</b>：A 分段式 · 高 26px · 值格固定最小宽 46×scale · 内缩 1px 竖线 · 聚焦整组 accent 环 · 补 <code>aria-label</code>（测试文件先不补）。⛔ <b>产品代码仍未动工</b>——下一步是量读数与定稿契约，见同夹 04-任务清单 阶段 1。</p>
+
+<footer>
+  <b>本页是示意图，产品代码一个字未动。</b>完整规格（DOM/CSS 正表 · 五态 · 圆角行为判据）见同夹 <code>01-方案与落点契约.md</code>；
+  14 条边缘见 <code>02-边缘情况清单.md</code>；落点与门禁见 <code>03-实现交接.md</code>；阶段与验收见 <code>04-任务清单.md</code>。
+  ⛔ 本页的配色/<code>zoom</code> 只作示意——落地一律走 CSS 变量（硬约束 1），尺寸一律乘 <code>--ui-scale</code>。
+</footer>
+
+<script>
+  const rng = document.getElementById('rng');
+  const now = document.getElementById('liveNow');
+  const fix = document.getElementById('liveFix');
+  const out = document.getElementById('readout');
+  function paint(){
+    const v = Number(rng.value);
+    now.style.setProperty('--r', v + 'px');
+    fix.style.setProperty('--r', v + 'px');
+    out.textContent = v + 'px　' + (v === 0 ? '直角' : v >= 16 ? '接近胶囊' : '圆角');
+  }
+  rng.addEventListener('input', paint);
+  paint();
+</script>
+
+</body>
+</html>
