@@ -388,11 +388,19 @@ export function collectHostReserved(root = ROOT) {
     const vals = functionBodyAt(regSrc, "export function iconThemeEnumOptions(").match(/\bvalues:\s*\[([^\]]*)\]/);
     if (vals) absorb(vals[1]);
   }
-  /* ⑤d 宿主外观**哨兵值**（不是 id）——混搭来源「跟随主题」；从常量取值处扫，不手写字面量 */
+  /* ⑤d 宿主外观**哨兵值**（不是 id）——混搭来源「跟随主题」；从常量取值处扫，不手写字面量。
+   *     🆕 2026-10-03 设置控件案 4.1：字面量正典上移至 `@linkdesk/ui` 共享件（`settings-hints/
+   *     settingsHints.ts` 的 `MIX_FOLLOW_THEME_SENTINEL`），core 侧只余 re-export ⇒ 两处都扫
+   *     （正典件认新名、老的 core 定义处照旧认旧名），谁在定义就从谁取值——产物逐字节不变。 */
   const sentinels = new Set();
   {
-    const src = tryRead(path.join(root, "src", "core", "services", "ui", "ThemeEngine", "constants.ts"));
-    for (const m of src.matchAll(/export const MIX_FOLLOW_THEME\s*=\s*"([^"]+)"/g)) sentinels.add(m[1]);
+    const candidates = [
+      path.join(root, "src", "core", "services", "ui", "ThemeEngine", "constants.ts"),
+      path.join(root, "src", "components", "shared", "settings-hints", "settingsHints.ts"),
+    ];
+    for (const f of candidates) {
+      for (const m of tryRead(f).matchAll(/export const (?:MIX_FOLLOW_THEME|MIX_FOLLOW_THEME_SENTINEL)\s*=\s*"([^"]+)"/g)) sentinels.add(m[1]);
+    }
   }
   /* ⑤b updateActionable / updateButtonLabel —— 以常量注册（非字面量），补上 */
   {

@@ -15,6 +15,7 @@
  * 为什么运行时需要一份静态副本而不是"看谁先注册"：宿主有**从未注册**的真键（`app.schemaVersion`）。
  */
 
+import type { SettingsRenderHint, SettingsUiHint } from "@linkdesk/contracts";
 import { trackRegistration } from "./registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 import { HOST_PSEUDO_PLUGIN_IDS, HOST_RESERVED_CONFIG_KEYS } from "./host-reserved.generated";
 
@@ -46,13 +47,19 @@ export interface ConfigurationProperty {
    *  "color" → 文本输入框旁显示色块预览（#59e ColorPicker 替换为弹出调色器）。
    *  "action" → 渲染按钮而非输入框，点击执行 onApply。场景：一键重置、清空缓存等操作型配置。
    *  E5.7#74：闭合 union → string——插件独立铁律：第三方声明新 hint 不被壳 TS 类型拒绝
-   *  （SettingsView 已有降级逻辑，未知 hint 回退 type 默认渲染）。 */
-  renderHint?: string;
+   *  （SettingsView 已有降级逻辑，未知 hint 回退 type 默认渲染）。
+   *  🆕 设置控件案 4.1：**宿主声明面**收回词表正典 `SettingsRenderHint`（三值：readonly/action/color）——
+   *  收窄只约束**壳自己写的**声明（`src/App/config/*.ts` 等，写错即编译期红）；
+   *  第三方消费面照旧开放（`@linkdesk/contracts` 的 `LinkDeskConfigProperty` 仍是 `string`），
+   *  运行时未知 hint 的降级路径一点未动。 */
+  renderHint?: SettingsRenderHint;
   /** E5#57：声明式编辑控件提示——plugin.json 中声明，SettingsView 按 hint 选择控件。
    *  优先级高于 type。不认识的 hint 降级回 type 默认渲染——不抛错。
    *  E5.7#74：闭合 union → string（同上——已知值 "fontFamily"/"fontSize"/"color"/"file"/"directory"
-   *  仅文档化，不构成类型白名单）。 */
-  uiHint?: string;
+   *  仅文档化，不构成类型白名单）。
+   *  🆕 设置控件案 4.1：**宿主声明面**收回词表正典 `SettingsUiHint`（13 值）——名单与运行时表
+   *  `SETTINGS_UI_HINTS`／`isSettingsUiHint`（`@linkdesk/ui`）同源；第三方消费面仍开放 `string`（同 renderHint）。 */
+  uiHint?: SettingsUiHint;
   /** E5.8#50.20：等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族
    *  （编辑器字体）；false = 全字族（UI 字体，如 app.fontFamily 写 --font-ui）。 */
   monoOnly?: boolean;

@@ -150,8 +150,11 @@ export const MANAGED_TOKEN_KEYS: string[] = [
 
 /* ── E5.8#50.26：混搭域常量（10-混搭设计 §1/§3——按域换来源，引擎按域合并） ── */
 
-/** 混搭来源「跟随主题」哨兵值——与 app.mix* 默认值对齐（10 §1/§3 定稿） */
-export const MIX_FOLLOW_THEME = "followTheme";
+/** 混搭来源「跟随主题」哨兵值——与 app.mix* 默认值对齐（10 §1/§3 定稿）。
+ *  🆕 设置控件案 4.1：**字面量正典上移共享层**（`@linkdesk/ui` 的 `settings-hints/settingsHints.ts`
+ *  `MIX_FOLLOW_THEME_SENTINEL`）——此处按**旧名**转出：旧 import 路径 `ThemeEngine/constants`
+ *  与旧常量名 `MIX_FOLLOW_THEME` 都不破；设置仓侧同笔改 import 共享件（02 E4c）。 */
+export { MIX_FOLLOW_THEME_SENTINEL as MIX_FOLLOW_THEME } from "../../../../components/shared/settings-hints/settingsHints";
 
 /** 混搭域 → 来源配置 key——getMixProfile 读配置（单真源，startup.ts/settings 命令 import 本表）。
  *  E5.8#82：colors 域来源并入 app.themeColor（app.mixColor 删除）——六域来源 key 对称；
@@ -187,8 +190,10 @@ export const GLASS_TOKEN_KEYS: readonly string[] = Object.keys(SURFACE_ZERO).fil
 
 /** E5.8#87：配置「绝对无」哨兵值——app.backgroundImage/zoneBackgroundImage/fontFamily 显式无 = 不跟随主题（真无图/系统字体）。
  *  空值 "" = 跟随主题（presence 门控既有语义不变）；非空非哨兵 = 用户值覆盖。与设置插件侧字面量同契约
- *  （插件不能 import @src/core——config 值契约，对标 "followTheme" 哨兵）。 */
-export const CONFIG_NONE_SENTINEL = "__none__";
+ *  （插件不能 import @src/core——config 值契约，对标 "followTheme" 哨兵）。
+ *  🆕 设置控件案 4.1：字面量正典上移共享层（同上）——此处 re-export 保旧路径与旧名；
+ *  ⛔ 别在本文件把 `__none__` 字面量写回来（`npm run check` 的哨兵门禁判红，唯一豁免 = 正典件本身）。 */
+export { CONFIG_NONE_SENTINEL } from "../../../../components/shared/settings-hints/settingsHints";
 
 /** E5.8#87：系统默认字栈——fontFamily="__none__"（系统字体）覆盖写此栈（index.css :root --font-ui 同栈）。
  *  绝对系统默认 = 不跟随主题字体资产。 */
