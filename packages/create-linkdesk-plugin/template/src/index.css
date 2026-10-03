@@ -14,7 +14,7 @@
 
 .{{pluginName}}-starter__title {
   margin: 0 0 8px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .{{pluginName}}-starter__text {
@@ -35,7 +35,7 @@
 .{{pluginName}}-starter__button {
   margin-top: 12px;
   padding: 4px 12px;
-  color: var(--text);
+  color: var(--text-primary);
   background: transparent;
   border: 1px solid var(--text-muted);
   border-radius: 4px;
@@ -46,5 +46,5 @@
 
 .{{pluginName}}-starter__reply {
   margin: 8px 0 0;
-  color: var(--text);
+  color: var(--text-primary);
 }
