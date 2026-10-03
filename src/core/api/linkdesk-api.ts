@@ -64,6 +64,10 @@ export type {
   LinkDeskTheme,
   LinkDeskLanguage,
   LinkDeskConfigSchema,
+  // 设置控件词表正典（2026-10-03 设置控件案 3.1）：类型随契约发 npm，
+  // 运行时名单/守卫在 @linkdesk/ui（本包纯类型零运行时——⛔ 别往这里加 const）。
+  SettingsUiHint,
+  SettingsRenderHint,
   PluginListEntry,
   PluginInstallResult,
   PluginInfoEntry,

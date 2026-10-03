@@ -52,13 +52,15 @@ export interface LinkDeskConfigProperty {
     description?: string;
     enum?: string[];
     enumDescriptions?: string[];
-    /** 控件提示——uiHint 优先：plugin.json 声明式控件选择（renderControl 读它切 combobox/textarea/color 等） */
+    /** 控件提示——uiHint 优先：plugin.json 声明式控件选择（renderControl 读它切控件）。
+     *  已知值清单见 `SettingsUiHint`（正典）；**开放 string**——第三方可声明自定义 hint。 */
     uiHint?: string;
     /** 数值下限——uiHint 数值控件 min 校验 */
     minimum?: number;
     /** 数值上限——uiHint 数值控件 max 校验 */
     maximum?: number;
-    /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
+    /** 渲染提示——renderControl 第二判据（已知值见 `SettingsRenderHint`：action 操作按钮 / readonly 只读状态行
+     *  / color 色块预览）。**开放 string**——未知值降级为只读展示。 */
     renderHint?: string;
     /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。 */
     monoOnly?: boolean;
@@ -3004,6 +3006,26 @@ export interface UpdateAPI {
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
 export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+/**
+ * 🔥 设置控件词表**正典**（`uiHint`）——宿主声明与渲染层之间的唯一词表（判据 B）。
+ *
+ * 13 个值 = 设置页分发器能渲染的控件形态全集（与设置插件 `renderControl.tsx` 的 switch 逐 case 同源）。
+ * 消费方：① 宿主 `ConfigurationRegistry.ConfigProperty`（编译期收窄 ⇒ 声明写错当场红）
+ * ② 设置插件分发表 ③ 作者面 `plugin.schema.json` 的 description（给第三方作者看的正典表）。
+ * ⚠️ **声明字段本身保持开放 `string`**（本文件 `LinkDeskConfigProperty.uiHint` 与作者面 schema 都是）
+ * ——第三方自定义 hint 合法（承诺不收回）；渲染器不认识的 hint ⇒ **只读展示 ＋ title 说明**降级，
+ *   ⛔ 不再落进可编辑兜底（防裸字符串写穿值域）。
+ * 运行时名单与类型守卫在 `@linkdesk/ui`（`SETTINGS_UI_HINTS` / `isSettingsUiHint`）——
+ * 本契约包是**纯类型生成产物、零运行时**，只能带类型。
+ */
+export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider" | "image" | "fontTone" | "fontFamily" | "color" | "file" | "directory" | "fontSize" | "segmented" | "stringList";
+/**
+ * 设置行渲染提示正典（`renderHint`）——三值。
+ * `readonly` 只读状态行（值来自 `statusCommand` 运行时数据源，不来自配置存储）；
+ * `action` 操作按钮（文案 = `description`，点击执行 `actionCommand`）；`color` 色块预览
+ * （壳 `app.accentColor` / `app.glassTint` 在用）。同 uiHint：声明面保持开放 `string`，未知值降级。
+ */
+export type SettingsRenderHint = "readonly" | "action" | "color";
 /** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
 export interface IconThemeGlyph {
     /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
