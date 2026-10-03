@@ -15,10 +15,11 @@ import {
   SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, radiusTokenPx,
   MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS, ACCENT_TOKEN_KEYS,
   FONT_SIZE_STEPS, FONT_SIZE_BASE_PX, UI_FONT_SCALE_DEFAULT,
-  ICON_GLOW_ON_LIGHT_INK, ICON_GLOW_ON_DARK_INK, type IconGlowSpec,
+  ICON_GLOW_ON_LIGHT_INK, ICON_GLOW_ON_DARK_INK, INK_POLARITY_CROSSOVER, type IconGlowSpec,
 } from "./constants";
 // E5.8#151：tint 强制半透明——配方 tint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
-import { capTintAlpha } from "./color";
+// 9.4：图标光晕极性改读生效 text-primary 亮度（解析不出回落档位）——颜色串解析与 capTintAlpha 同源
+import { capTintAlpha, colorLuminance } from "./color";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
 import type { GlassSurfaceSpec } from "./seeds";
@@ -391,6 +392,11 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
  * 消费方在池侧 `IconBarZone.css`（`filter: var(--icon-glow, none)`）。
  * 调用点与 synthesizeGlassSurfaces 同位（applyOverrides 之后、commitTokens 之前，对**生效集**补派生键）。
  * 纯函数只算不改。
+ *
+ * 极性源（9.4 修正）：**生效 `text-primary` 的相对亮度**——图标墨色 `--icon-ink` 正是它的 α 派生
+ * （契约 01 §一），而混搭/自配外观下生效墨色可能与主题声明的 `type` 不同源（实测：主题 type=dark ＋
+ * 自配暗墨 ⇒ 旧口径发亮晕＝与墨同向不隔离）。解析不出（color-mix/var/named）⇒ **回落 `spec.inkLight` 档**，
+ * 零行为倒退；读的是**墨色**不是照片，⛔ 未越 D3 的界。
  */
 export function synthesizeIconGlow(tokens: Record<string, string>, spec: IconGlowSpec): void {
   const bgImage = (tokens["bg-image"] ?? "").trim();
@@ -398,6 +404,8 @@ export function synthesizeIconGlow(tokens: Record<string, string>, spec: IconGlo
     tokens["icon-glow"] = "none";
     return;
   }
-  tokens["icon-glow"] = spec.inkLight ? ICON_GLOW_ON_LIGHT_INK : ICON_GLOW_ON_DARK_INK;
+  const luminance = colorLuminance(tokens["text-primary"] ?? "");
+  const inkLight = luminance == null ? spec.inkLight : luminance > INK_POLARITY_CROSSOVER;
+  tokens["icon-glow"] = inkLight ? ICON_GLOW_ON_LIGHT_INK : ICON_GLOW_ON_DARK_INK;
 }
 

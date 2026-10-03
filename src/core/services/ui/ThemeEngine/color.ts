@@ -1,6 +1,6 @@
 /**
- * 颜色串工具——E5.8#151 tint 强制半透明（玻璃系统表面层，21-档案 §三）。
- * 单一权威：tint alpha 封顶只在此写——seeds.ts 用户 glassTint 路径 + tokens.ts 配方 tint 路径共用，
+ * 颜色串工具——两用：E5.8#151 tint 强制半透明（玻璃系统表面层，21-档案 §三）＋ 墨色极性亮度（第 1 刀 C 腿 9.4）。
+ * 单一权威：颜色串解析只在此写（parseColor 私有）——seeds.ts 用户 glassTint 路径 + tokens.ts 配方 tint 路径共用，
  * 禁止两处各手写解析（同概念单写法）。消费侧 CSS color-mix 无法自适应封顶（朝透明混合会乘自身 alpha）→
  * 必须生产者封。
  */
@@ -75,4 +75,19 @@ export function capTintAlpha(color: string, maxAlpha = 0.5): string {
   if (!parsed) return color;
   if (parsed.alpha > maxAlpha) return `rgba(${parsed.r},${parsed.g},${parsed.b},${maxAlpha})`;
   return color;
+}
+
+/**
+ * 墨色极性判据用的 sRGB 相对亮度（WCAG 定义：线性化 0.04045 断点 + 0.2126/0.7152/0.0722 加权）。
+ * 未解析出（`color-mix()` / `var()` / named / hsl）→ null——**不猜**，调用方回落既有档位判据。
+ * 只用于「亮墨/暗墨」二选一的分界比对（见 constants.INK_POLARITY_CROSSOVER），⛔ 不参与 CR 计算。
+ */
+export function colorLuminance(color: string): number | null {
+  const parsed = parseColor(color);
+  if (!parsed) return null;
+  const linear = (v: number): number => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * linear(parsed.r) + 0.7152 * linear(parsed.g) + 0.0722 * linear(parsed.b);
 }

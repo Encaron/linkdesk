@@ -106,8 +106,16 @@ export const GLASS_SURFACE_DEFAULT_ALPHA = 0.5;
 export const ICON_GLOW_ON_LIGHT_INK = "drop-shadow(0 0 1px rgba(0, 0, 0, 0.85))";
 export const ICON_GLOW_ON_DARK_INK = "drop-shadow(0 0 1px rgba(255, 255, 255, 0.65))";
 
-/** 图标光晕规格——生效墨色的极性（亮墨 = 白系字）。生产 = seeds.getIconGlowSpec，
- *  消费 = tokens.synthesizeIconGlow（两者都只吃这一个布尔，⛔ 不引入亮度估算，见 D3）。 */
+/** 亮墨/暗墨分界（相对亮度）——「与黑晕还是白晕对比更高」的等对比交叉点：
+ *  (L+0.05)² = (1+0.05)·(0+0.05) ⇒ L = √0.0525 − 0.05 ≈ 0.179。
+ *  > 0.179 ⇒ 与黑对比更高 ⇒ 判**亮墨**（配暗晕）；≤ ⇒ 暗墨配亮晕。
+ *  ⛔ 不取 0.5：`#4EC9B0`（L≈0.46）这类中间色是亮墨，用 0.5 会把它误判成暗墨、把现有正确观感改坏。 */
+export const INK_POLARITY_CROSSOVER = 0.179;
+
+/** 图标光晕规格——极性**兜底档**（生效墨色解析不出时的退路）。生产 = seeds.getIconGlowSpec，
+ *  消费 = tokens.synthesizeIconGlow；后者优先按生效 `text-primary` 的相对亮度定极性
+ *  （9.4：混搭/自配档下 text-primary 与主题声明的 type 可能不同源），仅在解析不出时用本档（零行为倒退）。
+ *  ⇒ 本档仍是「app.fontTone ▸ 主题 type」的极性口径，不是亮度估算（读的是**墨色**，⛔ 不读照片）。 */
 export interface IconGlowSpec {
   inkLight: boolean;
 }

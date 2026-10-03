@@ -208,7 +208,9 @@ export function getGlassSurfaceSpec(): GlassSurfaceSpec {
  *  墨色源头与 getAppearanceOverrides 的 text-* 覆盖**同源**（app.fontTone 显式档 ▸ 否则配方 type）：
  *    fontTone="light"（亮墨/白字）或 未显式且 type=dark → **亮墨** ⇒ 暗晕；
  *    fontTone="dark"（暗墨/黑字）或 未显式且 type=light → **暗墨** ⇒ 亮晕。
- *  ⛔ 不读 --text-primary 实算（那是运行期 CSS 值，引擎侧无访问）；本函数只判**极性档**。 */
+ *  ⛔ 本函数只判**极性档**（app.fontTone ▸ 配方 type），不读运行期 CSS 值。
+ *  9.4：这只是**兜底档**——synthesizeIconGlow 优先按生效 `text-primary` 的亮度定极性
+ *  （混搭/自配外观下生效墨色可能与 themeType 不同源），仅当墨色解析不出时回落到本档。 */
 export function getIconGlowSpec(themeType: "light" | "dark"): IconGlowSpec {
   const fontTone = getConfigurationValue<string>("app.fontTone");
   const inkLight = fontTone === "light" || (fontTone !== "dark" && themeType === "dark");
