@@ -141,7 +141,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           t("跟随主题配方——取当前配色来源的强调色"),
           t("自定义——自己指定强调色（图标栏高亮、开关、焦点边框）"),
         ],
-        description: t("强调色来源——跟随主题配方：取当前配色来源的强调色；自定义：自己指定"),
+        description: t("强调色来源——跟随主题配方：取当前配色来源的强调色；自定义：自己指定。独立轴：外观模式切回「跟随主题」不会重置它"),
         uiHint: "accentSource",
         onApply: () => applyAccentColor(getEffectiveAccentColor()),
       },
@@ -249,7 +249,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         minimum: 0,
         maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
-        description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px"),
+        description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；只管输入框/按钮/卡片，分区圆角是下面另一档"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
@@ -280,7 +280,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         minimum: 0,
         maximum: 1,
         // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
-        description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明"),
+        description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明；只管玻璃表面的合成比例，不改主题自带的玻璃材质厚薄"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
@@ -369,7 +369,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         minimum: 0,
         maximum: 1,
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
-        description: t("背景图遮罩明暗——0 无遮罩 / 1 全黑"),
+        description: t("背景图遮罩明暗——0 无遮罩 / 1 全黑；数值越大越暗（与上面「不透明度」方向相反：那一档 1 才是原图）"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
@@ -491,7 +491,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         minimum: 0,
         maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
-        description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px"),
+        description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；只管标题栏/图标栏/侧栏/主区/状态栏，与「组件圆角」各管各的"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
