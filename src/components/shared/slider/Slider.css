@@ -38,3 +38,196 @@
 .ldk-slider::-webkit-slider-thumb:active {
   cursor: grabbing;
 }
+
+/* ── 能力扩展（单位值标签 ＋ 细调步进，05 设计图定形）——结构＝网格（E13）：
+   − | 轨道 | ＋；标签绕着轨道转（D5）：before/after 贴「按钮对」外侧、above/below 脱离
+   行内流居中压轨道中线。全部度量乘 --ui-scale（E9），零硬编码色（E12）。 ── */
+
+.ldk-slider-root {
+  --slider-gap: calc(6px * var(--ui-scale));
+  --slider-btn: calc(20px * var(--ui-scale));
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--slider-gap);
+  row-gap: calc(2px * var(--ui-scale));
+  max-width: 100%;
+}
+
+.ldk-slider-value {
+  min-width: calc(44px * var(--ui-scale));
+  font-size: calc(var(--font-size-sm) * var(--ui-scale));
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ldk-slider-step {
+  width: var(--slider-btn);
+  height: var(--slider-btn);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ldk-slider-step svg {
+  width: calc(10px * var(--ui-scale));
+  height: calc(10px * var(--ui-scale));
+  display: block;
+}
+
+.ldk-slider-step:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.ldk-slider-step:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ldk-slider-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* after（缺省）／before：标签落在「按钮对」外侧，与轨道同一行、垂直居中 */
+.ldk-slider-root[data-pos="after"] {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.ldk-slider-root[data-pos="after"] .ldk-slider-step[data-dir="-1"] {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-pos="after"] .ldk-slider {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.ldk-slider-root[data-pos="after"] .ldk-slider-step[data-dir="1"] {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.ldk-slider-root[data-pos="after"] .ldk-slider-value {
+  grid-row: 1;
+  grid-column: 4;
+}
+
+.ldk-slider-root[data-pos="before"] {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.ldk-slider-root[data-pos="before"] .ldk-slider-value {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-pos="before"] .ldk-slider-step[data-dir="-1"] {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.ldk-slider-root[data-pos="before"] .ldk-slider {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.ldk-slider-root[data-pos="before"] .ldk-slider-step[data-dir="1"] {
+  grid-row: 1;
+  grid-column: 4;
+}
+
+/* above／below：标签脱离行内流，整行居中压在轨道中线上（轨道不被压短） */
+.ldk-slider-root[data-pos="above"] .ldk-slider-value,
+.ldk-slider-root[data-pos="below"] .ldk-slider-value {
+  grid-column: 2;
+  min-width: 0;
+  justify-self: center;
+  text-align: center;
+}
+
+.ldk-slider-root[data-pos="above"] .ldk-slider-value {
+  grid-row: 1;
+}
+
+.ldk-slider-root[data-pos="above"] .ldk-slider-step[data-dir="-1"] {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-pos="above"] .ldk-slider {
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.ldk-slider-root[data-pos="above"] .ldk-slider-step[data-dir="1"] {
+  grid-row: 2;
+  grid-column: 3;
+}
+
+.ldk-slider-root[data-pos="below"] .ldk-slider-step[data-dir="-1"] {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-pos="below"] .ldk-slider {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.ldk-slider-root[data-pos="below"] .ldk-slider-step[data-dir="1"] {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.ldk-slider-root[data-pos="below"] .ldk-slider-value {
+  grid-row: 2;
+}
+
+/* 不声明 stepper：没有按钮列，标签直接贴轨道（老观感） */
+.ldk-slider-root[data-stepper="false"][data-pos="after"] {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="after"] .ldk-slider {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="after"] .ldk-slider-value {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="before"] {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="before"] .ldk-slider-value {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="before"] .ldk-slider {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="above"] .ldk-slider-value,
+.ldk-slider-root[data-stepper="false"][data-pos="below"] .ldk-slider-value {
+  grid-column: 1;
+}
+
+.ldk-slider-root[data-stepper="false"][data-pos="above"] .ldk-slider,
+.ldk-slider-root[data-stepper="false"][data-pos="below"] .ldk-slider {
+  grid-column: 1;
+}

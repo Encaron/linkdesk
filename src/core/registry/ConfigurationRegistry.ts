@@ -78,6 +78,16 @@ export interface ConfigurationProperty {
   /** E5.8#77：数值单位——uiHint "slider" 值标签单位（"×" 倍数前缀 / "px" 像素后缀；空 = 裸数值）。
    *  可选字段：第三方不声明 = 只显示数值不显示单位（零侵入）。 */
   unit?: string;
+  /** 滑杆件能力扩展（2026-10-03）：值标签方位——uiHint "slider" 时标签绕轨道转
+   *  （before/after 贴「按钮对」外侧；above/below 脱离行内流居中压轨道中线——会撑破设置行固定
+   *  行高，配置键一律不声明走缺省 "after"，上下方位留给插件自绘场景）。
+   *  可选字段：不声明 = "after"。 */
+  unitPosition?: "before" | "after" | "above" | "below";
+  /** 滑杆件能力扩展（2026-10-03）：细调步进——uiHint "slider" 时轨道两侧渲染常驻 −/＋ 按钮
+   *  （单击单发、按 step 步进、min/max 夹取、触边置灰、disabled 联动）。
+   *  能力在 Slider 组件本体，声明即显、不声明 = 裸滑杆（壳外观滑杆键 = 第一批使用者）。
+   *  可选字段：第三方不声明 = 不渲染按钮（零侵入）。 */
+  stepper?: boolean;
   /** E5.8#87：来源徽标——本键所属外观域 mix 来源 key（设置页每槽显示值来源：混搭域生效时 🔀）。
    *  可选字段：第三方不声明 = 不显示来源徽标（零侵入）。 */
   sourceKey?: string;

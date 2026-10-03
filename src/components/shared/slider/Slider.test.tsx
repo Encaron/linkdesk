@@ -70,3 +70,99 @@ describe("Slider", () => {
     expect(input.getAttribute("aria-label")).toBe("亮度");
   });
 });
+
+describe("Slider · 值标签（unit / unitPosition，能力扩展 2026-10-03）", () => {
+  it("unit 未声明 → 不渲染标签（裸滑杆，历史 DOM 原样）", () => {
+    const { container } = renderSlider();
+    expect(container.querySelector(".ldk-slider-root")).toBeNull();
+    expect(container.querySelector(".ldk-slider-value")).toBeNull();
+  });
+
+  it("unit 未声明且无 stepper → 根节点就是 input 本身（零额外 DOM）", () => {
+    const { container } = renderSlider();
+    expect(container.firstElementChild!.tagName).toBe("INPUT");
+  });
+
+  it('unit=""（空串）→ 有标签、无单位（D6：空串 ≠ 未声明——设置页无单位键显示 0.5 靠这条）', () => {
+    const { container } = renderSlider({ value: 0.45, unit: "" });
+    expect(container.querySelector(".ldk-slider-root")).not.toBeNull();
+    expect(container.querySelector(".ldk-slider-value")!.textContent).toBe("0.45");
+  });
+
+  it("unit 声明 → 标签 = 值＋单位一体（D1）", () => {
+    const { container } = renderSlider({ value: 16, max: 32, unit: "px" });
+    expect(container.querySelector(".ldk-slider-value")!.textContent).toBe("16px");
+  });
+
+  it("值超界 → 标签显示夹取后的值", () => {
+    const { container } = renderSlider({ value: 150, max: 100, unit: "px" });
+    expect(container.querySelector(".ldk-slider-value")!.textContent).toBe("100px");
+  });
+
+  it("unitPosition 缺省 after → data-pos=after；声明 before 照传", () => {
+    const { container } = renderSlider({ unit: "px" });
+    expect(container.querySelector<HTMLElement>(".ldk-slider-root")!.dataset.pos).toBe("after");
+    const { container: c2 } = renderSlider({ unit: "px", unitPosition: "before" });
+    expect(c2.querySelector<HTMLElement>(".ldk-slider-root")!.dataset.pos).toBe("before");
+  });
+});
+
+describe("Slider · 细调步进（stepper，能力扩展 2026-10-03）", () => {
+  function renderStepper(overrides: Record<string, unknown> = {}) {
+    const base = renderSlider({ stepper: true, ...overrides });
+    const minus = base.container.querySelector<HTMLButtonElement>('.ldk-slider-step[data-dir="-1"]')!;
+    const plus = base.container.querySelector<HTMLButtonElement>('.ldk-slider-step[data-dir="1"]')!;
+    return { ...base, minus, plus };
+  }
+
+  it("stepper 声明 → 渲染 −/＋ 两枚按钮（type=button，可聚焦）", () => {
+    const { minus, plus } = renderStepper();
+    expect(minus).not.toBeNull();
+    expect(plus).not.toBeNull();
+    expect(minus.getAttribute("type")).toBe("button");
+    // E5：按钮必须可聚焦（⛔ 不做 tabIndex=-1 的偷懒解法）——键盘全链 Tab − → 轨道 → ＋
+    expect(minus.getAttribute("tabindex")).toBeNull();
+  });
+
+  it("不声明 stepper → 一个按钮 DOM 都不多", () => {
+    const { container } = renderSlider({ unit: "px" });
+    expect(container.querySelectorAll(".ldk-slider-step")).toHaveLength(0);
+  });
+
+  it("＋ 按既有 step 步进（单击单发）", () => {
+    const { plus, onChange } = renderStepper({ value: 10, step: 5 });
+    plus.click();
+    expect(onChange).toHaveBeenCalledWith(15);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("− 步进；浮点步进收敛（E7：step 0.05 不得出现 0.15000000000000002）", () => {
+    const { minus, onChange } = renderStepper({ value: 0.2, step: 0.05 });
+    minus.click();
+    expect(onChange).toHaveBeenCalledWith(0.15);
+  });
+
+  it("min/max 夹取——值在 min 时 − 置灰、在 max 时 ＋ 置灰（E6 边界置灰）", () => {
+    const atMin = renderStepper({ value: 0, min: 0, max: 100 });
+    expect(atMin.minus.disabled).toBe(true);
+    expect(atMin.plus.disabled).toBe(false);
+    const atMax = renderStepper({ value: 100, min: 0, max: 100 });
+    expect(atMax.minus.disabled).toBe(false);
+    expect(atMax.plus.disabled).toBe(true);
+  });
+
+  it("disabled 联动——滑杆置灰时 −/＋ 同灰（E8），点击不发 onChange", () => {
+    const { minus, plus, onChange, input } = renderStepper({ disabled: true });
+    expect(input.disabled).toBe(true);
+    expect(minus.disabled).toBe(true);
+    expect(plus.disabled).toBe(true);
+    plus.click();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("aria-label = 「减少/增加」＋控件标签（E12：文案走 t()，不写死）", () => {
+    const { minus, plus } = renderStepper({ ariaLabel: "玻璃模糊" });
+    expect(minus.getAttribute("aria-label")).toBe("减少 玻璃模糊");
+    expect(plus.getAttribute("aria-label")).toBe("增加 玻璃模糊");
+  });
+});

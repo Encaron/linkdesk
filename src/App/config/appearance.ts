@@ -251,6 +251,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
         description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -266,6 +267,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // 窄表面（图标栏/侧栏 0.44×）/面板（悬浮面板 1.11×）按声明式每表面系数缩放（index.css）。
         description: t("玻璃模糊——0 关闭；数值 = 主表面真实模糊 px"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -280,6 +282,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
         description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -307,6 +310,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // step 不声明——inferSliderStep(0,2) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
         description: t("玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -352,6 +356,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
         description: t("背景图不透明度——0 全透见窗口底色 / 1 原图"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -366,6 +371,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
         description: t("背景图遮罩明暗——0 无遮罩 / 1 全黑"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -487,6 +493,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
         description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px"),
         uiHint: "slider",
+        stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),

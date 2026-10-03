@@ -380,6 +380,9 @@
                   "minimum": { "type": "number", "description": "Numeric lower bound — applies when type is number (range of the slider/numeric control)" },
                   "maximum": { "type": "number", "description": "Numeric upper bound — applies when type is number (range of the slider/numeric control)" },
                   "step": { "type": "number", "description": "Slider step — meaningful only with uiHint \"slider\". Defaults are derived by SettingsView from the range (0.01 for floating-point ranges)." },
+                  "unit": { "type": "string", "description": "Value label unit for uiHint \"slider\" — shown with the current value (e.g. \"px\", \"ms\", \"×\" for multipliers). Declaring unit turns the value label on; omitting it keeps a bare slider. An empty string means a label showing the bare value with no unit." },
+                  "unitPosition": { "type": "string", "description": "Value label position for uiHint \"slider\" — \"before\" | \"after\" (default) place the label outside the stepper buttons on the same row; \"above\" | \"below\" center it over/under the track (intended for custom plugin layouts — keep the default for configuration rows, which have a fixed row height)." },
+                  "stepper": { "type": "boolean", "description": "Fine-tune stepper for uiHint \"slider\" — renders persistent −/+ buttons on both sides of the track (one step per click, clamped to min/max, disabled at the bounds and when the slider is disabled). Omit for a bare slider." },
                   "group": { "type": "string", "description": "Second-level heading within a group — keys sharing a group are rendered under a subheading on the settings page; without a group they stay flat (zero intrusion for third parties)" }
                 },
                 "additionalProperties": false
