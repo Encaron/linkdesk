@@ -337,13 +337,19 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     const el = menuRef.current;
     if (!el) return;
     // 1. 量测真实尺寸 + 修正溢出
-    const rect = el.getBoundingClientRect();
+    // 🔴 量**布局盒**尺寸（offsetWidth/offsetHeight），⛔ 不用 getBoundingClientRect——这一刻菜单还带着
+    // 入场动画的常态 `.ldk-ctx-menu{transform:scale(0.96)}`（`.show` 才回 1），rect 报小约 4% ⇒
+    // 钳制少留「0.04 × 菜单高」的余量（只保底 4px）⇒ 贴底开时底边（边框+圆角）落到窗外被裁
+    // （2026-10-04 用户报「齿轮右键菜单底下那部分被裁掉一点」；dev 实测 rect 286.6 vs 布局 299 ⇒ 底边出界 7.9px）。
+    // offset 尺寸不受 transform 影响；`transform-origin: top left` 下最终 scale(1) 的盒子恰占 [left, left+w] × [top, top+h]。
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
     let left = anchor.x;
     // E5.7#14：翻转钳制 menuTop ≥ 30——菜单顶部进入 TitleBarZone drag 区
     // → OS 截鼠标事件 → 顶部菜单项点不动（设计 §4.3，硬约束 18）
     let top = Math.max(30, anchor.y);
-    if (left + rect.width > window.innerWidth) left = Math.max(0, window.innerWidth - rect.width - 4);
-    if (top + rect.height > window.innerHeight) top = Math.max(30, window.innerHeight - rect.height - 4);
+    if (left + w > window.innerWidth) left = Math.max(0, window.innerWidth - w - 4);
+    if (top + h > window.innerHeight) top = Math.max(30, window.innerHeight - h - 4);
     setMenuPos({ left, top });
     // 2. 入场动画
     const frame = requestAnimationFrame(() => {
