@@ -23,6 +23,9 @@ import { useEffect, useRef, useState } from "react";
 /** 命令执行句柄——返回状态字符串；`null` / 非字符串一律按「没读到」处理（保持现值）。 */
 export type RunStatusCommand = (commandId: string) => Promise<string | null>;
 
+/** 缺省轮询间隔（毫秒）——导出以便单测/消费方引用常量，不各写 3000 字面量 */
+export const DEFAULT_POLL_INTERVAL_MS = 3000;
+
 /** 订阅者回调——收到本次轮询的字符串值（空串是合法值，由显示层决定占不占位） */
 type Subscriber = (value: string | null) => void;
 
@@ -100,12 +103,12 @@ function unbindVisibility(): void {
  *
  * @param statusCommand 命令 id；缺省/空 ⇒ 不轮询（返回 null，一条定时器都不建）
  * @param runCommand    命令执行句柄（使用方注入）
- * @param intervalMs    轮询间隔，缺省 3000（仅 `statusCommand` 存在时生效）
+ * @param intervalMs    轮询间隔，缺省 `DEFAULT_POLL_INTERVAL_MS`（仅 `statusCommand` 存在时生效）
  */
 export function useStatusPolling(
   statusCommand: string | undefined,
   runCommand: RunStatusCommand | undefined,
-  intervalMs = 3000,
+  intervalMs = DEFAULT_POLL_INTERVAL_MS,
 ): string | null {
   const [value, setValue] = useState<string | null>(null);
   // 句柄/间隔走 ref：避免调用方每次渲染给新函数/新数字就把订阅重来一遍（重来 = 定时器抖动 + 多余读取）
