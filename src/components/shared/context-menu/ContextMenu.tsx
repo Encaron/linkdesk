@@ -109,7 +109,7 @@ interface ResolvedItem {
 }
 
 /* ── E5.8#148：children 递归映射——任意深度保留孙级 children（数据层递归，与渲染层递归配对）。
-     字符串子项 = 命令引用原样透传（E5.7#98 wire 契约）；对象子项 checked/commandArgs 同步透传。 ── */
+     字符串子项 = 命令引用原样透传（E5.7#98 wire 契约）；对象子项 shortcut/checked/commandArgs 同步透传。 ── */
 function mapChildren(nodes: (string | MenuItemDescriptor)[], group: string): ResolvedItem[] {
   return nodes.map((c) => {
     if (typeof c === "string") return { id: c, label: c, group };
@@ -118,6 +118,10 @@ function mapChildren(nodes: (string | MenuItemDescriptor)[], group: string): Res
       id: c.command,
       label: c.label ?? c.command,
       group,
+      // 2026-10-04：**键帽随 children 递归**——此前漏透传，任何走子面板的项键帽全丢
+      // （汉堡把同组贡献项折进「文件」容器后，插件项从一级挪进子面板 ⇒ 键帽当场消失；
+      // 顶栏的嵌套子菜单如「查看→界面→主侧栏」同病）。渲染层两级本就同款（见子面板分支）。
+      shortcut: c.shortcut,
       checked: c.checked,
       commandArgs: c.commandArgs,
       ...(kids ? { children: kids } : {}),

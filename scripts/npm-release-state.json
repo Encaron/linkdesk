@@ -4,10 +4,10 @@
     {
       "name": "@linkdesk/contracts",
       "version": "0.1.32",
-      "contentHash": "3e41c82297d34f1b27284912ffbdb24dc17e2e70e9af644961b04cfd91b58e2c",
+      "contentHash": "1faca850bb46420961bac5fc358ef2af1cdd3bfcff196535f05d17c8e852e908",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "9e3c760d04466281"
+        "contracts/linkdesk.d.ts": "38f7c194c52d17a3"
       }
     },
     {
@@ -126,8 +126,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.39",
-      "contentHash": "9529edaa825f8b6f2757e000ae970b29a67b7ec749ed0611e682690d1c895150",
+      "version": "0.2.40",
+      "contentHash": "0b253d60b726c47d5a841ccebddfc4a11c9fcd00c1d385ab6ddda4096f9ad380",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "786dfd2acf0f3b2d",
         "packages/linkdesk-ui/src/index.ts": "d2430ca852a5a1c9",
@@ -144,7 +144,8 @@
         "src/components/shared/combobox/Combobox.test.tsx": "4d6dde5146e68ca2",
         "src/components/shared/combobox/Combobox.tsx": "474f9165af793325",
         "src/components/shared/context-menu/ContextMenu.css": "876c232f5b0bb110",
-        "src/components/shared/context-menu/ContextMenu.tsx": "fcd032fccdc3eee1",
+        "src/components/shared/context-menu/ContextMenu.test.tsx": "903a2f026b1e3944",
+        "src/components/shared/context-menu/ContextMenu.tsx": "b10cbdb74690635b",
         "src/components/shared/effective-badge/EffectiveBadge.css": "9011e77040443bef",
         "src/components/shared/effective-badge/EffectiveBadge.tsx": "d18c7b3f100cfa5d",
         "src/components/shared/effective-badge/formatEffectiveValue.test.ts": "969c2c088254725b",
