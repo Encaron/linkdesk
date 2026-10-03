@@ -247,7 +247,7 @@ export const IPC = {
     importImage: 'appearance:importImage',
     revealStorage: 'appearance:reveal-storage',
   },
-  // 「打开缓存目录」设置行（04-软件更新/待抉择池/设置页-打开缓存目录 3.3）——主进程解析**当前生效**
+  // 「打开缓存目录」设置行（04-软件更新/已落地/设置页-打开缓存目录 3.3）——主进程解析**当前生效**
   // 缓存目录（settings.json 的 app.storage.cacheDir，空/缺 = userData 默认位；解析单点在 storage-handlers），
   // revealCache 先建目录再 shell.openPath（非模态资源管理器窗口）。main 直答，⛔ 不进 PROXY_CHANNELS
   // （双登记启动即抛 second handler——appearance 先例）。

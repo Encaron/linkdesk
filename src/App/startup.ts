@@ -196,7 +196,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       registerAiBridgeConfiguration(t);
 
       // 「存储」两键归并进「通用」（同 pluginId 二次注册 merge，对标 config/update.ts；
-      // 04-软件更新/待抉择池/设置页-打开缓存目录 阶段 3，2026-10-03）——按钮行在上、只读路径行在下。
+      // 04-软件更新/已落地/设置页-打开缓存目录 阶段 3，2026-10-03）——按钮行在上、只读路径行在下。
       registerStorageConfiguration(t);
 
       // Phase 5：初始化 context key 核心状态

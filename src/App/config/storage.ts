@@ -1,6 +1,6 @@
 /**
  * 「存储」两键声明——并入「通用」组（同 pluginId 二次注册 merge，对标 config/update.ts；
- * 04-软件更新/待抉择池/设置页-打开缓存目录 阶段 3，2026-10-03 定稿）。
+ * 04-软件更新/已落地/设置页-打开缓存目录 阶段 3，2026-10-03 定稿）。
  *
  * 本轮只落两行（照主图 08-设计图-设置页-减法版.html）：
  *   · `app.storage.openCacheDir`——**按钮行**（`renderHint:"action"` ＋ `actionCommand`；
