@@ -1,6 +1,6 @@
 # 文件树插件 · 侧栏「搜索」section UI 重设计
 
-> **状态：🚀 已实施＋已发版（2026-10-03）——file-tree **1.0.23**（案A 零件版全落）：插件仓 `6eeed79` 已推 · [GitHub Release v1.0.23](https://github.com/Encaron/linkdesk-plugin-file-tree/releases/tag/v1.0.23) · 官方目录已收录（323f569）· 出厂种子已刷新（`sync:bundled --latest`）。⏳ 实机验证等用户进软件「插件市场 → 检查更新」装上后走查；**验证无误后本档照 §一 规矩归还插件仓 `docs/`**（旧档若平铺，先建子夹归整再迁入）。壳仓零接触。**
+> **状态：🚀 已实施＋已发版（2026-10-03）——file-tree **1.0.24**（案A 零件版全落＋筛选框补刀）：插件仓 `5598f83` 已推 · [GitHub Release v1.0.24](https://github.com/Encaron/linkdesk-plugin-file-tree/releases/tag/v1.0.24) · 官方目录已收录（3c3f682）· 出厂种子已刷新（`sync:bundled --latest`）。⏳ 实机验证等用户进软件「插件市场 → 检查更新」装上后走查；**验证无误后本档照 §一 规矩归还插件仓 `docs/`**（旧档若平铺，先建子夹归整再迁入）。壳仓零接触。**
 > 病灶已定位到可核对的 file:line 证据；改案两案见 [05-设计图](05-设计图-搜索重设计.html) §③，决策点 D1–D4 摘在本文 §五。
 
 ## 一、你令的原话（2026-10-03）
@@ -72,6 +72,7 @@
 - **门禁**：`npx tsc --noEmit` 零错误 · `npm run verify` **八段全绿** · `vitest run` 16 文件 **149 例**全绿 · `npm run build` 4/4 表面 **45.9 KB**。
 - **发版链**：插件仓 `6eeed79` 已推（代理）→ SDK publish `--yes`（LINKDESK_GITHUB_TOKEN=gh auth token）→ [Release v1.0.23](https://github.com/Encaron/linkdesk-plugin-file-tree/releases/tag/v1.0.23)（asset 46,983 字节）→ 官方目录收录 `323f569` 已推 → 壳仓 `sync:bundled --latest` 种子刷新（「出厂种子与账一致」）。
 - **档案归宿**：实机验证无误后照 §一 归还插件仓 `docs/`（旧 `01`/`02` 两档若平铺，先建子夹归整再迁入本夹）。
+- **补刀 1.0.24（同日）**：实机走查发现**筛选输入框（「要包含的文件」／「要排除的文件」）仍未接圆角**——病灶同源但当年不在证据清单（它们不是「写死圆角」而是**连 `border-radius` 声明都没有**，恒直角；`SearchToolbar.tsx` 也整只在「三件 tsx」授权面外）。修＝纯 CSS：`.file-tree-search-filter-input` 补 `var(--radius-sm)` ＋ 底色 `--bg-card`→`--bg-input` ＋ 聚焦 accent 边＋2px 焦点环（[1.0.24 Release](https://github.com/Encaron/linkdesk-plugin-file-tree/releases/tag/v1.0.24)，收录 `3c3f682`）。同文件「替换／折叠全部」小按钮复用 `.file-tree-search-option-btn`，1.0.23 已随选项钮 token 化。
 
 ## 七、本夹文件
 
