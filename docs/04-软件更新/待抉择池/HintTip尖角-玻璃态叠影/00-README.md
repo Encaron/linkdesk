@@ -1,6 +1,6 @@
 # HintTip 尖角（气泡尾巴）——玻璃态叠影
 
-> **状态：🚧 已实施待目视（2026-10-03 动工）——D1–D5 全定、均按建议值：A 案「半菱裁剪＋尾巴自带磨砂」／维持 8×8／B 不立项／C 留档——用户明示**未来不排除启用**。只动 [HintTip.css](../../../../src/components/shared/hint-tip/HintTip.css)，placement.ts／渲染器／主题系统零接触；D5 实机核（clip-path＋backdrop-filter 同元素、blur 地板先行／增强照条身）随 dev 版目视一并做。**
+> **状态：✅ 已实施·实机验收通过（2026-10-03）——D1–D5 全定、均按建议值：A 案「半菱裁剪＋尾巴自带磨砂」／维持 8×8／B 不立项／C 留档——用户明示**未来不排除启用**。只动 [HintTip.css](../../../../src/components/shared/hint-tip/HintTip.css)，placement.ts／渲染器／主题系统零接触；D5 实机核（clip-path＋backdrop-filter 同元素、blur 地板先行／增强照条身）已随 dev 版目视核过。commit `5970acd01`。⏳ 仓库内文件待用户授权后 `git mv` 进 `已落地/`（本 AI 不执行）。**
 > 病灶已定位到可核对的源码证据；修案三选一见 [05-设计图](05-设计图-HintTip尖角.html) §③，决策点 D1–D5 摘在本文 §五。
 
 ## 一、你令的原话（2026-10-03）
