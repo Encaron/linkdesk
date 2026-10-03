@@ -16,6 +16,25 @@ import {
 } from "lucide-react";
 import type { IconBarIcon } from "../../../core/types/pool/poolLayout";
 
+/** 图标栏 mask 的 url() 必须先绝对化——🔴 2026-10-04 安装版「左下角齿轮不见了」的实证根因：
+ *  自定义属性里的**相对** url() 由**消费它的样式表**作基准解析（打包后 = `dist/assets/pool-*.css`），
+ *  ⛔ 不是声明它的文档（Electron file:// 夹具实测：内联在文档根声明、`sub/style.css` 消费
+ *  ⇒ 落到 `.../sub/assets/x.svg`）。壳齿轮 src 经 `getAssetPath` 随 vite `base: './'` 产出
+ *  `./assets/icons/gear.svg` ⇒ 安装版解析成 `dist/assets/assets/icons/gear.svg`（不存在 ⇒ 404），
+ *  mask 落空 = 整块不画（CSS 那条全透明 fallback 只兜「变量缺失」，兜不住「url 解析不到」）；
+ *  而 dev 的池 CSS 被 Vite 内联进文档根、基准正好是文档 ⇒ 只有安装版瞎。
+ *  已带 scheme 的（`linkdesk:` 插件图标 / `data:` / `http(s):`）与协议相对 `//` 原样透传
+ *  （插件图标走 resolvePluginIcon 本就是绝对 URL ⇒ 逐字节不变）；无 scheme 才按文档基准补全。
+ *  ⛔ 别删这层绝对化换回相对串——那正是本 bug。 */
+function toAbsoluteIconUrl(src: string): string {
+  if (src.startsWith("//") || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(src)) return src;
+  try {
+    return new URL(src, document.baseURI).href;
+  } catch {
+    return src;
+  }
+}
+
 /** E5#100: Lucide 图标名 → 组件映射（与壳 PluginIcon LUCIDE_MAP 同步）。tree-shakeable。 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const LUCIDE_MAP: Record<string, ComponentType<any>> = {
@@ -72,7 +91,7 @@ function PoolPluginIcon({ icon, className = "", alt = "" }: PoolPluginIconProps)
         return (
           <span
             className={`plugin-icon plugin-icon--img ${className}`}
-            style={{ "--icon-url": `url("${src}")` } as CSSProperties}
+            style={{ "--icon-url": `url("${toAbsoluteIconUrl(src)}")` } as CSSProperties}
           />
         );
       }
