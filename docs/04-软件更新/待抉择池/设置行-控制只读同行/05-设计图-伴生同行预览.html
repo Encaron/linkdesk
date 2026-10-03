@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mn:05 · 伴生同行预览（拍板辅助）</title>
+<!-- html-blueprint · 类型＝集成切换（单工作台＋「存量迁移 前/后」切换观察）· 完整软件轮廓
+     尺寸对账同 05/06 图：设置页结构抄设置仓 SettingsView.css·SettingsView-rows.css，控件抄壳共享件 CSS。
+     ⚠ 本图是拍板辅助预览：设置行案 D1–D4 尚未拍板，图按建议值（D1=A 伴生声明正交化 / D2=伴生只读右侧同排 / D4=存量迁移）画拟定态。 -->
+<style>
+  :root{
+    --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+    --bg-titlebar:var(--bg-card); --bg-icon-bar:var(--bg-card);
+    --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+    --accent:#0078D4; --text-on-accent:#FFFFFF;
+    --border:#3C3C3C; --separator:#474747; --hover-overlay:rgba(255,255,255,.06);
+    --radius-sm:4px; --radius-md:6px;
+    --font-size-2xs:11px; --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px; --font-size-lg:16px; --font-size-xl:18px;
+    --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+    --font-mono:Consolas,monospace;
+    --tag-host:#7AA2F7; --tag-shared:#4EC994; --tag-plugin:#E5C07B;
+    --page:#141414; --shadow:0 16px 40px rgba(0,0,0,.5);
+  }
+  html[data-theme="light"]{
+    --bg-window:#FFFFFF; --bg-card:#F5F5F5; --bg-input:#FFFFFF;
+    --text-primary:#2D2D2D; --text-secondary:#5A5A5A; --text-muted:#6E6E6E;
+    --border:#D4D4D4; --separator:#D4D4D4; --hover-overlay:rgba(0,0,0,.05);
+    --tag-host:#3555B8; --tag-shared:#1B7F4D; --tag-plugin:#8A6D1B;
+    --page:#E9E7E2; --shadow:0 16px 40px rgba(0,0,0,.16);
+  }
+  *{box-sizing:border-box; transition:none!important}
+  ::selection{background:var(--accent); color:var(--text-on-accent)}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-thumb{background:var(--bg-input); border-radius:5px}
+  body{margin:0; background:var(--page); color:var(--text-primary);
+    font:var(--font-size-md)/1.55 var(--font-ui); -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px; margin:0 auto; padding:26px 20px 64px}
+  h1{font-size:22px; margin:0 0 6px}
+  .lede{color:var(--text-secondary); margin:0 0 16px; max-width:92ch}
+  h2{font-size:16px; margin:32px 0 10px}
+  .bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px}
+  .btn{background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:7px 14px; font:var(--font-size-sm) var(--font-ui); cursor:pointer}
+  .btn:hover{border-color:var(--text-secondary)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .btn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--text-on-accent)}
+  .chip{display:inline-block; font-size:10.5px; border-radius:4px; padding:1px 7px; font-weight:600}
+  .c-ok{color:var(--ok,#4EC994); border:1px solid var(--ok,#4EC994)} .c-warn{color:var(--warn,#E5C07B); border:1px solid var(--warn,#E5C07B)}
+  .c-dim{color:var(--text-secondary); border:1px solid var(--border)} .c-bad{color:var(--bad,#E06C75); border:1px solid var(--bad,#E06C75)}
+  html[data-theme="light"] .c-ok{color:#1B7F4D; border-color:#1B7F4D} html[data-theme="light"] .c-warn{color:#8A6D1B; border-color:#8A6D1B} html[data-theme="light"] .c-bad{color:#B33842; border-color:#B33842}
+
+  .win{background:var(--bg-window); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); overflow:hidden}
+  .titlebar{height:30px; display:flex; align-items:center; gap:12px; padding:0 12px; background:var(--bg-titlebar); border-bottom:1px solid var(--border)}
+  .titlebar .logo{width:12px; height:12px; border-radius:3px; background:var(--accent)}
+  .titlebar .app{font-size:var(--font-size-xs)}
+  .titlebar .menu{display:flex; gap:12px; font-size:var(--font-size-xs); color:var(--text-secondary)}
+  .titlebar .wbtns{margin-left:auto; display:flex; gap:6px}
+  .titlebar .wbtns i{width:11px; height:11px; border:1px solid var(--text-secondary); border-radius:2px}
+  .appframe{display:flex}
+  .iconbar{width:42px; flex:none; background:var(--bg-icon-bar); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding-top:8px; gap:6px}
+  .iconbar .ic{width:26px; height:26px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center;
+    color:var(--text-secondary); position:relative; cursor:pointer}
+  .iconbar .ic.on{color:var(--text-primary); background:var(--bg-input)}
+  .iconbar .ic.on::before{content:""; position:absolute; left:-8px; top:4px; bottom:4px; width:2px; background:var(--accent)}
+  .maintab{height:35px; flex:none; background:var(--bg-card); border-bottom:1px solid var(--border); display:flex; align-items:flex-end; padding:0 8px}
+  .maintab .tab{padding:6px 16px; font-size:var(--font-size-xs); color:var(--text-secondary); border-radius:var(--radius-md) var(--radius-md) 0 0; position:relative; cursor:pointer}
+  .maintab .tab.on{color:var(--text-primary); background:var(--bg-window)}
+  .maintab .tab.on::before{content:""; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent)}
+  .statusbar{height:22px; background:var(--bg-window); border-top:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; padding:0 12px; font-size:var(--font-size-2xs); color:var(--text-secondary)}
+  .statusbar .right{margin-left:auto}
+
+  .settings-editor{display:flex; flex-direction:column}
+  .settings-tab-bar{display:flex; border-bottom:1px solid var(--border); padding:0 16px}
+  .settings-tab{padding:8px 16px; font-size:var(--font-size-md); background:transparent; border:none;
+    border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; margin-bottom:-1px; font-family:var(--font-ui)}
+  .settings-tab.active{color:var(--text-primary); border-bottom-color:var(--accent)}
+  .settings-search-bar{display:flex; align-items:center; padding:8px 16px; border-bottom:1px solid var(--border); gap:8px;
+    color:var(--text-muted); font-size:var(--font-size-sm)}
+  .settings-body{display:flex}
+  .settings-nav{width:200px; flex-shrink:0; border-right:1px solid var(--border); padding:8px 0}
+  .settings-nav-item{display:flex; align-items:center; justify-content:space-between; width:100%;
+    padding:6px 20px; font-size:var(--font-size-md); color:var(--text-primary); background:transparent;
+    border:none; border-left:2px solid transparent; cursor:pointer; text-align:left; font-family:var(--font-ui)}
+  .settings-nav-item:hover{background:var(--hover-overlay)}
+  .settings-nav-item.active{background:var(--hover-overlay); color:var(--text-primary); font-weight:500; border-left-color:var(--accent)}
+  .settings-form{flex:1; min-width:0; padding:16px 28px}
+  .sect{font-size:var(--font-size-sm); font-weight:600; letter-spacing:.05em; margin:14px 0 8px;
+    color:var(--text-secondary); display:flex; align-items:center; gap:8px}
+  .sect::before{content:""; width:3px; height:12px; border-radius:2px; background:var(--accent); opacity:.55}
+  .row{display:flex; align-items:flex-start; justify-content:space-between; padding:8px 0;
+    border-bottom:1px solid var(--border); gap:20px; position:relative}
+  .row .info{flex:1; min-width:0}
+  .row .key{display:block; font-size:var(--font-size-md); font-weight:500; margin-bottom:3px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row .desc{display:block; font-size:var(--font-size-sm); color:var(--text-muted); line-height:1.5;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .row .ctl{flex-shrink:0; display:flex; align-items:center; gap:8px; min-width:100px; justify-content:flex-end; flex-wrap:wrap}
+  .settings-row-gear{flex-shrink:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center;
+    background:transparent; border:none; border-radius:3px; color:var(--text-muted); cursor:pointer; opacity:0; margin-left:4px}
+  .row:hover .settings-row-gear{opacity:1}
+
+  .tgl{width:36px; height:20px; border-radius:10px; background:var(--separator); border:none; position:relative; cursor:pointer; flex:none}
+  .tgl i{position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#FFFFFF}
+  .tgl[aria-checked="true"]{background:var(--accent)}
+  .tgl[aria-checked="true"] i{left:18px}
+  .abtn{padding:4px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--text-primary); font:var(--font-size-sm) var(--font-ui); cursor:pointer; white-space:nowrap}
+  .abtn:hover{border-color:var(--text-secondary)}
+  .abtn:disabled{opacity:.4; cursor:default}
+  .ldk-readonly-text{font-family:var(--font-mono); font-size:var(--font-size-2xs); color:var(--text-secondary);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:230px}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:var(--font-size-2xs); color:var(--text-secondary); white-space:nowrap}
+  .badge .sw{width:10px; height:10px; border-radius:3px; border:1px solid var(--border)}
+  .selbox{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--bg-input);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 6px; min-width:150px; cursor:pointer; font-size:var(--font-size-md)}
+  .ffsel{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--bg-input);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 6px; min-width:170px; cursor:pointer; font-size:var(--font-size-md)}
+
+  /* 迁移前/后：body.migrate-after ⇒ 状态行隐藏、伴生形态显示 */
+  .pair-after{display:none}
+  body.migrate-after .pair-before{display:none}
+  body.migrate-after .pair-after{display:flex}
+  .retired{font-size:var(--font-size-2xs); color:var(--text-muted); padding:6px 0 10px; border-bottom:1px solid var(--border); display:none}
+  body.migrate-after .retired{display:block}
+  .companion{display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:10px;
+    background:var(--hover-overlay); font-size:var(--font-size-2xs); color:var(--text-secondary); white-space:nowrap}
+  .companion::before{content:"伴生"; font-weight:600; color:var(--accent)}
+  .tag{position:absolute; left:0; bottom:-6px; display:none; gap:5px; z-index:2}
+  body.showtag .tag{display:flex}
+  .row.hastag{padding-bottom:20px}
+  .tag b{font-size:10px; font-weight:600; border-radius:4px; padding:1px 6px; color:#fff}
+  .t-host{background:var(--tag-host)} .t-shared{background:var(--tag-shared)} .t-plugin{background:var(--tag-plugin)}
+  .legend{display:flex; gap:14px; margin:10px 2px 0; font-size:var(--font-size-xs); color:var(--text-secondary)}
+  .legend b{border-radius:4px; padding:1px 6px; color:#fff; font-size:10px}
+  .framenote{font-size:var(--font-size-xs); color:var(--text-secondary); margin:8px 2px 0; max-width:110ch}
+  .framenote b{color:var(--text-primary)}
+  table{border-collapse:collapse; width:100%; font-size:var(--font-size-xs)}
+  th,td{border:1px solid var(--border); padding:5px 9px; text-align:left; vertical-align:top}
+  th{color:var(--text-secondary); font-weight:600; background:var(--bg-card)}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; margin-top:6px}
+  @media (max-width:1020px){ .grid2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>伴生同行 · 合并后长什么样（设置行-控制只读同行 · 拍板辅助预览）</h1>
+  <p class="lede">〔设置行-控制只读同行〕案按建议值（D1＝A 伴生声明正交化／D2＝伴生只读右侧同排／D4＝存量迁移）落地后，<b>AI 接入组与主题组的整页长相</b>。页头「存量迁移」一键切前/后：前＝今天的排版相邻两行，后＝声明伴生一行（<code>statusCommand</code> 并上主键、纯排版键退役）。<b>⛔ D1–D4 尚未拍板</b>，本图用于拍板前看效果；控件比例沿壳源码真值（同 05/06 图口径）。</p>
+
+  <div class="bar">
+    <button class="btn" id="btnTheme" aria-pressed="true">深色主题</button>
+    <button class="btn" id="btnMigrate" aria-pressed="false">存量迁移：前（今天）</button>
+    <button class="btn" id="btnTag" aria-pressed="false">层归属标注</button>
+  </div>
+
+  <div class="win">
+    <div class="titlebar">
+      <span class="logo"></span><span class="app">LinkDesk</span>
+      <span class="menu"><span>文件</span><span>查看</span><span>帮助</span></span>
+      <span class="wbtns"><i></i><i></i><i></i></span>
+    </div>
+    <div class="appframe">
+      <div class="iconbar" aria-label="图标栏">
+        <span class="ic" title="资源管理器"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h5l1.2 1.5H14V13H2z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span>
+        <span class="ic on" title="设置"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6L11 5M5 11l-1.4 1.4" stroke="currentColor" stroke-width="1.3"/></svg></span>
+        <span class="ic" title="搜索"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 10l3.4 3.4" stroke="currentColor" stroke-width="1.3"/></svg></span>
+      </div>
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column">
+        <div class="maintab"><span class="tab on">设置</span></div>
+        <div class="settings-editor">
+          <div class="settings-tab-bar"><button class="settings-tab active">设置</button><button class="settings-tab">快捷键</button></div>
+          <div class="settings-search-bar">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 8l3 3" stroke="currentColor" stroke-width="1.4"/></svg>
+            搜索设置
+          </div>
+          <div class="settings-body">
+            <div class="settings-nav" role="navigation" aria-label="设置分组">
+              <button class="settings-nav-item">主题</button>
+              <button class="settings-nav-item">通用</button>
+              <button class="settings-nav-item active">AI 接入</button>
+              <button class="settings-nav-item">快捷键</button>
+            </div>
+            <div class="settings-form">
+
+              <div class="sect">AI 接入（主战场：伴生只读）</div>
+
+              <div class="row pair-before">
+                <div class="info"><span class="key">ai.mcp.enabled</span><span class="desc">启用 MCP 服务器</span></div>
+                <div class="ctl"><span class="tgl" role="switch" aria-checked="true" tabindex="0" aria-label="启用 MCP 服务器"><i></i></span></div>
+              </div>
+              <div class="row pair-before" style="border-bottom:none">
+                <div class="info"><span class="key">ai.mcp.status</span><span class="desc">MCP 服务器状态——renderHint readonly ＋ statusCommand（独立成行＝排版相邻）</span></div>
+                <div class="ctl"><span class="ldk-readonly-text">已开启 · 端口 9231 · 模型 gpt-4o</span></div>
+              </div>
+
+              <div class="row pair-after hastag">
+                <span class="tag"><b class="t-host">声明层 · type boolean ＋ statusCommand（伴生只读）</b><b class="t-shared">共享件 · Toggle ＋ ReadOnlyText（轮询）</b><b class="t-plugin">设置仓 · 控制区收伴生件</b></span>
+                <div class="info"><span class="key">ai.mcp.enabled</span><span class="desc">启用 MCP 服务器——statusCommand 并入本键，状态随开关同排</span></div>
+                <div class="ctl">
+                  <span class="tgl" role="switch" aria-checked="true" tabindex="0" aria-label="启用 MCP 服务器"><i></i></span>
+                  <span class="companion"><span class="ldk-readonly-text" style="max-width:170px; display:inline">已开启 · 端口 9231 · 模型 gpt-4o</span></span>
+                </div>
+              </div>
+
+              <div class="row pair-before">
+                <div class="info"><span class="key">ai.cli.enabled</span><span class="desc">启用 CLI 桥接</span></div>
+                <div class="ctl"><span class="tgl" role="switch" aria-checked="false" tabindex="0" aria-label="启用 CLI 桥接"><i></i></span></div>
+              </div>
+              <div class="row pair-before" style="border-bottom:none">
+                <div class="info"><span class="key">ai.cli.status</span><span class="desc">CLI 桥接状态</span></div>
+                <div class="ctl"><span class="ldk-readonly-text">已连接 · claude-code 1.2.0</span></div>
+              </div>
+              <div class="row pair-after">
+                <span class="tag"><b class="t-host">声明层 · type boolean ＋ statusCommand</b><b class="t-shared">共享件 · Toggle ＋ ReadOnlyText</b></span>
+                <div class="info"><span class="key">ai.cli.enabled</span><span class="desc">启用 CLI 桥接——伴生只读照同款</span></div>
+                <div class="ctl">
+                  <span class="tgl" role="switch" aria-checked="false" tabindex="0" aria-label="启用 CLI 桥接"><i></i></span>
+                  <span class="companion"><span class="ldk-readonly-text" style="max-width:170px; display:inline">已连接 · claude-code 1.2.0</span></span>
+                </div>
+              </div>
+
+              <div class="retired">␥ ai.mcp.status ／ ai.cli.status 两键退役——「排版相邻」升成「声明伴生」（D4）；伴生只读读的是运行时命令，不占存储，仍一键一值。ai.debug / scopeSummary / auditLog 同款迁移。</div>
+
+              <div class="sect" style="border-top:1px solid var(--separator); padding-top:16px">主题（伴生按钮 ＋ 徽标各行其位）</div>
+
+              <div class="row pair-before" style="border-bottom:none">
+                <div class="info"><span class="key">app.appearanceMode</span><span class="desc">外观模式——跟随主题配方整体外观 / 自定义逐项指定</span></div>
+                <div class="ctl"><div class="selbox" role="button" tabindex="0"><span>跟随主题</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div></div>
+              </div>
+              <div class="row pair-after hastag" style="border-bottom:none">
+                <span class="tag"><b class="t-host">声明层 · enum ＋ actionCommand（伴生按钮 · ⛔ 已拍板本轮不并，示意保留）</b><b class="t-shared">共享件 · SelectBox ＋ Button</b></span>
+                <div class="info"><span class="key">app.appearanceMode</span><span class="desc">外观模式——⟲ 复位伴生按钮已拍板**本轮不并**（此钮仅示意）；mixReset 独立行保留</span></div>
+                <div class="ctl">
+                  <div class="selbox" role="button" tabindex="0"><span>跟随主题</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+                  <span class="companion"><button class="abtn" style="padding:2px 8px; font-size:var(--font-size-2xs)">⟲ 全部复位</button></span>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="info"><span class="key">app.fontFamily</span><span class="desc">界面字体——这行的「生效：」徽标是 effectiveToken 渲染（生效值），⛔ 不是伴生件</span></div>
+                <div class="ctl">
+                  <div class="ffsel" role="button" tabindex="0"><span>系统字体（__none__）</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+                  <span class="badge"><span>生效：</span><span>-apple-system</span></span>
+                </div>
+              </div>
+
+              <div class="sect" style="border-top:1px solid var(--separator); padding-top:16px">通用 · 缓存目录（缓存目录案 D3 联动预览）</div>
+
+              <div class="row pair-before">
+                <div class="info"><span class="key">缓存目录（按钮行）</span><span class="desc">「打开缓存目录」独占一行</span></div>
+                <div class="ctl"><button class="abtn">打开缓存目录</button></div>
+              </div>
+              <div class="row pair-before" style="border-bottom:none">
+                <div class="info"><span class="key">缓存目录（只读行）</span><span class="desc">路径独占一行</span></div>
+                <div class="ctl"><span class="ldk-readonly-text">%APPDATA%\linkdesk\cache</span></div>
+              </div>
+              <div class="row pair-after hastag" style="border-bottom:none">
+                <span class="tag"><b class="t-host">声明层 · actionCommand ＋ statusCommand 同键（伴生按钮＋伴生只读）</b><b class="t-shared">共享件 · Button ＋ ReadOnlyText</b></span>
+                <div class="info"><span class="key">缓存目录</span><span class="desc">本案交付后合并回一行（缓存目录案 00 §一·📌 预埋的「将来」）</span></div>
+                <div class="ctl">
+                  <button class="abtn">打开缓存目录</button>
+                  <span class="companion"><span class="ldk-readonly-text" style="max-width:180px; display:inline">%APPDATA%\linkdesk\cache</span></span>
+                </div>
+              </div>
+
+              <div class="sect" style="border-top:1px solid var(--separator); padding-top:16px">第三方（无特权 · 判据 3）</div>
+              <div class="row" style="border-bottom:none">
+                <div class="info"><span class="key">my-plugin.sync.enabled<span class="sub2">　任意插件键声明 statusCommand 即得同款一行</span></span></div>
+                <div class="ctl">
+                  <span class="tgl" role="switch" aria-checked="true" tabindex="0" aria-label="示例开关"><i></i></span>
+                  <span class="companion pair-after"><span class="ldk-readonly-text" style="max-width:150px; display:inline">上次同步 · 3 分钟前</span></span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>设置 · AI 接入</span><span class="right">就绪</span></div>
+  </div>
+  <div class="legend"><b class="t-host">声明层</b>宿主 schema 说什么 <b class="t-shared">共享件</b>@linkdesk/ui 画什么 <b class="t-plugin">设置仓</b>只做编排 <b class="t-plugin" style="background:var(--accent)">伴生</b>=正交化后控制区新增的非编辑件</div>
+  <div class="framenote"><b>① 渲染规则</b>：控制区＝<code>[主控件][伴生按钮][伴生只读]</code>（01 §1.2）——主件唯一且承载编辑（一键一值不动），伴生件只展示/触发；<b>② 换底座</b>：伴生只读用共享 ReadOnlyText 的 statusCommand 轮询（设置控件案阶段 5 先行，ReadOnlyStatus 已退场，01 §1.2 换底座注）；<b>③ 主题组口径</b>：生效徽标（effectiveToken）与伴生件是两种东西——主题组能并的主要是「动作伴生」（⟲复位并入＝已拍板<b>本轮不并</b>，图中该钮仅示意）；伴生只读的主战场＝AI 接入组与缓存目录；<b>④ 名字口径</b>：合并行标题＝主键名 `ai.mcp.enabled`（键名当标题现状不变）；status 键名退役、description 双语义改写——迁移全单在 [04 §三 2.5](04-任务清单.md)；<b>⑤ 任务锚点</b>：D1–D4 拍板 → 2.2（须排三案串行末棒）。</div>
+
+  <div class="grid2">
+    <div>
+      <h2 style="margin-top:0">行数对账（切「存量迁移」现场点）</h2>
+      <table><thead><tr><th>组</th><th>迁移前</th><th>迁移后</th><th>谁退役</th></tr></thead><tbody>
+        <tr><td>AI 接入（mcp/cli 两对）</td><td>4 行</td><td><b>2 行</b></td><td>ai.mcp.status、ai.cli.status</td></tr>
+        <tr><td>通用 · 缓存目录</td><td>2 行</td><td><b>1 行</b></td><td>（按钮行＋只读行合一，缓存目录案 D3）</td></tr>
+        <tr><td>主题 · 外观模式</td><td>2 行（模式＋复位）</td><td><b>1 行</b>（候选拟）</td><td>app.mixReset</td></tr>
+        <tr><td>主题 · 字体行</td><td>1 行</td><td>1 行（不变）</td><td>—（生效徽标≠伴生件，各归其位）</td></tr>
+      </tbody></table>
+    </div>
+    <div>
+      <h2 style="margin-top:0">三条不变量（验收锚点）</h2>
+      <table><tbody>
+        <tr><td>一键一值</td><td>伴生件不承载编辑——存储层零变化；来源/生效/齿轮徽标仍以单键为粒度</td></tr>
+        <tr><td>零特权</td><td>第三方键声明 statusCommand/actionCommand 即得同款（判据 3，图内第三方面板）</td></tr>
+        <tr><td>零回归</td><td>迁移前形态＝今天逐格一致（切「前」对照）；每组抽 1 键回归＋token 快照（01 §四）</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var html=document.documentElement;
+  function $(s){return document.querySelector(s)}
+  $('#btnTheme').onclick=function(){
+    var light=html.getAttribute('data-theme')==='light';
+    html.setAttribute('data-theme', light?'dark':'light');
+    this.textContent=light?'深色主题':'浅色主题';
+    this.setAttribute('aria-pressed', String(!light));
+  };
+  var after=false;
+  $('#btnMigrate').onclick=function(){
+    after=!after;
+    document.body.classList.toggle('migrate-after', after);
+    this.textContent='存量迁移：'+(after?'后（伴生同行）':'前（今天）');
+    this.setAttribute('aria-pressed', String(after));
+  };
+  $('#btnTag').onclick=function(){document.body.classList.toggle('showtag'); this.setAttribute('aria-pressed', String(document.body.classList.contains('showtag')))};
+  $("#btnMigrate").click();  // 默认落在「后」——本图要看的正是合并后
+  document.querySelectorAll('.tgl').forEach(function(t){
+    t.onclick=function(){ t.setAttribute('aria-checked', t.getAttribute('aria-checked')==='true'?'false':'true'); };
+  });
+  document.title='Mn:05·伴生同行预览就绪';
+})();
+</script>
+</body>
+</html>

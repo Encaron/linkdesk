@@ -75,10 +75,12 @@ export interface LinkDeskConfigProperty {
     optionsFrom?: string;
     /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
     optionsFromDomain?: ThemeDomain;
-    /** renderHint "action" 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发） */
+    /** 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发）。
+     * 设置行案 2.1：**伴生声明**——与任何主控件共存 ⇒ 主控件右侧的伴生按钮（文案 = `description`）。 */
     actionCommand?: string;
-    /** renderHint "readonly" 只读状态的运行时数据源——渲染时执行此壳命令取值
-     *  （返回 string；显示话术由命令侧拼装）。值来自命令、不来自配置存储——通用能力，任何插件可用 */
+    /** 只读状态的运行时数据源——渲染时执行此壳命令取值
+     *  （返回 string；显示话术由命令侧拼装）。值来自命令、不来自配置存储——通用能力，任何插件可用。
+     *  设置行案 2.1：**伴生声明**——与任何主控件共存 ⇒ 主控件右侧的伴生只读（复用只读底座轮询）。 */
     statusCommand?: string;
     /** renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
     actionDisabledAll?: Array<{
@@ -3024,6 +3026,8 @@ export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider
  * `readonly` 只读状态行（值来自 `statusCommand` 运行时数据源，不来自配置存储）；
  * `action` 操作按钮（文案 = `description`，点击执行 `actionCommand`）；`color` 色块预览
  * （壳 `app.accentColor` / `app.glassTint` 在用）。同 uiHint：声明面保持开放 `string`，未知值降级。
+ * 🆕 设置行案 2.1（2026-10-04 · 伴生声明正交化）：`readonly`/`action` 是「**主控件就是它**」的简写；
+ * `statusCommand`/`actionCommand` 可与**任何**主控件共存（渲染 `[主控件][伴生按钮][伴生只读]`）。
  */
 export type SettingsRenderHint = "readonly" | "action" | "color";
 /** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */

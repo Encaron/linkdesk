@@ -90,3 +90,73 @@
 | 追加 | 合并行名字 | **主键名**（ai.mcp.enabled；键名当标题现状不变） |
 
 > 🔎 **D5–D9 已拍板（2026-10-03 第二轮点单，全按建议值）**——另立〔设置控件-词表正典与共享化〕夹执行：[../设置控件-词表正典与共享化/00-README.md](../../已落地/设置控件-词表正典与共享化/00-README.md)；⛔ 它们**不阻塞也不替代** D1–D4，但其阶段 5 排在本案 2.2 之前（三案串行，见其 [04 §七](../../已落地/设置控件-词表正典与共享化/04-任务清单.md)）。
+
+### 八·补 · 阶段 1 收尾（2026-10-04 · AI-6）
+
+**① 三个读数（1.1 只读取证）**
+
+| # | 读数 | 结论 |
+|:--:|:--|:--|
+| a | `renderControl.tsx` 两分支精确行号与互斥写法 | **readonly 分支在 :48–50 放最前直接 `return <ReadonlyControl/>`**；**action 分支嵌在 `switch(prop.type)` 的 `case "string"` 内 :193–202**（隐含要求：无 `uiHint` 命中）。⇒ 互斥是**结构位置**不是显式校验——改法 ＝ 两分支各收一个伴生件、在返回片段里排 `[主][伴]` |
+| b | `packages/plugin-sdk` 是否导出 `ConfigurationProperty` | **不导出**（grep 0 命中）⇒ 2.1 的 schema 同步面 ＝ **四份 `plugin.schema.json` 逐字节拷贝**（`check-plugin-schema-sync` 守），**不是** TS 导出类型 |
+| c | 是否牵动 `host-reserved` / i18n | **host-reserved：AI 组不牵动**（`configKeys` 只扫 `app.*`，AI 组是 `ai.*`）。**i18n：2.5 会牵动**（改壳侧中文串 ＝ 新 key ⇒ `audit-i18n --strict` 当场红 ⇒ 外仓 lang-defaults 补 patch 版 ＋ 出厂种子箱追新）。**D3 会牵动 host-reserved**：`app.storage.cacheDir` 在账的 `configKeys` 里，退役键**不腾位**（见下） |
+
+**② 契约定稿（1.2）** ＝ [01 §1.2／§1.3](01-方案与落点契约.md)：主部件判定四级优先级（**readonly 仍最前**＝零回归）＋ 伴生件顺序 `[主控件][伴生按钮][伴生只读][生效徽标]` ＋ 伴生按钮文案沿用 `t(description)` ＋ **E1 定稿机制**（跟随态向 Slider 不传 `unit` 让位给生效徽标，信号复用 `useSettingRowBadges().effectiveBadge !== null`；今日零键命中）。
+
+**③ D3 的退役账（动工前定死）**：`app.storage.cacheDir` 从设置页退役（**声明整格删**），宿主保留面账**保留该名不腾位**（老 `settings.json`／安装器播种仍可能留值；运行期 `electron/ipc/handlers/storage-handlers.ts:26` 仍读它解析生效路径）⇒ 三件同笔：㈠ `retired[]` 登记（`kind:"configKey"`，`approvedBy` ＝ **用户 · 2026-10-03**——D3 拍板日，⛔ 不由 AI 自签）；㈡ 生成器扫描源（`src/App/config/**`）里留一条**双引号字面量引文**（`configKeys` 扫描口径是「任意 `"app.*"` 字面量」，含注释）——这是「不腾位」的机械实现；㈢ `check-retired-ledger` 断言1（src/ 不许再有 `"app.storage.cacheDir": {` 声明点）＋ 断言2（`landing` 绑 `electron/ipc/handlers/storage-handlers.ts`，名字在该文件里 ✓）。
+
+### 八·补2 · 阶段 2 落地（2026-10-04 · AI-6）
+
+**① 右侧读数宽度实测（2.2b · 无头 Edge 真渲染）**
+
+口径：主窗最低 **800px** ⇒ 表单内容宽 = 800 − 42 图标栏 − 200 导航 − 56 内边距 = **502px**；行内固定件 = 齿轮 24 ＋ gap 20。降级形态 = **标签截断**（…），⛔ 刻意不加 `flex-wrap`（要断也是说明文字断，不是整行撑破）。
+
+| 例 | 控制区实宽 | 标签余 | 判定 |
+|:--|--:|--:|:--|
+| 按钮「打开缓存目录」104 ＋8＋ 只读 230 | 342 | 92 | ✅ 零溢出 |
+| 开关 36 ＋8＋ 只读 136 | 180 | 254 | ✅ |
+| 滑杆 130 ＋ 值标签 44 ＋8＋ 只读 136 | 318 | 116 | ✅ |
+| 滑杆 130 ＋8＋ 只读 136 ＋ **生效徽标** 156（E1 三件并存） | 550 | — | ❌ 超 48px ⇒ **已加护栏**（有徽标时伴生件收到 120px ⇒ 396 ≤ 454 ✅；今日零键命中） |
+
+⚠️ **已知限制（照实记）**：只读底座 `.ldk-readonly-text` 是 `overflow:hidden ＋ text-overflow:ellipsis` 且**不设 `title`** ⇒ 超宽读数被**静默截断**（实测一条 272px 的绝对路径在 230px 上限处截断）；⛔ 本格不改底座（加 title 属共享件改动，且 `@linkdesk/ui` 有在飞列车）。
+
+**② 2.5 逐键盘点（D4 · 四并一留）**——判据 = **运行时读数形态**（实现见 `src/core/commands/shell/aiBridgeCommands.ts`）：
+
+| 退役键 | 运行时实样 | 裁定 |
+|:--|:--|:--|
+| `ai.mcp.status` / `ai.cli.status` | 「运行中 · 127.0.0.1:9231」单行短句 | **并**进 `ai.mcp.enabled` / `ai.cli.enabled`（伴生只读） |
+| `ai.debug.status` | 「已开启 · 9333」 | **并** |
+| `ai.auditLog.status` | 「记录中」两字（原描述本就写「跟着上面的开关走」） | **并** |
+| `ai.scope.summary` | 「读：…／做：…／不开放任意代码执行」**三行明细** | **留独立行**——合并的前置是「有一个主控件」，⛔ 不为它新增枚举键 |
+
+- 描述改**双语义**（四开关 ＋「通道」组说明）：`…——右边灰字是实时状态（运行时读数）…`。选词理由：行说明是 `nowrap ＋ ellipsis`，**新语义必须落在可见头部** ⇒ 删掉「万能钥匙」等长尾巴、开门见山（原文仍在 lang-defaults 里留档）。
+- 退役四键**无需 `retired[]` 登记**：ledger 的 `configKeys` 家族只扫 `app.*`，`ai.*` 不在其中 ⇒ 无插件占用风险（1.1 读数③ 的推论，本轮坐实）。
+- **全仓普查结论：无事可做**（04 §2.5 ④⑥ 关格）——四个键名在壳／设置仓的**代码、测试、作者文档里零活引用**（只出现在历史 mockup 与本夹档案中）。
+
+**③ 发版与出厂种子（2.3 ＋ i18n 链）**
+
+- 设置仓 **1.0.29**（Release ＋ 仓根 marketplace ✓）：伴生件渲染 ＋ E1 值标签让位 ＋ 三件并存护栏；「未声明伴生的行外观行为一字不变」。
+- lang-defaults **1.0.48**（Release ✓）：纯追加五条；**旧串与退役键的译名一律保留**——壳侧本轮不发版，已发布的旧壳仍按旧串取译名。
+- 官方目录收录 **e4b419a**（`lang-defaults 1.0.45→1.0.48`、`settings 1.0.27→1.0.29`；**其余 16 行逐字节原样**，合并前已逐 id 对过）→ `sync:bundled --latest`（箱内 `lang-defaults 1.0.47→1.0.48`、`settings 1.0.27→1.0.29`）⇒ `audit-i18n --strict` ✅ ＋ `check-bundled-freshness` ✅。
+- ⚠️ **顺手发现一处前置账不齐**（非本案引入，如实记）：收录前官方目录仍停在 `lang-defaults 1.0.45`／`settings 1.0.27`，而工作区未提交的账与箱已是 `lang-defaults 1.0.47`——**箱高于目录**（`--latest` 只读目录 ⇒ 只可能来自越级刷箱或手工改账）。本轮收录一次补齐并归零（目录 ＝ 箱 ＝ 账），1.0.46／1.0.47／1.0.28 亦随 `versions[]` 历史一并进目录。
+
+
+### 八·补3 · 阶段 3 验收（2026-10-04 · AI-6 · dev 实机）
+
+**方法（隔离实例，⛔ 没碰用户正在用的那只）**：用户那只 Vite 占着 1420 ⇒ 自起 **第二台 Vite 1421**，起前设 `LINKDESK_USER_PLUGINS_HOME=<隔离实例>/plugins`（`vite.config.ts:24` 允许清单的唯一口子）；隔离实例 `electron . --remote-debugging-port=9345 --user-data-dir=E:	mp\ldk-a6-profile`。
+🔴 **关键技巧（留给下一棒）**：`DEV_SERVER_URL` 在 `electron/constants.ts:23` 是**硬编码 1420、无 env 口**，而 1420 那台 Vite 的 `fs.allow` 不含隔离插件家（表现为 `Failed to fetch dynamically imported module … /@fs/E:/tmp/…/settings/index.bundle.js`，403）⇒ 用 CDP `Page.navigate` 把 **pool 目标导航到 1421**：主进程的插件扫描不变（仍扫 `{userData}/plugins`），渲染面走允许清单里那台 Vite。第三方假键用 `scripts/dev/fixtures/status-demo` 改一版（3 个新键：开关＋伴生只读／数值＋值标签＋伴生只读／字符串＋伴生按钮）放进隔离插件家，**夹具不进仓**。
+
+**① 3.1 三例（实键实况读数）**
+
+| 例 | 实测（DOM 读数） | 结论 |
+|:--|:--|:--|
+| ① 缓存目录一行 | `app.storage.openCacheDir` 控制区 ＝ `ldk-button + settings-row-companion`；伴生件内层 `ldk-readonly-text`，文案 ＝ **`E:	mp\ldk-a6-profile`**（该实例真缓存目录）；同组**无** `app.storage.cacheDir` 行 | ✅ 一行（按钮＋路径读数），退役键在页面上消失 |
+| ② ai.mcp 一行 | `ai.mcp.enabled` ＝ `ldk-toggle + settings-row-companion`，伴生读数「已关闭」；`ai.cli.enabled`「已关闭」；**`ai.debug.remoteDebugging` ＝「已开启 · 9345」**（＝该实例真 CDP 端口，证明读数来自运行时命令而非配置值）；`ai.auditLog.enabled`「未开启」。AI 接入组**共 14 行**、四个 `.status` 键全无 | ✅ 四组「开关＋状态」合并成四行；组说明＝「开关右边的灰字是实时读数（来自运行时命令），不是配置值」 |
+| ③ 第三方假键 | 夹具 `demo-a6.toggle`（toggle＋伴生只读 122×13）、`demo-a6.sliderCompanion`（`ldk-number-input` ＋ 伴生只读）、`demo-a6.actionCompanion`（`ldk-input` ＋ 伴生**按钮** 230×29）。**同夹具里 `status-demo.live`（readonly 主件）与 `status-demo.poke`（action 主件）各只一件、零重复伴生** | ✅ 任何插件声明即得，无特权；主件本身即该件时不重复渲染 |
+
+**② 3.2 零回归（每组抽键逐格＝现状）**：通用 `app.language`＝`ldk-selectbox`／`app.hint.enabled`＝`ldk-toggle`；主题 `app.theme`＝`ldk-theme-picker`（含「深色／2 配色」徽标）／`app.appearanceMode`＝selectbox；编辑器 26 行（含 `editor.fontSize`＝`ldk-number-input`）；资源管理器 18 行；插件市场 `marketplace.marketplaceSources`＝`ldk-sle`；设置插件 `settings.openForm`＝selectbox——**这些行都不带 `settings-row-companion`**，形制与声明前一致。
+
+**③ 3.3 token 快照**：切主题（dark→light）前后——token **名集**只增不减（+11 枚 `--bg-*-solid`／`--bg-status`／`--drop-indicator`／`--received`，全部是**目标主题自己**定义的），值变 46 枚（全是主题驱动）；**行内定义的 token ＝ 0**（设置行内 3 处含 `var(` 的内联样式全在主题选择器的预览条上，与伴生件无关）；**伴生件节点零内联样式、零自定义属性** ⇒ 伴生声明不碰 token 面。
+
+**④ 3.4 目视**：三张截图在 `E:	mp\ldk-a6\shots\`（`通用-缓存一行-scrolled.png`／`AI接入-四组并一行.png`／`夹具-第三方伴生件.png`，1400×900 深色，真实例渲染）——**这一格等用户点头**。
+⚠️ 一处如实记的观察：伴生**按钮**文案 ＝ `t(description)` ⇒ 描述很长时按钮撑宽（夹具那条长描述的按钮实测 230px＋，右端出界）；官方各键描述都短，本轮**未处置**（要收窄得动 `description` 文案或共享件按钮）。

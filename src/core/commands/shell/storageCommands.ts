@@ -1,12 +1,12 @@
 /**
  * 壳「存储」命令——「打开缓存目录」设置行的数据出口（04-软件更新/已落地/设置页-打开缓存目录 阶段 3）。
  *
- * ## 两条命令
+ * ## 两条命令（设置行案 D3 合并后，二者**挂同一个键**上：主件动作 ＋ 伴生只读）
  *
  * | id | 谁发起 | 形态 |
  * |:--|:--|:--|
- * | `storage.openCacheDir` | 设置页「存储」按钮行（`app.storage.openCacheDir` 的 `actionCommand`） | 动作 |
- * | `storage.cacheDirStatus` | 设置页「存储」只读路径行（`app.storage.cacheDir` 的 `statusCommand`） | 只读数据源 |
+ * | `storage.openCacheDir` | 合并行**主件**（`app.storage.openCacheDir` 的 `actionCommand`） | 动作 |
+ * | `storage.cacheDirStatus` | 同一行的**伴生只读**（同键的 `statusCommand`——退役键 `app.storage.cacheDir` 的只读语义现由此承载） | 只读数据源 |
  *
  * 路径解析与 openPath 全在主进程（`window.linkdesk.storage.*`，壳侧独有面——调用侧全 `?.` 兜底；
  * M4 AI#38.12 通用件同款：

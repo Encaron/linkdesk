@@ -129,6 +129,15 @@
       "replacedBy": "（无——关闭即当帧消失，无退场动画；关闭前 120ms 等待同笔删除）",
       "landing": "src/pool/shared/group-tab-bar/GroupTabBar.css",
       "approvedBy": "用户 · 2026-09-27"
+    },
+    {
+      "name": "app.storage.cacheDir",
+      "kind": "configKey",
+      "since": "2026-10-04",
+      "why": "04-软件更新〔设置行-控制只读同行〕D3（2026-10-03 用户拍板「合并回一行」）：缓存目录两行并成一行——主件 app.storage.openCacheDir 同载 actionCommand ＋ statusCommand（伴生声明正交化，01 §1.2 表第 ③ 行 `[按钮][只读路径]`）。本键的「缓存在哪」只读语义改由主键的**伴生只读**承载；描述串「缓存目录——缓存文件实际存放的位置（只读，软件内不可改）」一并退役（合并行的按钮文案与行说明**共用主键 description**，长句会把按钮撑成横条）",
+      "replacedBy": "app.storage.openCacheDir（同键伴生 statusCommand: storage.cacheDirStatus）",
+      "landing": "electron/ipc/handlers/storage-handlers.ts:26（resolveEffectiveCacheDir 仍读 settings.json 平键；界面侧改读 storage.cacheDirStatus 命令）",
+      "approvedBy": "用户 · 2026-10-03"
     }
   ]
 }

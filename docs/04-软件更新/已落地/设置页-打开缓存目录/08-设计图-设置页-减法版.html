@@ -9,7 +9,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>设置页设计图 · 减法版（本轮只落存储那一对 · 两行）· 设置页-打开缓存目录</title>
+<title>设置页设计图 · 减法版（本轮只落存储那一对 · 一行）· 设置页-打开缓存目录</title>
 <style>
 /* ══ 评审壳（深色底板，不属产品样式）——照 06 原样 ══ */
 html,body{margin:0;background:#22222a}
@@ -146,6 +146,12 @@ h1{font:400 20px/1.4 Consolas,monospace;color:#f5f2ed;margin:0 0 10px}
    只读行就是"一行等宽灰字"——不是输入框、也不是灰掉的输入框；无边框、无按钮、改不了 */
 .ldk-readonly-text{font-family:var(--font-mono);font-size:var(--font-size-2xs);
   color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 2026-10-04 回改（设置行案 D3「合并回一行」）：主控件右侧的**伴生只读**——照设置仓
+   SettingsView-rows.css 的 .settings-row-companion 抄录（max-width 230px ＋ min-width:0
+   让省略号生效；末条＝「主控件＋伴生件＋生效徽标」三件并存的收窄护栏） */
+.settings-row-companion{display:inline-flex;align-items:center;min-width:0;max-width:230px;margin-left:8px}
+.settings-row-companion>.ldk-readonly-text{min-width:0}
+.settings-row-control:has(.settings-effective-badge) .settings-row-companion{max-width:120px}
 .paused{opacity:.4}
 .paused .settings-row-gear{opacity:0}
 .stage.compact{box-shadow:0 12px 34px rgba(0,0,0,.45)}
@@ -163,11 +169,11 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
 </head>
 <body>
 
-<h1>设置页设计图 · 减法版（本轮只落存储那一对 · 两行）</h1>
-<p class="lead">本页 = <b>06 的减法版</b>：用户 2026-10-02 令「先做减法」——<b>不提供"改缓存地址"</b>，存储里只留两行：<b>① 一颗「打开缓存目录」按钮</b> ＋ <b>② 只读显示缓存目录在哪</b>（＝你要的那句"我很长时间不知道缓存文件放在哪里"）；2026-10-03 令：<b>按钮行在上、只读行在下</b>（这两行换了位置）；「已用空间」「清除缓存」两行先不做；安装器那一半整块撤除后属后话。<br>🔴 <b>不做 ≠ 作废</b>：<code>06-设计图-设置页.html</code>（三行全量版 · 含可编辑路径框）与 <code>07</code> 讨论稿<b>一字未改、继续留着</b>，将来随时启用。</p>
+<h1>设置页设计图 · 减法版（本轮只落存储那一对 · 一行）</h1>
+<p class="lead">本页 = <b>06 的减法版</b>：用户 2026-10-02 令「先做减法」——<b>不提供"改缓存地址"</b>，存储里只留 <b>一行</b>：<b>一颗「打开缓存目录」按钮 ＋ 它右侧同排的只读路径</b>（＝你要的那句"我很长时间不知道缓存文件放在哪里"）；「已用空间」「清除缓存」两行先不做；安装器那一半整块撤除后属后话。<br>🆕 <b>2026-10-04 回改（〔设置行-控制只读同行〕D3）：两行 → 一行</b>。原稿画的是两行（2026-10-03 令「按钮行在上、只读行在下」）；用户 2026-10-03 拍板 D3「<b>合并回一行</b>」——一键同载 <code>actionCommand</code> ＋ <code>statusCommand</code> 两个伴生声明，渲染规则 <code>[主控件][伴生按钮][伴生只读]</code> ⇒ 本行 = <code>[按钮][只读路径]</code>。<b>只读那一行的键 <code>app.storage.cacheDir</code> 随之退役</b>（不再声明；名字<b>不腾位</b>，登记见 <code>scripts/host-reserved.json</code> 的 <code>retired[]</code>）；合并行标题 ＝ 主键名（<code>app.storage.openCacheDir</code>），按钮文案与行说明<b>共用主键的 description</b> ⇒ 原只读行那句长描述随键退役。<br>🔴 <b>不做 ≠ 作废</b>：<code>06-设计图-设置页.html</code>（三行全量版 · 含可编辑路径框）与 <code>07</code> 讨论稿<b>一字未改、继续留着</b>，将来随时启用。</p>
 <p class="look">存量九行（界面 / 系统集成 / 更新）＝照 <code>src/App/startup.ts</code>、
 <code>src/App/config/update.ts</code> 现有声明抄录，用来当参照物：新行要和它们同重同高。</p>
-<p class="look prop">新行＝本任务本轮唯一的提案（两行：<code>app.storage.openCacheDir</code> 打开按钮 ＋ <code>app.storage.cacheDir</code> 只读显示，均未落代码），行首带绿色「新」角标 ＋ 左侧竖条；落地后角标与竖条都不存在，与其余行完全一致。</p>
+<p class="look prop">新行＝本任务本轮唯一的提案（<b>一行</b>：<code>app.storage.openCacheDir</code> 一键载「打开」按钮 ＋「缓存在哪」只读读数——按钮文案取该键 <code>description</code>，只读路径取同键 <code>statusCommand</code>），行首带绿色「新」角标 ＋ 左侧竖条；落地后角标与竖条都不存在，与其余行完全一致。</p>
 
 <div class="stage">
   <div class="settings-root">
@@ -309,11 +315,12 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
           </div>
         </div>
 
-        <!-- ── 存储（本轮新增：两行——打开按钮 ＋ 只读显示，2026-10-03 令对调）── -->
+        <!-- ── 存储（2026-10-04 回改：D3 合并成**一行**——按钮 ＋ 右侧同排只读路径）── -->
         <div class="settings-subsection newsec">
           <div class="settings-subsection-title">存储</div>
 
-          <!-- ① 打开按钮行：renderHint "action" + actionCommand（按钮文案 = description） -->
+          <!-- 合并行：主件 = renderHint "action" ＋ actionCommand（按钮文案 = description）；
+               伴生 = statusCommand（值来自壳命令，⛔ 不来自配置存储）⇒ [按钮][只读路径] -->
           <div class="settings-row">
             <div class="settings-row-info">
               <div class="settings-row-label-line">
@@ -324,21 +331,7 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
             </div>
             <div class="settings-row-control">
               <button class="ldk-button">打开缓存目录</button>
-            </div>
-            <button class="settings-row-gear">⚙</button>
-          </div>
-
-          <!-- ② 只读显示"缓存在哪"：renderHint "readonly" + statusCommand（值来自壳命令，⛔ 不来自配置存储） -->
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label-line">
-                <label class="settings-row-label">app.storage.cacheDir</label>
-                <span class="new-badge">新</span>
-              </div>
-              <span class="settings-row-desc">缓存目录——缓存文件存放在这里（只读，软件内不提供修改）</span>
-            </div>
-            <div class="settings-row-control">
-              <span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span>
+              <span class="settings-row-companion"><span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span></span>
             </div>
             <button class="settings-row-gear">⚙</button>
           </div>
@@ -351,31 +344,35 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
 </div>
 <p class="note">上图＝点开左栏「通用」时的右栏全貌。⚠️ <b>本页把窗口画高了</b>（真实高度 <code>640px</code>，列表本来可滚动）——不画高，本轮新增那一行就落在窗口外看不见（<code>06</code> 原图照真实高度画，那一行当时没露出来）。深色＝默认主题；换主题后配色随之变，本页不对色。</p>
 
-<div class="sec-h">本轮这两行：都是什么控件（都不给改）</div>
+<div class="sec-h">本轮这一行：主件 ＋ 伴生件（都不给改）</div>
 
-<p class="look">① <b>app.storage.openCacheDir</b> —— <b>一颗实心按钮「打开缓存目录」</b>。声明
+<p class="look">① <b>主件 = app.storage.openCacheDir</b> —— <b>一颗实心按钮「打开缓存目录」</b>。声明
 <code>renderHint:"action"</code> ＋ <code>actionCommand</code>；这类行只有一个字符串能承载文案 ⇒
 <b>按钮文字 = description</b>（先例 <code>app.mixReset</code>），所以描述就写成动作短语。<br>
 行为：点一下弹普通资源管理器窗口（<code>shell.openPath</code>，⛔ 不是模态框，照
 <code>app.backgroundImage</code>「打开存储位置」那套先例）；目录还不存在时 <b>先建再开</b>，不弹「找不到」。</p>
 
-<p class="look">② <b>app.storage.cacheDir</b> —— <b>只读显示"缓存在哪"</b>。声明 <code>renderHint:"readonly"</code>
-＋ <code>statusCommand</code>（指一条壳命令，返回值就是那行字）⇒ 渲染器走共享只读件 <code>ReadOnlyText</code>：
-<b>一行等宽灰字，无边框、无按钮、改不了</b>。<br>
-🚫 <b>本页上一稿画错了</b>——那一稿按 <code>uiHint:"directory"</code> 画成了可编辑路径框（＝"能改地址"），
-与你的令不符，已改掉。先例（同仓、已落地）：AI 接入那 5 组「状态行 ＋ 按钮行」——
-<code>ai.mcp.status</code>（只读）配 <code>ai.mcp.openDetails</code>（按钮），
-<code>ai.cli.status</code> 配 <code>ai.cli.openInstall</code>…<b>两行的形态</b>与本页这两行一致
-（⚠️ <b>先后顺序相反</b>：先例是只读在前，本轮按 2026-10-03 令<b>按钮在前</b>——位置一旦定下就别再动）。</p>
+<p class="look">② <b>伴生件 = 同一个键上的 <code>statusCommand</code></b> —— 同一行里<b>按钮右侧同排</b>的
+<b>只读「缓存在哪」</b>（<code>storage.cacheDirStatus</code>，返回值就是那截字）⇒ 渲染器走共享只读件
+<code>ReadOnlyText</code>：<b>一行等宽灰字，无边框、无按钮、改不了</b>；宽度上限 <code>230px</code>，
+超出打省略号（同行时受控区宽度预算所限）。<br>
+🆕 <b>2026-10-04（D3）</b>：这就是原先独立成行的 <code>app.storage.cacheDir</code> ——它不再单独占一行，
+语义改由<b>伴生只读</b>承载，键随之退役（<code>retired[]</code> 有登记，名字不腾位）。先例（同仓、已落地）：
+AI 接入那 5 组「状态行 ＋ 按钮行」（<code>ai.mcp.status</code> 配 <code>ai.mcp.openDetails</code>…）形态同源——
+那 5 组随后也按〔设置行-控制只读同行〕D4 并成同款一行。</p>
 
-<p class="look prop">✅ <b>已定（2026-10-02 用户拍板 A）</b>：① 打开按钮 ＋ ② 只读路径，<b>两行都留</b>（先后由 2026-10-03 令定：按钮在上）。📌 备注：一行（路径 ＋ 按钮同排）其实可行，但要把控件收进<b>共享件</b>（<code>src/components/shared/</code>）＋ 设置插件加一行 <code>case</code>——本轮不做，留作将来。</p>
+<p class="look">🚫 <b>本页最早一稿画错了</b>——那一稿按 <code>uiHint:"directory"</code> 画成了可编辑路径框
+（＝"能改地址"），与你的令不符，已改掉。</p>
+
+<p class="look prop">✅ <b>已定</b>：2026-10-02 拍板 A「打开按钮与只读路径都留」；2026-10-03 拍板 D3「<b>合并回一行</b>」
+——按钮在左、只读路径在右，同排（原两行版的「谁在上谁在下」已无意义）。</p>
 
 <p class="look">🔴 <b>软件内改缓存地址：本轮不做，设置里也不留任何口子</b>（可编辑路径框那一版＝
 <code>06</code> 的三行全量版，属"将来启用"）；安装器那一半同理，属后话。</p>
 
-<div class="sec-h">对照全组：本轮两行（实色）／暂缓两行（⏸ 灰）</div>
+<div class="sec-h">对照全组：本轮一行（实色）／暂缓两行（⏸ 灰）</div>
 
-<p class="look">下面这块只为对账：<b>少了两行</b>一眼可见。灰掉那两行（<code>app.storage.used</code> / <code>app.storage.clear</code>）本轮不落代码，将来启用时把 ⏸ 去掉即可——规格全文在 <code>06</code> 与 <code>07</code> 里，一字未丢。</p>
+<p class="look">下面这块只为对账：<b>⏸ 两行</b>一眼可见。灰掉那两行（<code>app.storage.used</code> / <code>app.storage.clear</code>）本轮不落代码，将来启用时把 ⏸ 去掉即可——规格全文在 <code>06</code> 与 <code>07</code> 里，一字未丢。</p>
 
 <div class="stage compact">
   <div class="settings-root">
@@ -384,7 +381,7 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
       <div class="settings-subsection newsec" style="margin:0">
         <div class="settings-subsection-title">存储</div>
 
-        <!-- ① 打开按钮（本轮落） -->
+        <!-- 合并行（本轮落 · 2026-10-04 D3 一行版） -->
         <div class="settings-row">
           <div class="settings-row-info">
             <div class="settings-row-label-line">
@@ -395,21 +392,7 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
           </div>
           <div class="settings-row-control">
             <button class="ldk-button">打开缓存目录</button>
-          </div>
-          <button class="settings-row-gear">⚙</button>
-        </div>
-
-        <!-- ② 只读显示（本轮落） -->
-        <div class="settings-row">
-          <div class="settings-row-info">
-            <div class="settings-row-label-line">
-              <label class="settings-row-label">app.storage.cacheDir</label>
-              <span class="new-badge">新</span>
-            </div>
-            <span class="settings-row-desc">缓存目录——缓存文件存放在这里（只读，软件内不提供修改）</span>
-          </div>
-          <div class="settings-row-control">
-            <span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span>
+            <span class="settings-row-companion"><span class="ldk-readonly-text">C:\Users\&lt;你&gt;\AppData\Roaming\linkdesk</span></span>
           </div>
           <button class="settings-row-gear">⚙</button>
         </div>
@@ -448,16 +431,16 @@ table.diff td.k{color:#a8a49d;white-space:nowrap}
   </div>
   </div>
 </div>
-<p class="note">⏸ 那两行的全部规格（<code>readonly</code> 两数并列、<code>action</code> 白名单清除、②③ 为何不能并成一行、清除的白名单与「重启后彻底清空」判词）在 <code>06-设计图-设置页.html</code> 与 <code>01 §二</code> 里，<b>原样保留</b>。</p>
+<p class="note">⏸ 那两行的全部规格（<code>readonly</code> 两数并列、<code>action</code> 白名单清除、清除的白名单与「重启后彻底清空」判词）在 <code>06-设计图-设置页.html</code> 与 <code>01 §二</code> 里，<b>原样保留</b>。🆕 2026-10-04（D3）：原先「按钮行与只读行<b>不能并成一行</b>」那句判断<b>已作废</b>——见上「本轮这一行：主件 ＋ 伴生件」（伴生声明正交化后，一键可同时载动作与只读读数）。</p>
 
 <div class="sec-h">减法清单（本轮做什么 / 暂缓什么）</div>
 
 <table class="diff">
 <tr><th>项</th><th>本轮</th><th>说明</th></tr>
 <tr><td>设置页 <code>app.storage.openCacheDir</code></td><td class="yes">做</td>
-    <td>按钮行「打开缓存目录」⇒ 资源管理器（先例 <code>aiBridge</code> 的按钮行）</td></tr>
-<tr><td>设置页 <code>app.storage.cacheDir</code></td><td class="yes">做</td>
-    <td><b>只读显示行</b>（等宽灰字，把"缓存在哪"给你看）——不是输入框、改不了</td></tr>
+    <td><b>合并行</b>：按钮「打开缓存目录」⇒ 资源管理器（先例 <code>aiBridge</code> 的按钮行）＋ 它右侧同排的只读路径</td></tr>
+<tr><td>设置页 <code>app.storage.cacheDir</code></td><td class="no">已退役</td>
+    <td>🆕 2026-10-04 D3 合并后<b>不再单独成行、不再声明</b>——只读语义改由上一键的<b>伴生只读</b>承载；名字<b>不腾位</b>（<code>retired[]</code> 有登记），老 <code>settings.json</code> 里的值照旧被主进程读（播种口，只是设置页不给改）</td></tr>
 <tr><td>软件内<b>改</b>缓存地址</td><td class="no">不做</td>
     <td>＝可编辑路径框那一版，属 <code>06</code> 三行全量版（将来启用）；本轮设置里不留口子</td></tr>
 <tr><td>设置页 <code>app.storage.used</code></td><td class="no">⏸ 暂缓</td>

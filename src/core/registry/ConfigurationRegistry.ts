@@ -51,7 +51,12 @@ export interface ConfigurationProperty {
    *  🆕 设置控件案 4.1：**宿主声明面**收回词表正典 `SettingsRenderHint`（三值：readonly/action/color）——
    *  收窄只约束**壳自己写的**声明（`src/App/config/*.ts` 等，写错即编译期红）；
    *  第三方消费面照旧开放（`@linkdesk/contracts` 的 `LinkDeskConfigProperty` 仍是 `string`），
-   *  运行时未知 hint 的降级路径一点未动。 */
+   *  运行时未知 hint 的降级路径一点未动。
+   *  🆕 设置行案 2.1（2026-10-04 · 伴生声明正交化）："readonly"/"action" 退化为「**主控件就是它**」的
+   *  简写——`statusCommand` / `actionCommand` 升为可与**任何**主控件共存的伴生声明（渲染顺序
+   *  `[主控件][伴生按钮][伴生只读]`，见设置仓 renderControl）。故「只读 ＋ 按钮」不再需要两个键两行：
+   *  例 `renderHint:"action"` ＋ `actionCommand` ＋ `statusCommand` ⇒ `[按钮][只读]`。
+   *  ⚠️ 主控件判定优先级：`readonly` 最前（现状，零回归）→ `uiHint` → `action` → `type` 兜底。 */
   renderHint?: SettingsRenderHint;
   /** E5#57：声明式编辑控件提示——plugin.json 中声明，SettingsView 按 hint 选择控件。
    *  优先级高于 type。不认识的 hint 降级回 type 默认渲染——不抛错。
@@ -69,12 +74,17 @@ export interface ConfigurationProperty {
   optionsFrom?: string;
   /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤（10 §2 六域之一） */
   optionsFromDomain?: string;
-  /** E5.8#50.26：renderHint "action" 按钮动作——点击执行此壳命令（混搭复位执行 theme.resetMix，
-   *  单一写入点；onApply 被 IPC 剥除不可达插件，按钮经命令触发壳侧 onApply 链）。 */
+  /** E5.8#50.26：按钮动作——点击执行此壳命令（混搭复位执行 theme.resetMix，单一写入点；
+   *  onApply 被 IPC 剥除不可达插件，按钮经命令触发壳侧 onApply 链）。
+   *  🆕 设置行案 2.1：**伴生声明**——与任何主控件共存 ⇒ 渲染成主控件右侧的伴生按钮
+   *  （文案沿用 `t(description)`）；只声明 renderHint "action" ＝ 主控件就是按钮（简写，零回归）。 */
   actionCommand?: string;
-  /** M4 AI#38.12：renderHint "readonly" 只读状态的运行时数据源——渲染时执行此**壳命令**取值
+  /** M4 AI#38.12：只读状态的运行时数据源——渲染时执行此**壳命令**取值
    *  （返回 string；状态行的「运行中 · 地址」由命令侧 t() 拼装）。🔴 值来自命令、**不来自配置存储**
-   *  ——通用于一切插件（P-2 拍板 A；不为本系列开特权）。缺省 = 无数据源，显示 default 值原文。 */
+   *  ——通用于一切插件（P-2 拍板 A；不为本系列开特权）。缺省 = 无数据源，显示 default 值原文。
+   *  🆕 设置行案 2.1：**伴生声明**——与任何主控件共存 ⇒ 渲染成主控件右侧的伴生只读
+   *  （复用设置页只读底座：3s 轮询 / 空值不占位 / 抛错保现值，⛔ 不造第二套轮询）；
+   *  只声明 renderHint "readonly" ＝ 主控件就是只读状态行（简写，零回归）。 */
   statusCommand?: string;
   /** E5.8#50.26：renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用
    *  （混搭复位「6 来源全跟随主题 → 置灰」，10 §6 决策记录 3）。 */
