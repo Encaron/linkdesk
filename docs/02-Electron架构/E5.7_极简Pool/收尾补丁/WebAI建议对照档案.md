@@ -1,4 +1,5 @@
 # Web AI 建议对照档案（E5.7 收官后复盘）
+> ⚠️ **非新能力**——本篇记录的是既有能力（或其既有计划），未新增能力面；2026-10-04 本处改动仅是记忆库引用改名。
 
 > 2026-08-16。用户提供一段画师与网页 AI 的对话（E5.7 开工前产物）——对方给出三条"落地预防针"。
 > 本文档：原文存档 + 三条逐一对照 E5.7 实况（当时 E5.7 已 18 Phase 收官）。残余行动项 → [收尾任务清单.md](收尾任务清单.md)。
@@ -177,7 +178,7 @@ flowchart TB
 | "插件自由绘制 UI"→ LinkDesk 不是 VS Code 的"能力扩展"，是"空间扩展" | ✅ 插件无 API 白名单（CLAUDE.md 反模式）——React 组件就是 React 组件 |
 | 技术路线猜测："插件 = React 应用 + window.linkdesk.\* IPC 边界" | ✅ 猜中——就是 E5.7 本体 |
 | "React 不是安全边界，API 边界才是；别让插件碰 Electron 原生能力" | ✅ preload-pool 沙箱 + 插件无 Node + 主进程权限校验 |
-| OverlayWindow 起源独立推演：单 WebView → Pool → 跨边界裁剪 → 系统 UI 层 | ✅ 与 [[overlaywindow-evolution-story]] 演化链完全重合；"插件控制内容，宿主控制空间" = [[content-vs-space-ownership]] |
+| OverlayWindow 起源独立推演：单 WebView → Pool → 跨边界裁剪 → 系统 UI 层 | ✅ 与 [[overlaywindow-evolution-story]] 演化链完全重合；"插件控制内容，宿主控制空间" = [[ui-normalization-atlas]] |
 | 读到 E5.7 文档后自我修正："浮层同 DOM position:fixed 不被裁剪——OverlayWindow 完成历史使命" | ✅ FloatingLayerHost 实况；判断准确 |
 | 视觉一致性问题（A 工业/B 手机/C 游戏）+ @linkdesk/ui 提案 | ✅ [[linkdesk-ui-component-library]] 记忆已收录（2026-08-09 同类讨论同源，三例子重合）；定性"E6 后有第三方作者时做" |
 | E5.7 终评："Web App 的 UI 自由度 + 桌面宿主的系统能力，preload 作为两者之间的安全边界" | ✅ 独立验证——沙箱不靠进程数 / API 边界 / 池崩 2-4s 重建 + Hot Exit，全部准确 |
@@ -188,6 +189,6 @@ flowchart TB
 
 - ① 已收录 [[linkdesk-ui-component-library]]；② = 现状本身。
 - **③ 原有记录无落点**——记忆只写两层；E6 清单的 `createWindow(workspacePath?)` 是工作区新窗口（壳级），非插件窗口；最接近的 #92 脱出窗口（v1.3）是"用户拖出"，非"插件主动要窗口"。
-- **2026-08-16 已补记**：第三层 = 插件接管"空间"的唯一场景（[[content-vs-space-ownership]] 原则外的例外）——门槛 = plugin.json 声明 + 首次请求壳级用户确认（防弹窗骚扰）；机械基础 = v1.3 脱出窗口多窗口机械（window:* 按 sender 路由 / 崩溃恢复覆盖）；门槛随脱出窗口一起定，不单独做。→ 记忆 [[linkdesk-ui-component-library]] 三层表已补。
+- **2026-08-16 已补记**：第三层 = 插件接管"空间"的唯一场景（[[ui-normalization-atlas]] 原则外的例外）——门槛 = plugin.json 声明 + 首次请求壳级用户确认（防弹窗骚扰）；机械基础 = v1.3 脱出窗口多窗口机械（window:* 按 sender 路由 / 崩溃恢复覆盖）；门槛随脱出窗口一起定，不单独做。→ 记忆 [[linkdesk-ui-component-library]] 三层表已补。
 
 **第三轮结论：零 E5.7 任务；三层缺口已记入记忆（E6/v1.3 候选）。**

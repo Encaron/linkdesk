@@ -241,7 +241,7 @@ notifications.show(t("无法安装：{{name}}缺少依赖环境，无法下载",
 
 ### 4.4 分类翻译约定（E6#32b——英文 slug 身份 + 双值表）
 
-> 🔥 **全仓首批「英文 key 作身份、双语言做值」试点**（软件英文化方向，见记忆 `english-first-direction`）——category 值 = 英文 slug，zh/en 都只是显示层值表；此形态需 zh.json（schema「不需要 zh.json」只对中文 key 成立）。
+> 🔥 **全仓首批「英文 key 作身份、双语言做值」试点**（软件英文化方向，见记忆 `i18n-ownership-per-plugin-repo`）——category 值 = 英文 slug，zh/en 都只是显示层值表；此形态需 zh.json（schema「不需要 zh.json」只对中文 key 成立）。
 
 ```jsonc
 // marketplace/i18n/en.json —— slug → English（追加在中文 key 之后）

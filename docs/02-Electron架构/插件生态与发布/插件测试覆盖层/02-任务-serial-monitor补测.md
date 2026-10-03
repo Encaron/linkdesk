@@ -1,4 +1,5 @@
 # 02 · 会话二（AI-B）：serial-monitor 起点仓——纯逻辑 16 单元 ＋ 替身层 8 单元 —— `E6#147`–`E6#148`
+> ⚠️ **非新能力**——本篇记录的是既有能力（或其既有计划），未新增能力面；2026-10-04 本处改动仅是记忆库引用改名。
 
 > **本会话动谁**：`E:\linkdesk-plugins\official\serial-monitor`——**只加测试文件**（`src/__tests__/**`）；生产代码、`plugin.json`、`package.json` 默认**一律不动**。
 > **发版**：**不 bump**（测试文件不进 `.linkdesk-plugin` 包——已解包实测）。⚠️ **唯一例外**：补测**发现真 bug** ⇒ 那是一次 `fix:` ⇒ 该仓 PATCH ＋ 发版 ＋ 官方目录收录（🔴 **发版要用户点头**）。真 bug 的**修复**要单独一笔提交，⛔ 不与测试同笔。🟢 **2026-09-25 用户明示授权：发现就先汇报、再改；因修复产生的版本变化（该仓 PATCH ＋ 发版 ＋ 目录收录）是被允许的**——⛔ 别因为「本层默认不 bump」而压着不改，也别只报不改。流程 = 汇报（哪仓 · 症状 · 判据 · 修法 · 涉及哪个版本号）→ 用户拍板 → 改 → 那条链路走全。
@@ -104,9 +105,9 @@
    // …renderHook 之后：
    act(() => { handlers.get("serial:data")?.({ /* payload */ }); });
    ```
-   ⚠️ 频道名/payload 形状**按本仓生产代码实际用的那个**（别照文档猜）；**测试替身要符合契约、不是照实现抄**（memory `test-double-must-match-contract-not-impl`）。
+   ⚠️ 频道名/payload 形状**按本仓生产代码实际用的那个**（别照文档猜）；**测试替身要符合契约、不是照实现抄**（memory `plugin-test-coverage-layer`）。
 3. **hook 测法**：`renderHook` ＋ `act`（本仓 `devDependencies` 已有 `@testing-library/react`）；文件头照既有那份加 `/** @vitest-environment jsdom */`。
-4. **定时类**（快照/自动重复）：`vi.useFakeTimers()` ＋ `vi.advanceTimersByTime()`；**每例后 `vi.useRealTimers()`**（防跨例污染——memory `flaky-full-suite-tests`）。
+4. **定时类**（快照/自动重复）：`vi.useFakeTimers()` ＋ `vi.advanceTimersByTime()`；**每例后 `vi.useRealTimers()`**（防跨例污染——memory `plugin-test-coverage-layer`）。
 5. **断言要有牙**：同上自查句；⛔ 不写「只断言不抛」的凑数例。
 6. **裁决延后怎么写**：第 7/8 个若判定成本 > 收益 ⇒ 在交接段写「单元 ＋ 具体理由（如：要整包 mock X）＋ 归属轮次」，**不是**留空。
 
@@ -118,7 +119,7 @@
 | 样板可抄 | 本格的替身写法（第 1/2 条）**提炼成三行**写进交接段——会话三/四直接抄（⛔ 别再各自发明） |
 | 判据 | 本仓替身层**已测单元 +6 以上**；延后者登记在案 |
 | 门禁 | `npm run verify` 绿；三件（`plugin.json` / `package.json` / `CHANGELOG.md`）一字未动 |
-| 稳定性 | 全套**连跑两遍**都绿（防定时器/模块级状态导致的间歇红——memory `flaky-full-suite-tests`） |
+| 稳定性 | 全套**连跑两遍**都绿（防定时器/模块级状态导致的间歇红——memory `plugin-test-coverage-layer`） |
 
 ### 版本与连带
 

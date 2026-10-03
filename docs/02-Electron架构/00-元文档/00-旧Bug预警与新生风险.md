@@ -1,4 +1,5 @@
 # 旧 Bug 预警与新生风险——写给未来写代码的 AI
+> ⚠️ **非新能力**——本篇记录的是既有能力（或其既有计划），未新增能力面；2026-10-04 本处改动仅是记忆库引用改名。
 
 > 2026-07-24。**Tauri 时代 437 个 commit，超过 100 个已修复 bug。这份文档不是庆祝胜利——是防止这些 bug 在 Electron 新架构下借尸还魂，或者在新架构的接缝处长出新的。**
 >
@@ -524,7 +525,7 @@ grep -r "localStorage" src/  # 确认存储位置正确
 > - `memory: seam-bugs-are-real-bugs` — 接缝处是 bug 高发区
 > - `memory: react-stale-closure-setstate-invoke` — B86 教训
 > - `memory: quality-commandments` — Encaron 的终极质量要求
-> - `memory: sidebar-tab-bidirectional-sync` — 侧栏↔标签页双向同步规则
+> - `memory: e6-remaining-decisions-2026-09-14` — 侧栏↔标签页双向同步规则
 > - `memory: nullish-vs-falsy-boundary` — `||` vs `??`
 > - `E1_Electron迁移_暂定/06-实施顺序.md` — 执行分层与纪律
 > - `E3_多WebView与壳收尾_暂定/01-E3a-多WebView进程隔离.md` — IPC 协议与 WebView 管理

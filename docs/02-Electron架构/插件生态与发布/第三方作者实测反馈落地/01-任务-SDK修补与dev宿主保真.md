@@ -114,7 +114,7 @@
 
 ### 怎么修
 
-1. **schema 的字段与类型以 `types.ts` 的 TS 类型为真源落**（[publish.ts L55](../../../../packages/plugin-sdk/src/publish.ts) 起 `CatalogPluginEntry`——「对齐规范 §三/§3.2 字段（作者条目=纯增量，缺字段不崩）」）——照 memory `test-double-must-match-contract-not-impl` 的同族纪律：**schema 与代码契约同源**，不许凭记忆另写一份。
+1. **schema 的字段与类型以 `types.ts` 的 TS 类型为真源落**（[publish.ts L55](../../../../packages/plugin-sdk/src/publish.ts) 起 `CatalogPluginEntry`——「对齐规范 §三/§3.2 字段（作者条目=纯增量，缺字段不崩）」）——照 memory `plugin-test-coverage-layer` 的同族纪律：**schema 与代码契约同源**，不许凭记忆另写一份。
 2. 字段描述写清：顶层 `plugins[]` ＋ 条目字段（`id`/`name`/`versions[]` 历史最新在前/`icon`/`marketIcon`/`readmeUrl`/`category`…以 types.ts 实际字段为准逐个列）。
 3. 接入方式：与 `plugin.schema.json` 同款——随包 schemas/ 目录即可被作者 `$schema` 引用；**不在本格改 publish/validate 的行为**（publish 已有的合并逻辑照旧）。
 4. 单测：一份完整合法样例过；缺 `id` / `versions` 倒序破坏等负例红。

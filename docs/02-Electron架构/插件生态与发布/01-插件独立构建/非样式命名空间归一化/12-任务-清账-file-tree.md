@@ -332,4 +332,4 @@ npm run check
 - **[1.31/1.32（命令 id）](01-任务-命令id归属评估.md) · [1.33/1.34（设置键）](03-任务-设置键归属评估.md) · [1.37/1.38（旗子）](07-任务-上下文旗子归属评估.md)**：本格是它们的**执行方**；映射表与裁决从它们来。
 - **[1.43 清账 · `editor`](13-任务-清账-editor.md)**：🔴 **交集**——本格还回 `editor.*` 的两个命令；1.43 要确认 `editor` 仓**没有**同名声明，并顺带看 `explorer`/`files.*` 的历史关系。
 - **[1.47 清账 · 主题族](17-任务-清账-主题族.md)**：🔴 **交集**——`theme-defaults` 声明了 `files.*`？**不**（那是 editor/file-tree）——但 `files.exclude` 的语义归属**要在作者面说明一次**（1.49）。
-- **记忆 `css-rename-round-toolkit`**（改名执行器十条坑）· **`plugin-out-of-repo-build-rules`**（仓外构建四规则）· **`sdk-github-pat-expiry`**（publish 401）。
+- **记忆 `css-rename-round-toolkit`**（改名执行器十条坑）· **`plugin-out-of-repo-build-rules`**（仓外构建四规则）· **`version-and-release`**（publish 401）。
