@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mn:05 · 主题组落地态</title>
+<!-- html-blueprint · 类型＝集成切换（单工作台＋切换控件观察）· 完整软件轮廓（titlebar 30 / icon-bar 42 / tabbar 35 / statusbar 22）
+     尺寸对账来源：设置页结构/行/导航/tab-bar 抄自设置仓 SettingsView.css·SettingsView-rows.css（08 减法版图同源）；
+     控件尺寸抄自壳共享件 CSS——Slider 轨道 130×4·thumb 12（slider/Slider.css:9-32）、Toggle 36×20·knob16、NumberInput btn22×24+field44、
+     SegmentedRadio padding 4/8·gap4、SelectBox padding 3/6·font md、Button padding 4/12。滑杆案新增件（−/＋ 20×20、值标签 min-width44）为拟定值。
+     mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。 -->
+<style>
+  :root{
+    --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+    --bg-titlebar:var(--bg-card); --bg-icon-bar:var(--bg-card); --bg-side-panel:var(--bg-card);
+    --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+    --accent:#0078D4; --accent-hover:#1A8CE8; --text-on-accent:#FFFFFF;
+    --border:#3C3C3C; --separator:#474747;
+    --hover-overlay:rgba(255,255,255,.06);
+    --radius-sm:4px; --radius-md:6px;
+    --font-size-2xs:11px; --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px; --font-size-lg:16px; --font-size-xl:18px;
+    --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+    --font-mono:Consolas,monospace;
+    --tag-host:#7AA2F7; --tag-shared:#4EC994; --tag-plugin:#E5C07B;
+    --page:#141414; --shadow:0 16px 40px rgba(0,0,0,.5);
+  }
+  html[data-theme="light"]{
+    --bg-window:#FFFFFF; --bg-card:#F5F5F5; --bg-input:#FFFFFF;
+    --text-primary:#2D2D2D; --text-secondary:#5A5A5A; --text-muted:#6E6E6E;
+    --border:#D4D4D4; --separator:#D4D4D4;
+    --hover-overlay:rgba(0,0,0,.05);
+    --tag-host:#3555B8; --tag-shared:#1B7F4D; --tag-plugin:#8A6D1B;
+    --page:#E9E7E2; --shadow:0 16px 40px rgba(0,0,0,.16);
+  }
+  *{box-sizing:border-box; transition:none!important}
+  ::selection{background:var(--accent); color:var(--text-on-accent)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--bg-input); border-radius:5px}
+  body{margin:0; background:var(--page); color:var(--text-primary);
+    font:var(--font-size-md)/1.55 var(--font-ui); -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px; margin:0 auto; padding:26px 20px 64px}
+  h1{font-size:22px; margin:0 0 6px; letter-spacing:-.01em; font-family:var(--font-ui)}
+  .lede{color:var(--text-secondary); margin:0 0 16px; max-width:92ch}
+  h2{font-size:16px; margin:32px 0 10px}
+  .bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px}
+  .btn{background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:7px 14px; font:var(--font-size-sm) var(--font-ui); cursor:pointer}
+  .btn:hover{border-color:var(--text-secondary)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .btn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--text-on-accent)}
+
+  /* ── 完整软件轮廓（blueprint §五：titlebar 30 / icon-bar 42 / tabbar 35 / statusbar 22） ── */
+  .framecap{display:flex; align-items:center; gap:10px; margin:24px 0 8px; font-size:14px; font-weight:600}
+  .chip{display:inline-block; font-size:10.5px; border-radius:4px; padding:1px 7px; font-weight:600}
+  .c-ok{color:var(--ok); border:1px solid var(--ok)} .c-dim{color:var(--text-secondary); border:1px solid var(--border)}
+  .win{background:var(--bg-window); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); overflow:hidden}
+  .titlebar{height:30px; display:flex; align-items:center; gap:12px; padding:0 12px; background:var(--bg-titlebar); border-bottom:1px solid var(--border)}
+  .titlebar .logo{width:12px; height:12px; border-radius:3px; background:var(--accent)}
+  .titlebar .app{font-size:var(--font-size-xs); color:var(--text-primary)}
+  .titlebar .menu{display:flex; gap:12px; font-size:var(--font-size-xs); color:var(--text-secondary)}
+  .titlebar .wbtns{margin-left:auto; display:flex; gap:6px}
+  .titlebar .wbtns i{width:11px; height:11px; border:1px solid var(--text-secondary); border-radius:2px}
+  .appframe{display:flex}
+  .iconbar{width:42px; flex:none; background:var(--bg-icon-bar); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding-top:8px; gap:6px}
+  .iconbar .ic{width:26px; height:26px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center;
+    color:var(--text-secondary); position:relative; cursor:pointer}
+  .iconbar .ic:hover{color:var(--text-primary)}
+  .iconbar .ic.on{color:var(--text-primary); background:var(--bg-input)}
+  .iconbar .ic.on::before{content:""; position:absolute; left:-8px; top:4px; bottom:4px; width:2px; background:var(--accent)}
+  .maintab{height:35px; flex:none; background:var(--bg-card); border-bottom:1px solid var(--border); display:flex; align-items:flex-end; padding:0 8px; gap:2px}
+  .maintab .tab{padding:6px 16px; font-size:var(--font-size-xs); color:var(--text-secondary); border-radius:var(--radius-md) var(--radius-md) 0 0; position:relative; cursor:pointer}
+  .maintab .tab.on{color:var(--text-primary); background:var(--bg-window)}
+  .maintab .tab.on::before{content:""; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent)}
+  .statusbar{height:22px; background:var(--bg-window); border-top:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; padding:0 12px; font-size:var(--font-size-2xs); color:var(--text-secondary)}
+  .statusbar .right{margin-left:auto; display:flex; gap:14px}
+
+  /* ── 设置编辑器（真结构：内部 tab-bar ＋ 搜索条 ＋ nav 200 ＋ form 20/28 —— 抄 SettingsView.css） ── */
+  .settings-editor{display:flex; flex-direction:column}
+  .settings-tab-bar{display:flex; border-bottom:1px solid var(--border); padding:0 16px}
+  .settings-tab{padding:8px 16px; font-size:var(--font-size-md); background:transparent; border:none;
+    border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; margin-bottom:-1px; font-family:var(--font-ui)}
+  .settings-tab.active{color:var(--text-primary); border-bottom-color:var(--accent)}
+  .settings-search-bar{display:flex; align-items:center; padding:8px 16px; border-bottom:1px solid var(--border); gap:8px;
+    color:var(--text-muted); font-size:var(--font-size-sm)}
+  .settings-json-btn{display:flex; align-items:center; gap:4px; margin-left:auto; padding:4px 8px; background:transparent;
+    border:1px solid var(--border); color:var(--text-primary); font-size:var(--font-size-sm); border-radius:2px; cursor:pointer; font-family:var(--font-ui)}
+  .settings-body{display:flex}
+  .settings-nav{width:200px; flex-shrink:0; border-right:1px solid var(--border); padding:8px 0}
+  .settings-nav-item{display:flex; align-items:center; justify-content:space-between; width:100%;
+    padding:6px 20px; font-size:var(--font-size-md); color:var(--text-primary); background:transparent;
+    border:none; border-left:2px solid transparent; cursor:pointer; text-align:left; font-family:var(--font-ui)}
+  .settings-nav-item:hover{background:var(--hover-overlay)}
+  .settings-nav-item.active{background:var(--hover-overlay); color:var(--text-primary); font-weight:500; border-left-color:var(--accent)}
+  .settings-form{flex:1; min-width:0; padding:20px 28px}
+  .settings-group-title{font-size:var(--font-size-xl); font-weight:600; margin:0 0 20px; padding-bottom:12px;
+    border-bottom:1px solid var(--border)}
+  .settings-subsection-title{display:flex; align-items:center; gap:8px; font-size:var(--font-size-sm);
+    font-weight:600; letter-spacing:.05em; margin:22px 0 10px; color:var(--text-secondary)}
+  .settings-subsection-title::before{content:""; width:3px; height:12px; border-radius:2px; background:var(--accent); opacity:.55}
+
+  /* 行（真值抄 SettingsView-rows.css：flex、8px 0、label md/500、desc sm muted 单行省略） */
+  .settings-row{display:flex; align-items:flex-start; justify-content:space-between; padding:8px 0;
+    border-bottom:1px solid var(--border); gap:20px; position:relative}
+  .settings-row:last-child{border-bottom:none}
+  body.mode-follow .row.dep-custom{display:none}
+  .settings-row-info{flex:1; min-width:0}
+  .settings-row-label{display:block; font-size:var(--font-size-md); font-weight:500; color:var(--text-primary);
+    margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .settings-row-desc{display:block; font-size:var(--font-size-sm); color:var(--text-muted); line-height:1.5;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .settings-row-control{flex-shrink:0; display:flex; align-items:center; gap:8px; min-width:100px; justify-content:flex-end; flex-wrap:wrap}
+  .settings-row-gear{flex-shrink:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center;
+    background:transparent; border:none; border-radius:3px; color:var(--text-muted); cursor:pointer; opacity:0; margin-left:4px}
+  .settings-row:hover .settings-row-gear{opacity:1}
+  .settings-row-gear:focus-visible{opacity:1; outline:2px solid var(--accent)}
+
+  /* ── 控件（真身尺寸：Slider 130×4·thumb12；Toggle 36×20·knob16；NumberInput btn22×24+field44；
+       SegmentedRadio 4/8·gap4·font sm；SelectBox 3/6·font md；Button 4/12·font sm） ── */
+  .ldk-slider{display:flex; align-items:center; gap:6px}
+  .ldk-slider .stepper{width:20px; height:20px; flex:none; border:1px solid var(--border); border-radius:var(--radius-sm);
+    background:var(--bg-input); color:var(--text-primary); font:var(--font-size-sm)/1 var(--font-ui); cursor:pointer; padding:0}
+  .ldk-slider .stepper:hover{border-color:var(--text-secondary)}
+  .ldk-slider .stepper:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .ldk-slider .stepper:disabled{opacity:.4; cursor:default}
+  .ldk-slider .track{width:130px; height:4px; border-radius:var(--radius-sm); background:var(--bg-input); position:relative}
+  .ldk-slider .fill{position:absolute; inset:0 auto 0 0; border-radius:var(--radius-sm); background:var(--accent)}
+  .ldk-slider .thumb{position:absolute; top:50%; width:12px; height:12px; border-radius:50%;
+    background:var(--text-primary); transform:translate(-50%,-50%); box-shadow:0 1px 3px rgba(0,0,0,.35)}
+  .ldk-slider .vlabel{min-width:44px; text-align:right; font-size:var(--font-size-xs); color:var(--text-secondary);
+    font-variant-numeric:tabular-nums; flex:none}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:var(--font-size-2xs); color:var(--text-secondary); white-space:nowrap}
+  .badge .sw{width:10px; height:10px; border-radius:3px; border:1px solid var(--border)}
+  .badge.src{color:var(--text-primary)}
+  .badge.src .dot{width:6px; height:6px; border-radius:50%}
+  .abtn{padding:4px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--text-primary); font:var(--font-size-sm) var(--font-ui); cursor:pointer; white-space:nowrap}
+  .abtn:hover{border-color:var(--text-secondary)}
+  .abtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .abtn:disabled{opacity:.4; cursor:default}
+  .path{font-size:var(--font-size-2xs); color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; max-width:110px; font-family:var(--font-mono)}
+  .numin{display:flex; align-items:center; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden}
+  .numin button{width:22px; height:24px; border:none; background:transparent; color:var(--text-secondary); cursor:pointer;
+    font:var(--font-size-lg)/1 var(--font-ui); padding:0}
+  .numin .nv{width:44px; text-align:center; font-size:var(--font-size-sm); border-left:1px solid var(--border); border-right:1px solid var(--border); padding:5px 0}
+  .numin .nu{font-size:var(--font-size-xs); color:var(--text-secondary); padding:0 8px}
+  .selbox{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--bg-input);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 6px; min-width:150px; cursor:pointer; font-size:var(--font-size-md)}
+  .selbox svg{flex:none; opacity:.7}
+  .tgl{width:36px; height:20px; border-radius:10px; background:var(--separator); border:none; position:relative; cursor:pointer; flex:none}
+  .tgl i{position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#FFFFFF}
+  .tgl[aria-checked="true"]{background:var(--accent)}
+  .tgl[aria-checked="true"] i{left:18px}
+  .colinp{display:flex; align-items:center; gap:8px}
+  .colinp .cs{width:22px; height:22px; border-radius:var(--radius-sm); border:1px solid var(--border); flex:none}
+  .colinp input{padding:4px 8px; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--text-primary); font:var(--font-size-sm) var(--font-mono); width:96px; min-width:0}
+  .seg{display:flex; background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px; gap:4px}
+  .seg button{border:none; background:transparent; color:var(--text-secondary); border-radius:var(--radius-sm);
+    padding:4px 8px; font:var(--font-size-sm)/1.4 var(--font-ui); cursor:pointer; display:flex; align-items:center; gap:6px}
+  .seg button[aria-pressed="true"]{background:var(--bg-card); color:var(--text-primary); box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .seg button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .pv-aa{width:26px; height:18px; border-radius:var(--radius-sm); display:inline-flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:700; border:1px solid var(--border); overflow:hidden}
+  .pv-aa i{font-style:normal; position:relative; z-index:1}
+  .pv-swatch{width:26px; height:18px; border-radius:var(--radius-sm); border:1px solid var(--border); display:inline-flex; overflow:hidden}
+  .pv-swatch i{display:inline-block; width:50%; height:100%}
+  .cards{display:flex; gap:8px}
+  .tcard{border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 10px; cursor:pointer; background:var(--bg-input); min-width:96px; font-family:var(--font-ui)}
+  .tcard[aria-pressed="true"]{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+  .tcard .dots{display:flex; gap:4px; margin-bottom:6px}
+  .tcard .dots i{width:14px; height:14px; border-radius:var(--radius-sm); border:1px solid var(--border)}
+  .tcard .nm{font-size:var(--font-size-2xs); color:var(--text-secondary)}
+  .ffsel{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--bg-input);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 6px; min-width:170px; cursor:pointer; font-size:var(--font-size-md)}
+  .ffsel svg{flex:none; opacity:.7}
+  .ldk-readonly-text{font-family:var(--font-mono); font-size:var(--font-size-2xs); color:var(--text-secondary);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:300px}
+
+  /* 层归属标注 / E1 / 降级视角 */
+  .tag{position:absolute; left:0; bottom:-6px; display:none; gap:5px; z-index:2}
+  body.showtag .tag{display:flex}
+  .settings-row.hastag{padding-bottom:20px}
+  .tag b{font-size:10px; font-weight:600; border-radius:4px; padding:1px 6px; color:#fff}
+  .t-host{background:var(--tag-host)} .t-shared{background:var(--tag-shared)} .t-plugin{background:var(--tag-plugin)}
+  .legend{display:flex; gap:14px; margin:10px 2px 0; font-size:var(--font-size-xs); color:var(--text-secondary)}
+  .legend b{border-radius:4px; padding:1px 6px; color:#fff; font-size:10px}
+  .e1note{position:absolute; right:34px; top:-8px; font-size:10.5px; color:var(--warn); display:none; z-index:2}
+  body.showe1 .e1note{display:block}
+  .ro-note{font-size:var(--font-size-2xs); color:var(--warn); white-space:nowrap}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; margin-top:6px}
+  @media (max-width:1020px){ .grid2{grid-template-columns:1fr} .appframe{flex-direction:column} .iconbar{flex-direction:row; width:auto; padding:8px} }
+  table{border-collapse:collapse; width:100%; font-size:var(--font-size-xs)}
+  th,td{border:1px solid var(--border); padding:5px 9px; text-align:left}
+  th{color:var(--text-secondary); font-weight:600; background:var(--bg-card)}
+  td.num{font-variant-numeric:tabular-nums}
+  .pass{color:var(--ok)} .warn3{color:var(--warn)}
+  .framenote{font-size:var(--font-size-xs); color:var(--text-secondary); margin:8px 2px 0; max-width:110ch}
+  .framenote b{color:var(--text-primary)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>主题组 · 落地态＝整页设置视图（设置控件-词表正典与共享化）</h1>
+  <p class="lede">〔滑杆件〕〔设置控件-词表正典与共享化〕两案全部落地后，设置页<b>整页</b>的样子：完整软件轮廓（图标栏 42px／标签条 35px／状态栏 22px）＋ 设置编辑器真结构（顶部 tab、搜索条、200px 分组导航、表单 20/28）＋ 主题组全部 24 键（九分节一节不少）＋ AI 接入组只读行。<b>控件比例全部按壳源码真值</b>：Slider 轨道 130×4·thumb 12、Toggle 36×20、NumberInput btn 22×24＋值格 44、SegmentedRadio 4/8、SelectBox 3/6、Button 4/12；行高、导航 active 左 2px accent、分区标题 3×12 竖条皆照设置仓 CSS 抄录。−/＋ 步进钮（20×20）与值标签（44px）是滑杆案的<b>拟定值</b>，其余为现值。</p>
+
+  <div class="bar">
+    <button class="btn" id="btnTheme" aria-pressed="true">深色主题</button>
+    <button class="btn" id="btnMode" aria-pressed="false">外观模式：自定义（全部 24 键）</button>
+    <button class="btn" id="btnTag" aria-pressed="false">层归属标注</button>
+    <button class="btn" id="btnE1" aria-pressed="false">E1 双读数现场</button>
+  </div>
+
+  <div class="win">
+    <div class="titlebar">
+      <span class="logo"></span><span class="app">LinkDesk</span>
+      <span class="menu"><span>文件</span><span>查看</span><span>帮助</span></span>
+      <span class="wbtns"><i></i><i></i><i></i></span>
+    </div>
+    <div class="appframe">
+      <div class="iconbar" aria-label="图标栏">
+        <span class="ic" title="资源管理器"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h5l1.2 1.5H14V13H2z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span>
+        <span class="ic on" title="设置"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6L11 5M5 11l-1.4 1.4" stroke="currentColor" stroke-width="1.3"/></svg></span>
+        <span class="ic" title="搜索"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 10l3.4 3.4" stroke="currentColor" stroke-width="1.3"/></svg></span>
+      </div>
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column">
+        <div class="maintab"><span class="tab on">设置</span></div>
+        <div class="settings-editor">
+          <div class="settings-tab-bar"><button class="settings-tab active">设置</button><button class="settings-tab">快捷键</button></div>
+          <div class="settings-search-bar">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 8l3 3" stroke="currentColor" stroke-width="1.4"/></svg>
+            搜索设置
+            <button class="settings-json-btn">{ }<span style="font-size:11px">JSON</span></button>
+          </div>
+          <div class="settings-body">
+            <div class="settings-nav" role="navigation" aria-label="设置分组">
+              <button class="settings-nav-item active">主题<span class="chip c-dim">24</span></button>
+              <button class="settings-nav-item">通用</button>
+              <button class="settings-nav-item">AI 接入</button>
+              <button class="settings-nav-item">快捷键</button>
+            </div>
+            <div class="settings-form">
+              <div class="settings-group-title">主题</div>
+
+              <div class="settings-subsection-title">整体配方</div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · uiHint themePicker</b><b class="t-shared">共享件 · ThemePicker</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.theme</span><span class="settings-row-desc">主题配方——选择配色与外观来源（配方卡片）</span></div>
+                <div class="settings-row-control">
+                  <div class="cards" role="group" aria-label="主题配方">
+                    <button class="tcard" aria-pressed="true"><span class="dots"><i style="background:#1E1E1E"></i><i style="background:#0078D4"></i><i style="background:#3C3C3C"></i></span><span class="nm">Aurora Glass · 当前</span></button>
+                    <button class="tcard" aria-pressed="false"><span class="dots"><i style="background:#101418"></i><i style="background:#2D2D2D"></i><i style="background:#4EC994"></i></span><span class="nm">Dark</span></button>
+                    <button class="tcard" aria-pressed="false"><span class="dots"><i style="background:#FFFFFF"></i><i style="background:#F5F5F5"></i><i style="background:#0078D4"></i></span><span class="nm">Light</span></button>
+                  </div>
+                  <button class="settings-row-gear" aria-label="更多操作"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6L11 5M5 11l-1.4 1.4" stroke="currentColor" stroke-width="1.3"/></svg></button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · type string ＋ enum（无 uiHint ⇒ 正常路径）</b><b class="t-shared">共享件 · SelectBox 枚举分支</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.appearanceMode</span><span class="settings-row-desc">外观模式——跟随主题配方整体外观 / 自定义逐项指定</span></div>
+                <div class="settings-row-control">
+                  <div class="selbox" id="modeBox" role="button" tabindex="0" aria-haspopup="listbox"><span id="modeTxt">自定义</span>
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · enum 动态（iconThemeEnum）</b><b class="t-shared">共享件 · SelectBox</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.iconTheme</span><span class="settings-row-desc">图标主题——文件图标集（内置图标集 = codicon 保底）</span></div>
+                <div class="settings-row-control"><div class="selbox" role="button" tabindex="0"><span>default（codicon）</span>
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div></div>
+              </div>
+
+              <div class="settings-subsection-title">配色</div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · uiHint select · optionsFrom theme.colorways</b><b class="t-shared">共享件 · DynamicSelect</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.themeColor</span><span class="settings-row-desc">配色变体——活动主题配方的可用配色</span></div>
+                <div class="settings-row-control"><div class="selbox" role="button" tabindex="0"><span>跟随主题</span>
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div></div>
+              </div>
+
+              <div class="settings-subsection-title">强调色</div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · uiHint accentSource</b><b class="t-shared">共享件 · SegmentedRadio ＋ 色块原子</b><b class="t-plugin">设置仓 · 薄绑定</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.accentSource</span><span class="settings-row-desc">强调色来源——跟随主题配方：取当前配色来源的强调色；自定义：自己指定</span></div>
+                <div class="settings-row-control">
+                  <div class="seg" role="group" aria-label="强调色来源">
+                    <button aria-pressed="true"><span class="pv-swatch"><i style="background:var(--accent)"></i><i style="background:var(--bg-input)"></i></span>跟随主题配方</button>
+                    <button aria-pressed="false"><span class="pv-swatch"><i style="background:#D6336C"></i><i style="background:#D6336C"></i></span>自定义</button>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · renderHint color · dependsOn custom</b><b class="t-shared">共享件 · 色块＋输入</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.accentColor</span><span class="settings-row-desc">自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 跟随主题强调色</span></div>
+                <div class="settings-row-control"><div class="colinp"><span class="cs" style="background:#0078d4"></span><input value="#0078d4" aria-label="自定义强调色 hex 值"></div></div>
+              </div>
+
+              <div class="settings-subsection-title">圆角</div>
+              <div class="settings-row dep-custom hastag">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · unit px · min0 max32</b><b class="t-shared">共享件 · Slider（滑杆案）</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.surfaceRadius</span><span class="settings-row-desc">组件圆角——系统标尺 0 方角 / 32 最圆润；数值 = 标准组件圆角 px</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="32" data-stepdata="1" data-val="8">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">8 px</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · type boolean</b><b class="t-shared">共享件 · Toggle</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.zoneRadius</span><span class="settings-row-desc">分区圆角开关——关闭后各分区强制直角（0px）</span></div>
+                <div class="settings-row-control"><span class="tgl" role="switch" aria-checked="true" tabindex="0" aria-label="分区圆角开关"><i></i></span></div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · unit px</b><b class="t-shared">共享件 · Slider</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.zoneRadiusScale</span><span class="settings-row-desc">分区圆角——系统标尺 0 方角 / 32 最圆润；数值 = 分区圆角 px</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="32" data-stepdata="1" data-val="12">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">12 px</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-subsection-title">玻璃</div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · unit px</b><b class="t-shared">共享件 · Slider</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.glassBlur</span><span class="settings-row-desc">玻璃模糊——0 关闭；数值 = 主表面真实模糊 px</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="32" data-stepdata="1" data-val="16">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">16 px</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · 无 unit（D6 裸数值）</b><b class="t-shared">共享件 · Slider</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.glassOpacity</span><span class="settings-row-desc">玻璃面不透明度——0 全透见背景 / 1 全不透明</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="1" data-stepdata="0.01" data-val="0.50" data-bare="1">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">0.5</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row dep-custom hastag">
+                <span class="tag"><b class="t-host">声明层 · renderHint color · effectiveToken glass-tint</b><b class="t-shared">共享件 · 色块＋输入 ＋ EffectiveBadge</b></span>
+                <span class="e1note">⚠ E1：色块是配置值，右侧徽标是生效 token 值——两个读数、含义不同</span>
+                <div class="settings-row-info"><span class="settings-row-label">app.glassTint</span><span class="settings-row-desc">玻璃叠加色——空 = 主题自带</span></div>
+                <div class="settings-row-control">
+                  <div class="colinp"><span class="cs" style="background:rgba(30,30,30,.5)"></span><input value="" placeholder="（空 = 跟随主题）" aria-label="玻璃叠加色 hex 值"></div>
+                  <span class="badge eff" data-follow><span>生效：</span><span class="sw" style="background:rgba(30,30,30,.5)"></span><span>rgba(30,30,30,0.50)</span></span>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · 0–2 连续</b><b class="t-shared">共享件 · Slider</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.glassSaturate</span><span class="settings-row-desc">玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="2" data-stepdata="0.01" data-val="1" data-bare="1">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">1</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-subsection-title">背景</div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint select · optionsFrom theme.sources</b><b class="t-shared">共享件 · DynamicSelect</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.mixBackground</span><span class="settings-row-desc">背景域来源——跟随主题配方 / 指定主题配方 id</span></div>
+                <div class="settings-row-control"><div class="selbox" role="button" tabindex="0"><span>跟随主题</span>
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div></div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint image · __none__ 值契约 · sourceKey</b><b class="t-shared">共享件 · BackgroundImagePicker（本案搬入）</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.backgroundImage</span><span class="settings-row-desc">窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图</span></div>
+                <div class="settings-row-control" id="imgCtl">
+                  <button class="abtn" id="imgPick">选择图片…</button>
+                  <button class="abtn" id="imgNone">无背景</button>
+                  <button class="abtn" id="imgClear" hidden>清除图片</button>
+                  <span class="path" id="imgPath" hidden>E:\pictures\dawn.jpg</span>
+                  <span class="badge src" data-follow><span class="dot" style="background:var(--warn)"></span>混搭</span>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · sourceKey（来源徽标）</b><b class="t-shared">共享件 · Slider ＋ SourceBadge</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.backgroundOpacity</span><span class="settings-row-desc">背景图不透明度——0 全透见窗口底色 / 1 原图</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="1" data-stepdata="0.01" data-val="0.80" data-bare="1">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">0.8</span>
+                  </div>
+                  <span class="badge src" data-follow><span class="dot" style="background:var(--warn)"></span>混搭</span>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint slider · sourceKey</b><b class="t-shared">共享件 · Slider</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.backgroundMask</span><span class="settings-row-desc">背景图遮罩明暗——0 无遮罩 / 1 全黑</span></div>
+                <div class="settings-row-control">
+                  <div class="ldk-slider" data-slider data-min="0" data-max="1" data-stepdata="0.01" data-val="0" data-bare="1">
+                    <button class="stepper" data-step="-1" aria-label="减少">−</button>
+                    <div class="track"><div class="fill"></div><div class="thumb"></div></div>
+                    <button class="stepper" data-step="1" aria-label="增加">＋</button>
+                    <span class="vlabel">0</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint image · sourceKey</b><b class="t-shared">共享件 · BackgroundImagePicker</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.zoneBackgroundImage</span><span class="settings-row-desc">分区背景图片路径——空 = 主题自带；无背景 = 绝对无图</span></div>
+                <div class="settings-row-control">
+                  <button class="abtn">选择图片…</button>
+                  <button class="abtn">无背景</button>
+                </div>
+              </div>
+
+              <div class="settings-subsection-title">文字</div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · uiHint fontTone · 恒显</b><b class="t-shared">共享件 · SegmentedRadio ＋ Aa 原子</b><b class="t-plugin">设置仓 · 薄绑定</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.fontTone</span><span class="settings-row-desc">文字极性——文字颜色取系统标尺，不锚主题色板</span></div>
+                <div class="settings-row-control">
+                  <div class="seg" role="group" aria-label="文字极性">
+                    <button aria-pressed="true"><span class="pv-aa" style="background:var(--bg-card); color:var(--text-primary)"><i>Aa</i></span>跟随主题</button>
+                    <button aria-pressed="false"><span class="pv-aa" style="background:linear-gradient(90deg,#111 50%,#e8e8e8 50%); color:#111"><i>Aa</i></span>亮字</button>
+                    <button aria-pressed="false"><span class="pv-aa" style="background:linear-gradient(90deg,#e8e8e8 50%,#111 50%); color:#111"><i>Aa</i></span>暗字</button>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint select · optionsFrom theme.sources</b><b class="t-shared">共享件 · DynamicSelect</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.mixFont</span><span class="settings-row-desc">字体域来源——跟随主题配方 / 指定主题配方 id</span></div>
+                <div class="settings-row-control"><div class="selbox" role="button" tabindex="0"><span>跟随主题</span>
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div></div>
+              </div>
+              <div class="settings-row dep-custom hastag">
+                <span class="tag"><b class="t-host">声明层 · uiHint fontFamily · monoOnly false · effectiveToken font-ui</b><b class="t-shared">共享件 · FontFamilySelect ＋ EffectiveBadge</b></span>
+                <span class="e1note">⚠ E1：控件里选的「系统字体」是配置值，徽标「-apple-system」是生效值——两个读数</span>
+                <div class="settings-row-info"><span class="settings-row-label">app.fontFamily</span><span class="settings-row-desc">界面字体——空 = 跟随主题；选择后写 --font-ui；系统字体 = 显式系统默认</span></div>
+                <div class="settings-row-control">
+                  <div class="ffsel" role="button" tabindex="0" aria-haspopup="listbox"><span>系统字体（__none__）</span>
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </div>
+                  <span class="badge eff" data-follow><span>生效：</span><span>-apple-system</span></span>
+                </div>
+              </div>
+              <div class="settings-row dep-custom">
+                <span class="tag"><b class="t-host">声明层 · uiHint fontFamily · monoOnly true · effectiveToken font-mono</b><b class="t-shared">共享件 · FontFamilySelect ＋ EffectiveBadge</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.fontFamilyMono</span><span class="settings-row-desc">等宽字体——空 = 跟随主题；选择后写 --font-mono；系统字体 = 显式系统等宽栈</span></div>
+                <div class="settings-row-control">
+                  <div class="ffsel" role="button" tabindex="0" aria-haspopup="listbox"><span>Cascadia Code</span>
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </div>
+                  <span class="badge eff" data-follow><span>生效：</span><span>Consolas</span></span>
+                </div>
+              </div>
+
+              <div class="settings-subsection-title">字号</div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · uiHint fontSize · step 5 · unit ％ · 恒显</b><b class="t-shared">共享件 · NumberInput</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.uiFontScale</span><span class="settings-row-desc">全局字号百分比——界面文字密度（不含编辑器内容字号）；与窗口缩放（整体放大镜）正交</span></div>
+                <div class="settings-row-control">
+                  <div class="numin" data-numin data-min="85" data-max="150" data-step="5" data-val="100">
+                    <button aria-label="减少">−</button><span class="nv">100</span><button aria-label="增加">＋</button><span class="nu">％</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-subsection-title">复位</div>
+              <div class="settings-row dep-custom" style="border-bottom:none">
+                <span class="tag"><b class="t-host">声明层 · renderHint action · actionCommand theme.resetMix</b><b class="t-shared">共享件 · Button</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">app.mixReset</span><span class="settings-row-desc">⟲ 全部复位为整体配方</span></div>
+                <div class="settings-row-control"><button class="abtn" id="resetBtn">⟲ 全部复位为整体配方</button></div>
+              </div>
+
+              <div class="settings-subsection-title" style="border-top:1px solid var(--separator); padding-top:16px">AI 接入（nav 切到「AI 接入」后的那组 · 只读行）</div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · type boolean</b><b class="t-shared">共享件 · Toggle</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">ai.mcp.enabled</span><span class="settings-row-desc">启用 MCP 服务器</span></div>
+                <div class="settings-row-control"><span class="tgl" role="switch" aria-checked="true" tabindex="0" aria-label="启用 MCP 服务器"><i></i></span></div>
+              </div>
+              <div class="settings-row">
+                <span class="tag"><b class="t-host">声明层 · renderHint readonly · statusCommand</b><b class="t-shared">共享件 · ReadOnlyText（升级后＝轮询在此）</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">ai.mcp.status</span><span class="settings-row-desc">MCP 服务器状态——值来自运行时命令，不来自配置存储</span></div>
+                <div class="settings-row-control"><span class="ldk-readonly-text">已开启 · 端口 9231 · 模型 gpt-4o</span></div>
+              </div>
+              <div class="settings-row" style="border-bottom:none">
+                <span class="tag"><b class="t-host">声明层 · renderHint readonly · statusCommand</b><b class="t-shared">共享件 · ReadOnlyText</b></span>
+                <div class="settings-row-info"><span class="settings-row-label">ai.cli.status</span><span class="settings-row-desc">CLI 桥接状态</span></div>
+                <div class="settings-row-control"><span class="ldk-readonly-text">已连接 · claude-code 1.2.0</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>设置 · 主题</span><span class="right"><span>就绪</span><span>Ln 1 · Col 1</span></span></div>
+  </div>
+  <div class="legend"><b class="t-host">声明层</b>宿主 schema 说什么 <b class="t-shared">共享件</b>@linkdesk/ui 画什么 <b class="t-plugin">设置仓</b>只做编排与绑定 · AI 接入组＝<a href="06-设计图-ReadOnlyText升级.html" style="color:var(--accent)">06 图</a>的现场</div>
+  <div class="framenote"><b>① 数据从哪来</b>：主题组 24 键逐格照 <code>src/App/config/appearance.ts</code> 抄（键名/描述/分节/dependsOn/effectiveToken/sourceKey 一格不改）；<b>② 比例从哪来</b>：行/导航/tab-bar/搜索条抄设置仓 <code>SettingsView.css·SettingsView-rows.css</code>（08 减法版图同源），控件抄壳共享件 CSS（Slider 130×4·Toggle 36×20·NumberInput 22×24＋44·SegmentedRadio 4/8·SelectBox 3/6·Button 4/12）——−/＋ 步进钮与值标签是滑杆案拟定值；<b>③ 显隐规则</b>：18 键 dependsOn custom，切「跟随主题」只剩恒显 6 键＋生效徽标现（与真机一致）；<b>④ 任务锚点</b>：滑杆案 D1–D6、本案阶段 3–5。</div>
+
+  <h2>第二台设置插件（未实现专属 hint）——同一页面的降级呈现</h2>
+  <div class="win">
+    <div class="settings-editor" style="padding:0 0 8px">
+      <div class="settings-form" style="padding:12px 28px 4px">
+        <div class="settings-row"><div class="settings-row-info"><span class="settings-row-label">app.theme</span></div><div class="settings-row-control"><span class="ldk-readonly-text" title="此设置项声明了设置页不认识的控件形态，以只读显示">aurora-glass</span><span class="ro-note">ⓘ 只读降级</span></div></div>
+        <div class="settings-row"><div class="settings-row-info"><span class="settings-row-label">app.appearanceMode（无 uiHint · 正常路径）</span></div><div class="settings-row-control"><div class="selbox" style="min-width:150px"><span>跟随主题</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div></div></div>
+        <div class="settings-row"><div class="settings-row-info"><span class="settings-row-label">app.backgroundImage</span></div><div class="settings-row-control"><span class="ldk-readonly-text" title="此设置项声明了设置页不认识的控件形态，以只读显示">（跟随主题）</span><span class="ro-note">ⓘ 只读降级</span></div></div>
+        <div class="settings-row"><div class="settings-row-info"><span class="settings-row-label">app.glassOpacity</span></div><div class="settings-row-control"><span class="ldk-readonly-text" title="此设置项声明了设置页不认识的控件形态，以只读显示">0.5</span><span class="ro-note">ⓘ 只读降级</span></div></div>
+        <div class="settings-row" style="border-bottom:none"><div class="settings-row-info"><span class="settings-row-label">app.uiFontScale</span></div><div class="settings-row-control"><div class="numin"><button aria-label="减少">−</button><span class="nv">100</span><button aria-label="增加">＋</button><span class="nu">％</span></div><span style="font-size:11px;color:var(--text-secondary)">NumberInput 共享件照常</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="framenote">降级契约（D7）：未实现 hint ⇒ 只读＋title 说明，不给可编辑文本框；「无 uiHint」键走 type 正常路径一字不动。</div>
+
+  <div class="grid2">
+    <div>
+      <h2 style="margin-top:0">实测对比度（页内现算，两主题）</h2>
+      <table id="crTable"><thead><tr><th>元素（前景/背景）</th><th>深色</th><th>浅色</th><th>判据</th></tr></thead><tbody></tbody></table>
+      <p class="lede" style="font-size:11.5px; margin-top:6px">⚠ 两处已知低对比（滑杆案 02 E14/E15 已记录家族，本轮不改口径）：① 步进按钮底；② 填充段深色对 <code>bg-input</code> 轨道底（随面而变，bg-card 面为 3.04）。其余格须全过。</p>
+    </div>
+    <div>
+      <h2 style="margin-top:0">交互判据（图内可操作）</h2>
+      <table><tbody>
+        <tr><td>外观模式切换</td><td>点 app.appearanceMode 下拉——跟随主题＝隐藏 18 个 dependsOn 行＋生效徽标现；自定义＝全键。与真机显隐规则一致</td></tr>
+        <tr><td>主题切换</td><td>页头按钮——全部元素吃 token 逐格换色</td></tr>
+        <tr><td>−/＋ 步进</td><td>按 min/max/step 夹取、边界置灰；值标签声明 unit ⇒「8 px」、未声明 ⇒「0.5」（D6）</td></tr>
+        <tr><td>背景图三态</td><td>选图/无背景/清除按钮按值条件显隐（共享件内聚）</td></tr>
+        <tr><td>NumberInput</td><td>85–150 步进 5，值格 44px、单位格「％」（真身 btn 22×24）</td></tr>
+        <tr><td>层归属标注</td><td>页头开关——每行亮出「声明层/共享件/设置仓」三色签</td></tr>
+        <tr><td>E1 双读数</td><td>页头开关——glassTint / fontFamily 两处「配置值 vs 生效值」现场</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var html=document.documentElement;
+  function $(s){return document.querySelector(s)}
+  var bt=$('#btnTheme');
+  bt.onclick=function(){
+    var light=html.getAttribute('data-theme')==='light';
+    html.setAttribute('data-theme', light?'dark':'light');
+    bt.textContent=light?'深色主题':'浅色主题';
+    bt.setAttribute('aria-pressed', String(!light));
+  };
+  var follow=false;
+  function setMode(f){
+    follow=f;
+    document.body.classList.toggle('mode-follow', f);
+    document.querySelectorAll('[data-follow]').forEach(function(e){ e.style.display=f?'':'none'; });
+    $('#modeTxt').textContent=f?'跟随主题':'自定义';
+    $('#btnMode').textContent='外观模式：'+(f?'跟随主题（恒显 6 键）':'自定义（全部 24 键）');
+    $('#btnMode').setAttribute('aria-pressed', String(f));
+  }
+  $('#modeBox').onclick=function(){ setMode(!follow); };
+  $('#modeBox').onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ setMode(!follow); e.preventDefault(); } };
+  $('#btnMode').onclick=function(){ setMode(!follow); };
+  $('#btnTag').onclick=function(){document.body.classList.toggle('showtag'); this.setAttribute('aria-pressed', String(document.body.classList.contains('showtag')))};
+  $('#btnE1').onclick=function(){document.body.classList.toggle('showe1'); this.setAttribute('aria-pressed', String(document.body.classList.contains('showe1')))};
+  document.querySelectorAll('[data-slider]').forEach(function(sl){
+    var min=parseFloat(sl.dataset.min), max=parseFloat(sl.dataset.max),
+        st=parseFloat(sl.dataset.stepdata), v=parseFloat(sl.dataset.val), bare=!!sl.dataset.bare;
+    function fmt(x){ return bare?(+x.toFixed(2)).toString():Math.round(x)+' px'; }
+    function render(){
+      var p=(v-min)/(max-min)*100;
+      sl.querySelector('.fill').style.width=p+'%';
+      sl.querySelector('.thumb').style.left=p+'%';
+      sl.querySelector('.vlabel').textContent=fmt(v);
+      sl.querySelector('[data-step="-1"]').disabled=v<=min;
+      sl.querySelector('[data-step="1"]').disabled=v>=max;
+    }
+    sl.querySelectorAll('.stepper').forEach(function(b){
+      b.onclick=function(){ v=Math.min(max,Math.max(min, v+st*parseFloat(b.dataset.step))); render(); };
+    });
+    render();
+  });
+  document.querySelectorAll('[data-numin]').forEach(function(n){
+    var min=+n.dataset.min, max=+n.dataset.max, st=+n.dataset.step, v=+n.dataset.val;
+    var nv=n.querySelector('.nv');
+    function render(){ nv.textContent=v; n.querySelector('button').disabled=v<=min; n.querySelectorAll('button')[1].disabled=v>=max; }
+    n.querySelectorAll('button').forEach(function(b,i){
+      b.onclick=function(){ v=Math.min(max,Math.max(min, v+(i?st:-st))); render(); };
+    });
+    render();
+  });
+  var picked=false;
+  $('#imgPick').onclick=function(){ picked=true; sync(); };
+  $('#imgNone').onclick=function(){ picked=false; sync(); };
+  $('#imgClear').onclick=function(){ picked=false; sync(); };
+  function sync(){
+    $('#imgNone').style.display=picked?'none':'';
+    $('#imgClear').hidden=!picked;
+    $('#imgPath').hidden=!picked;
+  }
+  $('#resetBtn').onclick=function(){
+    document.querySelectorAll('[data-slider]').forEach(function(sl){
+      var b=sl.querySelector('[data-step="-1"]'); for(var i=0;i<40 && !b.disabled;i++) b.click();
+    });
+  };
+  /* 对比度实测：两主题各测一轮存表 */
+  function lum(c){ var m=c.match(/\d+(\.\d+)?/g).slice(0,3).map(function(x){x/=255; return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4)});
+    return 0.2126*m[0]+0.7152*m[1]+0.0722*m[2]; }
+  function cr(a,b){ var l1=lum(a),l2=lum(b); return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05); }
+  function bgOf(el){ var e=el; while(e){ var bg=getComputedStyle(e).backgroundColor;
+      if(bg && bg!=='rgba(0, 0, 0, 0)' && bg!=='transparent') return bg; e=e.parentElement; } return 'rgb(30,30,30)'; }
+  var ROWS=[
+    ['行标题 label（md 500 / bg-window）','.settings-row-label', null],
+    ['说明 desc（sm muted / bg-window）','.settings-row-desc', null],
+    ['值标签（xs / bg-window）','.vlabel', null],
+    ['−/＋ 字形（text-primary / bg-input）','.stepper', null],
+    ['步进按钮底（bg-input / bg-window）','.stepper','box'],
+    ['生效徽标文字（2xs / bg-window）','.badge.eff > span', null],
+    ['混搭徽标文字（2xs / bg-window）','.badge.src', null],
+    ['填充段（accent / track 底）','.fill','box2'],
+    ['按钮文字（sm / bg-input）','.abtn', null]
+  ];
+  function collect(theme){
+    var prev=html.getAttribute('data-theme');
+    html.setAttribute('data-theme', theme);
+    var vals=ROWS.map(function(r){
+      var el=document.querySelector(r[1]); if(!el) return null;
+      var fg=(r[2]==='box'||r[2]==='box2')?getComputedStyle(el).backgroundColor:getComputedStyle(el).color;
+      var bg=(r[2]==='box'||r[2]==='box2')?bgOf(el.parentElement):bgOf(el);
+      return +cr(fg,bg).toFixed(2);
+    });
+    html.setAttribute('data-theme', prev);
+    return vals;
+  }
+  function renderTable(){
+    var dark=collect('dark'), light=collect('light');
+    var tb=document.querySelector('#crTable tbody'); tb.innerHTML='';
+    ROWS.forEach(function(r,i){
+      var need=r[2]?3:4.5, dv=dark[i], lv=light[i];
+      function cell(v){ var cls=v>=need?'pass':(v>=3?'warn3':''); return '<td class="num '+cls+'">'+v.toFixed(2)+(v>=need?'':' ⚠')+'</td>'; }
+      tb.innerHTML+='<tr><td>'+r[0]+'</td>'+cell(dv)+cell(lv)+'<td>'+(r[2]?'图形 3:1（E14/E15 口径）':'正文 4.5:1')+'</td></tr>';
+    });
+    document.title='Mn:'+document.querySelectorAll('.settings-row').length+' 行/9 对/主题='+html.getAttribute('data-theme');
+  }
+  setMode(false);
+  renderTable();
+  bt.addEventListener('click', function(){ setTimeout(renderTable, 30); });
+})();
+</script>
+</body>
+</html>
