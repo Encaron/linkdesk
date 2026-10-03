@@ -39,6 +39,12 @@ export const UI_SURFACE = [
   "src/components/shared/color-picker/**",
   "src/components/shared/combobox/**",
   "src/components/shared/context-menu/**",
+  // 2026-10-03 设置控件案：判据 A 搬入的控件/原子 + 词表正典运行时值
+  "src/components/shared/effective-badge/**",
+  "src/components/shared/image-picker/**",
+  "src/components/shared/segment-preview/**",
+  "src/components/shared/settings-hints/**",
+  "src/components/shared/source-badge/**",
   "src/components/shared/file-icon/**",
   "src/components/shared/file-path-input/**",
   "src/components/shared/font-family-select/**",

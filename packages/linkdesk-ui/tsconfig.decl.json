@@ -44,7 +44,34 @@
     "../../src/components/shared/plugin-icon/**/*.ts",
     "../../src/components/shared/plugin-icon/**/*.tsx",
     "../../src/components/shared/markdown-view/**/*.ts",
-    "../../src/components/shared/markdown-view/**/*.tsx"
+    "../../src/components/shared/markdown-view/**/*.tsx",
+    "../../src/components/shared/badge/**/*.ts",
+    "../../src/components/shared/badge/**/*.tsx",
+    "../../src/components/shared/hint-card/**/*.ts",
+    "../../src/components/shared/hint-card/**/*.tsx",
+    "../../src/components/shared/hint-tip/**/*.ts",
+    "../../src/components/shared/hint-tip/**/*.tsx",
+    "../../src/components/shared/readonly-text/**/*.ts",
+    "../../src/components/shared/readonly-text/**/*.tsx",
+    "../../src/components/shared/section-subtitle/**/*.ts",
+    "../../src/components/shared/section-subtitle/**/*.tsx",
+    "../../src/components/shared/file-icon/**/*.ts",
+    "../../src/components/shared/file-icon/**/*.tsx",
+    "../../src/components/shared/settings-hints/**/*.ts",
+    "../../src/components/shared/effective-badge/**/*.ts",
+    "../../src/components/shared/effective-badge/**/*.tsx",
+    "../../src/components/shared/source-badge/**/*.ts",
+    "../../src/components/shared/source-badge/**/*.tsx",
+    "../../src/components/shared/image-picker/**/*.ts",
+    "../../src/components/shared/image-picker/**/*.tsx",
+    "../../src/components/shared/segment-preview/**/*.ts",
+    "../../src/components/shared/segment-preview/**/*.tsx"
   ],
-  "exclude": ["../../src/components/shared/**/*.test.ts", "../../src/components/shared/**/*.test.tsx"]
+  "exclude": [
+    "../../src/components/shared/**/*.test.ts",
+    "../../src/components/shared/**/*.test.tsx",
+    // HintTipRenderer 是壳池侧单例渲染器（消费 @src/core 的池命令表）——barrel 只导出 HintTip 糖件，
+    // 故整支排除：仓外作者不该拿到它，也不该被它拖出 rootDir 之外的核心类型。
+    "../../src/components/shared/hint-tip/HintTipRenderer.tsx"
+  ]
 }

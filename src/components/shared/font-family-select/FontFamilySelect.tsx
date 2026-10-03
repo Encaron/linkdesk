@@ -13,6 +13,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import SelectBox from "../select-box/SelectBox";
+import { CONFIG_NONE_SENTINEL } from "../settings-hints/settingsHints";
 
 interface FontFamilySelectProps {
   value: string;
@@ -142,7 +143,7 @@ export default function FontFamilySelect({ value, onChange, monoOnly = true }: F
     }
     return [
       { value: "", label: t("跟随主题") },
-      { value: "__none__", label: t("系统字体") },
+      { value: CONFIG_NONE_SENTINEL, label: t("系统字体") },
       ...systemFonts.map((f) => ({ value: f, label: f })),
     ];
   }, [monoOnly, systemFonts, t]);

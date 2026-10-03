@@ -38,7 +38,20 @@ export const SNAPSHOT_REL = "scripts/ui-surface.json";
 export const CATEGORIES = ["components", "hooks", "helpers", "types"];
 
 /** helpers 栏的显式清单（见头注「分类」）——新增 helper 在这里加一行名即可 */
-const HELPER_NAMES = new Set(["pickIdentityArt", "DEFAULT_PLUGIN_IDENTITY_URI", "inferSliderStep", "urlSourceKey"]);
+const HELPER_NAMES = new Set([
+  "pickIdentityArt",
+  "DEFAULT_PLUGIN_IDENTITY_URI",
+  "inferSliderStep",
+  "urlSourceKey",
+  // 设置控件词表正典与共享化（2026-10-03）：正典运行时值（哨兵/名单/类型守卫）+ 纯函数
+  "CONFIG_NONE_SENTINEL",
+  "MIX_FOLLOW_THEME_SENTINEL",
+  "SETTINGS_UI_HINTS",
+  "SETTINGS_RENDER_HINTS",
+  "isSettingsUiHint",
+  "formatEffectiveValue",
+  "splitStringList",
+]);
 
 const RE_DEFAULT = /^export\s*\{\s*default\s+as\s+([A-Za-z_$][\w$]*)\s*\}\s*from\s*["']([^"']+)["']/;
 const RE_TYPE = /^export\s+type\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/;

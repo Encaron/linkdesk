@@ -1,0 +1,18 @@
+/* BackgroundImagePicker——背景图选择控件（@linkdesk/ui）。
+ * 几何照抄设置仓 SettingsView-rows.css 的生产样式（.settings-image-picker / -path），
+ * 类名换 ldk- 前缀（硬约束 23）；颜色全走 CSS 变量（硬约束 1），零 hex。 */
+.ldk-image-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap; /* 三态按钮（选择/无背景/清除）+ 路径超宽换行，不挤压 */
+}
+.ldk-image-picker__path {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}

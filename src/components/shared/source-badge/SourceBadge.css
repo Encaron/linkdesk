@@ -1,0 +1,29 @@
+/* SourceBadge——配置值来源徽标（@linkdesk/ui）。
+   视觉 = 原设置行内徽标原样收编（E5.8#87+#99 的定型长相）：xs 小胶囊，形态对标行尾齿轮
+   惯例（小胶囊不抢行主体）。色全走 token（--accent / --text-on-accent / --tab-active-bg），零硬编码。
+   ⚠️ `.codicon` 是宿主提供的图标字体基类（壳 index.css），本件只定它的字号。 */
+.ldk-source-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.ldk-source-badge .codicon {
+  font-size: var(--font-size-xs);
+}
+/* 用户覆盖——主题强调色系点显（非裸 hex） */
+.ldk-source-badge--user {
+  color: var(--text-on-accent);
+  background: var(--accent);
+  opacity: 0.92;
+}
+/* 域来源——混搭生效，另类强调区分 */
+.ldk-source-badge--mix {
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+}

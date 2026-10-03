@@ -1,0 +1,48 @@
+/* EffectiveBadge——「生效值」呈现件（@linkdesk/ui）。
+   视觉 = 原设置行尾徽标**原样收编**（E5.8#155 的定型长相）：xs 小胶囊 ·
+   底 --tab-active-bg · 前缀 muted · 值 160px 省略号 · 10px 色块。色全走 token，零硬编码。 */
+.ldk-effective-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* 控件列（.settings-row-control 一族）是 gap-less flex——间距由徽标自带，保持与收编前逐格一致 */
+  margin-left: 8px;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--tab-active-bg);
+}
+.ldk-effective-badge-label {
+  color: var(--text-muted);
+}
+/* 值文字段：截断容器（ReadOnlyText 的 overflow 落在不设宽的内联元素上不起作用 ⇒ 宽与省略号由本层给） */
+.ldk-effective-badge-value {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 复用 ReadOnlyText 原子画值，但把它「等宽 + 2xs」的基准复位回徽标语境（UI 字体 + xs）。
+   选择器写足三层（含 .multiline 一支）——稳赢 .ldk-readonly-text 与 .ldk-readonly-text.multiline
+   两条既有规则，不赌聚合 CSS 的先后顺序。 */
+.ldk-effective-badge .ldk-effective-badge-value .ldk-readonly-text,
+.ldk-effective-badge .ldk-effective-badge-value .ldk-readonly-text.multiline {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+.ldk-effective-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}

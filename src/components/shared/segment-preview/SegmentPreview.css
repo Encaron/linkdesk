@@ -1,0 +1,41 @@
+/* SegmentPreview——分段控件段内预览（@linkdesk/ui）。
+ * 几何照抄设置仓 SettingsView-rows.css 的 .settings-segmented-swatch / .settings-font-tone-half
+ * （52×30 ＋ var(--radius-sm)），类名换 ldk- 前缀（硬约束 23）；颜色全走 CSS 变量（硬约束 1），零 hex。 */
+.ldk-segment-preview {
+  display: flex;
+  width: 52px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+/* 中性分半示意「主题决定强调色」——两半用 --tone-* 实色标尺（玻璃合成把 --bg-window 写成
+ * alpha 0 时，读 --bg-window 会与背景融为一体＝「完全空心」，故走实色标尺） */
+.ldk-segment-preview--split {
+  background: linear-gradient(90deg, var(--tone-surface-deep) 50%, var(--tone-surface-light) 50%);
+}
+/* 自定义——实时生效强调色（声明式读 CSS 变量） */
+.ldk-segment-preview--accent {
+  background: var(--accent);
+}
+.ldk-segment-preview__half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+/* 文字极性预览两极性取样——色值 = 壳标尺 token（--tone-* 系统双字系，非主题色板） */
+.ldk-segment-preview__half--deep {
+  background: var(--tone-surface-deep);
+  color: var(--tone-ink-on-deep);
+}
+.ldk-segment-preview__half--light {
+  background: var(--tone-surface-light);
+  color: var(--tone-ink-on-light);
+}

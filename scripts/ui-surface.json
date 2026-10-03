@@ -1,12 +1,14 @@
 {
-  "generatedAt": "2026-09-28T12:03:51.207Z",
+  "generatedAt": "2026-10-03T15:47:04.881Z",
   "components": [
+    "BackgroundImagePicker",
     "Badge",
     "Button",
     "ColorPicker",
     "Combobox",
     "ContextMenu",
     "DynamicSelect",
+    "EffectiveBadge",
     "FileIconResolver",
     "FilePathInput",
     "FontFamilySelect",
@@ -20,9 +22,12 @@
     "PluginIcon",
     "ReadOnlyText",
     "SectionSubtitle",
+    "SegmentPreviewSwatch",
+    "SegmentPreviewText",
     "SegmentedRadio",
     "SelectBox",
     "Slider",
+    "SourceBadge",
     "StringListEditor",
     "ThemePicker",
     "Toggle"
@@ -30,21 +35,35 @@
   "hooks": [
     "useClickPreview",
     "useClipboardKeys",
-    "useDebouncedInput"
+    "useDebouncedInput",
+    "useStatusPolling"
   ],
   "helpers": [
+    "CONFIG_NONE_SENTINEL",
     "DEFAULT_PLUGIN_IDENTITY_URI",
+    "MIX_FOLLOW_THEME_SENTINEL",
+    "SETTINGS_RENDER_HINTS",
+    "SETTINGS_UI_HINTS",
+    "formatEffectiveValue",
     "inferSliderStep",
+    "isSettingsUiHint",
     "pickIdentityArt",
+    "splitStringList",
     "urlSourceKey"
   ],
   "types": [
+    "BackgroundImagePickerProps",
     "ContextMenuProps",
+    "EffectiveBadgeProps",
     "HintTipProps",
     "IconDescriptor",
     "InlineInputHandle",
     "ManifestIconShape",
-    "ResolvedIcon"
+    "ResolvedIcon",
+    "RunStatusCommand",
+    "SourceBadgeKind",
+    "SourceBadgeProps",
+    "SourceBadgeSource"
   ],
-  "count": 38
+  "count": 57
 }
