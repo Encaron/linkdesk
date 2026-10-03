@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.45",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.45/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:a9e260c56ade46d76d560c9437610bd7c4f3cc35a51230231398e10aadb3ebd5\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:e24f65ea5b86b9f0c9c986d75e9a51dab7358a646328797ae62db0b55d602873\nplugin.json:9b6593d8a0c5b97d7586c1b3dead871521e62cad10bf0c21216e37e36370bbeb\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:ebaceb02014bd25e91f053aa039da71df3f09705208b782a2e03d0244a237532",
+      "version": "1.0.46",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.46/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:8630c9e90532a1d4171100afb9c373730c7425ee50c832d0d0189619cec073ad\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:fd61a21e15900fd58fd62f2ed7aec46980c9d3fffbcc8dfc2f35f29bf15292b1\nplugin.json:d6ee655cb2eb9694e09c9b9587651a8dbd7949289c8a3bfcef9df7172e131280\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:ebaceb02014bd25e91f053aa039da71df3f09705208b782a2e03d0244a237532",
       "seed": true
     },
     {

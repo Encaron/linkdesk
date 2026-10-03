@@ -231,6 +231,70 @@ export function registerSettingsCommands(): void {
       },
     },
     {
+      /* ── 本案 4.3（逃生舱 · 设置控件案 [01 §五]）：激活套回退内置 ──
+       *
+       * 🔴 为什么要有它：一槽多插件后，用户可以换一套第三方设置页；那一套崩了/打不开时，
+       *    `core.openSettings` 打到坏套就**到此为止**（上面那条链没有回头路），齿轮与 Ctrl+, 一起失去意义——
+       *    而唯一的自救法（把 `app.factorySlot:active:settings` 状态改回去）在文件里，用户碰不到。
+       *    本命令 = 门里的一条正路：把激活套退回**注册序首声明**（= 内置套，E6#18b 无 core 偏袒）。
+       *
+       * 🔴 命令 id 用 `core.` 而**不是**设计稿写的 `settings.`：`settings.` 是**设置插件自己的**命名空间
+       *    （官方仓的 `settings.editKeybinding` 就住那儿）——宿主伸手占它，`@linkdesk/plugin-sdk` 的
+       *    `check-command-ownership` 判据②（按账 `commandPrefixes` 判「顶替宿主命令」）会把**官方设置仓判红**。
+       *    语义不变（回退内置），只把名字收进宿主自己的族（与 `core.openSettings` 同族）。
+       *
+       * ⚠️ 与 `core.openSettings` 的关系：**不改它**（它对坏套的 return 是 E13 明确要保留的现状）——
+       *    本命令是独立的一条，回退完成后用户再走 `core.openSettings` 就打到内置套了（不重启即可用）。 */
+      id: "core.resetSettingsToBuiltin",
+      title: "回退内置设置页",
+      category: "首选项",
+      // ⚠️ description 单行写（同本文件其它命令：多行拼接的续行不匹配审计的 `description:` 前缀豁免）
+      description: "把设置槽的激活套回退到内置设置页（= 声明 factoryRole:\"settings\" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次",
+      handler: async () => {
+        const ROLE = "settings";
+        // 内置 = 注册序首声明（E6#18b：core:true 不优先）——与 FactorySlots 的默认解析同一条口径
+        const builtin = factorySlots.getDefaultPluginId(ROLE);
+        if (!builtin) {
+          // 槽空（没有任何声明该角色的套）——齿轮那边靠 settingsSlotFilled 已不显示本项，命令面板仍可达。
+          // 如实报「没有可回退的目标」，⛔ 不报 reset:true 假装切成了。
+          return {
+            reset: false,
+            reason: "no-slot",
+            error: "没有任何插件声明 factoryRole:\"settings\"——没有可回退的内置设置页",
+          };
+        }
+        const previous = factorySlots.getActive(ROLE) ?? null;
+        if (previous === builtin) {
+          // 本来就是内置套 ⇒ 没有可回退的（照 clearConfiguration「本来就没有覆盖」同款：空 ≠ 失败，
+          // 但也**不是**「刚做成了」——调用方要能分辨）
+          return { reset: false, noop: true, reason: "already-builtin", previous, active: builtin };
+        }
+        try {
+          // setActive 校验候选后落盘（PluginStateService `factorySlot:active:<role>`）——重启保持
+          await factorySlots.setActive(ROLE, builtin);
+        } catch (e) {
+          // 候选校验不过／落盘失败：异常不外抛（外抛会被壳弹用户红 toast），载荷里如实说
+          return {
+            reset: false,
+            reason: "set-active-failed",
+            previous,
+            active: previous,
+            error: `回退内置设置页失败：${e instanceof Error ? e.message : String(e)}`,
+          };
+        }
+        // 回读对账——⛔ 不信「调用没抛」＝「切过去了」（照 clearConfiguration 的回读先例）
+        const active = factorySlots.getActive(ROLE) ?? null;
+        return {
+          reset: active === builtin,
+          previous,
+          active,
+          ...(active === builtin
+            ? {}
+            : { reason: "not-reset", error: `setActive 后回读激活套仍是 "${active}"（不是 "${builtin}"）——没退成` }),
+        };
+      },
+    },
+    {
       // E5.8#50.24：升级两段式（配方→配色）——命令 id 归一化为 theme.* 族（09 §1 命令清单）
       id: "theme.pick",
       title: "主题：选择主题…",
@@ -508,6 +572,10 @@ export function registerSettingsCommands(): void {
     // 每次布局推送同步（与 sidebarPosition 同款 context key 机制，壳侧 getItems 一站式求值）。
     // ⛔ 只门控菜单项显隐，不动 core.openSettings 本体路由（factorySlots.getActive 那条链）。
     { command: "core.openSettings", group: "navigation", when: "settingsSlotFilled" },
+    // 本案 4.3（逃生舱 · 设置控件案 [01 §五] 判据 E13）：**仅当「有激活套且它不是内置」**才给这一项——
+    // 内置套在用时不留空壳项（同上一行纪律）；第三方设置页崩了也有门里的一条回头路。
+    // 两个旗子都由 usePoolSync 随每次布局推送同步（与上一行同一个顺序契约，都在组装 slots 之前 set）。
+    { command: "core.resetSettingsToBuiltin", group: "navigation", when: "settingsSlotFilled && !settingsActiveIsBuiltin" },
     { command: "theme.pick", group: "navigation" },
     { command: "workbench.action.selectLanguage", group: "navigation" },
     { command: "workbench.action.openKeybindingsSettings", group: "navigation" },

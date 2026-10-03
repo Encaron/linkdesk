@@ -59,6 +59,7 @@
     "editorCount",
     "editorHasSelection",
     "inputFocus",
+    "settingsActiveIsBuiltin",
     "settingsSlotFilled",
     "sidebarPosition",
     "updateActionable",

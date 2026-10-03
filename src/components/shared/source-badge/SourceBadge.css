@@ -1,6 +1,9 @@
 /* SourceBadge——配置值来源徽标（@linkdesk/ui）。
    视觉 = 原设置行内徽标原样收编（E5.8#87+#99 的定型长相）：xs 小胶囊，形态对标行尾齿轮
-   惯例（小胶囊不抢行主体）。色全走 token（--accent / --text-on-accent / --tab-active-bg），零硬编码。
+   惯例（小胶囊不抢行主体）。色全走 token（--accent / --text-on-accent），零硬编码。
+   🔴 收编时**删掉了** mix 支那一行 `background: var(--tab-active-bg)`——该 token 三仓
+   （壳 / 官方插件仓 / 主题仓）**全历史零定义**，只会静默算成 `transparent`（bug-atlas B56）；
+   删 = **零视觉变化**（原本就没画出底），⛔ 别再把这条死引用抄回来。
    ⚠️ `.codicon` 是宿主提供的图标字体基类（壳 index.css），本件只定它的字号。 */
 .ldk-source-badge {
   flex-shrink: 0;
@@ -25,5 +28,4 @@
 /* 域来源——混搭生效，另类强调区分 */
 .ldk-source-badge--mix {
   color: var(--text-primary);
-  background: var(--tab-active-bg);
 }

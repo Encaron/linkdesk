@@ -77,6 +77,7 @@ export const HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY: readonly string[] = [
   "editorCount",
   "editorHasSelection",
   "inputFocus",
+  "settingsActiveIsBuiltin",
   "settingsSlotFilled",
   "sidebarPosition",
   "updateActionable",

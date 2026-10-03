@@ -10,10 +10,11 @@
   //   之后，`@linkdesk/plugin-sdk` / `@linkdesk/ui` 必须由 workspaces 链接（否则插件声明的 npm 版本号在仓内
   //   解析不到本地包，本地 SDK 改动也不生效）。这两个包各有自己的构建/发布面（prepack、files 白名单），
   //   knip 的根 scope 不覆盖它们，单列审计属另一件事——同 plugins/* 的处置，本轮不扩域。
-  // E6#99（L7 7.2 轮）复核结论：**两项都保留**。`plugins/*` 仍有活主体（两只夹具 workspace）；
-  //   `packages/*` 仍被壳侧工具链消费（`check` 里的 `tsc -p packages/plugin-sdk`、postinstall 的
-  //   build-linkdesk-ui.mjs、contracts 生成链）——18 只发货插件搬走**不改变**这两条的存在理由。
-  "ignoreWorkspaces": ["plugins/*", "packages/*"],
+  // E6#99（L7 7.2 轮）复核结论：**只剩 `packages/*`**。壳内 `plugins/*` 已无插件源码（最后的开发夹具亦已下架，
+  //   见 2026-10-04 复核）⇒ 摘除该条目，不留无对象的豁免；`packages/*` 仍被壳侧工具链消费
+  //   （`check` 里的 `tsc -p packages/plugin-sdk`、postinstall 的 build-linkdesk-ui.mjs、contracts 生成链）
+  //   ——18 只发货插件搬走**不改变**这条的存在理由。
+  "ignoreWorkspaces": ["packages/*"],
   "workspaces": {
     ".": {
       "entry": [
@@ -102,6 +103,15 @@
         //   断边误报豁免（@linkdesk/ui dist 即由它们构建而来；壳仓 src/ 内零 import 是**设计**）。
         "src/components/shared/readonly-text/ReadOnlyText.tsx",
         "src/components/shared/section-subtitle/SectionSubtitle.tsx",
+        // 设置控件-词表正典与共享化（AI-5，2026-10-03 阶段 3.2）同型断边豁免——四件新共享件的**唯一消费方**
+        //   = settings 插件（`@linkdesk/ui` barrel ＋ 插件自己的 dist：双轨期的 SharedSourceBadge／
+        //   SharedEffectiveBadge 走命名空间查表）＋ `@linkdesk/ui` lib 构建（packages/ 域，knip 不覆盖）。
+        //   壳仓 `src/**` 内零 import 是**设计**（壳不画设置行的徽标／背景图选取器／分段预览三件）；
+        //   组件仍活：`@linkdesk/ui` 的 dist 即由它们构建而来。⛔ 不是死代码，别照 knip 提示删文件。
+        "src/components/shared/effective-badge/EffectiveBadge.tsx",
+        "src/components/shared/source-badge/SourceBadge.tsx",
+        "src/components/shared/image-picker/BackgroundImagePicker.tsx",
+        "src/components/shared/segment-preview/SegmentPreview.tsx",
         // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
         //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
         //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
@@ -174,8 +184,9 @@
         // 🔴 E6#99（L7 7.2）：18 只发货插件源码外移后，**monaco-editor / @codemirror×3 四条 ignoreDependencies
         //   已摘除**——它们当年是为「插件源码折 root scope」而压制的，插件搬走后 root 里再无任何引用边，
         //   留着就是一份没有作用的陈旧豁免（knip 自己会报 configuration hint）。
-        //   `@linkdesk/ui` **保留**：壳侧仍无 import 消费方，但 root 必须持这个 file: 链接供仓内夹具与
-        //   `@linkdesk/ui` 自身构建解析。
+        //   `@linkdesk/ui` **保留**：壳侧 src/ 仍无 import 消费方（消费走 @linkdesk/ui 包自身的 dist），
+        //   但 root 必须持这个 file: 链接供 `scripts/build-pool-vendor.mjs` 的 esbuild 入口解析
+        //   （`@linkdesk/ui` 是池 vendor 单实例，E6#123）——壳内插件位已空，此依赖不再为夹具而留。
         // E6#16（实机实证）：buffer 是壳 renderer iconv-lite（EncodingService，声明 root dep）的
         //   require('buffer') 浏览器 Buffer 垫片——vite dev optimize 与 prod rollup 把裸 'buffer'
         //   解析到本包（#16 npm 重装前它由 tar-stream→bl 链作为无关传递依赖静默满足，净壳后暴露

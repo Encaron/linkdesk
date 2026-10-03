@@ -151,7 +151,17 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
     // 槽空（没装任何 factoryRole:"settings" 的套）时该项不显示：齿轮已恒可见（壳自带 owned 按钮），
     // 不留「点了没反应」的空壳项（本仓「不放空壳菜单项」纪律）。与上一行同一个顺序契约——必须在下方
     // 组装 slots 之前 set，否则壳侧 getItems 读到的是上一轮的值。
-    ContextKeyService.setValue("settingsSlotFilled", !!factorySlots.getActive("settings"));
+    const activeSettingsId = factorySlots.getActive("settings");
+    ContextKeyService.setValue("settingsSlotFilled", !!activeSettingsId);
+
+    // 本案 4.3（逃生舱 · 设置控件案 [01 §五]）：激活套**是不是内置套**（内置 = 注册序首声明 ＋ 无 core 偏袒，
+    // E6#18b）——齿轮兜底项「回退内置设置页」的 when = `settingsSlotFilled && !settingsActiveIsBuiltin`：
+    // 只有「有激活套、且它不是内置」时才给这枚逃生舱（第三方设置页崩了也能一键回退，不必重启）。
+    // 同一个顺序契约：在组装 slots 之前 set。槽空 ⇒ false（无套可回退）。
+    ContextKeyService.setValue(
+      "settingsActiveIsBuiltin",
+      !!activeSettingsId && activeSettingsId === factorySlots.getDefaultPluginId("settings"),
+    );
 
     // E6#57.11：TitleBar 更新按钮的两个 context key——**必须在下方组装 slots 之前 set**，
     // 否则 buildTitleBarSlots 读到的是上一轮的值（与上一行 sidebarPosition 同一个顺序契约）。

@@ -23,6 +23,7 @@ import {
 } from "../../registry/ConfigurationRegistry";
 import { registerViewPlugin, clearRegistry } from "../../../pluginLoader/contributions/viewRegistry";
 import { factorySlots } from "../../services/bootstrap/FactorySlots";
+import { clearPluginStates } from "../../services/plugins/PluginStateService";
 import { shellEvents } from "../../react/events/ShellEvents";
 import { updateCoreCallbacks, type CoreCallbacks } from "../infra/CoreCallbacks";
 import { clearFloatingPanelFormDiagnostics } from "../../services/ui/floatingPanelForm";
@@ -200,5 +201,128 @@ describe("齿轮菜单——「设置」项空槽门控（2026-09-30 齿轮归�
   it("键从未被设过（undefined）⇒ 项不显示——与 false 同判（首推之前不留空壳项）", async () => {
     const items = await gearItems();
     expect(items.find((i) => i.command === "core.openSettings")).toBeFalsy();
+  });
+});
+
+/** 逃生舱用例的槽种子——只喂 factorySlots（本命令不读 viewRegistry，故不注册视图声明）。
+ *  候选序即注册序：第 1 个 = 内置（默认套），第 2 个 = 第三方。
+ *  ⚠️ 先 `refreshFromPlugins()`（测试环境无已加载插件 ⇒ 清空）：`initialize` 只覆盖不清理，
+ *  不先清的话上一格用例的候选会残留 ⇒ 「槽空」用例根本造不出来（假绿最坏的那种）。 */
+const THIRD_PARTY_ID = "settings-third";
+function seedSlot(candidates: string[]): void {
+  factorySlots.refreshFromPlugins();
+  if (candidates.length === 0) return;
+  factorySlots.initialize(
+    candidates.map((pluginId) => ({
+      pluginId,
+      manifest: { pluginId, name: pluginId, factoryRole: "settings" } as unknown as PluginManifest,
+    })),
+  );
+}
+
+describe("core.resetSettingsToBuiltin——逃生舱（本案 4.3 · [01 §五] 判据 E13）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    clearRegistry();
+    clearConfigurationRegistrations();
+    ContextKeyService.clear();
+    // 激活套是**落盘状态**（PluginStateService）——不清的话上一格用例 setActive 的结果会串进来，
+    // 用例就先于断言互相污染了
+    clearPluginStates();
+    registerSettingsCommands();
+  });
+
+  /** 与上一块同一条端到端路（壳侧 when 求值一站式） */
+  const gearItems = async (): Promise<MenuItemDescriptor[]> =>
+    await handleSettingsChannel("menu:getItems", [MENU_SLOTS.ExtensionGear, {}]) as MenuItemDescriptor[];
+  /** 兜底项——只在「有激活套且非内置」时该出现的那个 command id */
+  const RESET = "core.resetSettingsToBuiltin";
+  type Receipt = {
+    reset: boolean; previous?: string | null; active?: string | null;
+    reason?: string; noop?: boolean; error?: string;
+  };
+
+  it("激活套=第三方 ⇒ 齿轮给兜底项；执行后激活套回内置（落盘保持）＋ 回执如实", async () => {
+    seedSlot([SETTINGS_ID, THIRD_PARTY_ID]);
+    await factorySlots.setActive("settings", THIRD_PARTY_ID);
+    expect(factorySlots.getActive("settings")).toBe(THIRD_PARTY_ID);
+
+    // 旗子由 usePoolSync 推送（此处按推送后的值手设：有套 ＋ 非内置）
+    ContextKeyService.setValue("settingsSlotFilled", true);
+    ContextKeyService.setValue("settingsActiveIsBuiltin", false);
+    const items = await gearItems();
+    expect(items.find((i) => i.command === RESET)).toBeTruthy();
+    // 原「设置」项照旧在（逃生舱是**加**一项，不是替换）
+    expect(items.find((i) => i.command === "core.openSettings")).toBeTruthy();
+
+    const r = await executeCommand(RESET) as Receipt;
+    expect(r.reset).toBe(true);
+    expect(r.previous).toBe(THIRD_PARTY_ID);
+    expect(r.active).toBe(SETTINGS_ID);
+    expect(factorySlots.getActive("settings")).toBe(SETTINGS_ID);
+    expect(factorySlots.getPluginIds("settings")[0]).toBe(SETTINGS_ID); // 候选面一字未动
+  });
+
+  it("激活套就是内置 ⇒ 齿轮**不给**兜底项（不留空壳项）＋ 命令报 noop（不假装切了一次）", async () => {
+    seedSlot([SETTINGS_ID, THIRD_PARTY_ID]);
+    // 未 setActive ⇒ getActive 回退默认 = 内置
+    expect(factorySlots.getActive("settings")).toBe(SETTINGS_ID);
+
+    ContextKeyService.setValue("settingsSlotFilled", true);
+    ContextKeyService.setValue("settingsActiveIsBuiltin", true);
+    const items = await gearItems();
+    expect(items.find((i) => i.command === RESET)).toBeFalsy();
+    expect(items.find((i) => i.command === "core.openSettings")).toBeTruthy();
+
+    const r = await executeCommand(RESET) as Receipt;
+    expect(r.reset).toBe(false);
+    expect(r.noop).toBe(true);
+    expect(r.reason).toBe("already-builtin");
+    expect(r.active).toBe(SETTINGS_ID);
+  });
+
+  it("槽空 ⇒ 命令报 no-slot（命令面板仍可达）；齿轮连「设置」项都没有", async () => {
+    seedSlot([]);
+    ContextKeyService.setValue("settingsSlotFilled", false);
+    ContextKeyService.setValue("settingsActiveIsBuiltin", false);
+    const items = await gearItems();
+    expect(items.find((i) => i.command === RESET)).toBeFalsy();
+    expect(items.find((i) => i.command === "core.openSettings")).toBeFalsy();
+
+    const r = await executeCommand(RESET) as Receipt;
+    expect(r.reset).toBe(false);
+    expect(r.reason).toBe("no-slot");
+  });
+
+  it("回退后走正门 core.openSettings ⇒ 打到内置套（不重启即可再开设置页 = E13 的判据）", async () => {
+    // 两只套都声明悬浮面板（openSettings 的最后一条路 = emit reveal-floating，载荷里带实际 pluginId）
+    for (const pluginId of [SETTINGS_ID, THIRD_PARTY_ID]) {
+      registerViewPlugin({
+        pluginId,
+        manifest: {
+          pluginId,
+          name: pluginId,
+          factoryRole: "settings",
+          contributes: { floatingPanel: { viewId: pluginId } },
+        } as unknown as PluginManifest,
+      });
+    }
+    const emitSpy = vi.spyOn(shellEvents, "emit");
+    updateCoreCallbacks({ openTab: vi.fn(), focusTabByPluginId: vi.fn(() => false) } as unknown as CoreCallbacks);
+    try {
+      seedSlot([SETTINGS_ID, THIRD_PARTY_ID]);
+      await factorySlots.setActive("settings", THIRD_PARTY_ID);
+      await executeCommand(RESET);
+      await executeCommand("core.openSettings");
+      const reveals = (emitSpy.mock.calls as Array<[string, { pluginId?: string }]>)
+        .filter(([event]) => event === "panel:reveal-floating");
+      expect(reveals).toHaveLength(1);
+      expect(reveals[0][1].pluginId).toBe(SETTINGS_ID);
+    } finally {
+      emitSpy.mockRestore();
+      updateCoreCallbacks(null as unknown as CoreCallbacks);
+    }
   });
 });
