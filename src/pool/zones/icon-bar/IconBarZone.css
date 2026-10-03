@@ -68,52 +68,77 @@
   border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
 }
 
-/* E2c #19j：ldk-icon-bar-plugin-icon——PoolPluginIcon 统一渲染（类名与壳 PluginIcon 输出一致） */
-.ldk-icon-btn .plugin-icon--img {
+/* E2c #19j：ldk-icon-bar-plugin-icon——PoolPluginIcon 统一渲染（类名与壳 PluginIcon 输出一致）。
+   ── 主题前景可读性 · 第 1 刀（2026-10-03）──
+   图标墨色改走 --icon-ink 三级阶梯（由 --text-primary 派生 ⇒ 随主题极性 + app.fontTone 自动翻），
+   删掉旧的 --icon-filter-* 静态双灰滤镜（两支都落在中灰，垫上照片面 CR≈1；证据见本夹 00 §二）。
+   img 型图标不能用 filter 取色 ⇒ 改 span + mask + currentColor（几何等比 contain，非方形图标不再被拉伸）。
+   ⚠️ 选择器键 = .ldk-icon-bar-plugin-icon，⛔ 不是 .ldk-icon-btn：拖影 .ldk-icon-drag-preview 里的
+   图标也在按钮之外，同吃这条（否则那条支路没有 mask ⇒ 拖影成一块纯色方块）。标签栏图标不带这个类名
+   ⇒ 逐字节不变（D6 按类名分叉；扩到标签栏/壳侧孪生点是第 4 刀的事）。 */
+.ldk-icon-bar-plugin-icon.plugin-icon--img {
   width: 24px;
   height: 24px;
-  opacity: 0.55;
-  filter: var(--icon-filter-inactive); /* E5.8#128：img 单色滤镜 token 化（--icon-inactive 灰） */
-  transition: opacity 150ms, filter 150ms;
+  display: block;
+  color: var(--icon-ink);
+  /* C 案兜底：挂底图时引擎发来的反向光晕（--bg-image: none ⇒ none，D3 判据）。
+     晕画在墨色层上，⛔ 不画在按钮上（那会把 2px 指示条与激活径向盘一起描边）。 */
+  filter: var(--icon-glow, none);
+  transition: color 150ms;
 }
 
+/* mask 取色层——mask 必须落在 ::before 上：mask 会连**父级 filter 的晕一并剪掉**（晕要落在形状之外），
+   父级没有 mask 才投得出去。--icon-url 由 PoolPluginIcon 图标栏支路内联写；⚠️ 该变量缺失 ⇒ mask 落 none
+   ⇒ 整块纯色 ⇒ 渲染件对空 url 回退 <img>（本夹 02 E2）。
+   fallback 取**全透明渐变**（不是 `none`）：--icon-url 是 TS 侧内联写的自定义属性（CSS 里没有声明处 ⇒
+   token 对账尺当作「无定义」要账，同 --slider-pct 的先例）；`none` 会让缺变量时渲成纯色方块（E2 明令禁止），
+   全透明渐变则把图层整个罩掉（图标不可见——比出现色块安全）。正常路径该变量恒有（空 src 已回退 <img>）。 */
+.ldk-icon-bar-plugin-icon.plugin-icon--img::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url, linear-gradient(transparent, transparent)) center / contain no-repeat;
+  mask: var(--icon-url, linear-gradient(transparent, transparent)) center / contain no-repeat;
+}
+
+/* codicon / lucide——本就吃 color 取色（这两条路没有 img 那个病），收编到同一阶梯（02 E6：三条路同源） */
 .ldk-icon-btn .plugin-icon--codicon {
   font-size: 24px !important;
-  opacity: 0.55;
-  color: var(--text-primary);
-  transition: opacity 150ms, color 150ms;
+  color: var(--icon-ink);
+  transition: color 150ms;
 }
 
-/* E5#100: Lucide SVG 图标——对齐 codicon 尺寸和透明态 */
+/* E5#100: Lucide SVG 图标——对齐 codicon 的尺寸与墨色阶梯 */
 .ldk-icon-btn .plugin-icon--lucide {
   width: 24px;
   height: 24px;
-  opacity: 0.55;
-  color: var(--text-primary);
-  transition: opacity 150ms, color 150ms;
+  color: var(--icon-ink);
+  transition: color 150ms;
 }
 
+/* emoji——彩色字形，⛔ 不进墨色阶梯（单色化会毁掉它，02 E1）：保持原有的「变淡」不透明度，只跟光晕 */
 .ldk-icon-btn .plugin-icon--emoji {
   font-size: 24px;
   line-height: 1;
   opacity: 0.55;
+  filter: var(--icon-glow, none);
   transition: opacity 150ms;
 }
 
+/* 悬停 = 阶梯二级（02 E19：必须换墨色——旧法只把不透明度 .55→.85，亮面上「更浓的同一灰」看不见） */
+.ldk-icon-btn:hover .ldk-icon-bar-plugin-icon.plugin-icon--img,
 .ldk-icon-btn:hover .plugin-icon--codicon,
+.ldk-icon-btn:hover .plugin-icon--lucide {
+  color: var(--icon-ink-hover);
+}
+
+/* 激活 = 阶梯三级（--text-primary 实心）；⛔ 不动激活径向盘与 2px 左条（既有且正常的区分手段） */
+.ldk-icon-btn.active .ldk-icon-bar-plugin-icon.plugin-icon--img,
 .ldk-icon-btn.active .plugin-icon--codicon,
-.ldk-icon-btn:hover .plugin-icon--lucide,
 .ldk-icon-btn.active .plugin-icon--lucide {
-  opacity: 1;
-}
-
-.ldk-icon-btn:hover .plugin-icon--img {
-  opacity: 0.85;
-}
-
-.ldk-icon-btn.active .plugin-icon--img {
-  opacity: 1;
-  filter: var(--icon-filter-active); /* E5.8#128：active 滤镜 token 化（--text-on-accent 白） */
+  color: var(--icon-ink-active);
 }
 
 .ldk-icon-btn:hover .plugin-icon--emoji,

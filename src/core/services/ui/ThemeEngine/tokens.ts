@@ -15,6 +15,7 @@ import {
   SURFACE_ZERO, BACKGROUND_ZERO, RADIUS_SCALE_KEYS, radiusTokenPx,
   MANAGED_TOKEN_KEYS, SURFACE_SEAM_INSET_PX, SURFACE_COLOR_KEYS, ACCENT_TOKEN_KEYS,
   FONT_SIZE_STEPS, FONT_SIZE_BASE_PX, UI_FONT_SCALE_DEFAULT,
+  ICON_GLOW_ON_LIGHT_INK, ICON_GLOW_ON_DARK_INK, type IconGlowSpec,
 } from "./constants";
 // E5.8#151：tint 强制半透明——配方 tint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
 import { capTintAlpha } from "./color";
@@ -380,5 +381,23 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
     tokens["glass-surface-bg-opacity"] = String(Number.isFinite(baseOpacity) ? baseOpacity * spec.alpha : 0);
   }
   tokens["glass-surface-alpha"] = String(spec.alpha);
+}
+
+/**
+ * 合成图标反向光晕——主题前景可读性 · 第 1 刀（契约 [01 §二] / 任务 [04 D3]）：
+ * 生效 `--bg-image` 挂了底图（≠ none / 空）时，按**墨色极性**给图标发一道 `drop-shadow` 滤镜串
+ * （亮墨 → 暗晕，暗墨 → 亮晕，单色反向——D4）；未挂底图 → 值 `none`（无病不加晕，零变化回现状）。
+ * 判据只认**生效 `--bg-image`**——⛔ 不做亮度估计（`--surface-bg-image` 明确不计，缺口记在 04 §六）。
+ * 消费方在池侧 `IconBarZone.css`（`filter: var(--icon-glow, none)`）。
+ * 调用点与 synthesizeGlassSurfaces 同位（applyOverrides 之后、commitTokens 之前，对**生效集**补派生键）。
+ * 纯函数只算不改。
+ */
+export function synthesizeIconGlow(tokens: Record<string, string>, spec: IconGlowSpec): void {
+  const bgImage = (tokens["bg-image"] ?? "").trim();
+  if (bgImage === "" || bgImage === "none") {
+    tokens["icon-glow"] = "none";
+    return;
+  }
+  tokens["icon-glow"] = spec.inkLight ? ICON_GLOW_ON_LIGHT_INK : ICON_GLOW_ON_DARK_INK;
 }
 

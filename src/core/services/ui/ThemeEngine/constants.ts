@@ -98,6 +98,20 @@ const GLASS_SURFACE_KEYS: readonly string[] = [
 /** 玻璃激活但未显式动不透明度 → 表面默认半透明 0.5（拍板——保证全不透明主题只拖 blur 也立刻见玻璃） */
 export const GLASS_SURFACE_DEFAULT_ALPHA = 0.5;
 
+/* ── 主题前景可读性 · 第 1 刀（D3/D4）：图标反向光晕——「亮墨配暗晕 / 暗墨配亮晕」单色一道 1px。
+   为什么必须由引擎发：墨色极性（app.fontTone ▸ 主题 type）与「开不开」（生效 --bg-image ≠ none）都只有
+   引擎手里有；交给 CSS 静态写就退回「静态双皮肤」那个病（数据面见本夹 00 §二/§三）。
+   半径与 alpha 是视觉常量（⛔ 不随 --ui-scale，同 --radius-* 绝对标尺）；细笔画图标若显糊整表退 0.5px
+   （04 D4：目视定）。值为 rgba 串——与 SURFACE_ZERO 的默认色数据同类，是引擎默认值而非样式硬编码。 ── */
+export const ICON_GLOW_ON_LIGHT_INK = "drop-shadow(0 0 1px rgba(0, 0, 0, 0.85))";
+export const ICON_GLOW_ON_DARK_INK = "drop-shadow(0 0 1px rgba(255, 255, 255, 0.65))";
+
+/** 图标光晕规格——生效墨色的极性（亮墨 = 白系字）。生产 = seeds.getIconGlowSpec，
+ *  消费 = tokens.synthesizeIconGlow（两者都只吃这一个布尔，⛔ 不引入亮度估算，见 D3）。 */
+export interface IconGlowSpec {
+  inkLight: boolean;
+}
+
 /* ── E5.8 Phase 12：字号档位单一源（度量体系归一化——全局 UI 字号缩放） ── */
 
 /** 字号档名数组——shell 独有轴（主题不规定字号，零贡献点零 schema），对标 RADIUS_SCALE_STEPS（types/theme.ts:70）先例 */
@@ -129,6 +143,9 @@ export const MANAGED_TOKEN_KEYS: string[] = [
   "font-ui", "font-mono", "font-mark",
   "ui-scale", ...FONT_SIZE_KEYS,
   ...GLASS_SURFACE_KEYS,
+  // 主题前景可读性 · 第 1 刀：图标反向光晕（filter 串）——synthesizeIconGlow 提交前派生，
+  //   消费方在池侧 IconBarZone.css（`filter: var(--icon-glow, none)`）。
+  "icon-glow",
 ];
 
 /* ── E5.8#50.26：混搭域常量（10-混搭设计 §1/§3——按域换来源，引擎按域合并） ── */

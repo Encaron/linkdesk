@@ -20,10 +20,14 @@
   --border: #3C3C3C;
   --separator: #474747;
   --icon-inactive: #858585;
-  /* E5.8#128：img 图标单色化滤镜（filter 无法直接取色——值锚定 --icon-inactive 灰；主题可经
-     colorway 覆盖整链，任意 filter 组合）。active 锚定 --text-on-accent 白。 */
-  --icon-filter-inactive: brightness(0) saturate(100%) invert(52%);
-  --icon-filter-active: brightness(0) saturate(100%) invert(100%);
+  /* 主题前景可读性 · 第 1 刀：图标墨色三级阶梯——全部由 --text-primary 派生 ⇒ 主题极性 / app.fontTone
+     一变，阶梯自动跟着翻，所以只在 :root 定义一次（⛔ 不再有 [data-theme="light"] 那份「静态第二套」）。
+     img 型图标走 mask + currentColor 取色（filter 拿不到色：旧法 brightness(0)+invert 两个分支都落在
+     中灰，垫上照片面一律 CR≈1，见 pool/zones/icon-bar/IconBarZone.css）。
+     --icon-inactive 保留原义（只服务欢迎页）——本阶梯不消费它，⛔ 主题声明的 icon-active/icon-inactive 壳不读。 */
+  --icon-ink: color-mix(in srgb, var(--text-primary) 78%, transparent);
+  --icon-ink-hover: color-mix(in srgb, var(--text-primary) 92%, transparent);
+  --icon-ink-active: var(--text-primary);
   --system-log: #6A6A6A;
   --sent-echo: #0078D4;
   --status-connected: #4EC9B0;
@@ -145,9 +149,8 @@
   --border: #D4D4D4;
   --separator: #E8E8E8;
   --icon-inactive: #999999;
-  /* E5.8#128：亮色版 img 图标滤镜——inactive 锚定 --icon-inactive 浅灰；active 锚定 --text-primary 深字 */
-  --icon-filter-inactive: brightness(0) saturate(100%) invert(60%);
-  --icon-filter-active: brightness(0) saturate(100%) invert(18%);
+  /* 亮色块不再持有图标墨色副本——--icon-ink 阶梯由 --text-primary 派生（:root 一处定义；本块 --text-primary
+     已是深字 ⇒ 阶梯自动落暗墨，正是亮主题要的极性）。旧 --icon-filter-inactive/-active 静态双灰已删（第 1 刀）。 */
   --system-log: #999999;
   --sent-echo: #0078D4;
   --status-connected: #388A34;

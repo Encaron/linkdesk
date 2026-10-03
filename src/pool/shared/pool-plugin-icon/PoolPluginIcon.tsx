@@ -9,7 +9,7 @@
  * （池不能 import 壳组件——会拖进 viewRegistry 依赖链。）
  */
 
-import { ComponentType } from "react";
+import { ComponentType, CSSProperties } from "react";
 import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
   Monitor, Settings, BookOpen, BarChart3, Lightbulb, Lock,
@@ -62,9 +62,23 @@ function PoolPluginIcon({ icon, className = "", alt = "" }: PoolPluginIconProps)
           style={icon.color ? { color: icon.color } : undefined}
         />
       );
-    case "img":
+    case "img": {
+      // 主题前景可读性 · 第 1 刀（D6 按类名分叉）：**只图标栏那一支**改形——换 span + --icon-url，
+      // 墨色由 CSS 的 mask + currentColor 取（img 内容不可着色，filter 也拿不到色）。标签栏等其余
+      // 调用保持今天的 <img> **逐字节不变**（它今天是原图原色，一锅端＝行为变化，留给第 4 刀）。
+      // ⛔ 空 url 回退 <img>：mask 拿不到 url 会落 none ⇒ 整块纯色方块（本夹 02 E2 明令禁止）。
+      const src = String(icon.src ?? "").trim();
+      if (src !== "" && className.includes("ldk-icon-bar-plugin-icon")) {
+        return (
+          <span
+            className={`plugin-icon plugin-icon--img ${className}`}
+            style={{ "--icon-url": `url("${src}")` } as CSSProperties}
+          />
+        );
+      }
       // E5.8#46.6：draggable=false 禁原生拖拽——图标栏指针拖拽重排时 img 默认可拖会抢手势（同 GroupTabBar 修）
       return <img src={icon.src} alt={alt} className={`plugin-icon plugin-icon--img ${className}`} draggable={false} />;
+    }
     default:
       return <span className={`plugin-icon plugin-icon--emoji ${className}`}>{icon.text}</span>;
   }

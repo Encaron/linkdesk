@@ -15,9 +15,9 @@ import { resolveColorway, recipeDomains, mergeDomains } from "./recipe";
 import {
   getMixProfile, mergeMixDomains, resolveFontSource, resolveMixDomainRecipe, resolveDomainSource,
 } from "./mix";
-import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces } from "./tokens";
+import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces, synthesizeIconGlow } from "./tokens";
 import { resolveRecipeFonts } from "./fonts";
-import { getAppearanceOverrides, getGlassSurfaceSpec } from "./seeds";
+import { getAppearanceOverrides, getGlassSurfaceSpec, getIconGlowSpec } from "./seeds";
 import { setActiveRecipe, setCurrentTheme } from "./state";
 
 /** 应用主题（flat 桥接）：colors + 玻璃/背景/悬浮 + 用户覆盖 + 玻璃表面合成 → 写 :root + 广播。 */
@@ -31,6 +31,8 @@ export function applyTheme(theme: Theme): void {
   // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖后、提交前（玻璃激活 → 表面配色键半透明；
   // 未激活 → 零变化。绝不放 mergeDomains 内部——getThemeBaseTokens 纯基线语义）。
   synthesizeGlassSurfaces(variables, getGlassSurfaceSpec());
+  // 主题前景可读性 · 第 1 刀：图标反向光晕——挂底图时按墨色极性发 filter 串（同位置：覆盖后、提交前）
+  synthesizeIconGlow(variables, getIconGlowSpec(theme.type));
   commitTokens(variables, theme.type, { recipeId: theme.name });
   setCurrentTheme(theme);
   // flat apply 清 recipe 态——两路径互斥（#50.18 IPC 接线后 flat 桥退役）
@@ -83,6 +85,8 @@ export function applyRecipe(
   // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖（mergeDomains/mergeMixDomains 内已 applyOverrides）后、
   // 提交前（玻璃激活 → 表面配色键半透明；未激活 → 零变化。绝不放 merge 内部——纯基线语义）。
   synthesizeGlassSurfaces(effective, getGlassSurfaceSpec());
+  // 主题前景可读性 · 第 1 刀：图标反向光晕（同位置；配方 type 决定未显式 fontTone 时的极性）
+  synthesizeIconGlow(effective, getIconGlowSpec(recipe.type));
   commitTokens(
     effective,
     recipe.type,

@@ -795,6 +795,7 @@
     "ldk-icon-bar",
     "ldk-icon-bar-bottom",
     "ldk-icon-bar-item-wrapper",
+    "ldk-icon-bar-plugin-icon",
     "ldk-icon-bar-top",
     "ldk-icon-btn",
     "ldk-icon-drag-preview",

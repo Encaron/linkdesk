@@ -10,7 +10,7 @@ import { getConfigurationValue, hasConfigurationValue } from "../../configuratio
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import {
   RADIUS_SCALE_KEYS, clampRadiusPx, CONFIG_NONE_SENTINEL, SYSTEM_FONT_STACK, SYSTEM_MONO_FONT_STACK,
-  FONT_TONE_LIGHT_TEXT, FONT_TONE_DARK_TEXT, GLASS_SURFACE_DEFAULT_ALPHA,
+  FONT_TONE_LIGHT_TEXT, FONT_TONE_DARK_TEXT, GLASS_SURFACE_DEFAULT_ALPHA, type IconGlowSpec,
 } from "./constants";
 import { getActiveRecipe } from "./state";
 import { resolveColorway, mergeDomains } from "./recipe";
@@ -202,6 +202,17 @@ export function getGlassSurfaceSpec(): GlassSurfaceSpec {
       ? Number(opacity)
       : GLASS_SURFACE_DEFAULT_ALPHA;
   return { active, alpha };
+}
+
+/** 主题前景可读性 · 第 1 刀：图标墨色极性（消费 synthesizeIconGlow）——决定反向光晕取哪一支。
+ *  墨色源头与 getAppearanceOverrides 的 text-* 覆盖**同源**（app.fontTone 显式档 ▸ 否则配方 type）：
+ *    fontTone="light"（亮墨/白字）或 未显式且 type=dark → **亮墨** ⇒ 暗晕；
+ *    fontTone="dark"（暗墨/黑字）或 未显式且 type=light → **暗墨** ⇒ 亮晕。
+ *  ⛔ 不读 --text-primary 实算（那是运行期 CSS 值，引擎侧无访问）；本函数只判**极性档**。 */
+export function getIconGlowSpec(themeType: "light" | "dark"): IconGlowSpec {
+  const fontTone = getConfigurationValue<string>("app.fontTone");
+  const inkLight = fontTone === "light" || (fontTone !== "dark" && themeType === "dark");
+  return { inkLight };
 }
 
 /** 读用户外观配置 → 覆盖集（glass/bg 仅偏离 neutral 时；radius/zone presence 门控写绝对 px——applyOverrides 内换算）。
