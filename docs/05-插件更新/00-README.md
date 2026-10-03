@@ -16,7 +16,7 @@
 
 | 插件 | 一句话 | 备注 | 档案 |
 |:--|:--|:--|:--|
-| 文件树 | 资源管理器侧栏（core:true，源码住 `E:\linkdesk-plugins\official\file-tree`） | 专项补丁独立成套（file-tree 1.0.x，现 **1.0.24**）。✅ **2026-09-29 收口**：`FT#1`–`FT#7` 全部走完（打开文件夹入口 ＋ 菜单槽位死键真因修复 ＋ 门禁），已发已收录；仅剩 `FT#5` 残余（实机 nsis 那半等带新种子的软件版）。🏠 **档案已归还插件仓 `docs/`**（2026-09-30，见 §五）。🚀 **2026-10-03 侧栏「搜索」section UI 重设计已实施＋已发版**（案A 零件版：共享 Button 实心 accent／输入壳契约对齐 `.ldk-input`／选项钮收进框内／替换字段幽灵降级＋8px 节奏／匹配段高亮；**1.0.24 补刀**＝筛选输入框补 `--radius-sm`＋焦点环）——已发已收录、种子已刷新，⏳ 实机验证后档案照 §五 归还插件仓 `docs/`（落 [文件树-搜索重设计/](文件树-搜索重设计/00-README.md)，实施读数见其 §六.5） | [插件仓 docs/](https://github.com/Encaron/linkdesk-plugin-file-tree/tree/main/docs) |
+| 文件树 | 资源管理器侧栏（core:true，源码住 `E:\linkdesk-plugins\official\file-tree`） | 专项补丁独立成套（file-tree 1.0.x，现 **1.0.24**）。✅ **2026-09-29 收口**：`FT#1`–`FT#7` 全部走完（打开文件夹入口 ＋ 菜单槽位死键真因修复 ＋ 门禁），已发已收录；仅剩 `FT#5` 残余（实机 nsis 那半等带新种子的软件版）。🏠 **档案已归还插件仓 `docs/`**（2026-09-30，见 §五）。🚀 **2026-10-03 侧栏「搜索」section UI 重设计已实施＋已发版＋用户实机验证成功**（案A 零件版：共享 Button 实心 accent／输入壳契约对齐 `.ldk-input`／选项钮收进框内／替换字段幽灵降级＋8px 节奏／匹配段高亮；**1.0.24 补刀**＝筛选输入框补 `--radius-sm`＋焦点环）——已发已收录、种子已刷新；🏠 **档案同日已归还插件仓 `docs/`**（[02-搜索重设计/](https://github.com/Encaron/linkdesk-plugin-file-tree/tree/main/docs/02-%E6%90%9C%E7%B4%A2%E9%87%8D%E8%AE%BE%E8%AE%A1)，归还提交 `a096ad9`，见 §五） | [插件仓 docs/](https://github.com/Encaron/linkdesk-plugin-file-tree/tree/main/docs) |
 | 串口监视器 | 串口收发界面（源码住 `Encaron/linkdesk-plugin-serial-monitor`，**不随包、走市场**；现 **1.0.31**） | 🆕 **v1.0.31（2026-10-01，E6#164）**：功能零变更——包内 CHANGELOG 走窗口（31 → 5 段，172,953→160,645 B）＋ SDK `^0.1.66`；已发已收录。 ✅ **2026-09-29 已修并收录**（右键菜单项双注册：接收区「复制/全选/清空」+ 药丸「编辑/删除」各两次 → 各一次；**纯插件侧修，壳侧零改动**；目录收录 `3519c9a`）；⚠️ 与 [Serial-Simulator](Serial-Simulator/README.md) 不是一回事。🏠 **档案已归还插件仓 `docs/`**（2026-09-30，见 §五） | [插件仓 docs/](https://github.com/Encaron/linkdesk-plugin-serial-monitor/tree/main/docs) |
 | 终端系统 | 真正的 shell（PowerShell/cmd/bash），底部面板中的一个面板视图 | **普通插件**（2026-09-30 用户拍板并订正原「壳级」口径）：壳只提供 **Panel 区域**与面板视图承载机制，终端本体是插件；同笔拍板「**输出、终端等一律以插件形式进底部面板**」——壳侧那条**背后没有插件的「输出」命令**已随 E6#162 整删 | [终端系统/](终端系统/00-README.md) |
 | 输出 | 插件日志/诊断频道看板（底部面板视图） | 🆕 **2026-09-30 用户拍板新立**（「我打算新造输出插件、终端插件等多个插件，然后把它们放在底部面板中」）：壳侧原「输出」命令＝**死耦合**（命令在、插件不在）已随 **E6#162** 删净；数据侧 `LogChannel` 通道留在壳内，缺的就是消费它的这只插件。**档案待建**（设计未起） | — |
@@ -63,5 +63,6 @@
 | 已归还 | 插件仓提交 | 档案内容 |
 |:--|:--|:--|
 | 文件树 | [`9a60ba2`](https://github.com/Encaron/linkdesk-plugin-file-tree/commit/9a60ba2) | `FT#` 补丁档案 ＋ 打开文件夹入口设计/执行清单 ＋ mockups×2 ＋ 源码两处头注旧路径同笔改指本仓 |
+| 文件树（第二笔 · 搜索 section 重设计） | [`a096ad9`](https://github.com/Encaron/linkdesk-plugin-file-tree/commit/a096ad9) | 搜索 section UI 重设计全档（`00-README.md` ＋ 设计图 `01-设计图.html`）＋ **docs/ 结构归整**（旧档由根平铺收进 `01-打开文件夹入口/`，一项补丁一子夹）；壳仓侧本目录条目本笔 `git rm` |
 | 串口监视器 | [`76f2201`](https://github.com/Encaron/linkdesk-plugin-serial-monitor/commit/76f2201) | 右键菜单双注册收口档案（含 §五 前置核查结论 ＋ §七 订正 ＋ §八 待实测五条） |
 | 设置 | [`91d201b`](https://github.com/Encaron/linkdesk-plugin-settings/commit/91d201b) | 首开形态声明制接缝全链档案（挂账 §六·7 真机验收） |
