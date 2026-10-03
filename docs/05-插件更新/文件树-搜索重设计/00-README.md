@@ -1,6 +1,6 @@
 # 文件树插件 · 侧栏「搜索」section UI 重设计
 
-> **状态：✅ 已拍板待实施（2026-10-03 主案＝A 零件版，四项细化全定：行层级＝8px 节奏＋替换字段幽灵降级／输入框本地对齐不新增壳零件／「全部替换」实心 accent／匹配高亮做；D5 行高实机量留实施期）——⛔ 尚未动工，插件仓产品代码一个字没动（壳仓同样零接触）。**
+> **状态：🚀 已实施＋已发版（2026-10-03）——file-tree **1.0.23**（案A 零件版全落）：插件仓 `6eeed79` 已推 · [GitHub Release v1.0.23](https://github.com/Encaron/linkdesk-plugin-file-tree/releases/tag/v1.0.23) · 官方目录已收录（323f569）· 出厂种子已刷新（`sync:bundled --latest`）。⏳ 实机验证等用户进软件「插件市场 → 检查更新」装上后走查；**验证无误后本档照 §一 规矩归还插件仓 `docs/`**（旧档若平铺，先建子夹归整再迁入）。壳仓零接触。**
 > 病灶已定位到可核对的 file:line 证据；改案两案见 [05-设计图](05-设计图-搜索重设计.html) §③，决策点 D1–D4 摘在本文 §五。
 
 ## 一、你令的原话（2026-10-03）
@@ -54,7 +54,7 @@
 | **D2** | 选项钮放哪 | ✅ **收进输入框内右端**（VS Code 同款，170px 底线友好） |
 | **D3** | 「全部替换」钮形态 | ✅ **实心 accent**（共享 Button；禁用/替换中态照旧文字进度） |
 | **D4** | 结果行匹配高亮 | ✅ **做**（纯 CSS mark 样式，零逻辑改动） |
-| **D5** | 行高契约（28 vs 26） | 实施期动作：**落地前实机量一次**再定稿（同数字步进件 D2 做法） |
+| **D5** | 行高契约（28 vs 26） | ✅ **实施消解**：字段壳高度改**内容驱动**（竖 padding 4px 与 `.ldk-input` 同），与共享 Button 走同一条「字号＋竖 padding＋边框」自然高公式 ⇒ 同行天然等高，26/28 之争不再存在；`--ui-scale` 由字号 token 自带（原 28px 死值退休） |
 | **D6** | 替换行收起式还是常显 | ✅ **常显＋幽灵降级**（收起式随 R 整案留档未采） |
 
 ## 六、边界（本轮明确不做）
@@ -64,7 +64,14 @@
 - ⛔ **不动壳仓**（含 `@linkdesk/ui` 不加零件——D1 若翻案才例外，另立壳侧件）。
 - ⛔ **不动搜索逻辑**（useSearch / useReplaceAll / searchCommands 等纯逻辑面零接触——本件只治 UI 展示与交互态）。
 - ⛔ **不新增配置键**、不动 i18n 词条语义（文案沿用现有 `t()` key）。
-- 高度契约（input 行 26 vs 28）**落地前实机量一次**再定稿（同数字步进件 D2 的做法）。
+- 高度契约（input 行 26 vs 28）~~落地前实机量一次再定稿~~ → **已按 D5 消解**（内容驱动等高，见 §五）。
+
+## 六.5 实施读数（2026-10-03）
+
+- **改动面**：插件仓 `src/views/SearchView/SearchInputRow.tsx`（字段壳包裹＋选项钮移入框内）· `ReplaceRow.tsx`（换共享 `Button`，幽灵字段壳）· `SearchResults.tsx`（`renderMatchText` 按 wire 契约 `matchStart/matchEnd` 切片套 `<mark>`——纯视图，零搜索逻辑）· `styles/SearchView.css`（token 化＋8px 节奏＋幽灵降级＋mark 样式＋历史下拉锚 `top: calc(100% + 4px)`）。
+- **门禁**：`npx tsc --noEmit` 零错误 · `npm run verify` **八段全绿** · `vitest run` 16 文件 **149 例**全绿 · `npm run build` 4/4 表面 **45.9 KB**。
+- **发版链**：插件仓 `6eeed79` 已推（代理）→ SDK publish `--yes`（LINKDESK_GITHUB_TOKEN=gh auth token）→ [Release v1.0.23](https://github.com/Encaron/linkdesk-plugin-file-tree/releases/tag/v1.0.23)（asset 46,983 字节）→ 官方目录收录 `323f569` 已推 → 壳仓 `sync:bundled --latest` 种子刷新（「出厂种子与账一致」）。
+- **档案归宿**：实机验证无误后照 §一 归还插件仓 `docs/`（旧 `01`/`02` 两档若平铺，先建子夹归整再迁入本夹）。
 
 ## 七、本夹文件
 
