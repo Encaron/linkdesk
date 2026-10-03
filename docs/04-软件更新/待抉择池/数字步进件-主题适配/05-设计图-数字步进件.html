@@ -5,13 +5,24 @@
 <title>NumberInput（数字步进件）· 主题适配设计图</title>
 <style>
   :root{
-    --bg:#17171b; --card:#202027; --line:#33333d; --txt:#e9e9ec; --txt2:#b3ada4;
-    --ink:#161616; --acc:#8a6ff0; --ok:#2fbf8a; --warn:#ff9375;
+    /* 产品侧真 token——照 src/index.css :root 静态默认（暗色档）抄录。
+       ⛔ 本页仅示意：真实实现一律走 var(--xxx) ＋ ThemeEngine，尺寸乘 --ui-scale（硬约束 1）。 */
+    --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C; --bg-titlebar:#252526;
+    --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+    --accent:#0078D4; --accent-hover:#1A8CE8; --text-on-accent:#FFFFFF;
+    --border:#3C3C3C; --separator:#474747; --tab-hover-bg:#353535;
+    --status-connected:#4EC9B0; --error:#E06C75;
+    --font-size-sm:13px; --font-size-lg:16px; --ui-scale:1; --radius-sm:4px;
+
+    /* 本页外壳（文档页自身，非产品 UI）——别名一律指真 token */
+    --bg:var(--bg-window); --card:var(--bg-card); --line:var(--separator);
+    --txt:var(--text-primary); --txt2:var(--text-secondary);
+    --acc:var(--accent); --ok:var(--status-connected); --warn:var(--error); --ink:var(--text-on-accent);
+    /* 组件演示只读这几个（别名 → 真 token，照产品 CSS 一比一） */
+    --bd:var(--border); --field-bg:var(--bg-input); --hover-bg:var(--tab-hover-bg);
+    --muted:var(--text-muted); --fg:var(--text-primary);
     --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
     --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
-
-    /* 产品侧 token 的本地替身（示意色，非产品真值）——组件演示只读这几个 */
-    --bd:#3a3a46; --field-bg:#1b1b21; --hover-bg:#2b2b34; --muted:#8b8794; --fg:#e9e9ec;
     --r:0px;                     /* ← 演示用圆角，跟着滑杆走（等价于产品里的 --radius-sm） */
   }
   *{box-sizing:border-box}
@@ -21,9 +32,9 @@
   h3{margin:24px 0 6px;font:600 14.5px/1.4 var(--sans)}
   p{margin:10px 0;max-width:84ch}
   .lead{color:var(--txt2)}
-  .quote{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:#1d1d23;
+  .quote{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-window);
          color:var(--txt2);font-size:13px;max-width:84ch}
-  code{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:var(--txt)}
+  code{font:12.5px var(--mono);background:var(--bg-titlebar);padding:1px 5px;border-radius:4px;color:var(--txt)}
   b.hot{color:var(--warn)}
   b.good{color:var(--ok)}
   .note{color:var(--txt2);font-size:12.5px;margin:8px 0;max-width:84ch}
@@ -38,11 +49,11 @@
   .now .btn:first-child{border-radius:var(--r) 0 0 var(--r);border-right:none}
   .now .btn:last-child {border-radius:0 var(--r) var(--r) 0;border-left:none}
   .now .fld{border:1px solid var(--bd);background:var(--field-bg);border-radius:var(--r);  /* ← 实际生效的那条 */
-            padding:4px 8px;width:56px;text-align:center;font-size:13px;line-height:1.25;color:var(--fg)}
+            padding:4px 8px;width:56px;text-align:center;font-size:13px;line-height:normal;color:var(--fg)}
   .now .unit{margin:0 6px 0 8px;color:var(--muted);font-size:13px;line-height:1;user-select:none}
 
   /* ── 组件：A 案 · 分段式（单一容器） ─────────────────────────────── */
-  .fixA .grp{display:inline-flex;align-items:stretch;height:26px;border:1px solid var(--bd);
+  .fixA .grp{display:inline-flex;align-items:stretch;height:25px;border:1px solid var(--bd);
              border-radius:var(--r);background:var(--field-bg);overflow:hidden}
   .fixA .btn{position:relative;display:flex;align-items:center;justify-content:center;width:22px;
              border:0;background:transparent;color:var(--fg);font-size:16px;line-height:1;user-select:none}
@@ -54,7 +65,7 @@
   .fixA .unit{color:var(--muted);font-size:13px;line-height:1;user-select:none}
 
   /* ── 组件：B 案 · 幽灵式（同容器，无分隔线，按钮静默） ────────────── */
-  .fixB .grp{display:inline-flex;align-items:stretch;height:26px;border:1px solid var(--bd);
+  .fixB .grp{display:inline-flex;align-items:stretch;height:25px;border:1px solid var(--bd);
              border-radius:var(--r);background:var(--field-bg);overflow:hidden}
   .fixB .btn{display:flex;align-items:center;justify-content:center;width:26px;border:0;background:transparent;
              color:var(--muted);font-size:16px;line-height:1;transition:background 150ms,color 150ms}
@@ -78,13 +89,13 @@
 
   .matrix{border-collapse:collapse;margin-top:10px}
   .matrix th,.matrix td{border:1px solid var(--line);padding:10px 14px;text-align:center;vertical-align:middle}
-  .matrix th{background:#23232b;font:600 12.5px var(--mono);color:var(--txt2)}
-  .matrix th.rowh{background:#23232b;text-align:left;font:600 12.5px var(--mono);color:var(--txt)}
-  .matrix td{background:#1c1c22;min-width:150px}
+  .matrix th{background:var(--bg-card);font:600 12.5px var(--mono);color:var(--txt2)}
+  .matrix th.rowh{background:var(--bg-card);text-align:left;font:600 12.5px var(--mono);color:var(--txt)}
+  .matrix td{background:var(--bg-window);min-width:150px}
 
   /* 爆炸图 */
   .boom{display:flex;align-items:flex-start;gap:0;flex-wrap:wrap}
-  .prow{height:26px;display:flex;align-items:center}          /* 四块高度不一（22/24/26）也共用一条水平中轴 */
+  .prow{height:25px;display:flex;align-items:center}          /* 四块高度不一（22/24/26）也共用一条水平中轴 */
   .piece{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 6px}
   .piece .tag{font:11.5px/1.55 var(--mono);color:var(--muted);text-align:center;white-space:nowrap}
   .piece .tag b{display:block;color:var(--txt);font:600 12px var(--mono)}
@@ -93,13 +104,13 @@
   .pbox{display:flex;align-items:center;justify-content:center;background:var(--field-bg);color:var(--fg);
         border:1px solid var(--bd);font-size:16px}
   .pbtn{width:24px;height:24px}
-  .pfld{width:62px;height:26px;font-size:13px}
+  .pfld{width:62px;height:25px;font-size:13px}
   .punit{width:26px;height:22px;border-color:transparent;background:transparent;color:var(--muted);font-size:13px}
-  .plus{font:600 20px/1 var(--mono);color:var(--muted);height:26px;display:flex;align-items:center;padding:0 2px}
+  .plus{font:600 20px/1 var(--mono);color:var(--muted);height:25px;display:flex;align-items:center;padding:0 2px}
   .r-note{font:11.5px/1.6 var(--mono);color:var(--txt2)}
 
   /* 滑杆区 */
-  .live{border:1px solid var(--line);border-radius:10px;background:#1b1b21;padding:18px 22px;margin-top:14px}
+  .live{border:1px solid var(--line);border-radius:10px;background:var(--bg-window);padding:18px 22px;margin-top:14px}
   .live .ctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .live input[type=range]{width:340px;accent-color:var(--acc)}
   .live .read{font:600 13px var(--mono);color:var(--acc);min-width:120px}
@@ -108,7 +119,7 @@
 
   table.cmp{max-width:900px;border-collapse:collapse;margin-top:10px;font-size:12.5px}
   table.cmp th,table.cmp td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
-  table.cmp th{background:#23232b;font-weight:600}
+  table.cmp th{background:var(--bg-card);font-weight:600}
   table.cmp td.k{font:12.5px var(--mono)}
   .yes{color:var(--ok);font-weight:600} .no{color:var(--warn);font-weight:600}
   footer{margin-top:40px;color:var(--txt2);font-size:12.5px;max-width:84ch;border-top:1px solid var(--line);padding-top:16px}
@@ -134,7 +145,7 @@
     <div class="plus">+</div>
     <div class="piece">
       <div class="prow"><div class="pbox pfld" style="border-radius:4px">0</div></div>
-      <div class="tag"><b>字段盒（借 .ldk-input）</b><span>padding 4px 8px · 高 ≈26px</span><i>圆角来自 .ldk-input 一条独立规则</i></div>
+      <div class="tag"><b>字段盒（借 .ldk-input）</b><span>padding 4px 8px · 高 25px</span><i>圆角来自 .ldk-input 一条独立规则</i></div>
     </div>
     <div class="plus">+</div>
     <div class="piece">
@@ -177,7 +188,7 @@
 
   <p class="lab no" style="margin-top:22px">为什么②会发生：那一句 <code>border-radius: 0</code> 是死代码</p>
   <p class="note">产品的 <code>NumberInput.css</code> 里写着"字段圆角归零、好跟按钮拼成一条"，但同特异性下<b>后加载的规则赢</b>，而产物里两条规则的加载顺序是反的：</p>
-  <div class="panel" style="background:#1b1b21;padding:14px 18px">
+  <div class="panel" style="background:var(--bg-window);padding:14px 18px">
     <p class="lab"><code>dist/pool.html</code></p>
     <p class="note" style="font-family:var(--mono)">第 21 行　<code>@linkdesk/ui.css</code>　→　<code>.ldk-number-input-field{ border-radius: 0 }</code><br>
     第 25 行　<code>pool-*.css</code>　　　→　<code>.ldk-input{ border-radius: var(--radius-sm) }</code>　<b class="hot">← 后加载，赢</b></p>
@@ -220,7 +231,7 @@
         <span style="position:absolute;left:40px;top:7px;bottom:7px;width:1px;background:var(--bd)"></span>
         <span style="position:absolute;right:40px;top:7px;bottom:7px;width:1px;background:var(--bd)"></span>
       </div>
-      <div class="tag"><b>一个外框</b>border 1px / 高 26px<b>圆角唯一 → var(--radius-sm)</b><i>内部三段：零圆角、零边框</i></div>
+      <div class="tag"><b>一个外框</b>border 1px / 高 25px<b>圆角唯一 → var(--radius-sm)</b><i>内部三段：零圆角、零边框</i></div>
     </div>
   </div>
   <p class="note">⬆ 滑杆怎么拉，动的都是那<b>一个</b>圆角；内部结构一动不动。这就是"跟得上主题"的全部含义。</p>
@@ -262,7 +273,7 @@
       </div></div>
     </div>
   </div>
-  <p class="note" style="margin-top:16px">⚠️ 现状那排的"高度差"是按产品 CSS 推导的（按钮写死 24px、字段由 padding ＋ 字号撑出 ≈26px），<b>具体 px 待实机量一次</b>；圆角与边框的差异则是一比一复刻。</p>
+  <p class="note" style="margin-top:16px">✅ 现状那排的高度<b>已照产品 CSS 真渲染量过</b>（2026-10-04，无头 Chromium 加载 <code>src/index.css</code> ＋ <code>NumberInput.css</code>）：按钮 <b>24px</b>、字段 <b>25px</b>（<code>border 1px×2 ＋ padding 4px×2 ＋ line-height:normal</code>），整组 <b>25px</b> —— 原先按 CSS 推导写的"≈26px"作废，D2 定稿随之取 <b>25</b>。圆角与边框的差异是一比一复刻。</p>
 </div>
 
 <div class="panel">
@@ -314,21 +325,21 @@
   <div class="stage">
     <div class="cellw">
       <p class="lab">100%　（默认）</p>
-      <div class="fixA" style="zoom:1"><div class="grp" style="--r:6px;height:26px;font-size:1em">
+      <div class="fixA" style="zoom:1"><div class="grp" style="--r:6px;height:25px;font-size:1em">
         <div class="btn d" style="width:22px">−</div><div class="cell" style="min-width:46px"><input class="fld" style="width:34px;font-size:13px" value="100" readonly><span class="unit" style="font-size:13px">％</span></div><div class="btn u" style="width:22px">+</div>
       </div></div>
-      <div class="r-note">高 26px · 值 13px</div>
+      <div class="r-note">高 25px · 值 13px</div>
     </div>
     <div class="cellw">
       <p class="lab">125%</p>
-      <div class="fixA" style="zoom:1.25"><div class="grp" style="--r:6px;height:26px">
+      <div class="fixA" style="zoom:1.25"><div class="grp" style="--r:6px;height:25px">
         <div class="btn d" style="width:22px">−</div><div class="cell" style="min-width:46px"><input class="fld" style="width:34px;font-size:13px" value="100" readonly><span class="unit" style="font-size:13px">％</span></div><div class="btn u" style="width:22px">+</div>
       </div></div>
       <div class="r-note">整体等比 —— 三段仍等高</div>
     </div>
     <div class="cellw">
       <p class="lab">150%</p>
-      <div class="fixA" style="zoom:1.5"><div class="grp" style="--r:6px;height:26px">
+      <div class="fixA" style="zoom:1.5"><div class="grp" style="--r:6px;height:25px">
         <div class="btn d" style="width:22px">−</div><div class="cell" style="min-width:46px"><input class="fld" style="width:34px;font-size:13px" value="150" readonly><span class="unit" style="font-size:13px">％</span></div><div class="btn u" style="width:22px">+</div>
       </div></div>
       <div class="r-note">三位数 ＋ ％ 完整可见</div>
@@ -348,14 +359,14 @@
 <table class="cmp">
   <tr><th>#</th><th>问</th><th>建议</th><th>为什么</th></tr>
   <tr><td class="k">D1</td><td>走 A 还是 B</td><td class="yes">A 分段式</td><td>三症状全治；"这两处能点"的可供性最强。B 更轻但低对比主题下会显得点不着。</td></tr>
-  <tr><td class="k">D2</td><td>容器高度 24/26/28</td><td class="yes">26</td><td>今天按钮 24、字段 ≈26，取大者视觉跳变最小。⚠️ 待实机量完定。</td></tr>
+  <tr><td class="k">D2</td><td>容器高度 24/25/26</td><td class="yes">25</td><td>2026-10-04 真渲染实测：按钮 24、字段 25 ⇒ 取大者 <b>25</b>，视觉跳变最小（字段零变化）。</td></tr>
   <tr><td class="k">D3</td><td>有单位时值格怎么给位</td><td class="yes">固定最小宽（46×scale）</td><td>同一页两行控件宽度不跳；代价是总宽略增。</td></tr>
   <tr><td class="k">D4</td><td>有没有分隔线</td><td class="yes">内缩 1px 竖线</td><td>直角档靠它撑起"三段可点"的读法；胶囊档被外轮廓裁着也不切弧。</td></tr>
   <tr><td class="k">D5</td><td>聚焦怎么表达</td><td class="yes">整组 accent 环</td><td>今天"只亮中间那格"本身就是症状之一。</td></tr>
   <tr><td class="k">D6</td><td>顺带补 aria-label？补测试？</td><td>①要 ②先不要</td><td>①白捡的 a11y；②会给这件挂测试债，宁可单独立件。</td></tr>
 </table>
 
-<p class="note" style="margin-top:14px">✅ <b>2026-10-03 六项全部拍定，均按建议值</b>：A 分段式 · 高 26px · 值格固定最小宽 46×scale · 内缩 1px 竖线 · 聚焦整组 accent 环 · 补 <code>aria-label</code>（测试文件先不补）。⛔ <b>产品代码仍未动工</b>——下一步是量读数与定稿契约，见同夹 04-任务清单 阶段 1。</p>
+<p class="note" style="margin-top:14px">✅ <b>2026-10-03 六项全部拍定，均按建议值</b>：A 分段式 · 高 25px · 值格固定最小宽 46×scale · 内缩 1px 竖线 · 聚焦整组 accent 环 · 补 <code>aria-label</code>（测试文件先不补）。⛔ <b>产品代码仍未动工</b>——下一步是量读数与定稿契约，见同夹 04-任务清单 阶段 1。</p>
 
 <footer>
   <b>本页是示意图，产品代码一个字未动。</b>完整规格（DOM/CSS 正表 · 五态 · 圆角行为判据）见同夹 <code>01-方案与落点契约.md</code>；

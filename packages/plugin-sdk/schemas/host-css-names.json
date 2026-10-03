@@ -873,6 +873,7 @@
     "ldk-notif-task-section-rule",
     "ldk-number-input",
     "ldk-number-input-btn",
+    "ldk-number-input-cell",
     "ldk-number-input-field",
     "ldk-number-input-unit",
     "ldk-panel-content",

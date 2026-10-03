@@ -1,41 +1,89 @@
 /**
  * NumberInput——自定义 +/- 步进按钮。
  * E5#57: 替代原生 <input type="number"> spinner，跟主题配色走。
+ *
+ * 单一容器模型（2026-10-04 主题适配）：
+ *   · 唯一边框 / 唯一圆角 / 唯一高度，都写在外框 `.ldk-number-input` 一处；
+ *   · 内部三段零边框零圆角，被外框 `overflow: hidden` 沿轮廓裁出；
+ *   · 段间竖线是按钮 `::after` 的内部装饰（内缩），不参与分栏，胶囊档也不切弧。
+ * 尺寸一律 `calc(Npx * var(--ui-scale))`，颜色一律 `var(--xxx)`（硬约束 1 ＋ E5.8 度量体系）。
  */
 
 .ldk-number-input {
   display: inline-flex;
-  align-items: center;
-  gap: 0;
+  align-items: stretch; /* 三段等高由 stretch 保证——⛔ 不各写各的高度 */
+  height: calc(25px * var(--ui-scale)); /* 唯一高度来源：2026-10-04 实测字段 25 / 按钮 24 ⇒ 取大者 25 */
+  border: 1px solid var(--border); /* 唯一边框 */
+  border-radius: var(--radius-sm); /* 唯一圆角——跟主题配方；⛔ 不在这里钳制半高 */
+  background: var(--bg-input);
+  overflow: hidden; /* 内部永不越出圆角 */
+  transition: border-color 150ms;
 }
 
 .ldk-number-input-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #170：btn 乘 scale */
-  height: calc(24px * var(--ui-scale));
+  width: calc(22px * var(--ui-scale));
   padding: 0;
-  border: 1px solid var(--border);
-  background: var(--bg-input);
+  border: 0;
+  background: transparent; /* 内部零边框零底色——底色由外框给 */
   color: var(--text-primary);
-  font-size: var(--font-size-lg); /* 14→lg */
+  font-size: var(--font-size-lg);
   line-height: 1;
   cursor: pointer;
-  transition: background 150ms, border-color 150ms;
+  transition: background 150ms, color 150ms;
   user-select: none;
 }
 
-.ldk-number-input-btn:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  border-right: none;
+/* 分隔线：内缩 1px 竖线——容器 overflow:hidden ⇒ 胶囊档也不会切到弧线上 */
+.ldk-number-input-btn::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--border);
 }
 
-.ldk-number-input-btn:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  border-left: none;
+.ldk-number-input-btn[data-dir="down"]::after {
+  right: 0;
 }
 
+.ldk-number-input-btn[data-dir="up"]::after {
+  left: 0;
+}
+
+.ldk-number-input-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: calc(46px * var(--ui-scale));
+  padding: 0 calc(6px * var(--ui-scale));
+}
+
+.ldk-number-input-field {
+  width: calc(34px * var(--ui-scale));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none; /* 聚焦表达归整组 :focus-within，⛔ 不用 outline（直角环会盖住圆角） */
+  text-align: center;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+/* E5.8 Phase 12 #161：数值单位后缀（uiFontScale 的 ％）——静音小字，不抢值，也不抢步进按钮 */
+.ldk-number-input-unit {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  user-select: none;
+}
+
+/* ── 五态 ── */
 .ldk-number-input-btn:hover:not(:disabled) {
   background: var(--tab-hover-bg);
 }
@@ -50,17 +98,7 @@
   cursor: default;
 }
 
-.ldk-number-input-field {
-  border-radius: 0;
-  text-align: center;
-  width: 44px;
-}
-
-/* E5.8 Phase 12 #161：数值单位后缀（uiFontScale 的 ％）——静音小字，不抢步进按钮 */
-.ldk-number-input-unit {
-  margin: 0 6px 0 8px;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm); /* E5.8 Phase 12 #170：12→sm（过字号审计门禁） */
-  line-height: 1;
-  user-select: none;
+.ldk-number-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
