@@ -2,8 +2,8 @@
  * useOpenPathIntake 单测（E6#46b）。
  *
  * 钉住壳侧 intake 消费的三条判据（都是"写反了也照样能跑"的那种）：
- * ① 路由：有插件关联 → tab:openOrFocus 带该插件 id；无关联 → 走 DEFAULT_TAB_TYPE
- *   （E5#99 编辑器兜底同源，不许出现字面量插件 id——硬约束 10）；
+ * ① 路由：有插件关联 → tab:create 带该插件 id；无关联 → 走 `resolveFallbackTabType()` 挂牌兜底
+ *   （T7 起壳**不再写死** "editor"——fixture 挂牌者 id 故意不叫 editor，自证去硬编码）；
  * ② 判重语义交给 reduceCreateTab 的身份去重：emit 的是 tab:create（同文件聚焦/新文件新建）
  *   ——**不许改成 tab:openOrFocus**（它只按 type 去重，会聚焦掉别的 editor 标签，真机实证）；
  * ③ 防御：文件已不存在 → 不 emit（静默跳过，launch-args 同口径）。
@@ -44,14 +44,22 @@ function installStub(opts: { exists: (p: string) => boolean; pluginFor: (ext: st
   };
 }
 
+/** T7：兜底 = 「当前激活的 text-fallback 挂牌者」——fixture id 故意不叫 editor（自证壳不写死该 id） */
+const FALLBACK_HOLDER = "demo-editor-a";
+
 /** 干净的模块实例 + shellEvents.emit 侦听（壳内事件总线是模块单例，须逐用例重置） */
 let mod: HookModule;
 let emitted: { type: string; opts: Record<string, unknown> }[];
+let fallbackMod: typeof import("../core/services/files/FileAssociationService");
 
 beforeEach(async () => {
   vi.resetModules();
   mod = await import("./useOpenPathIntake");
+  fallbackMod = await import("../core/services/files/FileAssociationService");
   const { shellEvents } = await import("../core/react/events/ShellEvents");
+  // 挂一个挂牌者（= 装了带 role:"text-fallback" 的编辑器插件）
+  fallbackMod.clearFileAssociations();
+  fallbackMod.registerFileAssociation({ extension: "zzz", pluginId: FALLBACK_HOLDER, role: "text-fallback" });
   emitted = [];
   vi.spyOn(shellEvents, "emit").mockImplementation(((event: string, payload: never) => {
     if (event === "tab:create") emitted.push(payload);
@@ -63,9 +71,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const DEFAULT_TYPE = "editor"; // DEFAULT_TAB_TYPE 政策常量的现行值——用例断言它兜底生效
-
 describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
+  /** 装壳 + 挂 hook + 投一条路径（`pluginFor` 返回空 ⇒ 走挂牌兜底），返回该次落点 */
+  async function emitOneUnassociated(path: string) {
+    const stub = installStub({ exists: () => true, pluginFor: async () => "" });
+    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
+    await act(async () => { stub.emit([path]); });
+    unmount();
+    return emitted[0];
+  }
+
   it("有插件关联 → tab:create 带该插件 id + filePath/sourceId/label", async () => {
     const stub = installStub({ exists: () => true, pluginFor: async () => "demo-plugin" });
     const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
@@ -83,15 +98,19 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
     unmount();
   });
 
-  it("无插件关联 → 走 DEFAULT_TAB_TYPE 编辑器兜底（不写字面量插件 id 的开关在壳政策常量）", async () => {
-    const stub = installStub({ exists: () => true, pluginFor: async () => "" });
-    const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
-
-    await act(async () => { stub.emit(["/tmp/demo/unknown.zzz"]); });
+  it("无插件关联 → 走挂牌兜底 resolveFallbackTabType()（T7：不写字面量插件 id）", async () => {
+    const one = await emitOneUnassociated("/tmp/demo/unknown.zzz");
 
     expect(emitted).toHaveLength(1);
-    expect(emitted[0].type).toBe(DEFAULT_TYPE);
-    unmount();
+    expect(one.type).toBe(FALLBACK_HOLDER);
+  });
+
+  it("🔴 E22：无任何挂牌者 → welcome 提示页语义（不塞一个不存在的插件）", async () => {
+    fallbackMod.clearFileAssociations(); // 编辑器被卸且无别家挂牌
+    const one = await emitOneUnassociated("/tmp/demo/unknown.zzz");
+
+    expect(emitted).toHaveLength(1);
+    expect(one.type).toBe("welcome");
   });
 
   it("同批多路径逐条处理；无扩展名 → 直接兜底", async () => {
@@ -102,7 +121,7 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
 
     expect(emitted).toHaveLength(2);
     expect(emitted[0].type).toBe("demo-plugin");
-    expect(emitted[1].type).toBe(DEFAULT_TYPE);
+    expect(emitted[1].type).toBe(FALLBACK_HOLDER);
     unmount();
   });
 

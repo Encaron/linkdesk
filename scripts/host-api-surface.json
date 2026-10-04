@@ -758,6 +758,9 @@
     "contributes.fileAssociations[].command": [],
     "contributes.fileAssociations[].displayName": [],
     "contributes.fileAssociations[].extension": [],
+    "contributes.fileAssociations[].role": [
+      "text-fallback"
+    ],
     "contributes.floatingPanel": [],
     "contributes.floatingPanel.defaultForm": [
       "floatingPanel",
@@ -1435,6 +1438,8 @@
       "updateButtonLabel"
     ],
     "contextKeysPublic": [
+      "resourceExtname",
+      "resourceIsFile",
       "settingFollowTheme",
       "settingHasTitle",
       "settingKey",

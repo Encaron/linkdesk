@@ -30,7 +30,17 @@ const RESERVED: HostReservedNames = {
   appearanceSentinels: [],
   appearanceIdGrants: {},
   contextKeysHostOnly: ["activeEditor", "sidebarPosition", "inputFocus"],
-  contextKeysPublic: ["settingKey", "settingFollowTheme", "settingResetsToDefault", "settingModified", "settingHasTitle"],
+  // 🆕 文件打开方式与贡献点 T3：宿主**裁定**的两个文件上下文公共键（账 version 3）——写的人是 file-tree、
+  //    读的人是任意第三方 `when`，壳自己不写不读 ⇒ 派生口径扫不到，由 `HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS` 列出
+  contextKeysPublic: [
+    "settingKey",
+    "settingFollowTheme",
+    "settingResetsToDefault",
+    "settingModified",
+    "settingHasTitle",
+    "resourceExtname",
+    "resourceIsFile",
+  ],
 };
 
 const NO_LEDGER = join(tmpdir(), "no-such-host-reserved.json");
@@ -125,8 +135,26 @@ describe("runContextOwnershipCheck —— 负控 ②（约定面 ⇒ 不红）",
     withPlugin({ files: { "src/gearMenu.ts": src + "\n" }, pluginId: "settings" }, (root) => {
       const r = runContextOwnershipCheck(root, RESERVED);
       expect(r.violations).toHaveLength(0);
-      expect(r.publicFace).toHaveLength(5);
+      expect(r.publicFace).toHaveLength(RESERVED.contextKeysPublic.length);
     });
+  });
+
+  it("🟠 文件上下文公共键（`resourceExtname`/`resourceIsFile`）：**第三方**设它零红零黄（T3 补例——裸名不是借用）", () => {
+    // 判据本体：这两个键**不在** file-tree 的 `<pluginId>.` 前缀下，但它们是宿主账里的公开约定面
+    // ⇒ 第三方插件（或 file-tree 自己）设它们**都不该被判「不带本仓归属」**（判据③ 的豁免是已裁决的，不是待收紧的黄）。
+    const src = `contextKey.set("resourceExtname", ".md");\ncontextKey.set("resourceIsFile", true);\n`;
+    withPlugin({ files: { "src/menu.ts": src }, pluginId: "third-party-sample" }, (root) => {
+      const r = runContextOwnershipCheck(root, RESERVED);
+      expect(r.violations).toHaveLength(0);
+      expect(r.advisories).toHaveLength(0);
+      expect(r.red).toHaveLength(0);
+      expect(r.yellow).toHaveLength(0);
+      expect(r.publicFace.map((s) => s.key).sort()).toEqual(["resourceExtname", "resourceIsFile"]);
+    });
+    // 纯判据面：建议名/判级都不该出现（若将来有人把它从账里摘掉 ⇒ 这条与真账对不上，当场红）
+    for (const k of ["resourceExtname", "resourceIsFile"]) {
+      expect(judgeContextKey(k, "third-party-sample", RESERVED)).toBeNull();
+    }
   });
 });
 
@@ -225,7 +253,7 @@ describe("fail-closed ＋ 账加载实况", () => {
     withPlugin({}, (root) => {
       const r = runContextOwnershipCheck(root, RESERVED);
       expect(r.hostLedger.contextKeysHostOnly).toBe(3);
-      expect(r.hostLedger.contextKeysPublic).toBe(5);
+      expect(r.hostLedger.contextKeysPublic).toBe(RESERVED.contextKeysPublic.length);
     });
   });
 });

@@ -113,7 +113,7 @@ my-plugin/
 | `contributes.keybindings` | — | 注册到 KeybindingRegistry → 全局键盘监听 |
 | `contributes.themes` | theme | 注册到 ThemeRegistry → 主题浏览器 |
 | `contributes.languages` | language | 注册到 LanguageRegistry |
-| `contributes.fileAssociations` | — | 注册到 FileAssociationService → 双击文件自动打开 |
+| `contributes.fileAssociations` | — | 注册到 FileAssociationService → 双击文件自动打开；条目可挂牌 `role`（如 `"text-fallback"`，见下） |
 | `contributes.floatingPanel` | —  | 声明视图可在壳内悬浮面板显示——viewId 引用已注册视图；未声明则无「在悬浮面板中打开」右键；可选 `defaultForm`/`formKey` 定/选**首开形态** |
 
 **插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands`——全部独立注册，互不影响。
@@ -630,6 +630,54 @@ function CadView() {
   }
 }
 ```
+
+#### contributes.fileAssociations —— 文件关联与角色挂牌
+
+声明「哪些扩展名的文件交给我打开」。用户双击这类文件（或从文件树、命令行打开）时，壳按这张表路由到你的插件，在**你的标签页**里打开。
+
+```json
+{
+  "contributes": {
+    "fileAssociations": [
+      { "extension": "dxf", "displayName": "CAD 图纸" },
+      { "extension": "stl", "command": "cad.importStl" }
+    ]
+  }
+}
+```
+
+| 字段 | 必需 | 说明 |
+|:--|:--:|:--|
+| `extension` | ✅ | 扩展名——**不带点**（`dxf` / `ts`）；大小写不敏感（壳统一转小写） |
+| `command` | — | 打开时执行你的哪个命令；缺省走框架的文件打开动作 |
+| `displayName` | — | 在「打开方式…」选择器里显示的名字 |
+| `role` | — | **角色挂牌**（见下）。首版只定义 `"text-fallback"` |
+
+**同一扩展名可以多家声明**（你声明的 `ts` 与别人的 `ts` 并存）——壳不替你判给谁，用户从「打开方式…」里挑；默认取**先激活的那家**。所以声明**不是抢占**，是「我也能开」。
+
+##### `role`：怎么成为「默认文本编辑器」
+
+壳**不知道也不该知道**任何插件 id（壳的铁律②）——「某类文件没有任何插件声明时，开哪个标签页」这件事，靠插件**自报角色**：
+
+```json
+{
+  "contributes": {
+    "fileAssociations": [
+      { "extension": "txt",  "role": "text-fallback" },
+      { "extension": "ts",   "role": "text-fallback" },
+      { "extension": "json", "role": "text-fallback" }
+    ]
+  }
+}
+```
+
+- **`role` 依附于条目**（每条自己带，也正因此**条目必须带 `extension`**），但**按插件记名**——你声明 45 条带 `"text-fallback"`，仍然只算**一个**挂牌者（不会因为条数多而挤到别人前面）。
+- **牌 = 提名，不是夺权**：壳解析「该开谁」的顺序是 **① 用户覆盖表 → ② 声明了该扩展名的插件（激活序优先，同序按 pluginId 字典序）→ ③ 文本兜底挂牌者（本角色）→ ④ 都没有 ⇒ 壳的提示页**。
+- ⇒ **你不需要猜别人叫什么**：想接管文本兜底位，声明 `role: "text-fallback"` 即可；装上第二家挂牌者**不会静默漂移**当前默认（它只是进了候选，用户可显式改选）。
+- ⇒ **卸光挂牌者**也不崩：文件没有归属 + 没有兜底 ⇒ 壳显示提示页，⛔ 不会塞给你一个不存在的插件。
+- ⚠️ **二进制文件不归你**：「这个文件能不能当文本看」由**壳**判定（`EncodingService.isBinary` 一处真相源），「哪些扩展名归我」由**你的声明**决定——⛔ 别把 `pdf` / `jpg` 加进扩展名单去抢阅读器插件的地盘。
+
+> 想让**右键菜单**按扩展名显隐（如「仅对 `.md` 出现」），读公共 context key `resourceExtname` / `resourceIsFile`——见 [22-菜单贡献点](22-菜单贡献点.md)。
 
 ---
 

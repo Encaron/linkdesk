@@ -69,6 +69,9 @@
  *      `settingResetsToDefault` / `settingModified`——**写的人不是宿主**（官方插件 `settings` 的齿轮菜单），
  *      读的人是宿主命令 `when`。⇒ 合成一栏 ⇒ 分级不可区分 ⇒ 官方 `settings` 当场假红。
  *   🔴 段②**不手抄，是派生的**：`ctxRead − ctxWrite`（宿主读 ∧ 宿主不写）。
+ *   🆕 **T3／2026-10-05 补第二来源**：另一类键壳**既不写也不静态读**——写的人是**插件**
+ *      （file-tree 右键注入）、读的人是**任意第三方插件的 `when`** ⇒ 纯派生口径看不见。
+ *      由宿主在此**裁定并逐条列出**（`HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS`，判据见该常量）。
  *   🔴 **`when:` 抽取在 1.38 前是截断的**（`[^"'`]+` 把 `'` 当终止符 ⇒ 引号后的旗子名**静默漏账**，是**假绿**）；
  *      现改为「引号配对取完整表达式 ＋ 显式比较值过滤」，见 `extractWhenExpressions` / `whenKeys`。
  *
@@ -106,6 +109,10 @@ export const FAMILIES = [
   { key: "appearanceSentinels", label: "宿主外观哨兵值" },
   { key: "protocolIds", label: "宿主内置协议 id" },
 ];
+
+// 🆕 宿主指定的公开 context key（第三种来源——T3）：判据与常量同住
+//    `scripts/lib/host-reserved-public-keys.mjs`（本档 800 行临线，判据塞不进）。
+import { HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS } from "./lib/host-reserved-public-keys.mjs";
 
 /** 外观四栏的键名（证照校验与运行时渲染共用——⛔ 别在别处再写一份字面量） */
 export const APPEARANCE_COLUMNS = [
@@ -167,8 +174,12 @@ function objectLiteralAt(src, afterAt) {
  * ⚠️ 它与 `app.schemaVersion` 是**两回事**：这里记的是**账自己的**修订，不是用户 settings.json 的
  *    迁移版本；两者同名纯属巧合，⛔ 别拿它当迁移门禁。
  * 历史：1 = 十家族定稿（1.49 首次写入 `version` 字段本身）；
- *      2 = 加 `retired[]` 退役登记栏（E6#116：账多了一栏 = 形状变了 ⇒ 抬版；家族与名字一条没动）。 */
-export const LEDGER_VERSION = 2;
+ *      2 = 加 `retired[]` 退役登记栏（E6#116：账多了一栏 = 形状变了 ⇒ 抬版；家族与名字一条没动）；
+ *      3 = `contextKeysPublic` 的口径从「纯派生（`ctxRead − ctxWrite`）」改成「派生 ＋ **宿主指定**
+ *          （`HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS`）」——文件打开方式与贡献点 T3：宿主裁定
+ *          `resourceExtname` / `resourceIsFile` 为公共约定面（**写的人是 file-tree、读的人是任意第三方插件**），
+ *          而壳自己既不写也不静态读它们 ⇒ 纯派生口径**看不见**（改口径 ⇒ 抬版）。 */
+export const LEDGER_VERSION = 3;
 
 export const LEDGER_COMMENT =
   "宿主保留面账（生成式·E6#111b／1.32 定稿，1.49 补 version）——插件不得占用这些名字。" +
@@ -425,8 +436,10 @@ export function collectHostReserved(root = ROOT) {
    *    ⛔ **不手抄名单**——名单是**派生的**（改完 `settings`/`coreCommands` 后重跑即自动跟上）；
    *    手抄的名单迟早与实况漂，而漂的那天**双向对账会被自己骗过**（两边都拿手抄表）。
    *    ⚠️ 派生依赖上面对内核三键 ＋ `UPDATE_*_KEY` 两键的硬编码补写：宿主写过的名字**不许**落进约定面
-   *    （否则「插件禁设」的段里混进宿主自己在写的旗子 ⇒ 官方 `usePoolSync` 当场假红）。 */
-  const ctxPublic = [...ctxRead].filter((k) => !ctxWrite.has(k)).sort();
+   *    （否则「插件禁设」的段里混进宿主自己在写的旗子 ⇒ 官方 `usePoolSync` 当场假红）。
+   *    🆕 **T3 补第二来源**（见文件头「context key 两段」）：宿主**裁定**的公共键——壳既不写也不静态读，
+   *    纯派生扫不到 ⇒ 由下面的常量逐条列出，与派生结果取并集。 */
+  const ctxPublic = [...new Set([...[...ctxRead].filter((k) => !ctxWrite.has(k)), ...HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS])].sort();
   const ctxHostOnly = [...new Set([...ctxWrite, ...ctxRead])].filter((k) => !ctxPublic.includes(k)).sort();
 
   return {

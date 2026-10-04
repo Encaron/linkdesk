@@ -477,14 +477,15 @@
         },
         "fileAssociations": {
           "type": "array",
-          "description": "File associations — file extension → plugin routing (consumed by the main-process plugin-manifest-loader). Declare only the extension plus an optional open command; this plugin's own pluginId comes from the top-level `pluginId` field (see the top-level pluginId description for the directory-name fallback).",
+          "description": "File associations — file extension → plugin routing (consumed by the main-process plugin-manifest-loader). Declare only the extension plus an optional open command or role; this plugin's own pluginId comes from the top-level `pluginId` field (see the top-level pluginId description for the directory-name fallback).",
           "items": {
             "type": "object",
             "required": ["extension"],
             "properties": {
               "extension": { "type": "string", "description": "File extension — without the dot, e.g. dxf / stl / step" },
               "command": { "type": "string", "description": "Optional — command ID to run when opening a file with this extension" },
-              "displayName": { "type": "string", "description": "Optional — display name in the 'Open with…' picker" }
+              "displayName": { "type": "string", "description": "Optional — display name in the 'Open with…' picker" },
+              "role": { "type": "string", "enum": ["text-fallback"], "description": "Optional — role declaration, attached to this specific entry. \"text-fallback\": this plugin is a candidate for the shell's default text editor fallback (used when no plugin declares the file's extension). The shell picks the active holder; installing a second holder never silently drifts the current default. First version defines only \"text-fallback\"." }
             },
             "additionalProperties": false
           }

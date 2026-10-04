@@ -113,7 +113,7 @@ The `entry` field → the loader automatically recognizes this as a view plugin.
 | `contributes.keybindings` | — | registered into KeybindingRegistry → global keyboard listening |
 | `contributes.themes` | theme | registered into ThemeRegistry → theme browser |
 | `contributes.languages` | language | registered into LanguageRegistry |
-| `contributes.fileAssociations` | — | registered into FileAssociationService → double-clicking a file opens it automatically |
+| `contributes.fileAssociations` | — | registered into FileAssociationService → double-clicking a file opens it automatically; an entry may declare `role` (e.g. `"text-fallback"`, see below) |
 | `contributes.floatingPanel` | —  | Declares that the view can be displayed in a floating panel inside the shell — viewId references an already-registered view; without the declaration there is no "Open in Floating Panel" context-menu item; optional `defaultForm`/`formKey` fix or offer the **first-open form** |
 
 **A plugin can declare several contributions at once.** A view plugin, for example, can have `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands` — each is registered independently and does not affect the others.
@@ -633,6 +633,54 @@ function CadView() {
   }
 }
 ```
+
+#### contributes.fileAssociations — file associations and role declarations
+
+Declares "which extensions' files are opened by me". When the user double-clicks such a file (or opens it from the file tree or the command line), the shell routes it to your plugin per this table and opens it in **your** tab.
+
+```json
+{
+  "contributes": {
+    "fileAssociations": [
+      { "extension": "dxf", "displayName": "CAD drawing" },
+      { "extension": "stl", "command": "cad.importStl" }
+    ]
+  }
+}
+```
+
+| Field | Required | Notes |
+|:--|:--:|:--|
+| `extension` | ✅ | Extension — **without the dot** (`dxf` / `ts`); case-insensitive (the shell lower-cases it) |
+| `command` | — | Which of your commands to run on open; omit to use the framework's default open action |
+| `displayName` | — | The name shown in the "Open with…" picker |
+| `role` | — | **Role declaration** (see below). The first version defines only `"text-fallback"` |
+
+**Several plugins may declare the same extension** (your `ts` coexists with someone else's `ts`) — the shell does not pick a winner for you; the user picks from "Open with…", and the default is **whichever plugin activated first**. So declaring is **not** a takeover; it means "I can open it too".
+
+##### `role` — how to become the default text editor
+
+The shell **does not know, and must not know, any plugin id** (iron law ② of the shell) — "when no plugin declares a file's kind, which tab should open it" is answered by plugins **self-declaring a role**:
+
+```json
+{
+  "contributes": {
+    "fileAssociations": [
+      { "extension": "txt",  "role": "text-fallback" },
+      { "extension": "ts",   "role": "text-fallback" },
+      { "extension": "json", "role": "text-fallback" }
+    ]
+  }
+}
+```
+
+- **`role` attaches to the entry** (each entry carries its own — which is also why **an entry must carry `extension`**), but it is **recorded per plugin**: declaring 45 entries with `"text-fallback"` still makes you **one** holder (you cannot crowd ahead of others by sheer entry count).
+- **The badge is a nomination, not a takeover.** The order in which the shell resolves "who should open this" is **① user override table → ② plugins declaring that extension (activation order, ties broken by pluginId lexicographically) → ③ the text-fallback holder (this role) → ④ none of the above ⇒ the shell's prompt page**.
+- ⇒ **You never have to guess anyone's name**: to take over the text fallback slot, declare `role: "text-fallback"`; installing a second holder **never silently drifts** the current default (it merely joins the candidates, and the user can pick explicitly).
+- ⇒ **Uninstalling all holders** is safe too: the file has no owner and no fallback ⇒ the shell shows its prompt page and ⛔ never hands you the id of a plugin that does not exist.
+- ⚠️ **Binary files are not yours**: whether a file can be read as text is judged by **the shell** (`EncodingService.isBinary`, a single source of truth), while which extensions are yours is decided by **your declaration** — ⛔ do not add `pdf` / `jpg` to your list to grab the reader plugins' turf.
+
+> To show/hide a **context menu** item by extension (e.g. "only for `.md`"), read the public context keys `resourceExtname` / `resourceIsFile` — see [22-menu-contribution-points](22-menu-contribution-points.md).
 
 ---
 

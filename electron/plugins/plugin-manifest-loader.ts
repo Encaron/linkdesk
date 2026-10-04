@@ -87,8 +87,10 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest, plug
   }
 
   // contributes.fileAssociations → FileAssociationService（E2c #13a）
+  // T7：`role` 是可选的**角色挂牌**（首版 `"text-fallback"`）——原样透传给注册表，本层不做仲裁
+  //（仲裁在 `FileAssociationService.resolveFallbackTabType()`，铁律②：壳不认插件 id，只认招牌）。
   const associations = contributes?.fileAssociations as
-    | Array<{ extension: string; pluginId: string; command?: string; displayName?: string }>
+    | Array<{ extension: string; pluginId: string; command?: string; displayName?: string; role?: string }>
     | undefined;
   if (Array.isArray(associations)) {
     for (const fa of associations) {
@@ -97,6 +99,7 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest, plug
         pluginId,
         command: fa.command,
         displayName: fa.displayName,
+        role: fa.role === "text-fallback" ? fa.role : undefined,
       });
     }
   }

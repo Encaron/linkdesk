@@ -81,7 +81,7 @@
 1. 装 PDF 阅读器（临时样例仓）→ 文件树单击 pdf 开它的标签；卸载 → 退回 editor 且**不再是乱码**（T1 提示页＋toast）。
 2. 右键 pdf →「打开方式…」列出全部 handler＋当前默认标记；「设为默认」后重启仍生效；「恢复自动」后回声明序；**第二只装上时默认不漂移**＋提示出现（D7）。
 3. 两只插件同时挂牌 `role:"text-fallback"`（用户场景 9）：默认**不静默漂移**、提示出现、选择器里两家并列可挑（T7＋D7 同规）。
-4. 第三方样例插件声明 `contributes.menus.fileContext`＋`when: "resourceExtname == .md"` → 对 .md 出现、对 .txt 不出现；文件树自己的 18 项原样未动。
+4. 第三方样例插件声明 `contributes.menus.fileContext`＋`when: "resourceExtname == '.md'"` → 对 .md 出现、对 .txt 不出现；文件树自己的 18 项原样未动。
 5. OS：装阅读器后「打开方式」出现 LinkDesk；卸载后撤（D6 开关链）；exe 永不出现在候选；构建期生成的清单与随包件声明逐字节一致（负控=手工塞一个未声明扩展 → 门禁红）。
 6. 文档链：AI 手册命令索引、作者面 plugin-docs、命名规范、四份 schema 拷贝全部随码重生（[04-任务清单](04-任务清单.md) §文档连锁逐格对账）。
 7. `npm run check` 全绿。

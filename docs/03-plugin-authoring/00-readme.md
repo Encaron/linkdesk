@@ -25,6 +25,7 @@
 | **Build a theme** (no code) | [themes/01-build-a-theme-plugin](themes/01-build-a-theme-plugin.md) | → [themes/02-theme-field-index](themes/02-theme-field-index.md) |
 | **Add a setting to my plugin** | [20-adding-a-setting](20-adding-a-setting.md) | → [03-contributes-spec](03-contributes-spec.md) |
 | **Let AI / keybindings / the Command Palette operate my plugin** | [21-command-ification-spec](21-command-ification-spec.md) | → [03-contributes-spec §3.1](03-contributes-spec.md) (every `commands` field) |
+| **Add an item to a menu (context menu / gear / hamburger)** | [22-menu-contribution-points](22-menu-contribution-points.md) | → [21-command-ification-spec](21-command-ification-spec.md) (make it a command first) |
 | **Make several regions work together** (sidebar selection → main area switch → status bar update) | [18-cross-region-wiring](18-cross-region-wiring.md) | → [07-plugin-to-plugin-communication](07-plugin-to-plugin-communication.md) |
 | **Look up the API** (what can I call) | [01-plugin-api-contract §3](01-plugin-api-contract.md) (the entry table for the three API surfaces) | → the SDK package README cheatsheet / `linkdesk.d.ts` |
 | **Use the UI parts the shell provides** | [19-component-cheatsheet](19-component-cheatsheet.md) | → [05-ui-conventions](05-ui-conventions.md) |
@@ -179,6 +180,7 @@ Full story → [04-distribution-format §Listing Is Two Steps](04-distribution-f
 | **19** | **[19-component-cheatsheet](19-component-cheatsheet.md)** | **Which UI parts the shell provides**, and when to use which |
 | **20** | **[20-adding-a-setting](20-adding-a-setting.md)** | The minimal approach: declare one → it appears on the settings page automatically → read it in code |
 | **21** | **[21-command-ification-spec](21-command-ification-spec.md)** | **Let AI/keybindings/the Command Palette operate my plugin** — how to turn actions into commands, plus the author checklist |
+| **22** | **[22-menu-contribution-points](22-menu-contribution-points.md)** | **Put an action into one of the host's menus** — the 14 slots, the `group`/`when` conventions, and the public context-key table |
 | **T1** | **[themes/01-build-a-theme-plugin](themes/01-build-a-theme-plugin.md)** | The theme-authoring walkthrough (no code) |
 | **T2** | **[themes/02-theme-field-index](themes/02-theme-field-index.md)** | A cross-index of recipe fields and CSS variables |
 

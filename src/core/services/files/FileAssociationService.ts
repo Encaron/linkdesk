@@ -10,6 +10,15 @@
 
 /* ── 类型 ── */
 
+/**
+ * 文件关联的**角色挂牌**（T7 去硬编码）——首版只定义 `"text-fallback"`。
+ * 🔴 牌 = **提名**不是夺权：挂牌只表示「我愿意当这类兜底」，壳按 D7 主权三层仲裁
+ * （用户覆盖表 → 激活序优先 ＋ pluginId 字典序 tie-break）；装上第二家挂牌者**不静默漂移**。
+ */
+export type FileAssociationRole = "text-fallback";
+
+export const TEXT_FALLBACK_ROLE: FileAssociationRole = "text-fallback";
+
 export interface FileAssociation {
   /** 扩展名——不带点，如 "dxf" / "pdf" / "cpp" */
   extension: string;
@@ -19,17 +28,34 @@ export interface FileAssociation {
   command?: string;
   /** 可选——"打开方式…"列表中显示的名字 */
   displayName?: string;
+  /**
+   * 可选——角色挂牌，依附于**本条具体条目**（E23：条目必须带扩展名；孤儿 role 由 schema 校验拦）。
+   * 挂牌不等于生效：生效者由 `resolveFallbackTabType()` 按仲裁顺序选出。
+   */
+  role?: FileAssociationRole;
 }
 
 /* ── 存储 ── */
 
 import { trackRegistration } from "../../registry/registrationTracker";
+import { FALLBACK_PLUGIN_ID } from "../../utils/plugin/fallbackPluginId";
 
 /** extension（小写，不带点） → FileAssociation[] */
 const _associations = new Map<string, FileAssociation[]>();
 
 /** pluginId → Set<extension>——卸载时快速清除 */
 const _pluginExtensions = new Map<string, Set<string>>();
+
+/**
+ * role → 挂牌者激活序（pluginId → 首次登记序号，单调递增）。
+ * ⚠️ 激活序按**插件**记、不按条目：同一插件声明 45 条挂牌（editor）只占一个序号——
+ * 否则条目多的插件会凭条目数挤到后来者前面，「激活序」就退化成「声明条数序」。
+ * 插件被卸载/禁用 ⇒ 注册被回收（`trackRegistration`）⇒ 自然退出参选（E5/E7 同规）。
+ */
+const _roleHolders = new Map<string, Map<string, number>>();
+
+/** 挂牌激活序号发号器——只增不减（卸载不回收，保证跨装卸的比较始终稳定） */
+let _roleSeq = 0;
 
 /* ── 注册 ── */
 
@@ -64,6 +90,14 @@ export function registerFileAssociation(association: FileAssociation): () => voi
   exts.add(ext);
   _pluginExtensions.set(association.pluginId, exts);
 
+  // T7：角色挂牌进索引——同一插件多次挂牌只记**首个**序号（见 `_roleHolders` 注）
+  const role = association.role;
+  if (role) {
+    const holders = _roleHolders.get(role) ?? new Map<string, number>();
+    if (!holders.has(association.pluginId)) holders.set(association.pluginId, ++_roleSeq);
+    _roleHolders.set(role, holders);
+  }
+
   // E5.8#10：引用级删除——只删自己这条，不误删后来注册者（设计 §8 同名覆盖风险表）
   return trackRegistration(association.pluginId, () => {
     const current = _associations.get(ext);
@@ -79,6 +113,10 @@ export function registerFileAssociation(association: FileAssociation): () => voi
     if (pluginExts) {
       pluginExts.delete(ext);
       if (pluginExts.size === 0) _pluginExtensions.delete(association.pluginId);
+    }
+    if (role) {
+      const holders = _roleHolders.get(role);
+      if (holders?.delete(association.pluginId) && holders.size === 0) _roleHolders.delete(role);
     }
   });
 }
@@ -125,6 +163,33 @@ export function getAssociationsForPlugin(pluginId: string): FileAssociation[] {
   return result;
 }
 
+/**
+ * 列出挂牌此角色的插件（激活序优先，同序则 pluginId 字典序 tie-break）。
+ * 仅在册者——已卸载/已禁用插件的注册早被回收，天然不参选（E5/E7）。
+ */
+export function getRoleHolders(role: FileAssociationRole = TEXT_FALLBACK_ROLE): string[] {
+  const holders = _roleHolders.get(role);
+  if (!holders || holders.size === 0) return [];
+  return [...holders.entries()]
+    .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))
+    .map(([pluginId]) => pluginId);
+}
+
+/**
+ * T7 兜底解析——「找不到声明者时开哪个标签」的**唯一真相源**（退役 `DEFAULT_TAB_TYPE="editor"`）。
+ *
+ * 解析序（与 T2 `resolveOpenTarget` 同构，本函数 = 它的**最后一档**）：
+ *   用户覆盖表（T2，波 3 落）→ 声明表（该扩展名，激活序优先＋pluginId 字典序）→ **角色兜底（本函数）**
+ *   → 无任何挂牌者 ⇒ `FALLBACK_PLUGIN_ID`（"welcome"）＝ T1 提示页语义（E22——不塞一个不存在的插件）。
+ *
+ * 🔴 为什么壳不再写死 `"editor"`（硬约束 10 的白名单例外就此退役）：壳**不知道也不该知道**插件 id，
+ * 「谁是文本兜底」是插件用 `role:"text-fallback"` 自报的（铁律②）。装上第二家挂牌者不静默漂移——
+ * 它只是进了候选，当前默认仍是先激活的那家（D7）。
+ */
+export function resolveFallbackTabType(): string {
+  return getRoleHolders(TEXT_FALLBACK_ROLE)[0] ?? FALLBACK_PLUGIN_ID;
+}
+
 /* ── 工具 ── */
 
 /** 归一化扩展名：去点、去空白、转小写 */
@@ -139,4 +204,6 @@ function normalizeExtension(ext: string): string {
 export function clearFileAssociations(): void {
   _associations.clear();
   _pluginExtensions.clear();
+  _roleHolders.clear();
+  _roleSeq = 0;
 }

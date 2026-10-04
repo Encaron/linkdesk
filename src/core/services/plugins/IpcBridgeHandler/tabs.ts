@@ -1,17 +1,20 @@
 /**
  * IpcBridgeHandler 标签页域——自 IpcBridgeHandler.ts 拆出（E5.8#0d.10-10c）。
- * DEFAULT_TAB_TYPE 壳政策常量 + tabs:* 七 channel verbatim；M1 `AI#3` 加 `handleTabsMethod`
+ * tabs:* 七 channel verbatim；M1 `AI#3` 加 `handleTabsMethod`
  * （读取面经 `plugins:call` 门面，**零新增 IPC 通道**）。
  * 依赖方向：tabs → ShellEvents（tab:* 事件）+ readSnapshots（壳侧标签清单提供者槽）；被聚合器委派。
  */
 
 import { shellEvents } from "../../../react/events/ShellEvents"; // E5#68
+import { resolveFallbackTabType } from "../../files/FileAssociationService"; // T7：角色挂牌兜底
 import { tabsSnapshot } from "../readSnapshots"; // M1 AI#3：壳侧标签清单（usePoolSync 注册的 serializeGroups 闭包）
 
-// E5.7#70：tabs:create 未知类型兜底——对标 VS Code 文本编辑器 fallback。
-// 壳政策常量（硬约束 10 白名单例外）：未声明类型的开标签请求路由到编辑器插件。
-// 为什么是编辑器：tabs:create 语义 = "打开点什么"——编辑器是唯一无参数可开的通用内容容器。
-export const DEFAULT_TAB_TYPE = "editor";
+/**
+ * tabs:create 未知类型兜底——对标 VS Code 文本编辑器 fallback。
+ * 🔴 T7（2026-10-05）：原 `DEFAULT_TAB_TYPE = "editor"` 常量**已退役**——壳不写死插件 id，
+ * 改由 `resolveFallbackTabType()` 解析「当前激活的 text-fallback 挂牌者」（无挂牌者 ⇒ welcome 提示页）。
+ * 签名不变（仍是无参调用）⇒ 调用方零改动；仲裁规则单一真相源在 `FileAssociationService`。
+ */
 
 /**
  * tabs:* 七 channel 处理器——插件调壳的 tabs API（经 ShellEvents 事件总线）。全 case void emit 无返回。
@@ -23,8 +26,8 @@ export async function handleTabsChannel(channel: string, args: unknown[], source
     // ── E5#68：标签页操作——插件调壳的 tabs API ──
     case "tabs:create": {
       const [type, opts] = args as [string, Record<string, unknown>?];
-      // E5#99：壳统一守卫——未知类型路由到编辑器（对标 VS Code 文本编辑器 fallback）
-      shellEvents.emit("tab:create", { type: type || DEFAULT_TAB_TYPE, opts });
+      // E5#99/T7：壳统一守卫——未知类型路由到 `resolveFallbackTabType()`（激活的 text-fallback 挂牌者）
+      shellEvents.emit("tab:create", { type: type || resolveFallbackTabType(), opts });
       break;
     }
     case "tabs:openOrFocus": {

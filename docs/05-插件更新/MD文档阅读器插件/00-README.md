@@ -11,7 +11,7 @@
 
 | 声明 | 作用 |
 |:--|:--|
-| `contributes.menus.fileContext` | 三项：`MD 预览：侧边打开`／`MD 预览：新标签打开`／`导出为 HTML`，全部 `when: "resourceExtname == .md"`（公共 context key = 壳案 [T3](../../04-软件更新/待抉择池/文件打开方式与贡献点/01-方案与落点契约.md)；未落地前 `when` 写宽＋判据降级） |
+| `contributes.menus.fileContext` | 三项：`MD 预览：侧边打开`／`MD 预览：新标签打开`／`导出为 HTML`，全部 `when: "resourceExtname == '.md'"`（公共 context key = 壳案 [T3](../../04-软件更新/待抉择池/文件打开方式与贡献点/01-方案与落点契约.md)；未落地前 `when` 写宽＋判据降级） |
 | `contributes.commands` | 同名三命令进命令面板（命令 id 归属纪律：`md-preview.*`） |
 | `contributes.configuration`（可选） | 预览字号/主题/同步滚动开关——走设置页现成渲染，零新控件 |
 | **不声明** `fileAssociations` | **不抢单击**——这是本插件与 PDF/图片阅读器的本质区别；哪天做「纯阅读版」变体也是让用户在选择器里自己换默认（壳案 T2 语义），不改本仓声明 |

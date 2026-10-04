@@ -6,8 +6,8 @@
  * 本 hook → fileAssociation.getPluginFor(ext) → `tab:create`（判重靠 `reduceCreateTab` 的**身份去重**，
  *  editor 的 identityField = filePath ⇒ 同文件聚焦、新文件新建）。
  *
- * 类型缺额走 DEFAULT_TAB_TYPE（E5.7#70/E5#99 壳政策常量——「未知类型路由到编辑器」，
- * 引用常量而非写字面量，硬约束 10 的白名单例外不新增）。
+ * 类型缺额走 resolveFallbackTabType()（T7：壳不写死插件 id——查「当前激活的 text-fallback 挂牌者」，
+ * 无挂牌者 ⇒ welcome 提示页；原 DEFAULT_TAB_TYPE="editor" 常量已退役）。
  * 文件夹不走本 hook：主进程路由层已把文件夹分去开新窗（#47a/#47b）。
  *
  * 与文件树双击同形（FoldersView.doOpenFile）：pinned:true = pin 模式。
@@ -15,7 +15,7 @@
 import { useEffect } from "react";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { getShellExposed } from "../core/api/linkdesk-api/surfaces";
-import { DEFAULT_TAB_TYPE } from "../core/services/plugins/IpcBridgeHandler/tabs";
+import { resolveFallbackTabType } from "../core/services/files/FileAssociationService";
 import { normalizePath } from "../core/utils/path/pathUtils";
 
 /** 取路径末段为标签名——normalizePath 统一分隔符后切（intake 路径来自 OS，Windows 反斜杠为主） */
@@ -66,7 +66,7 @@ export function useOpenPathIntake(ready: boolean): void {
       const pluginId = ext ? await lk.fileAssociation.getPluginFor(ext) : "";
       _hasOpenedFiles = true;
       shellEvents.emit("tab:create", {
-        type: pluginId || DEFAULT_TAB_TYPE,
+        type: pluginId || resolveFallbackTabType(),
         opts: { filePath, sourceId: filePath, label: name, pinned: true },
       });
     };
