@@ -3,22 +3,22 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.34",
-      "contentHash": "f4faa4a769f4adbf77d1ca0c2dfdcf1b7e5f09b068ccae077a7efcb36428bb2e",
+      "version": "0.1.35",
+      "contentHash": "88659b0c6680ffa4ed03904bd0bcb19d0fb81120c9a90f246181592881beefd6",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "00cfe311d2777c94"
+        "contracts/linkdesk.d.ts": "e804511ee3774b19"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.73",
-      "contentHash": "4ed3ebf12ea2bedb399fcc1b850afb5a76f5f0a3bca4534b2fccc1bedab59f11",
+      "version": "0.1.74",
+      "contentHash": "bca96579e690330996b72d43d0af2a7161aee68c70061cf29a5f74e3d2cb835c",
       "fileHashes": {
-        "packages/plugin-sdk/README.md": "6b7431b392e41ee4",
+        "packages/plugin-sdk/README.md": "5c1705e5c062c5aa",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
         "packages/plugin-sdk/dev-host/index.html": "4a4a4c87a3088677",
-        "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "188b6240f5aa634a",
+        "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "f167ef98247c8afc",
         "packages/plugin-sdk/dev-host/mock.ts": "a5c80cf9e01fae04",
         "packages/plugin-sdk/schemas/host-css-names.json": "ab77e3550b032222",
         "packages/plugin-sdk/schemas/host-menu-slots.json": "3677a4d73c61045f",
@@ -237,14 +237,14 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.61",
-      "contentHash": "0370df402651c7a05f28ed22cb91d949aefc4ecd32d351e0acbf25ac38c97a30",
+      "version": "0.1.62",
+      "contentHash": "27ef8b37ef97bd80beb4a3662fac25e32d8e963e281c9e0c16d409f603175f7d",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "da11f0fee498debb",
         "packages/plugin-docs/docs/01-plugin-api-contract.md": "28f86087dd61b061",
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
-        "packages/plugin-docs/docs/03-contributes-spec.md": "dcbab2736b9e0bae",
+        "packages/plugin-docs/docs/03-contributes-spec.md": "2705d2868e9721f9",
         "packages/plugin-docs/docs/04-distribution-format.md": "bd45e03ebd0c8ef6",
         "packages/plugin-docs/docs/05-ui-conventions.md": "e58a182bc2b61999",
         "packages/plugin-docs/docs/06-plugin-json-spec.md": "b4400274d9e0698c",
@@ -263,13 +263,13 @@
         "packages/plugin-docs/docs/19-component-cheatsheet.md": "d9e3e2f456e21b30",
         "packages/plugin-docs/docs/20-adding-a-setting.md": "c467999886ee5069",
         "packages/plugin-docs/docs/21-command-ification-spec.md": "4c40526738188ecc",
-        "packages/plugin-docs/docs/22-menu-contribution-points.md": "73c624efdeca9f40",
+        "packages/plugin-docs/docs/22-menu-contribution-points.md": "ad27fd281b456276",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
         "packages/plugin-docs/docs/themes/02-theme-field-index.md": "6aa2a97c0462aa76",
         "packages/plugin-docs/docs/zh/00-README.md": "15f0a705e0bb2c38",
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "fa4b203a459c29d5",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
-        "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "853ede27474cee33",
+        "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "36f50ed100846988",
         "packages/plugin-docs/docs/zh/04-插件分发格式.md": "f8edb6c3cd7c2b88",
         "packages/plugin-docs/docs/zh/05-插件UI写法规约.md": "d3c4c1f87c498a8d",
         "packages/plugin-docs/docs/zh/06-plugin.json规范.md": "c70ef8e239112f72",
@@ -288,7 +288,7 @@
         "packages/plugin-docs/docs/zh/19-组件速查.md": "a1d4f0ef6ea4f0b3",
         "packages/plugin-docs/docs/zh/20-我的插件加一条配置项.md": "f20d5265c0fad76a",
         "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "70eaaefb36d2be7d",
-        "packages/plugin-docs/docs/zh/22-菜单贡献点.md": "2024e8023b0b4f86",
+        "packages/plugin-docs/docs/zh/22-菜单贡献点.md": "e58aac22a111a52b",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "13cb2bb16775bc3d",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
         "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "9f6479b8f0db0573"
