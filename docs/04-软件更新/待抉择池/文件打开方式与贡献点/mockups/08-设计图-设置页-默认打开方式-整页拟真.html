@@ -188,6 +188,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
       <li><b>M7 单 handler 不进竞争区</b>（E29）：只在「按插件浏览」只读展示。</li>
       <li><b>M8 空态</b>：无竞争类型时该区显示说明行；搜索无匹配 → 「无匹配设置」（真实空态文案）。</li>
       <li><b>M9 OS 块</b>：折叠详情（语义「关＝撤运行期登记」在 summary）＋只读状态；exe 永不出现；⛔ 不碰 UserChoice。</li>
+      <li><b>M10 聚合防爆炸（E32）</b>：竞争区按「候选集合相同」聚成一行——装一只替换 45 类的编辑器也只多一行（下拉＝整组生效）；组内单类被单独设置 ⇒ 拆出独立行。</li>
     </ol>
   </div>
   <b>组件账（先用已有共享件，缺的造进共享包，⛔ 私造）</b>
@@ -214,6 +215,7 @@ const PLUGINS = {
   simplepdf:{name:"简易 PDF", color:"#3f7ab3", assoc:["pdf"], activated:4},
   imga:{name:"图片查看器 A", color:"#3f8ab3", assoc:["jpg","png"], activated:2},
   imgb:{name:"图像大师 B", color:"#b3943f", assoc:["jpg","png","webp"], activated:3},
+  geek:{name:"MyEEEEEditorrrrrr pro plus max ultra", color:"#7a5ab3", assoc:["txt","md","json","log","js","ts","csv","svg"], role:"text-fallback", activated:9},
 };
 const GROUPS = ["通用","外观","默认打开方式"];
 let state = { group:"默认打开方式", override:{}, installed:["editor","pdfpro","adobe","imga","simplepdf"], expanded:{}, search:"" };
@@ -233,8 +235,15 @@ function setDefault(ext, id){ state.override[ext]=id; renderSide();
   toast(`.${ext} 默认已改为 ${PLUGINS[id].name} —— 文件树右键选择器即时同步`, "ok"); renderGroup(); }
 function clearDefault(ext){ delete state.override[ext]; renderSide();
   addLog(`恢复自动 → 删除覆盖表 .${ext}`, false); toast(`.${ext} 已恢复自动（回声明序）`, "ok"); renderGroup(); }
+function setBulk(bid, id){ const exts=BULKREG[bid]||[]; exts.forEach(x=>state.override[x]=id); renderSide();
+  addLog(`覆盖表批量写入 ${exts.length} 类 → ${PLUGINS[id].name}（聚合格整格生效，E32）`, true);
+  toast(`${exts.length} 类默认已改为 ${PLUGINS[id].name}（整格）`, "ok"); renderGroup(); }
+function clearBulk(bid){ const exts=BULKREG[bid]||[]; exts.forEach(x=>delete state.override[x]); renderSide();
+  addLog(`恢复自动：${exts.length} 类`, false); toast(`${exts.length} 类已恢复自动（回声明序，格会并回自动行）`, "ok"); renderGroup(); }
 /* 齿轮菜单：条目注册表 + 锚定齿轮下方（E5.8#92 非模态，不吞首击） */
 const GEAR_MENUS = {}; let gearSeq = 0;
+/* 聚合格注册表：跨渲染持有每格的扩展名清单（setBulk/clearBulk 事后取用） */
+const BULKREG = {}; let bulkSeq = 0;
 function gearMenu(ev, src){
   const items = Array.isArray(src) ? src : (GEAR_MENUS[src]||[]);
   const r = ev.currentTarget.getBoundingClientRect();
@@ -279,17 +288,29 @@ function renderGroup(){
     <div class="rowset">${rowHTML("app.appearanceMode","自定义外观（玻璃态／背景图）",`<select class="sel"><option>跟随主题</option><option>自定义</option></select>`,[{label:"重置此设置（示意）",fn:()=>toast("（示意）已重置","ok")}])}</div>`;
     return;
   }
-  /* ── 默认打开方式（管理器，D6/D1 修订版） ── */
-  const contestedRows = contested.map(x => {
-    const hs = handlers(x); const cur = curDefault(x); const curId = cur?cur.id:null;
-    const desc = `当前单击打开：<b>${curId?PLUGINS[curId].name:"—"}</b>${cur&&cur.fromUser?"（你设置的）":"（自动·先激活先得）"} · 声明者 ${hs.length} 家`;
-    const ctrl = `<select class="sel" aria-label=".${x} 的默认打开方式" onchange="this.value===''?clearDefault('${x}'):setDefault('${x}',this.value)">
-      <option value="">恢复自动</option>${hs.map(id=>`<option value="${id}" ${id===curId?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
-    return rowHTML("."+x, desc, ctrl, [
-      {label:"恢复自动", fn:()=>clearDefault(x)},
-      {label:"在文件树中打开选择器（示意）", fn:()=>toast("（示意）file-tree.openWith —— 同一真相源的另一入口")}
-    ], hs.length+" 家");
-  }).join("");
+  /* ── 默认打开方式（管理器，D6/D1 修订版）── 竞争区聚合（E32 防爆炸）：
+     聚合键 = 候选集合签名 × 当前生效值——同候选者且同生效值的一格一行；
+     单类被单独设置 ⇒ 按生效值自然分出独立格；恢复自动 ⇒ 并回自动行 */
+  const sigGroups = {};
+  contested.forEach(x => { const sig = handlers(x).join("|"); (sigGroups[sig] = sigGroups[sig] || []).push(x); });
+  const groupRows = [];
+  Object.entries(sigGroups).forEach(([sig, exts]) => {
+    const hs = sig.split("|");
+    const byVal = {};
+    exts.forEach(x => { const cur = curDefault(x); const vid = cur?cur.id:"__none__"; (byVal[vid] = byVal[vid]||[]).push(x); });
+    Object.entries(byVal).forEach(([vid, cell]) => {
+      const bid = "b"+(++bulkSeq); BULKREG[bid] = cell;
+      const fromUser = cell.some(x=>state.override[x]===vid);
+      const label = cell.length>3 ? `${cell.slice(0,3).map(x=>"."+x).join(" / ")} 等 ${cell.length} 类` : cell.map(x=>"."+x).join(" / ");
+      const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（你设置的）":"（含你设置的）"):"（自动·先激活先得）"} · 候选 ${hs.length} 家${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 改下拉＝整格一起改"}`;
+      const ctrl = `<select class="sel" aria-label="默认打开方式" onchange="this.value===''?clearBulk('${bid}'):setBulk('${bid}',this.value)">
+        <option value="">恢复自动</option>${hs.map(id=>`<option value="${id}" ${id===vid?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
+      groupRows.push(rowHTML(label, desc, ctrl, [
+        {label:"恢复自动（本格 "+cell.length+" 类）", fn:()=>clearBulk(bid)},
+        {label:"在文件树中打开选择器（示意）", fn:()=>toast("（示意）file-tree.openWith —— 同一真相源的另一入口")}
+      ], hs.length+" 家"));
+    });
+  });
   const cards = browsable.map(id => {
     const P=PLUGINS[id]; const open=!!state.expanded[id];
     const assoc=(P.assoc||[]).slice().sort();
@@ -310,9 +331,9 @@ function renderGroup(){
       <button class="gearb" aria-label="此插件的更多操作" title="更多操作" onclick="event.stopPropagation();gearMenu(event,'${gid}')">${gearSVG()}</button></div>${body}</div>`;
   }).join("");
   const managerHTML = `<div class="g-title">默认打开方式</div>
-    <div class="g-desc">数据真源 = <b>workbench.fileAssociations</b>；文件树右键选择器与本页同写一个真源、双向同步（D1）。检索复用左上「搜索设置」（输入 .p 或 图像 试试）——⛔ 不另造检索（E30）。</div>
-    <div class="sec-h">需要你做选择的类型 <span class="hint">——仅 2 家以上声明竞争的类型出现（E29 单 handler 不进此区）；下拉即 M2</span></div>
-    <div class="rowset">${contestedRows || `<div style="padding:12px 14px;font-size:12px;color:var(--text-muted);">（当前没有多家竞争的类型）</div>`}</div>
+    <div class="g-desc">数据真源 = <b>workbench.fileAssociations</b>；文件树右键选择器与本页同写一个真源、双向同步（D1）。检索复用左上「搜索设置」——⛔ 不另造检索（E30）。⚠️ 本组行标签显示「类型」而非配置键（如 <b>.pdf</b>）——本组是自定义管理视图（uiHint：fileAssociationsManager），行无配置键（组件账②）。</div>
+    <div class="sec-h">需要你做选择的类型 <span class="hint">——按「候选集合 × 当前生效值」聚合（E32 防爆炸）：一格一行、下拉整格生效；单类单独设置 ⇒ 自然分出独立格，恢复自动 ⇒ 并回；E29 单 handler 不进此区；下拉即 M2</span></div>
+    <div class="rowset">${groupRows.join("")}${groupRows.length ? "" : `<div style="padding:12px 14px;font-size:12px;color:var(--text-muted);">（当前没有多家竞争的类型）</div>`}</div>
     <div class="sec-h">按插件浏览 <span class="hint">——组内区块（非二级页面：现状无承载，已立案）；插件卡＝最终配置项，hover 卡头出现齿轮（M4）</span></div>
     ${cards || `<div style="font-size:12px;color:var(--text-muted);">（没有声明了文件类型的插件）</div>`}
     <details class="osblock"><summary>系统「打开方式」登记（OS 层 · 罕见配置 · T6）——关＝撤运行期登记；与应用内默认无关（三层口径）</summary>
