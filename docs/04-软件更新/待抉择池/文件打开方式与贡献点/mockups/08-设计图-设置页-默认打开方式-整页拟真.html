@@ -188,7 +188,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
       <li><b>M7 单 handler 不进竞争区</b>（E29）：只在「按插件浏览」只读展示。</li>
       <li><b>M8 空态</b>：无竞争类型时该区显示说明行；搜索无匹配 → 「无匹配设置」（真实空态文案）。</li>
       <li><b>M9 OS 块</b>：折叠详情（语义「关＝撤运行期登记」在 summary）＋只读状态；exe 永不出现；⛔ 不碰 UserChoice。</li>
-      <li><b>M10 聚合防爆炸（E32）</b>：竞争区按「候选集合相同」聚成一行——装一只替换 45 类的编辑器也只多一行（下拉＝整组生效）；组内单类被单独设置 ⇒ 拆出独立行。</li>
+      <li><b>M10 聚合防爆炸（E32）</b>：竞争区按「候选集合相同」聚成一行——装一只替换 45 类的编辑器也只多一行（下拉＝整组生效）；组内单类被单独设置 ⇒ 拆出独立行。<b>聚合零语义（E34）</b>：机器不「认识」任何扩展名，只比两张表——「哪几家插件声明了它」＋「当前默认是谁」；.xlsx 与 .MX 在它眼里只是字符串，行标签原样照抄声明串——没有、也不需要任何类型词典。</li>
     </ol>
   </div>
   <b>组件账（先用已有共享件，缺的造进共享包，⛔ 私造）</b>
@@ -332,7 +332,7 @@ function renderGroup(){
   }).join("");
   const managerHTML = `<div class="g-title">默认打开方式</div>
     <div class="g-desc">数据真源 = <b>workbench.fileAssociations</b>；文件树右键选择器与本页同写一个真源、双向同步（D1）。检索复用左上「搜索设置」——⛔ 不另造检索（E30）。⚠️ 本组行标签显示「类型」而非配置键（如 <b>.pdf</b>）——本组是自定义管理视图（uiHint：fileAssociationsManager），行无配置键（组件账②）。</div>
-    <div class="sec-h">需要你做选择的类型 <span class="hint">——按「候选集合 × 当前生效值」聚合（E32 防爆炸）：一格一行、下拉整格生效；单类单独设置 ⇒ 自然分出独立格，恢复自动 ⇒ 并回；E29 单 handler 不进此区；下拉即 M2</span></div>
+    <div class="sec-h">需要你做选择的类型 <span class="hint">——<b>零语义</b>聚合（E32/E34）：两条键全是查表——「哪几家插件声明了它」×「当前默认是谁」，机器不认识任何扩展名：.docx 与 .xlsx 同行只因同一家把它们声明在同一批（另一家只声明 .docx 的那一刻它自动拆行），怪串 .MX/.uvprojx 没人声明就永不出现、有声明就原样照抄为行标签。一格一行、下拉整格生效；单类单独设置 ⇒ 自然分出独立格，恢复自动 ⇒ 并回；E29 单 handler 不进此区；下拉即 M2</span></div>
     <div class="rowset">${groupRows.join("")}${groupRows.length ? "" : `<div style="padding:12px 14px;font-size:12px;color:var(--text-muted);">（当前没有多家竞争的类型）</div>`}</div>
     <div class="sec-h">按插件浏览 <span class="hint">——组内区块（非二级页面：现状无承载，已立案）；插件卡＝最终配置项，hover 卡头出现齿轮（M4）</span></div>
     ${cards || `<div style="font-size:12px;color:var(--text-muted);">（没有声明了文件类型的插件）</div>`}
