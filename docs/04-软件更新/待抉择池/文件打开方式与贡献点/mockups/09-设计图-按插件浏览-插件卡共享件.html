@@ -148,12 +148,29 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
 .srcbtn.on{background:var(--accent);border-color:var(--accent);color:var(--text-on-accent);}
 .decl{font:11px Consolas,monospace;color:var(--text-muted);}
 .decl b{color:var(--accent-hover);font-weight:400;}
+/* ── 解剖板（尺寸=规格，冻结样张与真卡同 class——交付=plugin-card.css 平移） ── */
+.anat-wrap{max-width:1320px;margin:14px auto 0;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;}
+.anat-wrap h2{font-size:13.5px;color:var(--text-secondary);margin:6px 0 2px;font-weight:600;}
+.anat-wrap h2 .hint{font-size:11px;color:var(--text-muted);font-weight:400;}
+.anat-plate{display:flex;gap:20px;align-items:flex-start;margin:8px 0 14px;flex-wrap:wrap;}
+.anat-plate .pcard{width:560px;flex:none;margin-bottom:0;}
+.anat-legend{flex:1;min-width:300px;}
+.leg{font-size:12px;color:var(--text-secondary);padding:3px 10px;border-left:2px dashed var(--accent);margin-bottom:6px;line-height:1.55;}
+.leg b{color:var(--accent-hover);font-weight:600;}
+.leg i{font-style:normal;color:var(--text-muted);font-size:11px;}
+.anat-zoom{margin:4px 0 4px;}
+.zrow{display:flex;align-items:center;gap:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:14px 18px;max-width:780px;font-size:16px;}
+.zrow .zcext{font:16px Consolas,monospace;color:var(--accent-hover);flex:0 0 120px;}
+.zrow .zpill{font-size:13px;padding:3px 12px;border-radius:12px;background:var(--bg-window);border:1px solid var(--warn);color:var(--warn);white-space:nowrap;}
+.zrow select{margin-left:auto;background:var(--bg-window);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:6px 10px;font-size:14px;min-width:260px;}
+.zleg{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.zleg .leg{flex:1;min-width:240px;margin-bottom:0;}
 </style>
 </head>
 <body>
 <div class="page-head">
   <h1>09 · 插件卡共享件 PluginCard——设置页整页拟真 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（08 同壳续篇 · 可交互：行内下拉写默认 / 唯一处理者锁定 / E32 拆格联动 / 停用·装卸 / 搜索自动展开；卡交互 C1–C10 见页尾）</span></h1>
-  <div class="sub">回答上一版的根本错误：卡不是「只读展示」——<b>每行都带下拉</b>（同 08 竞争区一个真源），「默认（自动）/候选/唯一处理者」是<b>状态徽标</b>，旁边的<b>下拉才是控件</b>；单家类型也能锁定自己防未来漂移（E35）。</div>
+  <div class="sub">与 08 的分工：<b>卡区在上方当主角（区序对调）、页下两块解剖板＋规格速览为本图独有</b>——卡不是「只读展示」：每行 = 状态徽标＋行内下拉（同 08 一个真源），单家类型也能锁定自己防未来漂移（E35）。</div>
   <div class="auth">图纸分工：<b>本图 = 卡组件权威</b> · 管理器全景（组导航/竞争区/行骨架）= <b>08</b> · 文件树右键 = <b>05</b> · 06/07 = 辅图。组件规格（文件落点/props/发版链）= <b>03-组件规格</b>。</div>
 </div>
 
@@ -198,6 +215,27 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
   </div>
 </div>
 
+<div class="anat-wrap">
+  <h2>板① · 卡头解剖 <span class="hint">——冻结样张与真卡同 class（交付 = plugin-card.css 平移）；右列逐项规格</span></h2>
+  <div class="anat-plate">
+    <div id="anatHead"></div>
+    <div class="anat-legend">
+      <div class="leg"><b>卡头高 40px</b> · 卡圆角 10 · 边框 1px <i>（全 token，暗亮两档同源）</i></div>
+      <div class="leg"><b>图标 24×24 · 圆角 6</b> <i>共享 PluginIcon 四源裁决：codicon／svg／url／lucide（白名单外兜底彩色身份块）——展开不放大，点图标=点头=展开</i></div>
+      <div class="leg"><b>标题 13px/600</b> <i>超长省略＋title 全文（极客名就是试金石）；role 徽标 text-fallback 挂标题尾</i></div>
+      <div class="leg"><b>副文本 11px muted</b> <i>pluginId · 版本——显示名可改，id 是唯一稳定识别物（E4/E11）</i></div>
+      <div class="leg"><b>摘要 11px</b> <i>声明 N · 竞争 M · 默认持有 K——任何写入后即时重算</i></div>
+      <div class="leg"><b>齿轮 24×24</b> <i>hover 显现、焦点到达恒显；菜单=共享 ContextMenu 非模态锚定（E5.8#92 不吞首击）</i></div>
+      <div class="leg"><b>折角 16px</b> <i>展开旋 180°、150ms；prefers-reduced-motion 零过渡</i></div>
+      <div class="leg"><b>嵌套按钮禁令</b> <i>head=div ＋ 铺满真 button toggle ＋ 兄弟齿轮绝对定位（button 不套 button）</i></div>
+      <div class="leg"><b>行高 30px</b> <i>ext 12px mono 左列 92px；体限高 280px 溢出滚动</i></div>
+      <div class="leg"><b>焦点环 2px</b> <i>Tab 三站：头 → 齿轮 → 行下拉；Esc 关菜单不收卡</i></div>
+    </div>
+  </div>
+  <h2>板② · 展开行解剖 <span class="hint">——三段式：徽标表状态、下拉是控件（本轮正名点）</span></h2>
+  <div class="anat-zoom" id="anatRow"></div>
+</div>
+
 <details class="specblk">
   <summary>组件规格速览（详文 = 03-组件规格；此处只留动工时抬头就能看到的）</summary>
   <table>
@@ -213,7 +251,7 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
   </table>
   <table style="margin-top:8px">
     <tr><th>尺寸／机制</th><th>规格</th></tr>
-    <tr><td>卡头</td><td>高 40px；图标 20×20（PluginIcon）；标题 13/600；副文本 11 muted（id · version，超长省略＋title）；齿轮 24×24（hover 显现、焦点恒显）；折角 16px 旋 180°</td></tr>
+    <tr><td>卡头</td><td>高 40px；图标 24×24（PluginIcon）；标题 13/600；副文本 11 muted（id · version，超长省略＋title）；齿轮 24×24（hover 显现、焦点恒显）；折角 16px 旋 180°</td></tr>
     <tr><td>嵌套按钮禁令</td><td>head=div ＋ 铺满真 button toggle ＋ <b>兄弟</b>齿轮绝对定位（button 不套 button）</td></tr>
     <tr><td>行</td><td>高 30px；ext 12px mono 照抄<b>归一存储键</b>（声明 MX → 显示 .mx，E10/E34）；状态徽标＋行尾下拉（共享 SelectBox，OverlayPortal 渲染——滚动容器内不被裁剪）；体限高 280px 滚动</td></tr>
     <tr><td>可及</td><td>Tab：头 → 齿轮 → 行下拉；Enter/Space 开合；Esc 关菜单不收卡；焦点环 2px；reduced-motion 零过渡</td></tr>
@@ -416,11 +454,11 @@ function renderGroup(){
   /* ── 按插件浏览（本图主角）：卡 v2——行内下拉可操作 ── */
   const cards = browsable.map(cardHTML).join("");
   const managerHTML = `<div class="g-title">默认打开方式</div>
-    <div class="g-desc">数据真源 = <b>workbench.fileAssociations</b>；文件树右键选择器、竞争区下拉、卡内行下拉三面同写一个真源、即时互见（E31）。</div>
-    <div class="sec-h">需要你做选择的类型 <span class="hint">——零语义聚合（E32/E34，详见 08）；本图保留此区为的是 C9：卡内单类写入后<b>看这里当场拆格</b></span></div>
-    <div class="rowset">${groupRows.join("")}${groupRows.length ? "" : `<div style="padding:12px 14px;font-size:12px;color:var(--text-muted);">（当前没有多家竞争的类型）</div>`}</div>
-    <div class="sec-h">按插件浏览 <span class="hint">——卡=最终配置项（共享件 PluginCard，规格=03、本图=权威样张）；每行下拉可写；单家可锁定防漂移（E35）；卡头摘要随写入即时刷新</span></div>
+    <div class="g-desc">数据真源 = <b>workbench.fileAssociations</b>；文件树右键选择器、卡内行下拉、竞争区下拉三面同写、即时互见（E31）。<b>本图与 08 的分工</b>：本图 = <b>卡组件权威</b>（卡在上方当主角＋下方两块解剖板＋规格速览）；管理器全景/竞争区聚合权威 = 08。</div>
+    <div class="sec-h">按插件浏览 <span class="hint">——本图主角（共享件 PluginCard）：卡=最终配置项，展开体行行可操作——状态徽标＋行内下拉（同真源写入）；单家可锁定防漂移（E35）；摘要随写入即时刷新；解剖板见页下</span></div>
     ${cards || `<div style="font-size:12px;color:var(--text-muted);">（没有声明了文件类型的插件）</div>`}
+    <div class="sec-h">需要你做选择的类型 <span class="hint">——联动观测区（聚合全景权威 = 08）：卡内单类写入后<b>看这里当场拆格/并回</b>（C9）；E32/E34 详文在 08</span></div>
+    <div class="rowset">${groupRows.join("")}${groupRows.length ? "" : `<div style="padding:12px 14px;font-size:12px;color:var(--text-muted);">（当前没有多家竞争的类型）</div>`}</div>
     <details class="osblock"><summary>系统「打开方式」登记（OS 层 · 罕见配置 · T6）——关＝撤运行期登记；与应用内默认无关（三层口径）</summary>
       <div style="padding:8px 2px 2px;">
       <div class="srow2"><div class="info"><div class="key human">跟随插件登记 Windows「打开方式」候选</div><div class="desc">app.osAssociations.followPlugins —— 安装器静态随包类不受影响；exe 永不出现；⛔ 不碰 UserChoice（E24）</div></div>
@@ -480,6 +518,29 @@ function renderIcons(){
   $("iconsim").innerHTML = `${cur.sim}<span class="decl"><b>${cur.decl}</b> — ${cur.note}</span>`;
 }
 document.addEventListener("click", e => { const b=e.target.closest("[data-src]"); if(b){ iconSrc=b.dataset.src; renderIcons(); } });
+/* ── 解剖板：冻结样张（摘掉一切交互挂钩）＋放大行 ── */
+function anatCard(pid){
+  state.expanded[pid]=true;
+  return cardHTML(pid)
+    .replace(/ onclick="state\.expanded\[[^\]]*\]=![^;]*;renderGroup\(\)"/, ' data-frozen="head"')
+    .replace(/ onkeydown="if\(event\.key==='Enter'\|\|event\.key===' '\)\{event\.preventDefault\(\);this\.click\(\);\}"/, '')
+    .replace(/ onclick="event\.stopPropagation\(\);gearMenu\(event,'[^']*'\)"/, ' data-frozen="gear"')
+    .replace(/ onchange="[^"]*"/g, '')
+    .replace('id="card-'+pid+'"','id="anat-card"')
+    .replace('id="pbody-'+pid+'"','id="anat-body"')
+    .replace('aria-controls="pbody-'+pid+'"','aria-controls="anat-body"');
+}
+function renderAnatomy(){
+  $("anatHead").innerHTML = anatCard('pdfpro');
+  $("anatRow").innerHTML =
+    '<div class="zrow"><span class="zcext">.pdf</span><span class="zpill">候选 · 默认是 Adobe PDF 阅读器</span>'
+   +'<select aria-hidden="true"><option>自动（先激活先得）</option><option>PDF Reader Pro</option><option selected>Adobe PDF 阅读器</option><option>简易 PDF</option></select></div>'
+   +'<div class="zleg">'
+   +'<div class="leg"><b>① .ext</b> 照抄归一存储键（声明串→小写无点，E34 零语义；怪串 .uvprojx/.mx 照样上屏）</div>'
+   +'<div class="leg"><b>② 状态徽标</b> 四态＋失效覆盖（默认自动／你设的／候选·默认是X／唯一处理者（自动）｜红「失效覆盖」＝E6 惰性键）——它只<b>说明</b>，不承担点击</div>'
+   +'<div class="leg"><b>③ 行内下拉＝控件</b> 显示<b>覆盖态</b>而非生效态（否则重选当前胜者=锁定 触发不了 onchange）；选项＝自动＋全部候选；单家行＝自动＋自己（E35 锁定）</div>'
+   +'</div>';
+}
 /* 装配 */
 $("gearBtn").addEventListener("click", e => gearMenu(e, [
   {label:"打开设置", fn:()=>{ state.group="默认打开方式"; renderGroup(); toast("（示意）core.openSettings → 已在本页","ok"); }},
@@ -489,6 +550,7 @@ $("gearBtn").addEventListener("click", e => gearMenu(e, [
 $("gearBtn").addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); $("gearBtn").click(); }});
 $("sSearch").addEventListener("input", e => { state.search = e.target.value; renderGroup(); });
 renderIcons();
+renderAnatomy();
 renderGroup();
 addLog("日志就绪——试试：展开「PDF Reader Pro」把 .pdf 下拉改 Adobe → 竞争区拆格；装 Keil 助手 → 单家行锁定；搜索 .md → 命中卡自动展开", false);
 </script>
