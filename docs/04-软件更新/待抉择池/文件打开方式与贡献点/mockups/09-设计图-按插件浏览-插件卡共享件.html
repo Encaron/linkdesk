@@ -165,6 +165,14 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
 .zrow select{margin-left:auto;background:var(--bg-window);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:6px 10px;font-size:14px;min-width:260px;}
 .zleg{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
 .zleg .leg{flex:1;min-width:240px;margin-bottom:0;}
+/* 圆角×hover 高亮现场对照（铁律演示；真实实现 radius=var(--radius-sm)、高亮=--accent/--bg-selection） */
+.rdwrap{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;}
+.rd{flex:1;min-width:300px;}
+.rdh{font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.rdp{width:250px;border:1px solid var(--border);border-radius:8px;background:var(--bg-window);box-shadow:0 6px 16px rgba(0,0,0,.35);padding:3px;}
+.rdp.clip{overflow:hidden;}
+.rdo{font-size:12px;padding:5px 10px;color:var(--text-primary);margin:1px;}
+.rdo.h:hover{background:var(--accent);color:var(--text-on-accent,#fff);}
 </style>
 </head>
 <body>
@@ -209,7 +217,7 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
   <div class="side">
     <div class="panel"><h3>覆盖表 workbench.fileAssociations</h3><div class="kv" id="kvOverride">{ }</div></div>
     <div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;">解析日志（同一真源）<button class="mini" style="padding:2px 8px;" onclick="document.getElementById('log').innerHTML='（已清空）'">清空</button></h3><div class="log" id="log">（等待操作…）</div></div>
-    <div class="panel"><h3>边界演示（状态化：高亮＝已生效，再点＝还原）</h3>
+    <div class="panel"><h3>边界演示（状态化：高亮＝已生效，再次点击＝还原）</h3>
       <div class="acts" id="demoActs"></div>
     </div>
   </div>
@@ -254,9 +262,17 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
     <tr><td>卡头</td><td>高 40px；图标 24×24（PluginIcon）；标题 13/600；副文本 11 muted（id · version，超长省略＋title）；齿轮 24×24（hover 显现、焦点恒显）；折角 16px 旋 180°</td></tr>
     <tr><td>嵌套按钮禁令</td><td>head=div ＋ 铺满真 button toggle ＋ <b>兄弟</b>齿轮绝对定位（button 不套 button）</td></tr>
     <tr><td>行</td><td>高 30px；ext 12px mono 照抄<b>归一存储键</b>（声明 MX → 显示 .mx，E10/E34）；状态徽标＋行尾下拉（共享 SelectBox，OverlayPortal 渲染——滚动容器内不被裁剪）；体限高 280px 滚动</td></tr>
+    <tr><td>下拉铁律</td><td>面板 <code>border-radius: var(--radius-sm)</code> ＋ <code>overflow: hidden</code>——hover 高亮实心块四角被裁、贴圆角边界；⛔ 直角高亮溢出圆角 = 历史真 bug（先例 SelectBox.css:85-87 用户审计 #1；同族 NumberInput 0.2.38 单一容器模型）；投影 <code>var(--shadow-pop)</code> 挂面板自身（overflow 只裁内容不裁阴影）——现场对照见下</td></tr>
+    <tr><td>下拉 token 表</td><td>全 var() 跟随主题、零写死色、组件不立新 token：底 <code>--bg-input/--bg-window</code> · 边 <code>--border/--separator</code> · 字 <code>--text-primary/--text-muted/--text-on-accent</code> · 选中 <code>--accent＋--bg-selection</code> · 角 <code>--radius-sm（面板）/--radius-xs（触发器）</code> · 投影 <code>--shadow-pop</code> · 层叠 <code>--z-dropdown</code> · 字号 <code>--font-size-sm/md</code>（=SelectBox.css 实际消费集）。自由度：调用方仅可经 className 局部覆写既有 var，⛔ 不另立第二套色值</td></tr>
     <tr><td>可及</td><td>Tab：头 → 齿轮 → 行下拉；Enter/Space 开合；Esc 关菜单不收卡；焦点环 2px；reduced-motion 零过渡</td></tr>
     <tr><td>图标四源现场</td><td><span class="srcrow" id="srcbtns" style="display:inline-flex"></span><span id="iconsim" style="display:inline-flex;align-items:center;gap:8px"></span></td></tr>
   </table>
+  <div class="rdwrap">
+    <div class="rd"><div class="rdh">❌ 无 overflow:hidden——hover 首末行，直角高亮溢出圆角（历史 bug 形态）</div>
+      <div class="rdp"><div class="rdo">自动</div><div class="rdo h">PDF Reader Pro（hover 我）</div><div class="rdo h">Adobe PDF 阅读器</div><div class="rdo h">简易 PDF（末行看角）</div></div></div>
+    <div class="rd"><div class="rdh">✅ overflow:hidden（SelectBox 现行）——高亮实心块裁贴圆角</div>
+      <div class="rdp clip"><div class="rdo">自动</div><div class="rdo h">PDF Reader Pro（hover 我）</div><div class="rdo h">Adobe PDF 阅读器</div><div class="rdo h">简易 PDF（末行看角）</div></div></div>
+  </div>
 </details>
 
 <div class="frame-note">
@@ -266,8 +282,8 @@ details.specblk code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
       <li><b>C1 展开即全功能</b>：卡体不是说明书——每行 = <b>状态徽标＋下拉</b>，下拉与 08 竞争区同写 <code>workbench.fileAssociations</code>（E31 第三写入面）。</li>
       <li><b>C2 行内下拉＝逐类写</b>：候选类下拉列出「自动＋全部候选插件」，当前生效值选中；改选 → 覆盖表 → toast＋日志＋<b>竞争区当场拆格</b>（C9）。</li>
       <li><b>C3 唯一处理者可锁定（E35）</b>：单家类型下拉仍有「自动＋自己」——显式选自己＝锁定，将来第二家插件进来<b>也不漂移</b>（E2 同款机制，零新规则）。</li>
-      <li><b>C4 卡齿轮</b>：重置我设的默认（本插件声明范围内所有覆盖键，含锁定，计数随显）＋复制插件 ID；「打开插件详情」挂账（壳无承载）。</li>
-      <li><b>C5 状态徽标四态</b>：默认（自动）／当前默认（你设的）／候选 · 默认是 X／唯一处理者（自动）；指向已卸载插件的失效覆盖键 → <b>红点提示「失效覆盖」</b>（E6 惰性：键还在，重装复活）。</li>
+      <li><b>C4 卡齿轮</b>：清除相关默认覆盖（本插件声明范围内所有覆盖键，含锁定，计数随显）＋复制插件 ID；「打开插件详情」挂账（壳无承载）。</li>
+      <li><b>C5 状态徽标四态</b>：默认（自动）／当前默认（用户指定）／候选 · 默认：X／唯一处理者（自动）；指向已卸载插件的失效覆盖键 → <b>红点提示「失效覆盖」</b>（E6 惰性：键还在，重装复活）。</li>
       <li><b>C6 搜索联动</b>：搜索命中插件名或扩展名 → 卡<b>自动展开</b>、不命中收起过滤（受控 expanded 的管理器策略；复用既有「搜索设置」）。</li>
       <li><b>C7 停用（E5）</b>：卡降透明＋行下拉全禁＋解析不参选——别的候选即时补位（.jpg 从 A 掉到 B 当场可见）。</li>
       <li><b>C8 装卸（E1/E6）</b>：装第二家 → 竞争区新行＋默认不漂移；卸载被覆盖指向者 → 惰性失效回声明序；重装复活。</li>
@@ -356,14 +372,14 @@ function pillFor(pid, ext){
   if (!alive(pid)) return `<span class="pill">已停用·不参选</span>`;
   const d = dangling(ext) ? ` <span class="pill dang" title="覆盖表仍指向已卸载插件——惰性失效（E6），重装即复活">失效覆盖</span>` : "";
   if (hs.length===0) return `<span class="pill">无人处理 · 角色兜底（${curId?PLUGINS[curId].name:"—"}）</span>`;
-  if (hs.length===1) return (curId===pid && cur.fromUser ? `<span class="pill user" title="显式锁定：将来别家声明此类也不漂移（E35/E2）">当前默认（你锁定的）</span>` : `<span class="pill auto">唯一处理者（自动）</span>`) + d;
-  if (curId===pid) return (cur.fromUser ? `<span class="pill user">当前默认（你设的）</span>` : `<span class="pill auto">默认（自动）</span>`) + d;
-  return `<span class="pill cand">候选 · 默认是 ${curId?PLUGINS[curId].name:"—"}</span>` + d;
+  if (hs.length===1) return (curId===pid && cur.fromUser ? `<span class="pill user" title="显式锁定：其他插件后续声明此类亦不漂移（E35/E2）">当前默认（用户锁定）</span>` : `<span class="pill auto">唯一处理者（自动）</span>`) + d;
+  if (curId===pid) return (cur.fromUser ? `<span class="pill user">当前默认（用户指定）</span>` : `<span class="pill auto">默认（自动）</span>`) + d;
+  return `<span class="pill cand">候选 · 默认：${curId?PLUGINS[curId].name:"—"}</span>` + d;
 }
 function rowSelect(pid, ext){
   const hs=handlers(ext), cur=curDefault(ext), curId=cur?cur.id:null, off=!alive(pid);
   return `<select aria-label=".${ext} 的默认打开方式" ${off?"disabled":""} onchange="this.value===''?clearDefault('${ext}'):setDefault('${ext}',this.value)">
-    <option value="" ${cur&&cur.fromUser?"":"selected"}>自动（先激活先得${hs.length<2&&hs.length>0?"：仅 "+PLUGINS[pid].name+" 一家":""}）</option>
+    <option value="" ${cur&&cur.fromUser?"":"selected"}>自动</option>
     ${hs.map(h=>`<option value="${h}" ${cur&&cur.fromUser&&h===curId?"selected":""}>${PLUGINS[h].name}</option>`).join("")}</select>`;
 }
 function cardBody(pid){
@@ -385,8 +401,8 @@ function cardHTML(pid){
   const n = (P.assoc||[]).filter(x=>state.override[x]).length;
   const gid="card_"+pid;
   GEAR_MENUS[gid]=[
-    {label:`重置我设的默认（本插件相关 ${n} 类）`, off:!n, fn:()=>{ (P.assoc||[]).forEach(x=>{ if(state.override[x]) delete state.override[x]; });
-      renderSide(); renderGroup(); toast(`已清除 ${n} 类覆盖——全部回自动`, "ok"); }},
+    {label:`清除相关默认覆盖（${n} 类）`, off:!n, fn:()=>{ (P.assoc||[]).forEach(x=>{ if(state.override[x]) delete state.override[x]; });
+      renderSide(); renderGroup(); toast(`已清除 ${n} 类覆盖，全部恢复自动`, "ok"); }},
     {label:"复制插件 ID", fn:()=>{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(pid).then(()=>toast("已复制插件 ID： "+pid,"ok"), ()=>toast("剪贴板权限拒绝——阶段 0 勘察项（03 §3）","warn")); } else toast("本环境无剪贴板面——阶段 0 勘察项（03 §3）","warn"); }},
   ];
   return `<div class="pcard${open?" open":""}${off?" dim":""}" id="card-${pid}">
@@ -442,7 +458,7 @@ function renderGroup(){
       const bid = "b"+(++bulkSeq); BULKREG[bid] = cell;
       const fromUser = cell.some(x=>state.override[x]===vid);
       const label = cell.length>3 ? `${cell.slice(0,3).map(x=>"."+x).join(" / ")} 等 ${cell.length} 类` : cell.map(x=>"."+x).join(" / ");
-      const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（你设置的）":"（含你设置的）"):"（自动·先激活先得）"} · 候选 ${hs.length} 家${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 改下拉＝整格一起改"}`;
+      const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（用户指定）":"（含用户指定）"):"（自动）"} · 候选 ${hs.length} 家${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 下拉＝整格生效"}`;
       const ctrl = `<select class="sel" aria-label="默认打开方式" onchange="this.value===''?clearBulk('${bid}'):setBulk('${bid}',this.value)">
         <option value="">恢复自动</option>${hs.map(id=>`<option value="${id}" ${id===vid?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
       groupRows.push(rowHTML(label, desc, ctrl, [
@@ -457,7 +473,7 @@ function renderGroup(){
     <div class="g-desc">数据真源 = <b>workbench.fileAssociations</b>；文件树右键选择器、卡内行下拉、竞争区下拉三面同写、即时互见（E31）。<b>本图与 08 的分工</b>：本图 = <b>卡组件权威</b>（卡在上方当主角＋下方两块解剖板＋规格速览）；管理器全景/竞争区聚合权威 = 08。</div>
     <div class="sec-h">按插件浏览 <span class="hint">——本图主角（共享件 PluginCard）：卡=最终配置项，展开体行行可操作——状态徽标＋行内下拉（同真源写入）；单家可锁定防漂移（E35）；摘要随写入即时刷新；解剖板见页下</span></div>
     ${cards || `<div style="font-size:12px;color:var(--text-muted);">（没有声明了文件类型的插件）</div>`}
-    <div class="sec-h">需要你做选择的类型 <span class="hint">——联动观测区（聚合全景权威 = 08）：卡内单类写入后<b>看这里当场拆格/并回</b>（C9）；E32/E34 详文在 08</span></div>
+    <div class="sec-h">需要你做选择的类型 <span class="hint">——联动观测区（聚合全景权威 = 08）：卡内单类写入后<b>此处即时呈现拆格／并回</b>（C9）；E32/E34 详文在 08</span></div>
     <div class="rowset">${groupRows.join("")}${groupRows.length ? "" : `<div style="padding:12px 14px;font-size:12px;color:var(--text-muted);">（当前没有多家竞争的类型）</div>`}</div>
     <details class="osblock"><summary>系统「打开方式」登记（OS 层 · 罕见配置 · T6）——关＝撤运行期登记；与应用内默认无关（三层口径）</summary>
       <div style="padding:8px 2px 2px;">
@@ -472,11 +488,11 @@ function renderSide(){
   const imgb = state.installed.includes("imgb"), keil = state.installed.includes("keil"),
         adobe = state.override.pdf==="adobe", mdgeek = state.override.md==="geek", imgaoff = !!state.disabled.imga;
   $("demoActs").innerHTML =
-    `<button class="mini${imgb?" on":""}" onclick="togglePlugin('imgb')">${imgb?"🟢 图像大师 B — 已安装（再点＝卸载）":"⚡ 模拟安装「图像大师 B」→ .jpg 变两家竞争（E1）"}</button>
-     <button class="mini${keil?" on":""}" onclick="togglePlugin('keil')">${keil?"🟢 Keil 助手 — 已安装（.uvprojx/.mx 单家·可锁定，E34/E35）":"⚡ 模拟安装「Keil 助手」→ 怪串扩展名单家类型（E34）"}</button>
-     <button class="mini${adobe?" on":""}" onclick="togglePdfAdobe()">${adobe?"🟢 .pdf 默认 = Adobe（再点＝恢复自动）":"⚡ 把 .pdf 设为 Adobe（写入覆盖表）"}</button>
-     <button class="mini${mdgeek?" on":""}" onclick="toggleMdGeek()">${mdgeek?"🟢 .md 卡内已设为极客（看竞争区拆格 C9；再点＝恢复自动并回）":"⚡ 卡内把 .md 设为极客编辑器（E32 拆格联动）"}</button>
-     <button class="mini${imgaoff?" on":""}" onclick="toggleDisable('imga')">${imgaoff?"🟢 图片查看器 A — 已停用（.jpg 由 B 补位，E5；再点＝启用）":"⚡ 停用「图片查看器 A」→ 卡变灰、下拉全禁、解析不参选（E5）"}</button>`;
+    `<button class="mini${imgb?" on":""}" onclick="togglePlugin('imgb')">${imgb?"🟢 图像大师 B 已安装（再次点击＝卸载）":"安装「图像大师 B」——.jpg 转为两家竞争（E1）"}</button>
+     <button class="mini${keil?" on":""}" onclick="togglePlugin('keil')">${keil?"🟢 Keil 助手已安装（.uvprojx/.mx 单家·可锁定，E34/E35）":"安装「Keil 助手」——怪串扩展名单家类型（E34）"}</button>
+     <button class="mini${adobe?" on":""}" onclick="togglePdfAdobe()">${adobe?"🟢 .pdf 默认 = Adobe（再次点击＝恢复自动）":"将 .pdf 默认设为 Adobe（写入覆盖表）"}</button>
+     <button class="mini${mdgeek?" on":""}" onclick="toggleMdGeek()">${mdgeek?"🟢 .md 已在卡内设为极客（C9 拆格联动；再次点击＝恢复自动并回）":"在卡内将 .md 设为极客编辑器（E32 拆格联动）"}</button>
+     <button class="mini${imgaoff?" on":""}" onclick="toggleDisable('imga')">${imgaoff?"🟢 图片查看器 A 已停用（.jpg 由 B 补位；再次点击＝启用）":"停用「图片查看器 A」（E5：卡惰性、不参选解析）"}</button>`;
 }
 function togglePlugin(id){ if (state.installed.includes(id)) uninstallPlugin(id); else installPlugin(id); }
 function togglePdfAdobe(){ if (state.override.pdf==="adobe") clearDefault("pdf"); else setDefault("pdf","adobe"); }
@@ -491,7 +507,7 @@ function toggleDisable(id){
 function installPlugin(id){
   if (state.installed.includes(id)) { toast(`${PLUGINS[id].name} 已在场`, ""); return; }
   state.installed.push(id); renderSide(); addLog(`安装激活 ${PLUGINS[id].name}…（声明 ${(PLUGINS[id].assoc||[]).join("/")}）`, false);
-  toast(`已安装 ${PLUGINS[id].name} —— 若形成竞争，「需要你做选择的类型」出现新行；默认不静默换人（E1）`, "ok"); renderGroup();
+  toast(`已安装 ${PLUGINS[id].name} —— 若形成竞争，「需要你做选择的类型」出现新行；默认不静默漂移（E1）`, "ok"); renderGroup();
 }
 function uninstallPlugin(id){
   if (!state.installed.includes(id)) return;
@@ -533,12 +549,12 @@ function anatCard(pid){
 function renderAnatomy(){
   $("anatHead").innerHTML = anatCard('pdfpro');
   $("anatRow").innerHTML =
-    '<div class="zrow"><span class="zcext">.pdf</span><span class="zpill">候选 · 默认是 Adobe PDF 阅读器</span>'
-   +'<select aria-hidden="true"><option>自动（先激活先得）</option><option>PDF Reader Pro</option><option selected>Adobe PDF 阅读器</option><option>简易 PDF</option></select></div>'
+    '<div class="zrow"><span class="zcext">.pdf</span><span class="zpill">候选 · 默认：Adobe PDF 阅读器</span>'
+   +'<select aria-hidden="true"><option>自动</option><option>PDF Reader Pro</option><option selected>Adobe PDF 阅读器</option><option>简易 PDF</option></select></div>'
    +'<div class="zleg">'
    +'<div class="leg"><b>① .ext</b> 照抄归一存储键（声明串→小写无点，E34 零语义；怪串 .uvprojx/.mx 照样上屏）</div>'
-   +'<div class="leg"><b>② 状态徽标</b> 四态＋失效覆盖（默认自动／你设的／候选·默认是X／唯一处理者（自动）｜红「失效覆盖」＝E6 惰性键）——它只<b>说明</b>，不承担点击</div>'
-   +'<div class="leg"><b>③ 行内下拉＝控件</b> 显示<b>覆盖态</b>而非生效态（否则重选当前胜者=锁定 触发不了 onchange）；选项＝自动＋全部候选；单家行＝自动＋自己（E35 锁定）</div>'
+   +'<div class="leg"><b>② 状态徽标</b> 四态＋失效覆盖（默认自动／用户指定／候选·默认：X／唯一处理者（自动）｜红「失效覆盖」＝E6 惰性键）——它只<b>说明</b>，不承担点击</div>'
+   +'<div class="leg"><b>③ 行内下拉＝控件</b> 显示<b>覆盖态</b>而非生效态（否则重选当前胜者=锁定 触发不了 onchange）；选项＝自动＋全部候选；单家行＝自动＋自己（E35 锁定）；面板圆角×hover 高亮=overflow:hidden 裁贴（铁律与 token 表见规格速览）</div>'
    +'</div>';
 }
 /* 装配 */

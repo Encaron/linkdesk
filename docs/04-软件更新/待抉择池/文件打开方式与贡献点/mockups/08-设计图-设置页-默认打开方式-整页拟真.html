@@ -169,7 +169,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
   <div class="side">
     <div class="panel"><h3>覆盖表 workbench.fileAssociations</h3><div class="kv" id="kvOverride">{ }</div></div>
     <div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;">解析日志（同一真源）<button class="mini" style="padding:2px 8px;" onclick="document.getElementById('log').innerHTML='（已清空）'">清空</button></h3><div class="log" id="log">（等待操作…）</div></div>
-    <div class="panel"><h3>边界演示（状态化：高亮＝已生效，再点＝还原）</h3>
+    <div class="panel"><h3>边界演示（状态化：高亮＝已生效，再次点击＝还原）</h3>
       <div class="acts" id="demoActs"></div>
     </div>
   </div>
@@ -183,7 +183,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
       <li><b>M2 下拉＝写覆盖表</b>：竞争类型行改下拉 → `fileAssociation.setDefault` 写 `workbench.fileAssociations` → toast＋覆盖表/日志联动；与文件树右键选择器**双向同步**（E31）。</li>
       <li><b>M3 行齿轮（hover 显现）</b>：齿轮 opacity:0，**行 hover 才出现**（照 SettingsView-rows.css:188-211 真机制）；点开 = **锚定齿轮下方的非模态轻菜单**（E5.8#92，不吞首击）；菜单条目走壳稳定槽 `settingItemGear` 同款模式——真实行由壳注册（跟随主题/重置此设置，按 context key 显隐），管理器行由本组声明自己的条目。</li>
       <li><b>M4 插件卡展开＋卡齿轮</b>：点卡片头**原地展开**（不是弹窗）；**插件卡＝最终配置项 ⇒ 卡头有 hover 齿轮**（与真实行同款），卡齿轮菜单：重置与我相关的默认／复制插件 ID（**「打开插件详情」挂账——壳无承载命令，v1 不含**，见 03 §3；卡组件权威图 = mockups/09）。</li>
-      <li><b>M5 模拟装卸</b>：右面板状态化开关——安装后高亮、再点＝卸载；装第二只 → 竞争区出现新行＋默认不漂移（E1）；卸载被覆盖表指向的插件 → 惰性失效回声明序（E6）；重装 → 用户原选择复活。</li>
+      <li><b>M5 模拟装卸</b>：右面板状态化开关——安装后高亮、再次点击＝卸载；装第二只 → 竞争区出现新行＋默认不漂移（E1）；卸载被覆盖表指向的插件 → 惰性失效回声明序（E6）；重装 → 用户原选择复活。</li>
       <li><b>M6 搜索设置</b>：顶部搜索输入 `.p` / `图像` → 过滤组与行（**复用既有搜索，条目接入其索引域**——机制扩域已立案，⛔ 不另造检索）。</li>
       <li><b>M7 单 handler 不进竞争区</b>（E29）：只在「按插件浏览」只读展示。</li>
       <li><b>M8 空态</b>：无竞争类型时该区显示说明行；搜索无匹配 → 「无匹配设置」（真实空态文案）。</li>
@@ -302,10 +302,10 @@ function renderGroup(){
       const bid = "b"+(++bulkSeq); BULKREG[bid] = cell;
       const fromUser = cell.some(x=>state.override[x]===vid);
       const label = cell.length>3 ? `${cell.slice(0,3).map(x=>"."+x).join(" / ")} 等 ${cell.length} 类` : cell.map(x=>"."+x).join(" / ");
-      const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（你设置的）":"（含你设置的）"):"（自动·先激活先得）"} · 候选 ${hs.length} 家${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 改下拉＝整格一起改"}`;
+      const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（用户指定）":"（含用户指定）"):"（自动）"} · 候选 ${hs.length} 家${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 下拉＝整格生效"}`;
       const allUser = cell.every(x=>state.override[x]===vid);
       const ctrl = `<select class="sel" aria-label="默认打开方式" onchange="this.value===''?clearBulk('${bid}'):setBulk('${bid}',this.value)">
-        <option value="" ${allUser?"":"selected"}>自动（先激活先得）</option>${hs.map(id=>`<option value="${id}" ${allUser&&id===vid?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
+        <option value="" ${allUser?"":"selected"}>自动</option>${hs.map(id=>`<option value="${id}" ${allUser&&id===vid?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
       groupRows.push(rowHTML(label, desc, ctrl, [
         {label:"恢复自动（本格 "+cell.length+" 类）", fn:()=>clearBulk(bid)},
         {label:"在文件树中打开选择器（示意）", fn:()=>toast("（示意）file-tree.openWith —— 同一真相源的另一入口")}
@@ -316,7 +316,7 @@ function renderGroup(){
     const P=PLUGINS[id]; const open=!!state.expanded[id];
     const assoc=(P.assoc||[]).slice().sort();
     const gid = "card_"+id; const myOv=(assoc||[]).filter(x=>state.override[x]).length; GEAR_MENUS[gid]=[
-      {label:"重置我设的默认（本插件相关 "+myOv+" 类）", fn:()=>{ assoc.forEach(x=>{ if(state.override[x]) delete state.override[x]; }); renderSide(); renderGroup(); toast("已清除 "+myOv+" 类覆盖——全部回自动","ok"); }},
+      {label:"清除相关默认覆盖（"+myOv+" 类）", fn:()=>{ assoc.forEach(x=>{ if(state.override[x]) delete state.override[x]; }); renderSide(); renderGroup(); toast("已清除 "+myOv+" 类覆盖，全部恢复自动","ok"); }},
       {label:"复制插件 ID（示意）", fn:()=>toast("（示意）"+id+"——剪贴板面阶段 0 勘察，无面则 v1 砍此钮（03 §3）","ok")},
     ];
     const body = open ? `<div class="body">${assoc.map(x => {
@@ -349,16 +349,16 @@ function renderSide(){
   $("kvOverride").textContent = Object.keys(state.override).length ? JSON.stringify(state.override, null, 1) : "{ }  （空 —— 一切按声明序）";
   const imgb = state.installed.includes("imgb"), pdfpro = state.installed.includes("pdfpro"), adobe = state.override.pdf==="adobe";
   $("demoActs").innerHTML =
-    `<button class="mini${imgb?" on":""}" onclick="togglePlugin('imgb')">${imgb?"🟢 图像大师 B — 已安装（再点＝卸载）":"⚡ 模拟安装「图像大师 B」→ .jpg 变两家竞争（E1）"}</button>
-     <button class="mini${pdfpro?" on":""}" onclick="togglePlugin('pdfpro')">${pdfpro?"🟢 PDF Reader Pro — 已安装（再点＝卸载，看默认回退 E6）":"⚡ 模拟安装「PDF Reader Pro」（恢复候选）"}</button>
-     <button class="mini${adobe?" on":""}" onclick="togglePdfAdobe()">${adobe?"🟢 .pdf 默认 = Adobe（再点＝恢复自动）":"⚡ 把 .pdf 设为 Adobe（写入覆盖表）"}</button>`;
+    `<button class="mini${imgb?" on":""}" onclick="togglePlugin('imgb')">${imgb?"🟢 图像大师 B 已安装（再次点击＝卸载）":"安装「图像大师 B」——.jpg 转为两家竞争（E1）"}</button>
+     <button class="mini${pdfpro?" on":""}" onclick="togglePlugin('pdfpro')">${pdfpro?"🟢 PDF Reader Pro — 已安装（再次点击＝卸载，观察 E6 回退）":"⚡ 模拟安装「PDF Reader Pro」（恢复候选）"}</button>
+     <button class="mini${adobe?" on":""}" onclick="togglePdfAdobe()">${adobe?"🟢 .pdf 默认 = Adobe（再次点击＝恢复自动）":"将 .pdf 默认设为 Adobe（写入覆盖表）"}</button>`;
 }
 function togglePlugin(id){ if (state.installed.includes(id)) uninstallPlugin(id); else installPlugin(id); }
 function togglePdfAdobe(){ if (state.override.pdf==="adobe") clearDefault("pdf"); else setDefault("pdf","adobe"); }
 function installPlugin(id){
   if (state.installed.includes(id)) { toast(`${PLUGINS[id].name} 已在场`, ""); return; }
   state.installed.push(id); renderSide(); addLog(`安装激活 ${PLUGINS[id].name}…（声明 ${(PLUGINS[id].assoc||[]).join("/")}）`, false);
-  toast(`已安装 ${PLUGINS[id].name} —— 若形成竞争，「需要你做选择的类型」出现新行；默认不静默换人（E1）`, "ok"); renderGroup();
+  toast(`已安装 ${PLUGINS[id].name} —— 若形成竞争，「需要你做选择的类型」出现新行；默认不静默漂移（E1）`, "ok"); renderGroup();
 }
 function uninstallPlugin(id){
   if (!state.installed.includes(id)) return;

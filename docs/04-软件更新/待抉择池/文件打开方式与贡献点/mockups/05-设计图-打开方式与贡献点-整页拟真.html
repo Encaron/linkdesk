@@ -218,10 +218,10 @@ details.osblock summary{cursor:pointer;font-size:12.5px;color:var(--text-seconda
 <div class="frame-note">
   <b>frame-note —— 验证点（每场景对应档案判据）</b>
   <ol>
-    <li><b>①</b> 三家都声明 .pdf：默认=先激活先得（状态栏与选择器一致）；【打开】走默认，【设为默认】写覆盖表并即时生效（E1/D7）。</li>
+    <li><b>①</b> 三家都声明 .pdf：默认=激活序优先（状态栏与选择器一致）；【打开】走默认，【设为默认】写覆盖表并即时生效（E1/D7）。</li>
     <li><b>②</b> 预置覆盖 {jpg:图像大师B}：选择器顶部「当前默认」行＋[恢复自动]；恢复后回声明序（E2/D1）。</li>
     <li><b>③</b> .md 单击永远 editor；右键菜单多出两条<b>插件贡献项</b>（带 src 小标）——贡献是合并不替换（D/T5、证据④）。</li>
-    <li><b>④</b> 模拟安装 MyEEEEEditor（挂牌 role）→ <b>默认不静默换人</b>＋toast 一次；选择器两家并列；设为默认才接管（E3/D7/T7）。</li>
+    <li><b>④</b> 模拟安装 MyEEEEEditor（挂牌 role）→ <b>默认不静默漂移</b>＋toast 一次；选择器两家并列；设为默认才接管（E3/D7/T7）。</li>
     <li><b>⑤</b> 无任何 .pdf 声明：单击 → editor 标签内提示块（不是乱码、不是弹窗）＋toast；这就是 T1 的全部视觉（D4/D10）。</li>
     <li><b>⑥</b> 设置页＝「默认打开方式」管理器（Windows 默认应用式，D6/D1 修订——胶囊开关退役）：检索＋竞争类型下拉＋按插件浏览＋OS 登记折叠块；下拉改动＝写覆盖表，与文件树选择器<b>双向同步</b>（同一真相源）。</li>
     <li>选择器线框 = [01 §T2]；状态面板演示「覆盖表 → 声明表 → 角色」同一解析函数三入口同吃。</li>
@@ -261,7 +261,7 @@ const FILES = [
 ];
 /* 场景预设：installed=参加解析的插件集合；note=场景开场 toast；presetOverride=预置覆盖 */
 const SCENARIOS = [
-  {name:"PDF 三家", installed:["editor","pdfpro","adobe","simplepdf"], override:{}, note:"场景①：三家都声明 .pdf，你从未选过 —— 默认=先激活先得（PDF Reader Pro），试右键 → 打开方式", flag:""},
+  {name:"PDF 三家", installed:["editor","pdfpro","adobe","simplepdf"], override:{}, note:"场景①：三家都声明 .pdf，你从未选过 —— 默认=激活序优先（PDF Reader Pro），试右键 → 打开方式", flag:""},
   {name:"图片两家", installed:["editor","imga","imgb"], override:{jpg:"imgb"}, note:"场景②：预置覆盖 {jpg: 图像大师B} —— 选择器顶部出现「当前默认」行，恢复自动试试", flag:""},
   {name:"MD 次要", installed:["editor","mda","mdb"], override:{}, note:"场景③：.md 单击永远归编辑器；右键看两条贡献菜单项（作者1/作者2）——次要方式无默认之争", flag:""},
   {name:"双编辑器", installed:["editor","geek","pdfpro"], override:{}, note:"场景④：极客编辑器已挂牌 role 但默认仍是官方 —— 点右下「模拟安装」重放提示；设为默认才接管", flag:""},
@@ -280,7 +280,7 @@ function resolve(ext, log){
   if (ov && installed.includes(ov)) { if(log)addLog(`覆盖表命中 .${ext} → ${PLUGINS[ov].name}`, true); return ov; }
   if (ov && !installed.includes(ov)) { if(log)addLog(`覆盖表指向已卸载/禁用插件 → 跳过（E6 惰性失效）`, false); }
   const hs = handlers(ext);
-  if (hs.length) { if(log)addLog(`声明表 ${hs.length} 家 → 先激活先得: ${PLUGINS[hs[0]].name}`, true); return hs[0]; }
+  if (hs.length) { if(log)addLog(`声明表 ${hs.length} 家 → 激活序优先: ${PLUGINS[hs[0]].name}`, true); return hs[0]; }
   const r = roleHolders();
   if (r.length && (ext==="" || true)) { if(log)addLog(`无声明者 → 角色兜底: ${PLUGINS[r[0]].name}`, true); return r[0]; }
   if(log)addLog(`无声明者且无挂牌者 → T1 提示页语义（E22）`, false); return null;
@@ -404,13 +404,13 @@ function loadScenario(n){
 }
 document.querySelectorAll(".sc-btn[data-sc]").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll(".sc-btn[data-sc]").forEach(x=>x.classList.remove("on")); b.classList.add("on"); loadScenario(+b.dataset.sc); }));
-/* 模拟安装第二只（E1/E3：默认不静默换人） */
+/* 模拟安装第二只（E1/E3：默认不静默漂移） */
 let geekInstalled=false;
 document.getElementById("btnInstall").addEventListener("click", () => {
   if (sc===3){ if(!installed.includes("geek")){ installed.push("geek");
       addLog("安装激活 MyEEEEEditor…（声明 txt/md/json + role）", false);
       toast("检测到另一款文本编辑器（已挂牌）——当前默认仍是 编辑器（官方），右键→打开方式可换", "warn"); renderSide(); }
-    else toast("极客编辑器已在场（先激活先得：默认仍是官方）", ""); }
+    else toast("极客编辑器已在场（激活序优先：默认仍是官方）", ""); }
   if (sc===5){ if(!installed.includes("imgb")){ installed.push("imgb");
       addLog("安装激活 图像大师B…（声明 jpg/png/webp）", false);
       toast("图像大师B 已安装 —— 设置页「需要你做选择的类型」应出现 .jpg/.png 行（两家竞争）", "ok"); renderSide();
@@ -428,7 +428,7 @@ function renderSettings(){
     <div class="sec">需要你做选择的类型 <span style="color:var(--text-muted);font-size:11px;font-weight:400;">——只有 2 家以上声明竞争的类型才出现（E29 单 handler 不进此区）；改动即写覆盖表，与文件树选择器双向同步</span></div>
     ${contested.length ? contested.map(x => { const hs = extCount[x].slice().sort((a,b)=>(PLUGINS[a].activated||99)-(PLUGINS[b].activated||99)||a.localeCompare(b));
       const cur = override[x] && installed.includes(override[x]) ? override[x] : hs[0];
-      return `<div class="srow"><div><div class="nm">.${x}</div><div class="ds">当前单击打开：<b style="color:var(--text-primary)">${PLUGINS[cur].name}</b>${override[x]?"（你设置的）":"（自动·先激活先得）"} · 声明者 ${hs.length} 家</div></div>
+      return `<div class="srow"><div><div class="nm">.${x}</div><div class="ds">当前单击打开：<b style="color:var(--text-primary)">${PLUGINS[cur].name}</b>${override[x]?"（用户指定）":"（自动）"} · 声明者 ${hs.length} 家</div></div>
       <div class="sp"></div><select class="sel" onchange="this.value===''?clearDefaultFrom('${x}'):setDefaultFrom('${x}',this.value)">
       <option value="">恢复自动</option>${hs.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select></div>`; }).join("")
       : `<div style="font-size:12px;color:var(--text-muted);padding:6px 2px;">（当前没有多家竞争的类型——装第二只同类插件后这里才会出现行，试试右下「模拟安装」）</div>`}
