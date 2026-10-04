@@ -417,18 +417,14 @@ document.getElementById("btnInstall").addEventListener("click", () => {
       if(!document.getElementById("settingsPage")) toast("切到设置页看新增行（本场景主区已是设置页则直接看）", ""); } }
 });
 /* ── 场景⑥：设置页「默认打开方式」管理器（对标 Windows 默认应用；胶囊开关退役，D6/D1 修订） ── */
-let mgrQuery = "", mgrOpen = {};
+let mgrOpen = {};
 function renderSettings(){
   const extCount = {};
   installed.forEach(id => (PLUGINS[id].assoc||[]).forEach(x => { (extCount[x] = extCount[x]||[]).push(id); }));
-  const contested = Object.keys(extCount).filter(x => extCount[x].length >= 2).sort()
-    .filter(x => !mgrQuery || ("."+x).includes(mgrQuery) || extCount[x].some(id=>PLUGINS[id].name.toLowerCase().includes(mgrQuery)));
-  const q = mgrQuery.toLowerCase();
-  const browsable = installed.filter(id => (PLUGINS[id].assoc||[]).length
-    && (!mgrQuery || PLUGINS[id].name.toLowerCase().includes(q) || (PLUGINS[id].assoc||[]).some(x=>("."+x).includes(mgrQuery))));
+  const contested = Object.keys(extCount).filter(x => extCount[x].length >= 2).sort();
+  const browsable = installed.filter(id => (PLUGINS[id].assoc||[]).length);
   document.getElementById("content").innerHTML = `<div class="settings" id="settingsPage">
-    <h2>默认打开方式</h2><div class="grp">独立分组（示意）——数据真源 = workbench.fileAssociations；<b>文件树选择器与本页是同一真相源的两个入口，谁改都即时互见</b>（D1 修订）</div>
-    <input class="mgr-search" id="mgrSearch" placeholder="检索扩展名（如 .pdf）或插件名…" value="${mgrQuery}" oninput="mgrQuery=this.value; renderSettings()">
+    <h2>默认打开方式</h2><div class="grp">独立分组（示意）——数据真源 = workbench.fileAssociations；<b>文件树选择器与本页是同一真相源的两个入口，谁改都即时互见</b>（D1 修订）。检索<b>不另造</b>：本页条目接入设置页顶部既有「搜索设置」的索引域（E30 修订）。</div>
     <div class="sec">需要你做选择的类型 <span style="color:var(--text-muted);font-size:11px;font-weight:400;">——只有 2 家以上声明竞争的类型才出现（E29 单 handler 不进此区）；改动即写覆盖表，与文件树选择器双向同步</span></div>
     ${contested.length ? contested.map(x => { const hs = extCount[x].slice().sort((a,b)=>(PLUGINS[a].activated||99)-(PLUGINS[b].activated||99)||a.localeCompare(b));
       const cur = override[x] && installed.includes(override[x]) ? override[x] : hs[0];
