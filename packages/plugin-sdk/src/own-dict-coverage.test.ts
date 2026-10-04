@@ -68,6 +68,7 @@ const SETTINGS_LIKE = {
           type: "string",
           default: "floatingPanel",
           group: "打开方式",
+          title: "打开形态",
           description: "打开设置时的形态——悬浮面板 / 标签页",
           enumDescriptions: { floatingPanel: "悬浮面板", tab: "标签页" },
         },
@@ -90,6 +91,7 @@ describe("collectRenderableManifestStrings（判据字段表）", () => {
       "这一组管的是设置页自己", // configuration.subtitle
       "第一次打开时的形态", // groupDescriptions 的值
       "打开方式", // properties.*.group
+      "打开形态", // properties.*.title（配置项短名族，2026-10-04 D1）
       "打开设置时的形态——悬浮面板 / 标签页", // properties.*.description
       "悬浮面板", // enumDescriptions 值（对象形态）
       "深层子菜单", // menus 的 children 递归

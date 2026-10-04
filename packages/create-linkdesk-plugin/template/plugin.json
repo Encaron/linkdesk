@@ -79,5 +79,21 @@
     //     { "id": "main", "title": "{{displayName}}", "render": "src/views/MainView.tsx", "order": 0 }
     //   ]
     // }
+    // ── 设置项（configuration）——设置页自动渲染一个分组（完整语法见作者面 20 号《我的插件加一条配置项》）──
+    //    🔴 每条配置项都要带 "title"（行名短名 = 设置页/市场功能页显示的**人话名**，缺了只能裸显英文配置键，
+    //       SDK 黄灯门禁 ci-verify ⑨ 段会列单催补）：≤12 字名词短语、去插件前缀；值域惯例与 description 同——
+    //       中文原文即 i18n key，英译进本仓 i18n/en.json（谁声明谁供译）。未声明 title 的行回退显配置键
+    //       （第三方存量兼容），但你的插件应该一条不缺。样例（取消注释即用，随附把译名补进 i18n/en.json）：
+    // "configuration": {
+    //   "title": "示例设置",
+    //   "properties": {
+    //     "{{pluginName}}.sampleToggle": {
+    //       "type": "boolean",
+    //       "default": true,
+    //       "title": "示例开关",
+    //       "description": "模板自带的设置项样例——照它的 title 写法换成你自己的配置项"
+    //     }
+    //   }
+    // }
   },
 }

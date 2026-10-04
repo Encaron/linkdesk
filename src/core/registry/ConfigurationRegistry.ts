@@ -29,6 +29,12 @@ export interface ConfigurationProperty {
   enum?: string[];            // 下拉选项（string 类型时可选）
   enumDescriptions?: string[];// 选项说明（和 enum 一一对应）
   description: string;        // 设置项说明——Settings Editor 渲染为提示
+  /** 🆕 配置项短名（配置项短名案 D1/D2，2026-10-04）：**行级显示名**——设置页行名与市场功能页行名取它
+   *  渲染（optional）。值域惯例同 description：中文原文 = i18n key，en 译名由声明方供给
+   *  （插件仓 i18n/en.json／壳侧 lang-defaults 插件）。未声明 = 渲染回退显配置键（D2/E1——第三方存量
+   *  零影响，导出面只加不删）。壳侧四个声明文件 41 条**必须**声明（红门禁 `scripts/check-config-titles.mjs`，
+   *  无豁免账）；`renderHint:"action"` 行按按钮语义起名（动宾短语）。 */
+  title?: string;
   minimum?: number;           // number 类型时可选的 min/max
   maximum?: number;
   /** E5.8 Phase 12 #161：数值步进——number 型配置项的增减步长（uiHint "fontSize"/"slider" 渲染读）。

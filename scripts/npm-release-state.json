@@ -3,17 +3,17 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.32",
-      "contentHash": "1faca850bb46420961bac5fc358ef2af1cdd3bfcff196535f05d17c8e852e908",
+      "version": "0.1.33",
+      "contentHash": "511a61839cc4604dfdbce6a17e674dde0a9568d40420c28efc6ea3c70282af22",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "38f7c194c52d17a3"
+        "contracts/linkdesk.d.ts": "2a93991e2e9dd087"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.70",
-      "contentHash": "a157d04fec9b288a1dffc5c81a4cef5598df614ee7d3ff3e42613f8505938507",
+      "version": "0.1.72",
+      "contentHash": "3fb6e72e5120b9a607c53f5f08af6326c312a0166b56327fc52f72693939290e",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "2e89e8605ebc31ca",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -22,13 +22,14 @@
         "packages/plugin-sdk/dev-host/mock.ts": "a5c80cf9e01fae04",
         "packages/plugin-sdk/schemas/host-css-names.json": "ab77e3550b032222",
         "packages/plugin-sdk/schemas/host-menu-slots.json": "3677a4d73c61045f",
-        "packages/plugin-sdk/schemas/host-reserved.json": "b5907b78791d3540",
+        "packages/plugin-sdk/schemas/host-reserved.json": "deb4e4cd1edc79bd",
         "packages/plugin-sdk/schemas/icon-theme.schema.json": "81be40aac83072fb",
         "packages/plugin-sdk/schemas/marketplace.schema.json": "1d4c9b4c3df5d106",
-        "packages/plugin-sdk/schemas/plugin.schema.json": "dfab551542099c77",
+        "packages/plugin-sdk/schemas/plugin.schema.json": "40076403b6fdae4b",
         "packages/plugin-sdk/schemas/reserved-class-names.json": "07d7b1562f810c6b",
         "packages/plugin-sdk/schemas/theme.schema.json": "cc8fb0810239b4af",
         "packages/plugin-sdk/src/bin.ts": "ec343d78124fc06c",
+        "packages/plugin-sdk/src/check-config-titles.test.ts": "ba2b9ec7f9fac50b",
         "packages/plugin-sdk/src/dev-host.test.ts": "4b8b97dcec4f8f0b",
         "packages/plugin-sdk/src/dev-real.test.ts": "419b1e59e370819d",
         "packages/plugin-sdk/src/dev-real.ts": "af8bc24ac2aa18c6",
@@ -39,7 +40,7 @@
         "packages/plugin-sdk/src/eslint/checks/command-ownership.ts": "0f6a61d6d193982f",
         "packages/plugin-sdk/src/eslint/checks/config-ownership.test.ts": "c3583b2fdddc8d3d",
         "packages/plugin-sdk/src/eslint/checks/config-ownership.ts": "19101fa54f4bf21f",
-        "packages/plugin-sdk/src/eslint/checks/context-ownership.test.ts": "586c2e5415ec81d0",
+        "packages/plugin-sdk/src/eslint/checks/context-ownership.test.ts": "00a82c773f11af8c",
         "packages/plugin-sdk/src/eslint/checks/context-ownership.ts": "f2748bf3ee77fd21",
         "packages/plugin-sdk/src/eslint/checks/css-hardcode.test.ts": "7aed2e04ef35794e",
         "packages/plugin-sdk/src/eslint/checks/css-hardcode.ts": "a805569a696bc557",
@@ -80,7 +81,7 @@
         "packages/plugin-sdk/src/github-http.ts": "d73115f7e71469ee",
         "packages/plugin-sdk/src/index.ts": "928f32b0ef3b8a64",
         "packages/plugin-sdk/src/marketplace-schema.test.ts": "2004d6a3a8b0e058",
-        "packages/plugin-sdk/src/own-dict-coverage.test.ts": "f4630728b11dafac",
+        "packages/plugin-sdk/src/own-dict-coverage.test.ts": "0f84ac2fbc38c80c",
         "packages/plugin-sdk/src/pack.test.ts": "e3f78cdc70153c82",
         "packages/plugin-sdk/src/pack.ts": "6252390ad81bbdb0",
         "packages/plugin-sdk/src/publish.test.ts": "1057db58522cdba8",
@@ -98,8 +99,8 @@
     },
     {
       "name": "create-linkdesk-plugin",
-      "version": "0.1.22",
-      "contentHash": "0bd1f4deec5bd0f227273d0534a9dd6baf03b1212220f9c80aefd1e29257db0b",
+      "version": "0.1.23",
+      "contentHash": "11b7e061ae21ea669d010c1017a1562043fedb0c3dabc3e72a040415b1ffb151",
       "fileHashes": {
         "packages/create-linkdesk-plugin/README.md": "7857d846b56de746",
         "packages/create-linkdesk-plugin/index.js": "e45fcdb44431de0c",
@@ -111,11 +112,11 @@
         "packages/create-linkdesk-plugin/template/gitignore": "6346b85a1072029c",
         "packages/create-linkdesk-plugin/template/i18n/en.json": "801e269eaf6a83ac",
         "packages/create-linkdesk-plugin/template/package.json": "14ff8d5d7eef6d0b",
-        "packages/create-linkdesk-plugin/template/plugin.json": "10ab0c194f3a02f0",
+        "packages/create-linkdesk-plugin/template/plugin.json": "b8da2240f3f29f4c",
         "packages/create-linkdesk-plugin/template/resources/cover.svg": "7dcd9223956231b4",
         "packages/create-linkdesk-plugin/template/resources/icon-bar.svg": "380076715ba91bf2",
         "packages/create-linkdesk-plugin/template/resources/icon.svg": "0fe377bb2f339027",
-        "packages/create-linkdesk-plugin/template/scripts/ci-verify.mjs": "21341df469c6c562",
+        "packages/create-linkdesk-plugin/template/scripts/ci-verify.mjs": "28f3a0f071b55044",
         "packages/create-linkdesk-plugin/template/src/commands.ts": "96d32a23de3ac8a7",
         "packages/create-linkdesk-plugin/template/src/index.css": "a38d99faf6e97f78",
         "packages/create-linkdesk-plugin/template/src/index.tsx": "ecb857e492ebe3c1",
@@ -236,8 +237,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.57",
-      "contentHash": "5350adc2057523763d6d8d5ea8a707d28a0b2850d768c0009a9a6aab1b8c0a12",
+      "version": "0.1.59",
+      "contentHash": "0b06217f2a48e4b3e1553248a7f5919b1fc03d623820b50f82b689a7d4cf78c5",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "ab34ec71ea7f4099",
@@ -256,7 +257,7 @@
         "packages/plugin-docs/docs/13-development-guide.md": "9d5bfc94e2cc8621",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
         "packages/plugin-docs/docs/15-multi-repo-and-local-workspace.md": "e5d0b55556faf451",
-        "packages/plugin-docs/docs/16-naming-conventions.md": "0f5101df8bf47d17",
+        "packages/plugin-docs/docs/16-naming-conventions.md": "7bb6f0a6734fc2e8",
         "packages/plugin-docs/docs/17-region-map.md": "0bc3ebf8935b264a",
         "packages/plugin-docs/docs/18-cross-region-wiring.md": "47a88e44dc167f6d",
         "packages/plugin-docs/docs/19-component-cheatsheet.md": "d9e3e2f456e21b30",
@@ -280,13 +281,13 @@
         "packages/plugin-docs/docs/zh/13-插件开发指南.md": "dc0c9e701c61455f",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",
         "packages/plugin-docs/docs/zh/15-多仓开发与本地工作区.md": "5f0ac997193aae41",
-        "packages/plugin-docs/docs/zh/16-命名规范.md": "847b5f17f9030335",
+        "packages/plugin-docs/docs/zh/16-命名规范.md": "ce13327b48c2c228",
         "packages/plugin-docs/docs/zh/17-区域地图.md": "2d3dbf49f691bc2b",
         "packages/plugin-docs/docs/zh/18-区域间互动.md": "f46c4a6bcc1c3010",
         "packages/plugin-docs/docs/zh/19-组件速查.md": "a1d4f0ef6ea4f0b3",
         "packages/plugin-docs/docs/zh/20-我的插件加一条配置项.md": "c01374c80211cbf8",
         "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "70eaaefb36d2be7d",
-        "packages/plugin-docs/docs/zh/plugin.schema.json": "dfab551542099c77",
+        "packages/plugin-docs/docs/zh/plugin.schema.json": "40076403b6fdae4b",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
         "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "9f6479b8f0db0573"
       }

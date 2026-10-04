@@ -120,6 +120,10 @@ export interface LinkDeskConfigProperty {
   type: string;
   default?: unknown;
   description?: string;
+  /** 🆕 配置项短名（D1/D2，2026-10-04）：行级显示名——设置页行名与市场功能页上行取它渲染（optional）。
+   *  值域惯例同 description：中文原文 = i18n key，en 译名由声明方供给（插件仓 i18n/en.json／壳侧 lang-defaults）；
+   *  未声明 = 渲染回退显配置键（D2/E1——第三方存量零影响，导出面只加不删）。 */
+  title?: string;
   enum?: string[];
   enumDescriptions?: string[];
   /** 控件提示——uiHint 优先：plugin.json 声明式控件选择（renderControl 读它切控件）。

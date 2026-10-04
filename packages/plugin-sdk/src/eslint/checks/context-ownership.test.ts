@@ -30,7 +30,7 @@ const RESERVED: HostReservedNames = {
   appearanceSentinels: [],
   appearanceIdGrants: {},
   contextKeysHostOnly: ["activeEditor", "sidebarPosition", "inputFocus"],
-  contextKeysPublic: ["settingKey", "settingFollowTheme", "settingResetsToDefault", "settingModified"],
+  contextKeysPublic: ["settingKey", "settingFollowTheme", "settingResetsToDefault", "settingModified", "settingHasTitle"],
 };
 
 const NO_LEDGER = join(tmpdir(), "no-such-host-reserved.json");
@@ -120,12 +120,12 @@ describe("runContextOwnershipCheck —— 负控 ②（约定面 ⇒ 不红）",
     });
   });
 
-  it("🔴 元判据：官方 `settings` 的 4 个约定面旗子**一个都不报红**（合成一段会在这里假红）", () => {
+  it("🔴 元判据：官方 `settings` 的 5 个约定面旗子**一个都不报红**（合成一段会在这里假红；`settingHasTitle` 为配置项短名案 D5 新增）", () => {
     const src = RESERVED.contextKeysPublic.map((k) => `contextKey.set("${k}", true);`).join("\n");
     withPlugin({ files: { "src/gearMenu.ts": src + "\n" }, pluginId: "settings" }, (root) => {
       const r = runContextOwnershipCheck(root, RESERVED);
       expect(r.violations).toHaveLength(0);
-      expect(r.publicFace).toHaveLength(4);
+      expect(r.publicFace).toHaveLength(5);
     });
   });
 });
@@ -225,7 +225,7 @@ describe("fail-closed ＋ 账加载实况", () => {
     withPlugin({}, (root) => {
       const r = runContextOwnershipCheck(root, RESERVED);
       expect(r.hostLedger.contextKeysHostOnly).toBe(3);
-      expect(r.hostLedger.contextKeysPublic).toBe(4);
+      expect(r.hostLedger.contextKeysPublic).toBe(5);
     });
   });
 });

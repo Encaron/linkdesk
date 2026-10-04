@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 95 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 96 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -135,7 +135,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（28）
+### 首选项（29）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -158,6 +158,7 @@
 | `workbench.action.clearConfiguration` | 清除配置项覆盖 | 删掉一个配置键的用户覆盖（user scope）——回到该键的默认值，是 workbench.action.setConfiguration 的反动作；同样按声明面校验（未声明／ai.* 禁写／显示槽一律拒），回执带清掉前后的值与本次顺带… | `key`: string 必填 — 配置键，如 app.glassBlur（键名清单：workbench.action.listConfigurations） | —— |
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
+| `workbench.action.copySettingName` | 复制设置名称 | 把指定设置项的显示名称复制到剪贴板（当前界面语言） | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingHasTitle` |
 | `workbench.action.followTheme` | 跟随主题 | 取消指定设置项的用户覆盖，让它重新跟随当前主题 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | `settingFollowTheme` |
 | `workbench.action.getConfiguration` | 读取配置项 | 读一个配置键的值与来源分层（schema 默认／用户／工作区／生效值 ＋ declared 判定）——⛔ 不用去翻 settings.json；键名清单看 workbench.action.listConfigurations | `key`: string 必填 — 配置键，如 app.theme（键名清单：workbench.action.listConfigurations） | —— |
 | `workbench.action.listConfigurations` | 列出全部配置项 | 列出全部已注册配置键（按插件分组：类型／默认／枚举／说明 ＋ 该键**有没有被用户改过**：userValue／overridden）——不知道键名时先读这个，再去 workbench.action.getConfiguration 取分… | —— | —— |

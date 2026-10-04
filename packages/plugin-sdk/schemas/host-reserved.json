@@ -67,6 +67,7 @@
   ],
   "contextKeysPublic": [
     "settingFollowTheme",
+    "settingHasTitle",
     "settingKey",
     "settingModified",
     "settingResetsToDefault"

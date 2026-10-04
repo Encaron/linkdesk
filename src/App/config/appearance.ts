@@ -73,6 +73,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           const available = [...ids, ...names];
           return available.length ? available : ["dark"];
         })(),
+        title: t("主题配方"),
         description: t("主题配方——选择配色与外观来源（配方卡片）"),
         onApply: async (v) => {
           // E5.8#50.21：旧值归一化——"Dark"/"Light"（legacy flat）→ 壳内置配方 id "dark"/"light"
@@ -116,6 +117,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // （机制见 ConfigurationRegistry.ConfigurationProperty.resetsToTheme；双语义键同样适用——
         // 自定义模式选过配色变体 → 跟随主题 = 删覆盖回活动配方默认配色，切主题自动跟）
         resetsToTheme: true,
+        title: t("配色"),
         description: t("配色变体——活动主题配方的可用配色"),
         // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
         uiHint: "select",
@@ -141,6 +143,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           t("跟随主题配方——取当前配色来源的强调色"),
           t("自定义——自己指定强调色（图标栏高亮、开关、焦点边框）"),
         ],
+        title: t("强调色来源"),
         description: t("强调色来源——跟随主题配方：取当前配色来源的强调色；自定义：自己指定。独立轴：外观模式切回「跟随主题」不会重置它"),
         uiHint: "accentSource",
         onApply: () => applyAccentColor(getEffectiveAccentColor()),
@@ -156,6 +159,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
         // eslint-disable-next-line linkdesk/no-hardcoded-hex
         default: "#0078d4",
+        title: t("强调色"),
         description: t("自定义强调色（图标栏高亮、开关、焦点边框）——清除 = 跟随主题强调色"),
         dependsOn: { key: "app.accentSource", value: "custom" },
         renderHint: "color",
@@ -178,6 +182,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           t("跟随主题——外观/配色由主题配方决定"),
           t("自定义——逐项指定外观覆盖与域来源"),
         ],
+        title: t("外观模式"),
         description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
         onApply: (v) => {
           if (v === "custom") {
@@ -218,6 +223,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         //   会去读 app.theme 当前配方的配色变体（串路 bug：图标主题下拉显示主题配色 "dark"）。
         //   图标主题枚举是静态注册集（default + IconRegistry），走 type:"string" + enum 普通 SelectBox
         //   （renderControl 枚举分支，对标 app.language 模式），enum 由 syncIconThemeEnum 装/卸动态刷新。
+        title: t("图标主题"),
         description: t("图标主题——文件图标集（内置图标集 = codicon 保底）"),
         onApply: (v) => {
           const iconThemeId = v as string;
@@ -249,6 +255,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         minimum: 0,
         maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
+        title: t("组件圆角"),
         description: t("组件圆角——系统标尺 0 方角 / 32 最圆润；只管输入框/按钮/卡片，分区圆角是下面另一档"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -265,6 +272,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         maximum: 32,
         // E5.8#86：滑杆值 = 主表面（顶栏/主区/状态栏）真实模糊 px——消灭「显示 X 实际 Y」（A5）；
         // 窄表面（图标栏/侧栏 0.44×）/面板（悬浮面板 1.11×）按声明式每表面系数缩放（index.css）。
+        title: t("玻璃模糊"),
         description: t("玻璃模糊——0 关闭；数值 = 主表面真实模糊 px"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -280,6 +288,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         minimum: 0,
         maximum: 1,
         // E5.8#86：label 直述绝对语义——0 全透见背景图 / 1 全不透明（消灭 label「1 不透明」实为半透，A3/D1）
+        title: t("玻璃不透明度"),
         description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明；只管玻璃表面的合成比例，不改主题自带的玻璃材质厚薄"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -291,6 +300,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("玻璃"),
         default: "",
         resetsToTheme: true,
+        title: t("玻璃叠加色"),
         description: t("玻璃叠加色——空 = 主题自带"),
         renderHint: "color",
         effectiveToken: "glass-tint", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--glass-tint）
@@ -308,6 +318,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         minimum: 0,
         maximum: 2,
         // step 不声明——inferSliderStep(0,2) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
+        title: t("玻璃饱和度"),
         description: t("玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -321,6 +332,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("背景"),
         default: "followTheme",
         resetsToTheme: true,
+        title: t("背景域来源"),
         description: t("背景域来源——跟随主题配方 / 指定主题配方 id"),
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         uiHint: "select",
@@ -335,6 +347,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（绝对无图）
         // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
+        title: t("背景图片"),
         description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
@@ -354,6 +367,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         minimum: 0,
         maximum: 1,
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
+        title: t("背景图不透明度"),
         description: t("背景图不透明度——0 全透见窗口底色 / 1 原图"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -369,6 +383,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         minimum: 0,
         maximum: 1,
         // step 不声明——inferSliderStep(0,1) span≤2 → 0.01 连续可调（E5.8#65，与 glassOpacity 同款）
+        title: t("背景图遮罩"),
         description: t("背景图遮罩明暗——0 无遮罩 / 1 全黑；数值越大越暗（与上面「不透明度」方向相反：那一档 1 才是原图）"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -394,6 +409,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           t("亮字（深底用）——深色底上白字"),
           t("暗字（浅底用）——浅色底上深字"),
         ],
+        title: t("文字极性"),
         description: t("文字极性——文字颜色取系统标尺，不锚主题色板"),
         uiHint: "fontTone",
         onApply: () => debouncedApplyThemeIfReady(),
@@ -413,6 +429,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         group: t("文字"),
         default: "followTheme",
         resetsToTheme: true,
+        title: t("字体域来源"),
         description: t("字体域来源——跟随主题配方 / 指定主题配方 id"),
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         uiHint: "select",
@@ -427,6 +444,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（系统字体栈）
         // E5.8#87：系统字体（__none__）= 绝对系统默认（不跟随主题字体）；空 = 跟随主题
+        title: t("界面字体"),
         description: t("界面字体——空 = 跟随主题；选择后写 --font-ui；系统字体 = 显式系统默认"),
         // E5.8#50.20：全字族化 FontFamilySelect（monoOnly:false 列全族非等宽）——
         // onApply 覆盖面单一写入点 getAppearanceOverrides 读本 key 写 --font-ui
@@ -447,6 +465,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         default: "",
         resetsToTheme: true,
         resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（系统等宽栈）
+        title: t("等宽字体"),
         description: t("等宽字体——空 = 跟随主题；选择后写 --font-mono；系统字体 = 显式系统默认"),
         uiHint: "fontFamily",
         monoOnly: true,
@@ -469,6 +488,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         maximum: 150,
         step: 5, // ① 拍板：NumberInput 百分比步进（非滑杆）
         unit: t("％"), // F10：百分比符号走 i18n（zh 全角 ％ / en %）
+        title: t("全局字号"),
         description: t("全局字号百分比——界面文字密度（不含编辑器内容字号）；与窗口缩放（整体放大镜）正交"),
         uiHint: "fontSize", // ⑦ 定案：复用 NumberInput（− 数字 + 步进），prop min/max/step/unit 泛化读（editor 不声明 fallback 零回归）
         onApply: () => debouncedApplyThemeIfReady(),
@@ -480,6 +500,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "boolean",
         group: t("圆角"),
         default: true,
+        title: t("分区圆角"),
         description: t("分区圆角开关——关闭后各分区强制直角（0px）"),
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -491,6 +512,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         minimum: 0,
         maximum: RADIUS_MAX_PX, // 3c：滑杆上限 = 引擎 clamp 上限（RADIUS_MAX_PX 单一权威）
+        title: t("分区圆角大小"),
         description: t("分区圆角——系统标尺 0 方角 / 32 最圆润；只管标题栏/图标栏/侧栏/主区/状态栏，与「组件圆角」各管各的"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
@@ -508,6 +530,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         resetsToDefault: true, // E5.8#158：默认项 = 内置 dark/light 配方值 = :root 硬兜底 = __none__（绝对无图）
         // E5.8#87：无背景（__none__）= 绝对无图（盖掉主题/mix 图）；空 = 跟随主题
+        title: t("分区背景图片"),
         description: t("分区背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image",
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
@@ -524,6 +547,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("复位"),
         default: "",
+        title: t("复位整体配方"),
         description: t("⟲ 全部复位为整体配方"),
         renderHint: "action",
         actionCommand: "theme.resetMix",

@@ -37,6 +37,7 @@ export function registerUpdateConfiguration(t: ConfigT): void {
           t("自动——启动后检查一次，此后每 4 小时检查一次"),
           t("手动——只有你自己点「检查更新」时才检查"),
         ],
+        title: t("更新方式"),
         description: t("检查更新的方式——自动后台检查 / 仅在手动点击时检查"),
       },
       // 05 §2.5：更新到新版本后**首次启动**自动打开发行说明（不是"每次发现有新版本就弹"）。
@@ -45,6 +46,7 @@ export function registerUpdateConfiguration(t: ConfigT): void {
         type: "boolean",
         group: t("更新"),
         default: true,
+        title: t("自动打开发行说明"),
         description: t("更新到新版本后，首次启动时自动打开发行说明"),
       },
     },

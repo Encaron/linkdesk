@@ -45,6 +45,18 @@
  *                     消费它**不需要新增任何 devDependency**（纯数据插件仓同样被覆盖）。
  *                     出处：2026-09-30「市场图标破图」案——脚手架的占位图注释里就写着
  *                     CSS 变量的字面量，第三方 AI 把那段注释连同画面一起搬进自己的图 ⇒ 复刻同一个错。
+ *   ⑧ 自有字典覆盖度 —— 「谁的仓谁译文」：本仓声明的**可渲染文案**（字段表 =
+ *                     `@linkdesk/plugin-sdk/own-dict-coverage` 的 RENDERABLE_MANIFEST_FIELDS）必须住
+ *                     本仓自有字典（contributes.i18n / languages）——manifest 腿判**红**；
+ *                     源码 t() 腿只**黄灯**（key 可能合法地住应用级字典，跨仓看不到）。见下面 ③ 的说明。
+ *   ⑨ 配置项短名      —— **分级门禁的插件侧黄灯腿**（2026-10-04 配置项短名案）：三族判据 =
+ *                     无 `title`／title 缺本仓译名（②族与 ⑧ 同域——⑧ 是红，这里只黄灯汇总，
+ *                     零字典声明形态整族归 ⑧ 不重复报）／有 enum 缺 `enumDescriptions`。
+ *                     判据本体 = `@linkdesk/plugin-sdk/check-config-titles`（⛔ 别复制判据）。
+ *                     🔴 内测期 = **黄灯**（列单不判红）；v1 正式版统一切红 = 环境变量
+ *                     `LINKDESK_CONFIG_TITLES_STRICT=1`（官方各仓黄单清零前不预告判红——
+ *                     黄单本身就是给作者的升红预告）。
+ *                     SDK 版本过旧（无该 subpath）→ 跳过并大声说（⛔ 静默绿）。
  *
  * ── 为什么 ③ 的覆盖度只能黄灯（不是漏做）──
  * `t()` 的 key 可以合法地住在**应用级字典**里（`lang-defaults` 插件，运行时由它经 LanguageRegistry
@@ -53,7 +65,7 @@
  * 同款理由）。所以：字典**文件本身**的问题判红（③ 上半），**跨仓才能回答**的覆盖度只报告。
  *
  * 用法：node scripts/ci-verify.mjs     （工程根 = cwd）
- * 退出码 0 = 七段全过；1 = 有红灯（逐条打印缺什么）
+ * 退出码 0 = 九段全过；1 = 有红灯（逐条打印缺什么）
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -66,6 +78,7 @@ import {
   checkOwnDictCoverage,
   formatOwnDictIssue,
   ownDictHint,
+  loadOwnDict,
 } from "@linkdesk/plugin-sdk/own-dict-coverage";
 
 const ROOT = process.cwd();
@@ -630,6 +643,64 @@ function dictSummary(cov) {
   return `${cov.dict.files.map((f) => f.rel).join("、")}，共 ${cov.dict.keys.size} 个 key`;
 }
 
+// ═══════════════ ⑨ 配置项短名（分级门禁·插件侧黄灯腿）═══════════════
+// 判据本体在 @linkdesk/plugin-sdk/check-config-titles（**单一实现**——壳侧 scripts/check-config-titles.mjs
+// 的 --plugin 模式引的是同一份）。severity：内测期黄灯（列单不判红）；STRICT = v1 切红开关。
+// ⚠️ 防御式动态 import：SDK 版本过旧（subpath 不存在）的仓**跳过并大声说**——黄灯腿自己不能变成踩红 CI 的石头。
+{
+  const STRICT = process.env.LINKDESK_CONFIG_TITLES_STRICT === "1";
+  let tit = null;
+  try {
+    tit = await import("@linkdesk/plugin-sdk/check-config-titles");
+  } catch {
+    line("⏭ ⑨ 配置项短名：本仓 @linkdesk/plugin-sdk 版本过旧（无 check-config-titles subpath）——黄灯腿跳过。");
+    line("     修法：npm install 把 @linkdesk/plugin-sdk 浮到最新（内测期黄单不拦，v1 前须清零）。");
+  }
+  if (tit) {
+    // ② 族（缺译）只在「本仓声明了字典且字典可读」时判——零字典/坏字典的形态整族归 ⑧（红），不重复报
+    const dict = loadOwnDict(ROOT, manifest);
+    const dictKeys = !dict.degraded && dict.files.length > 0 ? dict.keys : undefined;
+    const gaps = tit.collectConfigTitleGaps(manifest, { dictKeys });
+    const FAMILY_LABEL = {
+      noTitle: "① 无 title",
+      missingEn: "② title 缺本仓译名",
+      missingEnumDescriptions: "③ enum 缺显示名",
+    };
+    const families = [
+      ["noTitle", gaps.noTitle],
+      ["missingEn", gaps.missingEn],
+      ["missingEnumDescriptions", gaps.missingEnumDescriptions],
+    ];
+    const hits = families.filter(([, list]) => list.length > 0);
+    if (!gaps.hasConfiguration) {
+      line("⏭ ⑨ 配置项短名：本仓无 contributes.configuration 声明——无判据对象（不拦）。");
+    } else if (hits.length === 0) {
+      line(
+        `✅ ⑨ 配置项短名：${gaps.scanned.properties} 条配置项全部有 title（enum ${gaps.scanned.enums} 组全有显示名）——黄灯腿安静。`,
+      );
+    } else {
+      const report =
+        `⚠ ⑨ 配置项短名（黄灯${STRICT ? "——STRICT 已开，按红处理" : "，不拦；v1 正式版统一切红"}）：\n` +
+        hits
+          .map(
+            ([family, list]) =>
+              `     · ${FAMILY_LABEL[family]}：${list.length} 条\n` +
+              list
+                .slice(0, 8)
+                .map((g) => `         - ${tit.formatTitleGap(family, g)}\n           修法：${tit.titleGapHint(family)}`)
+                .join("\n") +
+              (list.length > 8 ? `\n         … 等 ${list.length} 条` : ""),
+          )
+          .join("\n");
+      if (STRICT) {
+        fail(report);
+      } else {
+        line(report);
+      }
+    }
+  }
+}
+
 // ═══════════════ 结论 ═══════════════
 line("────────────────────────────────────────────────────────────");
 if (failures.length > 0) {
@@ -639,5 +710,5 @@ if (failures.length > 0) {
   console.error(`  eslint-disable 注释 + 理由（见上面报告尾部），别把检查删了。`);
   process.exitCode = 1;
 } else {
-  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典完整性 / 声明自洽 / 目录条目形态 / 测试覆盖 / 自有字典覆盖度八段。`);
+  console.log(`✅ 插件仓自检全过（${pluginId}）——lint / 跨插件 / 字典完整性 / 声明自洽 / 目录条目形态 / 测试覆盖 / 自有字典覆盖度 / 配置项短名九段。`);
 }

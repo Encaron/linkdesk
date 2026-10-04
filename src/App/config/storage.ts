@@ -47,6 +47,7 @@ export function registerStorageConfiguration(t: ConfigT): void {
         renderHint: "action",
         actionCommand: "storage.openCacheDir",
         statusCommand: "storage.cacheDirStatus",
+        title: t("缓存目录"),
         description: t("打开缓存目录"),
       },
     },

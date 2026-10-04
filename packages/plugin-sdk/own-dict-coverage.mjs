@@ -108,6 +108,11 @@ export const RENDERABLE_MANIFEST_FIELDS = [
   },
   {
     steps: ["contributes", "configuration", "properties", "*"],
+    field: "title",
+    consumer: "设置项行名短名（配置项短名案 D1/D4，2026-10-04——settings 仓 t(prop.title)，缺省回退显配置键）",
+  },
+  {
+    steps: ["contributes", "configuration", "properties", "*"],
     field: "group",
     consumer: "设置页二级标题（settings 仓 t(bucket.group)）",
   },

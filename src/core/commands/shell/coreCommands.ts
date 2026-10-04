@@ -359,6 +359,40 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
   },
+  // 配置项短名案 D5（2026-10-04）：齿轮「复制设置名称」——复制的是**当前界面语言**的短名，不是 key。
+  // when=settingHasTitle 门控：无 title 的行不出现（不留永假菜单项——D5/01 无死代码判据）。该 context key
+  // 由设置插件开齿轮时写（gearMenu.ts，写权限来源见 host-reserved contextKeysPublic），壳侧只读不写。
+  // 反查经 getConfigurationContributions()（键 → property），i18n.t() 出当前语言显示名——第三方声明的
+  // title 是中文原文（= i18n key），壳侧 41 条是注册期 t() 过的成品，再过一次 t() 幂等。
+  {
+    id: "workbench.action.copySettingName",
+    title: "复制设置名称",
+    category: "首选项",
+    description: "把指定设置项的显示名称复制到剪贴板（当前界面语言）",
+    params: [SETTING_KEY_PARAM],
+    handler: async (...args) => {
+      const key = settingKeyOf(args);
+      if (!key) return;
+      const { getConfigurationContributions } = await import("../../registry/ConfigurationRegistry");
+      let title: string | undefined;
+      for (const contrib of getConfigurationContributions().values()) {
+        const prop = contrib.properties[key];
+        if (prop) {
+          title = prop.title;
+          break;
+        }
+      }
+      // 门控已保证有 title（when=settingHasTitle）；兜底回退 key = 与渲染侧 fallback 同口径（E1）。
+      const label = title ? i18n.t(title) : key;
+      const { writeClipboardText } = await import("../../services/ui/ClipboardService");
+      writeClipboardText(label);
+      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
+      pushToast({ message: i18n.t("已复制：") + label, ttl: TOAST_TTL_INFO });
+    },
+    menuId: MENU_SLOTS.SettingItemGear,
+    menuGroup: "navigation",
+    when: "settingHasTitle",
+  },
   {
     id: "workbench.action.copySettingAsJson",
     title: "复制为 JSON",

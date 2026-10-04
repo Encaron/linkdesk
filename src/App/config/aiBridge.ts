@@ -73,6 +73,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: false,
         // D4 合并行：主件 = 开关，伴生只读 = 运行时状态（原 ai.mcp.status 键退役）
         statusCommand: "aiBridge.statusMcp",
+        title: t("MCP 通道"),
         description: t("MCP 通道（JSON-RPC）——右边灰字是实时状态与监听地址。开启后 AI 客户端可发现并调用本软件的开放操作；改动重启软件后生效"),
       },
       "ai.mcp.openDetails": {
@@ -81,6 +82,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.mcpDetails",
+        title: t("通道详情"),
         description: t("打开通道详情"),
       },
       // 门锁之二：CLI 通道（linkdeskctl 命令行）——与 MCP 共用同一个内核监听（任一 true ⇒ 开）。
@@ -90,6 +92,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: false,
         // D4 合并行：伴生只读 = 同一内核监听的实况（原 ai.cli.status 键退役）
         statusCommand: "aiBridge.statusCli",
+        title: t("CLI 通道"),
         description: t("CLI 通道（linkdeskctl）——右边灰字是实时状态。适合脚本与命令行 AI，零常驻；改动重启软件后生效"),
       },
       "ai.cli.openInstall": {
@@ -98,6 +101,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.cliInstall",
+        title: t("安装说明"),
         description: t("查看安装说明"),
       },
       // 调试端口（CDP）开关——M5 挂账（AI#18 只落了更新重启保参那半，声明/落盘/读取归本格 AI#38.3）。
@@ -108,6 +112,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: false,
         // D4 合并行：伴生只读 = argv 实况（端口真的在不在听；原 ai.debug.status 键退役）
         statusCommand: "aiBridge.statusDebug",
+        title: t("调试端口"),
         description: t("调试端口（CDP）——右边灰字是端口实况。默认关；开启期间本机任何程序可连，仅排障时开，日常操作走上面两条通道"),
       },
 
@@ -118,6 +123,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.copyCliLine",
+        title: t("CLI 接入行"),
         description: t("复制这句话"),
       },
       // 复制内容与 `linkdeskctl mcp config --for` 同一生成器（cli/linkdeskctl/lib/mcp-config.mjs）
@@ -127,6 +133,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.copyMcpConfig",
+        title: t("MCP 配置"),
         description: t("复制 MCP 配置"),
       },
       // 落点 = M3 AI#15 的软件内入口（既有命令 app.openAiManual，零新命令）
@@ -136,6 +143,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: OPEN_AI_MANUAL_COMMAND_ID,
+        title: t("AI 操作手册"),
         description: t("打开 AI 操作手册"),
       },
 
@@ -146,6 +154,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "readonly",
         statusCommand: "aiBridge.scopeSummary",
+        title: t("开放范围明细"),
         description: t("开放范围明细——从白名单唯一真相源生成，与 linkdeskctl --help 同一份数据"),
       },
       "ai.scope.openList": {
@@ -154,6 +163,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.openScopeList",
+        title: t("完整操作清单"),
         description: t("查看完整操作清单"),
       },
       // token 明文永不进设置页（mockup 也没画）——只提供重新生成；查看走通道详情 / CLI
@@ -163,6 +173,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.regenerateToken",
+        title: t("接入凭据"),
         description: t("重新生成凭据"),
       },
       "ai.sensitive.openManager": {
@@ -171,6 +182,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.openSensitiveManager",
+        title: t("细分管理"),
         description: t("管理细分…"),
       },
 
@@ -182,6 +194,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: false,
         // D4 合并行：伴生只读 = 落盘开关实况（原 ai.auditLog.status 键退役）
         statusCommand: "aiBridge.statusAuditLog",
+        title: t("操作日志"),
         description: t("操作日志——右边灰字是记录状态（记录中／未开启）。AI 的每一次连接与操作都记（被拒的调用也记）；改动重启软件后生效"),
       },
       "ai.auditLog.open": {
@@ -190,6 +203,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.openLog",
+        title: t("日志文件"),
         description: t("查看日志"),
       },
     },

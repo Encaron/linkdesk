@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/plugin-sdk",
-  "version": "0.1.70",
+  "version": "0.1.72",
   "description": "@linkdesk/plugin-sdk——LinkDesk 插件作者 SDK（对标 @types/vscode）：window.linkdesk.* 类型 + 一键 build(.linkdesk-plugin) + dev 宿主 + plugin.json 验证 + eslint 门禁（E6#54d）。作者 npm i 后零壳源码依赖。",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,6 +30,10 @@
     "./own-dict-coverage": {
       "types": "./own-dict-coverage.d.ts",
       "default": "./own-dict-coverage.mjs"
+    },
+    "./check-config-titles": {
+      "types": "./check-config-titles.d.ts",
+      "default": "./check-config-titles.mjs"
     }
   },
   "files": [
@@ -41,7 +45,9 @@
     "svg-wellformed.mjs",
     "svg-wellformed.d.ts",
     "own-dict-coverage.mjs",
-    "own-dict-coverage.d.ts"
+    "own-dict-coverage.d.ts",
+    "check-config-titles.mjs",
+    "check-config-titles.d.ts"
   ],
   "sideEffects": false,
   "bin": {
