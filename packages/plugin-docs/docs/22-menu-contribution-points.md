@@ -160,7 +160,7 @@ Posting into the `menuBar` or `panel` slot with `group: "panel"` merges the item
 | `&&` / `\|\|` / `!` / `( )` | `resourceIsFile && !file-tree.inputFocus` | Boolean combination (`!` binds tightest, then `&&`, then `\|\|`) |
 | `true` / `false` | `when: "false"` | Constants (`false` = never show; useful as a placeholder) |
 
-### 🔴 Two pitfalls you must know
+### 🔴 Three pitfalls you must know
 
 **Pitfall 1 — literals need (single) quotes.**
 The parser only accepts `'…'` (and numbers) as literals. Writing `resourceExtname == .md` without quotes **fails to parse**,
@@ -183,6 +183,29 @@ use the boolean key:
 "when": "resourceIsFile"             // ✅ undefined → false
 "when": "resourceExtname != ''"      // ❌ false when undefined; reads fine but is ambiguous
 ```
+
+**Pitfall 3 — an identifier in `when` is a plain property lookup on the object you hand in (watch this in plugin-authored slots).**
+The host reads `when` with a **bare property lookup** (`key in overrides ? overrides[key] : global value`) — the identifier in the
+expression is used **verbatim as the property name**. So when you render one of **your own slots** with the shared `ContextMenu`
+and pass the row data down through its `context` prop, the name in `when` must match that object's field name
+**character for character, case included**. A mismatch — or renaming one side only — makes the expression **permanently false and
+the item silently disappears**: no error, no warning, **not even the console line from Pitfall 1**.
+
+```jsonc
+// menu declaration: reads the per-row "this row has a binding" flag
+{ "command": "my-plugin.copyKey", "when": "rowHasKey" }
+```
+```tsx
+// the object handed down at render time — the field name must match "rowHasKey" exactly
+<ContextMenu context={{ command, key, rowHasKey: key !== "" }} … />
+```
+
+> 🔴 Real case, 2026-10-05: the official `settings` plugin 1.0.32 shipped a keybinding-row gear menu whose three gated items
+> (copy keybinding / copy as JSON / reset to default) **never appeared at all** — the declaration said `keybindingHasKey` /
+> `keybindingIsUser`, while the fields were `hasKey` and there was no `isUser` at all. All nine gate legs and every unit test
+> were green, because **none of them evaluates `when`**. The fix pairs two things: derive the field names with
+> **computed property names** from a single constant (so a rename becomes a TypeScript compile error), plus a **contract
+> regression test** that reconciles the menu declaration in `plugin.json` against the runtime row object. Worth copying.
 
 ### Which keys you may use
 
@@ -230,6 +253,7 @@ A menu item **only references a command id**, so rule number one is always:
 |:--|:--|:--|
 | Not a single item of mine in the slot | The slot key was written as the member name (`FileContext`) | The `check-menu-slot-case` gate (inside `npm run lint` / `verify`); or look at your `plugin.json` and check the key is lower camelCase |
 | Appears sometimes, not others | The `when` is false | Re-run the `when` in the debug entry, or look for `when 表达式解析失败` in the console |
+| My item **never appears** (not intermittently), and the console is clean | The identifier in `when` does not match the field name of the object you hand into the menu (spelling/case) — the host does a bare property lookup, so a miss is simply false | Derive the field name with a **computed property name** from one constant, or write a declaration↔runtime contract test (see §5, Pitfall 3) |
 | Appears but does nothing when clicked | The command was never registered (declared in `contributes.commands` but no pool-side `registerCommand`) | See [21-command-ification-spec](21-command-ification-spec.md) §2 "two legs" |
 | My item sorts first/last and loses to others | `order` defaults to `100` and other groups are smaller | Adjust `order` or rename the group (group order = first appearance) |
 | A "missing your repo's prefix" report | A command id / config key / appearance id / context key lacks the `<pluginId>.` prefix | `npm run verify` reports the site and suggests a name (see [16-naming-conventions](16-naming-conventions.md) §7) |
