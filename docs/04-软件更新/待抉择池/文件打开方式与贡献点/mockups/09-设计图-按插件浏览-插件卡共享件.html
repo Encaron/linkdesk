@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 · 按插件浏览 · 插件卡共享件（PluginCard）</title>
+<style>
+  :root{
+    --bg:#141414; --panel:#1e1e1e; --panel2:#252526; --border:#3c3c3c;
+    --text:#e8e8e8; --muted:#9d9d9d; --accent:#4f9eed; --accent-soft:rgba(79,158,237,.16);
+    --ok:#4ec98a; --warn:#d7a94f; --danger:#e06c6c; --pillbg:#2c2c2c;
+  }
+  html[data-theme="light"]{
+    --bg:#f6f6f6; --panel:#ffffff; --panel2:#f0f0f0; --border:#d4d4d4;
+    --text:#1f1f1f; --muted:#6b6b6b; --accent:#0b6ec2; --accent-soft:rgba(11,110,194,.12);
+    --ok:#1a7f4e; --warn:#9a6b13; --danger:#b23c3c; --pillbg:#eaeaea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text);
+    font:13px/1.6 "Segoe UI","Microsoft YaHei",sans-serif; padding:0 0 40px;}
+  a{color:var(--accent)}
+  .page-head{position:sticky; top:0; z-index:50; background:var(--panel); border-bottom:1px solid var(--border);
+    padding:10px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+  .page-head h1{font-size:15px; margin:0;}
+  .authority{font-size:12px; color:var(--muted);}
+  .authority b{color:var(--accent); font-weight:600;}
+  .btn{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:4px;
+    padding:4px 10px; font-size:12px; cursor:pointer;}
+  .btn:hover{border-color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .btn.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600}
+  main{max-width:980px; margin:0 auto; padding:0 20px;}
+  section{margin:26px 0;}
+  h2{font-size:14px; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border);}
+  h2 .en{color:var(--muted); font-weight:400; font-size:12px; margin-left:8px;}
+  .note{font-size:12px; color:var(--muted); margin:6px 0;}
+  .note b{color:var(--text)}
+  table.spec{width:100%; border-collapse:collapse; font-size:12px;}
+  table.spec th,table.spec td{border:1px solid var(--border); padding:5px 8px; text-align:left; vertical-align:top;}
+  table.spec th{background:var(--panel2); font-weight:600; white-space:nowrap;}
+  table.spec td code{font-family:Consolas,monospace; font-size:11px; color:var(--accent);}
+  .tag-req{color:var(--danger); font-size:11px}
+  .tag-opt{color:var(--muted); font-size:11px}
+
+  /* ════ PluginCard 组件样式（= 规格本体，交付时平移进 plugin-card.css） ════ */
+  .plugin-card{border:1px solid var(--border); border-radius:6px; background:var(--panel); margin-bottom:8px; overflow:visible;}
+  .plugin-card.is-open{border-color:var(--accent);}
+  .plugin-card.is-disabled{opacity:.55;}
+  .plugin-card-head{position:relative; height:40px;}
+  .plugin-card-toggle{position:absolute; inset:0; display:flex; align-items:center; gap:9px;
+    padding:0 36px 0 10px; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; width:100%;}
+  .plugin-card-toggle:hover{background:var(--panel2);}
+  .plugin-card-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+  .plugin-card.is-open .plugin-card-toggle{border-radius:6px 6px 0 0;}
+  .pc-icon{width:20px; height:20px; flex:0 0 20px; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:4px; font-size:9px; font-weight:700; color:#fff; overflow:hidden;}
+  .pc-icon svg{display:block}
+  .pc-idblock{min-width:0; display:flex; flex-direction:column; line-height:1.25;}
+  .pc-title{font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px;}
+  .pc-sub{font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px;}
+  .pc-summary{margin-left:auto; font-size:11px; color:var(--muted); white-space:nowrap;}
+  .pc-chevron{flex:0 0 16px; transition:transform .15s ease; color:var(--muted);}
+  .plugin-card.is-open .pc-chevron{transform:rotate(180deg);}
+  .plugin-card-gear{position:absolute; right:30px; top:8px; width:24px; height:24px; display:flex; align-items:center;
+    justify-content:center; background:var(--panel); border:1px solid transparent; border-radius:4px; color:var(--muted);
+    cursor:pointer; opacity:0; transition:opacity .12s ease;}
+  .plugin-card-head:hover .plugin-card-gear,
+  .plugin-card-gear:focus-visible,
+  .plugin-card.menu-open .plugin-card-gear{opacity:1;}
+  .plugin-card-gear:hover{color:var(--text); border-color:var(--border); background:var(--panel2);}
+  .plugin-card-gear:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .plugin-card-body{border-top:1px solid var(--border); max-height:280px; overflow:auto; border-radius:0 0 6px 6px;}
+  .pc-row{display:flex; align-items:center; gap:8px; min-height:28px; padding:0 12px 0 39px; font-size:12px;}
+  .pc-row:hover{background:var(--panel2);}
+  .pc-row-dim{opacity:.5}
+  .pc-ext{font-family:Consolas,monospace; color:var(--accent); flex:0 0 110px;}
+  .pill{display:inline-block; font-size:11px; padding:1px 8px; border-radius:9px; background:var(--pillbg); color:var(--muted);}
+  .pill-user{background:var(--accent-soft); color:var(--accent);}
+  .pill-auto{color:var(--ok)}
+  .pill-cand{color:var(--warn)}
+  .pill-only{color:var(--muted)}
+  .pc-act{margin-left:auto; background:none; border:0; color:var(--accent); font-size:11px; cursor:pointer;
+    opacity:0; padding:2px 6px; border-radius:3px;}
+  .pc-row:hover .pc-act, .pc-act:focus-visible{opacity:1}
+  .pc-act:hover{text-decoration:underline}
+  .pc-act:focus-visible{outline:2px solid var(--accent); opacity:1}
+  .pc-body-note{font-size:11px; color:var(--muted); padding:4px 12px 8px 39px;}
+
+  /* 卡头解剖标注 */
+  .anatomy{position:relative; padding:18px 210px 46px 12px;}
+  .anno{position:absolute; font-size:11px; color:var(--accent); background:var(--accent-soft);
+    border:1px dashed var(--accent); border-radius:3px; padding:1px 6px; white-space:nowrap; z-index:5;}
+
+  /* 齿轮菜单（非模态，锚定齿轮下方） */
+  .gear-menu{position:fixed; z-index:100; min-width:220px; background:var(--panel2); border:1px solid var(--border);
+    border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.45); padding:4px;}
+  .gear-menu button{display:block; width:100%; text-align:left; background:none; border:0; color:var(--text);
+    font-size:12px; padding:6px 10px; border-radius:4px; cursor:pointer;}
+  .gear-menu button:hover:not(:disabled){background:var(--accent-soft)}
+  .gear-menu button:focus-visible{outline:2px solid var(--accent)}
+  .gear-menu button:disabled{color:var(--muted); cursor:default}
+
+  /* 日志 */
+  .logwrap{border:1px solid var(--border); border-radius:6px; background:var(--panel);}
+  .logbar{display:flex; align-items:center; gap:8px; padding:6px 10px; border-bottom:1px solid var(--border); font-size:12px;}
+  #log{height:140px; overflow:auto; padding:6px 10px; font-family:Consolas,monospace; font-size:11px; line-height:1.7;}
+  #log .hl{color:var(--accent)}
+  #log .ev{color:var(--muted)}
+
+  .democol{display:flex; flex-direction:column; gap:14px;}
+  .srcbtns{display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;}
+  .decl{font-family:Consolas,monospace; font-size:11px; color:var(--muted);}
+  .decl b{color:var(--accent); font-weight:400}
+  code.k{font-family:Consolas,monospace; font-size:11px; background:var(--panel2); padding:1px 5px; border-radius:3px; color:var(--accent);}
+  .kbd{font-family:Consolas,monospace; font-size:11px; border:1px solid var(--border); border-bottom-width:2px;
+    border-radius:3px; padding:0 5px; background:var(--panel2);}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>09 · 按插件浏览 · 插件卡共享件（PluginCard）</h1>
+  <span class="authority">图纸分工：<b>本图 = 组件蓝图</b> · 设置页管理器全景 = <b>08</b> · 文件树右键选择器 = <b>05</b> · 06/07 = 思路/时序辅图</span>
+  <span style="flex:1"></span>
+  <button class="btn" id="themeBtn" title="切换亮暗">☾ 亮暗切换</button>
+</header>
+<main>
+
+<section id="s1">
+  <h2>① 现状与缺口 <span class="en">为什么升格成共享件</span></h2>
+  <div class="note">08 里「按插件浏览」的卡（M4）只是示意贴图。动工前必须补齐的四块：</div>
+  <table class="spec">
+    <tr><th>#</th><th>缺口</th><th>本件补法</th></tr>
+    <tr><td>1</td><td>无组件——卡是 HTML 贴图，键盘不可达</td><td>真组件进 <code class="k">@linkdesk/ui</code>（文件落点见 ⑨），头/体/齿轮全键盘可达</td></tr>
+    <tr><td>2</td><td>图标无来源裁决</td><td>消费现成 <code class="k">PluginIcon</code>（manifest 唯一裁决源，见 ⑤）</td></tr>
+    <tr><td>3</td><td>齿轮菜单无契约</td><td>复用共享 <code class="k">ContextMenu</code> 非模态锚定变体（E5.8#92 同款，不吞首击）</td></tr>
+    <tr><td>4</td><td>尺寸/状态/边缘无规格</td><td>本图 ③④⑤⑥⑧ 逐项给现场</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2>② 组件正表 <span class="en">props 契约——共享件零中文，文案一律调用方 t() 供给</span></h2>
+  <table class="spec">
+    <tr><th>prop</th><th>型</th><th>必选</th><th>裁决</th></tr>
+    <tr><td><code>pluginId</code></td><td>string</td><td class="tag-req">必</td><td>身份＋副文本第二行（显示名可改，id 是唯一稳定识别物）</td></tr>
+    <tr><td><code>manifest</code></td><td>ManifestIconShape</td><td class="tag-opt">可选</td><td>透传 PluginIcon——图标唯一裁决源；缺省走其兜底链</td></tr>
+    <tr><td><code>title</code></td><td>string</td><td class="tag-req">必</td><td>显示名（超长省略＋title 全文）</td></tr>
+    <tr><td><code>version</code></td><td>string</td><td class="tag-opt">可选</td><td>副文本「id · v1.2.0」</td></tr>
+    <tr><td><code>summary</code></td><td>ReactNode</td><td class="tag-opt">可选</td><td>常驻摘要（折叠/展开都在），如「声明 45 类 · 竞争 3 类」——管理器组装</td></tr>
+    <tr><td><code>expanded</code></td><td>boolean</td><td class="tag-req">必</td><td><b>受控</b>——开合策略归管理器（搜索联动、默认全收都是管理器的事）</td></tr>
+    <tr><td><code>onToggle</code></td><td>(next)=&gt;void</td><td class="tag-req">必</td><td>与 expanded 成对</td></tr>
+    <tr><td><code>gearItems</code></td><td>MenuItem[]</td><td class="tag-opt">可选</td><td>卡头齿轮菜单；缺省 = 不渲染齿轮</td></tr>
+    <tr><td><code>disabled</code></td><td>boolean</td><td class="tag-opt">可选</td><td>插件停用：卡体降透明＋全惰性（E5：禁用=不参选解析）</td></tr>
+    <tr><td><code>children</code></td><td>ReactNode</td><td class="tag-opt">可选</td><td>展开体——行清单管理器自组，<b>不进共享包</b>（03 §1）</td></tr>
+  </table>
+</section>
+
+<section id="s3">
+  <h2>③ 卡头解剖 <span class="en">冻结标注——尺寸是规格不是建议</span></h2>
+  <div class="anatomy" id="anatomy"></div>
+  <div class="note">🔴 <b>嵌套按钮禁令</b>：头里有「整头可点」和「齿轮」两个热区——button 套 button 是非法 HTML。规格：head 是 div，内含①铺满的真 <code class="k">&lt;button&gt;</code> toggle（<code class="k">aria-expanded</code>＋<code class="k">aria-controls</code>）②<b>兄弟节点</b>齿轮绝对定位叠其上（点击天然不冒泡到 toggle）。</div>
+</section>
+
+<section id="s4">
+  <h2>④ 全状态现场 <span class="en">真的能点——展开／齿轮／行动作全是活的</span></h2>
+  <div class="note">行状态全家桶：<span class="pill pill-auto">默认（自动）</span> <span class="pill pill-user">当前默认（你设的）→ 恢复自动</span> <span class="pill pill-cand">候选 · 默认是 X → 设为默认</span> <span class="pill pill-only">唯一处理者</span> + 停用惰性（E5）。
+    动作写的是 host 面 <code class="k">fileAssociation.setDefault</code>——与文件树右键同一真源（E31 双向同步）。<b>试：展开「编辑器（官方）」看 45 类限高滚动（280px）；hover 任意卡头出齿轮；hover 行出行尾动作。</b></div>
+  <div id="live-cards"></div>
+</section>
+
+<section id="s5">
+  <h2>⑤ 图标全链现场 <span class="en">来源四源枚举 × 白名单兜底——点按钮换着看</span></h2>
+  <div class="note">来源唯一真相源 = plugin.json 顶层 <code class="k">icon</code> ＋ <code class="k">iconSource: codicon | svg | url | lucide</code>（schema:63-70）；
+    渲染唯一组件 = 共享 <code class="k">PluginIcon</code>（E6#54b 纯 props——谁有 manifest 谁传，无 registry 特权查询）；
+    彩色身份回退链 = <code class="k">marketIcon ?? icon ?? DEFAULT_PLUGIN_IDENTITY_URI</code>（默认彩色块）。
+    <b>lucide 名必须在白名单（LUCIDE_MAP）内</b>，白名单外静默兜底；要保渲染的作者用 codicon 或 url。</div>
+  <div class="srcbtns" id="srcbtns"></div>
+  <div id="icon-demo"></div>
+  <div class="note">📌 <b>点开后的显示</b>：卡内图标<b>展开不放大</b>（身份图全卡只出现一次——防第二真相源）；点图标 = 点头 = 展开（同一热区）。「打开插件详情」<b>不在本件</b>——壳现无承载命令（已查空），v1 齿轮菜单不含此项（03 §3 挂账）；卡头常驻摘要已给「声明/竞争/默认」计数。</div>
+</section>
+
+<section id="s6">
+  <h2>⑥ 键盘与可及 <span class="en">本页就是真组件，现在就能试</span></h2>
+  <div class="note">
+    Tab 站位（每卡三站）：<span class="kbd">Tab</span> → 整头 toggle（<span class="kbd">Enter</span>/<span class="kbd">Space</span> 开合）→ 齿轮（焦点到达即<b>恒显</b>，不靠 hover）→ 展开体行动作钮。菜单内 <span class="kbd">Esc</span> 关闭；<span class="kbd">Esc</span> 不用于收卡（Esc 是菜单的）。焦点环 2px accent 全站可见；<code class="k">prefers-reduced-motion</code> 下折角零过渡。
+  </div>
+</section>
+
+<section id="s7">
+  <h2>⑦ 亮暗两面 <span class="en">页头按钮切换——对比度现场算，不是估的</span></h2>
+  <div class="note">全 token 无写死色值；卡面文字/徽标对卡底对比度实测：</div>
+  <table class="spec" id="contrast"></table>
+</section>
+
+<section id="s8">
+  <h2>⑧ 生命周期 <span class="en">装卸／停用——卡是活物，跟插件状态走</span></h2>
+  <div class="srcbtns">
+    <button class="btn" data-lifecycle="install">安装「PDF 阅读器 Pro（第三方）」</button>
+    <button class="btn" data-lifecycle="disable">停用／恢复「图片阅读器」</button>
+  </div>
+  <div class="note">安装第二只 PDF 阅读器 → 卡片列表<b>即时</b>多一张卡、.pdf 变竞争但<b>默认不漂移</b>（E1，激活序在前者仍持默认）＋提示链（01 §T2 第 5 条）。卸载被覆盖表指向的插件 → 覆盖键<b>惰性失效</b>回声明序，<b>重装即复活</b>（E6——键不清盘）。停用 → 卡降透明、行惰性、<b>解析不参选</b>（E5）。</div>
+</section>
+
+<section id="s9">
+  <h2>⑨ 声明链与文件落点 <span class="en">谁声明 → 谁传 → 谁渲染 → 怎么发版</span></h2>
+  <table class="spec">
+    <tr><th>环节</th><th>谁</th><th>凭据</th></tr>
+    <tr><td>① 声明者</td><td>各插件 plugin.json：<code>icon</code>＋<code>iconSource</code>＋<code>contributes.fileAssociations</code></td><td>schema:63-70 / 477-490</td></tr>
+    <tr><td>② 传递者（零知识）</td><td>设置插件管理器：<code class="k">plugins.listAll()</code>（全 manifest）＋ <code class="k">fileAssociation</code> 读面（01 §T2）→ 组装 props；<b>组件零数据知识</b></td><td>contracts:2154；零新 API</td></tr>
+    <tr><td>③ 能力本体</td><td><code class="k">PluginCard</code>（本件）＋ <code class="k">PluginIcon</code>（现成，图标裁决）＋ <code class="k">ContextMenu</code>（非模态锚定）＋ <code class="k">Badge</code></td><td>@linkdesk/ui 既有导出＋本件 1 新增</td></tr>
+  </table>
+  <table class="spec" style="margin-top:10px">
+    <tr><th>文件</th><th>动作</th><th>说明</th></tr>
+    <tr><td><code>src/components/shared/plugin-card/PluginCard.tsx</code></td><td>新建</td><td>组件本体（@shared 别名实体 = 壳仓 shared 目录）</td></tr>
+    <tr><td><code>src/components/shared/plugin-card/plugin-card.css</code></td><td>新建</td><td>本页 .plugin-card-* 样式平移；全 token 零写死色</td></tr>
+    <tr><td><code>packages/linkdesk-ui/src/index.ts</code></td><td>+1 行</td><td><code>export { default as PluginCard } from "@shared/plugin-card/PluginCard";</code></td></tr>
+    <tr><td><code>packages/linkdesk-ui/package.json</code></td><td>0.2.40 → 0.2.41</td><td>版本行照例记账壳仓 CHANGELOG；宿主 CSS 清单随 build 链重生（0.2.38 先例）</td></tr>
+  </table>
+  <div class="note">发版策略（用户 2026-10-04 拍板）：🟢 <b>ui 包发 npm、设置插件发市场版</b>——自主链含 push；⛔ <b>壳与安装版不发版</b>，全程 <b>dev 版验收</b>（bundled 同步进壳仓只是 commit 不是发版）。详见 03 §7。</div>
+</section>
+
+<section id="logsec">
+  <h2>操作日志 <span class="en">所有交互打到这里——高度从一开始就固定</span></h2>
+  <div class="logwrap">
+    <div class="logbar"><b>解析与写面日志</b><span style="flex:1"></span><button class="btn" id="clearLog">清空</button></div>
+    <div id="log"></div>
+  </div>
+</section>
+
+</main>
+<script>
+"use strict";
+/* ── 工具 ── */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+var SVG_GEAR = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5.5A2.5 2.5 0 1 0 8 10.5 2.5 2.5 0 0 0 8 5.5Zm6.04 2.5c0 .36-.03.7-.1 1.03l1.5 1.17-1.5 2.6-1.77-.71c-.53.42-1.13.76-1.79.99L10 14.5H6.99l-.38-1.42a5.4 5.4 0 0 1-1.79-.99l-1.77.71-1.5-2.6 1.5-1.17a5.9 5.9 0 0 1 0-2.06L1.55 5.8l1.5-2.6 1.77.71c.53-.42 1.13-.76 1.79-.99L7 1.5h3.01l.38 1.42c.66.23 1.26.57 1.79.99l1.77-.71 1.5 2.6-1.5 1.17c.07.33.1.67.1 1.03Z"/></svg>';
+var SVG_CHEV = '<svg class="pc-chevron" width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+var SVG_BOOK = '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 2.5h4.5c.8 0 1.5.7 1.5 1.5v9c0-.8-.7-1.5-1.5-1.5H2v-9Zm12 0H9.5C8.7 2.5 8 3.2 8 4v9c0-.8.7-1.5 1.5-1.5H14v-9Z"/></svg>';
+var SVG_SPARK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/></svg>';
+var SVG_URL = '<img alt="url 图标" width="20" height="20" src="data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\'%3E%3Crect width=\'20\' height=\'20\' rx=\'4\' fill=\'%23c43e3e\'/%3E%3Ctext x=\'10\' y=\'13.5\' font-size=\'7\' fill=\'white\' text-anchor=\'middle\' font-family=\'monospace\'%3EPDF%3C/text%3E%3C/svg%3E">';
+function block(color, text){ return '<span class="pc-icon" style="background:'+color+'">'+esc(text)+'</span>'; }
+
+/* ── 演示数据（真实声明串口径：扩展名不带点，归一存小写） ── */
+var EDITOR_EXTS = ['ts','tsx','js','jsx','mjs','cjs','json','jsonc','html','htm','css','scss','less','md','xml','svg','yml','yaml','toml','ini','log','csv','sql','sh','ps1','py','rb','rs','go','java','kt','swift','c','h','cpp','hpp','cs','php','lua','vue','svelte','dart','txt','diff','patch'];
+var P = {
+  'editor': { id:'editor', name:'编辑器（官方）', ver:'1.0.8', art:block('#4f9eed','ED'), iconKind:'codicon',
+    exts: EDITOR_EXTS },
+  'pdf-reader': { id:'pdf-reader', name:'PDF 阅读器（官方）', ver:'1.2.0', art:block('#c43e3e','PDF'), iconKind:'svg',
+    exts:['pdf','xps','epub'] },
+  'image-viewer': { id:'image-viewer', name:'图片阅读器（官方）', ver:'0.9.3', art:block('#8a63d2','图'), iconKind:'svg',
+    exts:['png','jpg','jpeg','gif','webp','bmp','svg'] },
+  'md-reader': { id:'md-reader', name:'MD 文档阅读器', ver:'0.5.1', art:block('#2e9e8f','MD'), iconKind:'lucide-in',
+    exts:['md','markdown'] },
+  'MyEEEEEditorrrrrr-pro-plus-max-ultra': { id:'MyEEEEEditorrrrrr-pro-plus-max-ultra', name:'MyEEEEEditorrrrrr pro plus max ultra', ver:'0.1.0', art:block('#d78a4f','EE'), iconKind:'lucide-out',
+    exts:['ts','js','json','css','html','csv','log','ini'] },
+  'keil-assistant': { id:'keil-assistant', name:'Keil 助手', ver:'0.3.0', art:block('#5a9e5a','K'), iconKind:'url',
+    exts:['uvprojx','MX'] },
+  'pdf-reader-pro': { id:'pdf-reader-pro', name:'PDF 阅读器 Pro（第三方）', ver:'2.0.0', art:block('#a03060','P²'), iconKind:'svg',
+    exts:['pdf'], gone:true }
+};
+/* 激活序（先激活先得 = 自动默认的 tie-break 基线；E1） */
+var ORDER = ['editor','pdf-reader','image-viewer','md-reader','keil-assistant','MyEEEEEditorrrrrr-pro-plus-max-ultra'];
+var overrides = {};               /* ext -> pluginId（用户覆盖表 workbench.fileAssociations 的演示态） */
+var state = { open:{ 'md-reader':true, 'keil-assistant':true }, iconSrc:'codicon', installed:false };
+
+/* ── 解析演示（同 01 §T2 一条纯函数的口径） ── */
+function alive(id){ var p=P[id]; return p && !p.gone && !p.disabled; }
+function cands(e){ var out=[]; for(var id in P){ var p=P[id]; if(!p.gone && !p.disabled && p.exts.indexOf(e)>=0) out.push(id); } return out; }
+function effective(e){
+  var c=cands(e); if(!c.length) return null;
+  var t=overrides[e];
+  if(t && alive(t) && c.indexOf(t)>=0) return t;   /* 覆盖表优先；指向者不在场 → 惰性跳过（E6） */
+  for(var i=0;i<ORDER.length;i++){ if(c.indexOf(ORDER[i])>=0) return ORDER[i]; }
+  return c[0];
+}
+function disp(id){ return P[id] ? P[id].name : id; }
+
+/* ── 卡渲染（class 结构 = 交付规格） ── */
+function rowHTML(pid, e){
+  var p=P[pid], c=cands(e), eff=effective(e);
+  var pill, act='';
+  if(p.disabled){ pill='<span class="pill">已停用·不参选</span>'; }
+  else if(c.length<=1){ pill='<span class="pill pill-only">唯一处理者</span>'; }
+  else if(eff===pid){
+    if(overrides[e]){ pill='<span class="pill pill-user">当前默认（你设的）</span>';
+      act='<button class="pc-act" data-act="clear" data-ext="'+esc(e)+'">恢复自动</button>'; }
+    else pill='<span class="pill pill-auto">默认（自动）</span>';
+  } else {
+    pill='<span class="pill pill-cand">候选 · 默认是 '+esc(disp(eff))+'</span>';
+    act='<button class="pc-act" data-act="set" data-ext="'+esc(e)+'">设为默认</button>';
+  }
+  var key=e.toLowerCase();   /* 归一存储键：声明 .MX → 存 mx（E10/E34） */
+  return '<div class="pc-row'+(p.disabled?' pc-row-dim':'')+'">'
+    +'<span class="pc-ext">.'+esc(key)+'</span>'+pill+act+'</div>';
+}
+function summaryOf(pid){
+  var p=P[pid], contest=0, def=0;
+  p.exts.forEach(function(e){ var c=cands(e); if(c.length>1) contest++; if(effective(e)===pid) def++; });
+  return '声明 '+p.exts.length+' 类 · 竞争 '+contest+' 类 · 默认持有 '+def+' 类';
+}
+function cardHTML(pid){
+  var p=P[pid], open=!!state.open[pid];
+  var rows = p.exts.map(function(e){ return rowHTML(pid,e); }).join('');
+  var note = p.disabled ? '<div class="pc-body-note">插件已停用——不参选解析（E5）；启用后行状态即时复原。</div>' : '';
+  return '<div class="plugin-card'+(open?' is-open':'')+(p.disabled?' is-disabled':'')+'" id="card-'+esc(pid)+'">'
+    +'<div class="plugin-card-head">'
+    +'<button class="plugin-card-toggle" aria-expanded="'+(open?'true':'false')+'" aria-controls="body-'+esc(pid)+'" data-toggle="'+esc(pid)+'">'
+    + p.art
+    +'<span class="pc-idblock"><span class="pc-title">'+esc(p.name)+'</span><span class="pc-sub">'+esc(p.id)+' · v'+esc(p.ver)+'</span></span>'
+    +'<span class="pc-summary">'+summaryOf(pid)+'</span>'
+    + SVG_CHEV
+    +'</button>'
+    +'<button class="plugin-card-gear" data-gear="'+esc(pid)+'" aria-label="更多操作" title="更多操作">'+SVG_GEAR+'</button>'
+    +'</div>'
+    +'<div class="plugin-card-body" id="body-'+esc(pid)+'"'+(open?'':' hidden')+'>'
+    +'<div class="pc-row" style="padding-left:12px"><span class="pc-ext" style="flex:0 0 auto;color:var(--muted)">— 声明清单（'+p.exts.length+' 类，归一存储键 · E34 零语义） —</span></div>'
+    + rows + note
+    +'</div></div>';
+}
+function renderCards(){
+  var ids = ORDER.filter(function(id){ return !P[id].gone; });
+  /* 已装但激活序外的（pdf-reader-pro 装上后 push 进 ORDER，天然覆盖） */
+  document.getElementById('live-cards').innerHTML = ids.map(cardHTML).join('');
+}
+
+/* ── 齿轮菜单（非模态锚定：不吞首击；Esc 关） ── */
+var menuEl = null, menuPid = null;
+function closeMenu(){
+  if(menuEl){ menuEl.remove(); menuEl=null; }
+  if(menuPid){ var c=document.getElementById('card-'+menuPid); if(c) c.classList.remove('menu-open'); menuPid=null; }
+  document.removeEventListener('keydown', menuEsc);
+}
+function menuEsc(ev){ if(ev.key==='Escape') closeMenu(); }
+function openMenu(pid, gearBtn){
+  closeMenu();
+  menuPid = pid;
+  var mine = P[pid].exts.filter(function(e){ return overrides[e]===pid; });
+  var m = document.createElement('div');
+  m.className='gear-menu'; m.setAttribute('role','menu');
+  m.innerHTML =
+    '<button role="menuitem" data-mi="reset"'+(mine.length?'':' disabled')+'>重置与我相关的默认'+(mine.length?'（'+mine.length+' 类）':'（无覆盖）')+'</button>'
+    +'<button role="menuitem" data-mi="copyid">复制插件 ID</button>';
+  document.body.appendChild(m);
+  var r = gearBtn.getBoundingClientRect();
+  var left = Math.min(r.left, window.innerWidth - m.offsetWidth - 8);
+  m.style.left = Math.max(8,left)+'px';
+  m.style.top  = (r.bottom+4)+'px';
+  var card = document.getElementById('card-'+pid); if(card) card.classList.add('menu-open');
+  document.addEventListener('keydown', menuEsc);
+  menuEl = m;
+}
+
+/* ── 日志（高度从一开始就固定 140px——底下内容不随日志增长跑位） ── */
+var logN = 0;
+function log(msg, hl){
+  var el = document.getElementById('log');
+  logN++;
+  var d = document.createElement('div');
+  d.className = hl ? 'hl' : 'ev';
+  d.textContent = '['+String(logN).padStart(2,'0')+'] '+msg;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+function clearLog(){ document.getElementById('log').innerHTML=''; logN=0; log('日志已清空'); }
+
+/* ── ③ 解剖标注（冻结卡 + 尺寸 chips） ── */
+function renderAnatomy(){
+  var html =
+    '<span class="anno" style="right:216px; top:-6px;">头高 40px</span>'
+    +'<span class="anno" style="right:330px; top:12px;">图标 20×20（PluginIcon）</span>'
+    +'<span class="anno" style="right:210px; top:52px;">齿轮 24×24 · hover 显形 / 焦点恒显</span>'
+    +'<span class="anno" style="right:12px; top:52px;">折角 16 · 展开旋 180°</span>'
+    +'<span class="anno" style="left:12px; bottom:6px;">行高 28px · ext 12px mono</span>'
+    +'<span class="anno" style="right:300px; bottom:6px;">体限高 280px · 溢出滚动</span>'
+    +'<div style="max-width:520px">'
+    + cardHTML('pdf-reader')
+      .replace('data-toggle="pdf-reader"','data-frozen="1"')   /* 解剖卡冻结：摘掉 toggle/gear 挂钩，防 id 冲突与误开合 */
+      .replace('data-gear="pdf-reader"','data-frozen="2"')
+      .replace('id="card-pdf-reader"','id="anat-card"')
+      .replace('id="body-pdf-reader"','id="anat-body"')
+      .replace('aria-controls="body-pdf-reader"','aria-controls="anat-body"')
+    +'</div>';
+  document.getElementById('anatomy').innerHTML = html;
+}
+
+/* ── ⑤ 图标四源现场 ── */
+var ICON_SOURCES = [
+  { key:'codicon',    decl:'"icon": "book", "iconSource": "codicon"',    sim:'<span class="pc-icon" style="color:var(--text); background:var(--pillbg)">'+SVG_BOOK+'</span>', note:'Type-1 单色剪影——图标栏同源' },
+  { key:'svg',        decl:'"icon": "assets/pdf.svg", "iconSource": "svg"', sim: block('#c43e3e','PDF'), note:'Type-2 彩色身份图——标签栏/市场同源' },
+  { key:'url',        decl:'"icon": "https://cdn.example/pdf.png", "iconSource": "url"', sim:'<span class="pc-icon" style="background:var(--pillbg)">'+SVG_URL+'</span>', note:'远程/协议图——linkdesk:// 或 data URI 同走 img 支' },
+  { key:'lucide-in',  decl:'"icon": "Sparkles", "iconSource": "lucide"', sim:'<span class="pc-icon" style="color:var(--accent); background:var(--pillbg)">'+SVG_SPARK+'</span>', note:'白名单内（LUCIDE_MAP 有 Sparkles）→ 正常渲染' },
+  { key:'lucide-out', decl:'"icon": "TinyUnicorn", "iconSource": "lucide"', sim:block('#7c5cff','P'), note:'白名单外 → 静默兜底彩色身份块（想保渲染请用 codicon/url）' }
+];
+function renderIconDemo(){
+  var cur = ICON_SOURCES.filter(function(s){ return s.key===state.iconSrc; })[0];
+  document.getElementById('srcbtns').innerHTML = ICON_SOURCES.map(function(s){
+    return '<button class="btn'+(s.key===state.iconSrc?' on':'')+'" data-icon-src="'+s.key+'">'+s.key+'</button>';
+  }).join('');
+  document.getElementById('icon-demo').innerHTML =
+    '<div class="plugin-card is-open" style="max-width:520px">'
+    +'<div class="plugin-card-head"><div class="plugin-card-toggle" style="cursor:default">'
+    + cur.sim
+    +'<span class="pc-idblock"><span class="pc-title">PDF 阅读器（官方）</span><span class="pc-sub">声明串 → <span class="decl"><b>'+esc(cur.decl)+'</b></span></span></span>'
+    +'<span class="pc-summary">'+esc(cur.note)+'</span></div></div>'
+    +'</div>'
+    +'<div class="note">本卡头为<b>模拟</b>——真实渲染 = <code class="k">&lt;PluginIcon pluginId manifest className&gt;</code>；本页只是把四种 manifest 写法的落点摆给你看。</div>';
+}
+
+/* ── ⑦ 对比度现场算 ── */
+function lum(c){
+  var m = c.match(/\d+/g); if(!m) return 0;
+  var v = m.slice(0,3).map(function(x){ x=+x/255; return x<=0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055,2.4); });
+  return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2];
+}
+function ratio(fg,bg){ var a=lum(fg), b=lum(bg); return ((Math.max(a,b)+0.05)/(Math.min(a,b)+0.05)); }
+function renderContrast(){
+  var probe = document.createElement('div');
+  probe.style.cssText='position:absolute;visibility:hidden;color:var(--text)';
+  probe.innerHTML='<span style="color:var(--muted)"></span><span style="color:var(--accent)"></span><span style="background:var(--panel)"></span><span style="background:var(--pillbg)"></span>';
+  document.body.appendChild(probe);
+  var text = getComputedStyle(probe).color;                       /* probe 自身 color = --text */
+  var muted = getComputedStyle(probe.children[0]).color;
+  var accent = getComputedStyle(probe.children[1]).color;
+  var panel = getComputedStyle(probe.children[2]).backgroundColor;
+  var pill = getComputedStyle(probe.children[3]).backgroundColor;
+  document.body.removeChild(probe);
+  var rows = [
+    ['标题 text / 卡底 panel', ratio(text,panel)],
+    ['副文本 muted / 卡底 panel', ratio(muted,panel)],
+    ['ext 键 accent / 卡底 panel', ratio(accent,panel)],
+    ['徽标 muted / 徽标底 pillbg', ratio(muted,pill)]
+  ];
+  document.getElementById('contrast').innerHTML = '<tr><th>组合</th><th>实测对比度</th><th>判</th></tr>'
+    + rows.map(function(r){
+      var ok = r[1]>=4.5;
+      return '<tr><td>'+r[0]+'</td><td>'+r[1].toFixed(2)+':1</td><td>'+(ok?'✅ AA':'⚠️ 需调 token')+'</td></tr>';
+    }).join('');
+}
+
+/* ── ⑧ 生命周期 ── */
+function toggleLifecycle(kind, btn){
+  if(kind==='install'){
+    state.installed = !state.installed;
+    P['pdf-reader-pro'].gone = !state.installed;
+    btn.classList.toggle('on', state.installed);
+    btn.textContent = state.installed ? '卸载「PDF 阅读器 Pro（第三方）」' : '安装「PDF 阅读器 Pro（第三方）」';
+    if(state.installed){
+      if(ORDER.indexOf('pdf-reader-pro')<0) ORDER.push('pdf-reader-pro');
+      log('装上「PDF 阅读器 Pro」——.pdf 变竞争（候选 2 家），默认不漂移仍是「PDF 阅读器（官方）」＝E1；新卡即时出现在列表（onPluginLifecycleChange → 重拉）', true);
+    } else {
+      var held = overrides['pdf']==='pdf-reader-pro';
+      log('卸载「PDF 阅读器 Pro」——卡片即时消失'+(held?'；覆盖表仍指向它 → 解析惰性跳过回声明序（E6），键不清盘，重装即复活':'（覆盖表未指向它，无连锁）'), true);
+    }
+  }
+  if(kind==='disable'){
+    P['image-viewer'].disabled = !P['image-viewer'].disabled;
+    btn.classList.toggle('on', P['image-viewer'].disabled);
+    log(P['image-viewer'].disabled ? '停用「图片阅读器」——卡降透明、行惰性、解析不参选（E5：禁用=不存在）；.png/.jpg 候选集变化即时反映' : '启用「图片阅读器」——卡与行状态复原', true);
+  }
+  renderCards(); renderContrast();
+}
+
+/* ── 全局事件（单一委托） ── */
+document.addEventListener('click', function(ev){
+  var t = ev.target;
+  var mi = t.closest('[data-mi]');
+  if(mi){
+    var pid = menuPid;
+    closeMenu();
+    if(!pid) return;
+    if(mi.dataset.mi==='reset'){
+      var n=0;
+      P[pid].exts.forEach(function(e){ if(overrides[e]===pid){ delete overrides[e]; n++; } });
+      log('重置与我相关的默认：'+disp(pid)+' 持有的 '+n+' 类用户覆盖已清 → 回声明序（setDefault(ext, null) 批量）', true);
+    }
+    if(mi.dataset.mi==='copyid'){
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(pid).then(function(){ log('已复制插件 ID：'+pid); },
+          function(){ log('剪贴板权限拒绝——壳内走 linkdesk 剪贴板面（阶段 0 勘察项，无面则 v1 砍此钮不留死钮）'); });
+      } else log('本环境无剪贴板面——同上勘察项');
+    }
+    renderCards();
+    return;
+  }
+  if(menuEl && !t.closest('.gear-menu')) closeMenu();   /* 点外即关，不吞该击 */
+
+  var gear = t.closest('[data-gear]');
+  if(gear){ openMenu(gear.dataset.gear, gear); return; }
+
+  var tg = t.closest('[data-toggle]');
+  if(tg){
+    var id = tg.dataset.toggle;
+    state.open[id] = !state.open[id];
+    renderCards();
+    var nb = document.querySelector('[data-toggle="'+id+'"]');
+    if(nb) nb.focus();
+    return;
+  }
+
+  var act = t.closest('.pc-act');
+  if(act){
+    var e = act.dataset.ext;
+    if(act.dataset.act==='set'){ overrides[e]=act.closest('.plugin-card').id.slice(5);
+      log('覆盖表写入 .'+e.toLowerCase()+' → '+disp(overrides[e])+'（fileAssociation.setDefault；文件树右键同真源、即时互见＝E31）', true); }
+    else { var to=overrides[e]; delete overrides[e];
+      log('恢复自动：.'+e.toLowerCase()+' 回声明序'+(to?'（原覆盖 → '+disp(to)+' 已清）':'')); }
+    renderCards();
+    return;
+  }
+
+  var src = t.closest('[data-icon-src]');
+  if(src){ state.iconSrc = src.dataset.iconSrc; renderIconDemo(); return; }
+
+  var lc = t.closest('[data-lifecycle]');
+  if(lc){ toggleLifecycle(lc.dataset.lifecycle, lc); return; }
+
+  if(t.id==='themeBtn' || t.closest('#themeBtn')){
+    var root = document.documentElement;
+    root.dataset.theme = root.dataset.theme==='dark' ? 'light' : 'dark';
+    document.getElementById('themeBtn').textContent = root.dataset.theme==='dark' ? '☾ 亮暗切换' : '☀ 亮暗切换';
+    renderContrast();
+    return;
+  }
+  if(t.id==='clearLog' || t.closest('#clearLog')){ clearLog(); return; }
+});
+
+/* ── 初始化 ── */
+renderAnatomy(); renderCards(); renderIconDemo(); renderContrast();
+log('日志就绪——所有交互打到这里；高度固定 140px，下方内容不随日志跑位');
+log('提示：展开「编辑器（官方）」看 45 类限高滚动；hover 卡头出齿轮；hover 行出「设为默认/恢复自动」；⑧ 装第二只 PDF 阅读器看 E1 不漂移');
+</script>
+</body>
+</html>
