@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · 交互细节与边缘时序——文件打开方式与贡献点</title>
+<!-- mockup 仅示意（细节详解型）：状态机 + 边缘时序卡。真实实现走 var(--xxx) + ThemeEngine。
+     对应档案：01 §T2/T6/T7；02 边缘 E1–E28。每张卡 = 一步一chip，编号对齐 02 的条目号。 -->
+<style>
+:root{
+  --bg-window:#1b1b1b; --bg-card:#242424; --bg-input:#2e2e2e;
+  --text-primary:#e8e8e8; --text-secondary:#a8a8a8; --text-muted:#8f8f8f;
+  --accent:#3d7eff; --accent-hover:#5c93ff; --text-on-accent:#ffffff;
+  --border:#3c3c3c; --separator:#2a2a2a; --error:#e5534b; --status-connected:#3fb950; --warn:#c88a2d;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d0d;color:var(--text-primary);font:13px/1.65 "Segoe UI","Microsoft YaHei",sans-serif;padding:22px;}
+.wrap{max-width:1180px;margin:0 auto;}
+h1{font-size:19px;font-weight:600;}
+.sub{color:var(--text-secondary);margin:4px 0 24px;}
+h2{font-size:15px;margin:32px 0 12px;}
+h2 .tag{font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px;}
+.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.node{background:var(--bg-input);border:1px solid var(--border);border-radius:9px;padding:9px 13px;font-size:12.5px;color:var(--text-primary);white-space:nowrap;}
+.node.start{border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,126,255,.15);}
+.node.exit{border-color:var(--status-connected);}
+.node.branch{border-style:dashed;color:var(--text-secondary);}
+.arr{color:var(--text-muted);font-size:15px;flex:none;}
+.seq{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.seq .hd{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.seq .eid{font:600 11px Consolas,monospace;color:var(--warn);border:1px solid var(--border);border-radius:5px;padding:1px 7px;}
+.seq .t{font-size:13px;font-weight:600;}
+.seq .sc{font-size:11.5px;color:var(--text-muted);margin-left:auto;text-align:right;}
+.steps{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;}
+.step{background:var(--bg-input);border:1px solid var(--border);border-radius:9px;padding:8px 11px;font-size:12px;max-width:230px;}
+.step .n{display:inline-block;width:17px;height:17px;border-radius:50%;background:var(--accent);color:var(--text-on-accent);text-align:center;line-height:17px;font-size:10.5px;margin-right:6px;}
+.step .n.warn{background:var(--warn);}
+.step .n.ok{background:var(--status-connected);}
+.step .n.bad{background:var(--error);}
+.step b{color:var(--text-primary);}
+.step .who{display:block;margin-top:4px;font-size:10.5px;color:var(--text-muted);}
+.seq .note{margin-top:10px;font-size:12px;color:var(--text-secondary);border-top:1px dashed var(--separator);padding-top:8px;}
+.seq .note b{color:var(--text-primary);}
+.threecol{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.frame-note{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:12.5px;color:var(--text-secondary);margin-top:30px;}
+.frame-note b{color:var(--text-primary);}
+.frame-note code{font:12px Consolas,monospace;background:var(--bg-input);border-radius:4px;padding:1px 5px;}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;}}
+@media (max-width:900px){.threecol{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>07 · 交互细节与边缘时序 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（细节详解型：状态机＋边缘卡，编号 = 02 边缘清单条目）</span></h1>
+  <div class="sub">mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。这里回答「每一个分岔走哪条路」——文字档案的每句话在这里都有对应的格子。</div>
+
+  <h2>一、选择器状态机（T2 全部出口）</h2>
+  <div class="flow">
+    <span class="node start">单击 / 右键文件</span><span class="arr">➜</span>
+    <span class="node">ContextMenu（共享件）</span><span class="arr">➜</span>
+    <span class="node">「打开方式…」<span style="color:var(--text-muted);font-size:11px;">（无 handler 时隐藏，E13）</span></span><span class="arr">➜</span>
+    <span class="node">选择器：列 listHandlersFor(ext)</span><span class="arr">➜</span>
+    <span class="node exit">打开（仅此一次）</span>
+    <span class="node exit">设为默认 → 覆盖表</span>
+    <span class="node branch">恢复自动 → 删覆盖键（仅当存在覆盖时显示该行）</span>
+    <span class="arr">↻</span>
+    <span class="node">下次解析：覆盖表优先（D1）</span>
+  </div>
+
+  <h2>二、边缘时序卡<span class="tag">每张卡 = 一个「如果…会怎样」的完整剧本</span></h2>
+
+  <div class="seq">
+    <div class="hd"><span class="eid">E1/E19</span><span class="t">第二只 pdf 阅读器装上——默认不许静默漂移</span><span class="sc">D7 · T2.5</span></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><b>只装了一家</b><span class="who">默认=它（先激活先得）</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n warn">2</span><b>第二家激活</b><span class="who">壳发现「同扩展名新声明者＋用户从未选过」</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n warn">3</span><b>toast 一次</b><span class="who">「当前默认仍是 X——右键→打开方式可换」（会话内一次，E25）</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n ok">4</span><b>默认没变</b><span class="who">覆盖表没动、声明序没动——只是多了一个候选</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n">5</span><b>用户挑了才换</b><span class="who">选择器「设为默认」＝唯一换默认的通道</span></div>
+    </div>
+    <div class="note"><b>为什么重要：</b>插件永远不能靠「装上」这个动作抢走默认——抢默认的通道只有用户的手。</div>
+  </div>
+
+  <div class="seq">
+    <div class="hd"><span class="eid">E3</span><span class="t">两只编辑器同时挂牌（极客上传 → 小白没卸官方就装）</span><span class="sc">T7 · D7 同规</span></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><b>官方 editor 挂牌且先激活</b><span class="who">兜底=官方（现状零变化）</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n warn">2</span><b>极客编辑器入market、被安装</b><span class="who">它也声明 role="text-fallback" —— 第二个挂牌者出现</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n warn">3</span><b>不静默换人</b><span class="who">同 E1 第 3 步：提示一次，兜底仍官方</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n">4</span><b>选择器两家并列</b><span class="who">右键 .txt → 打开方式：官方 ● 自动默认 / MyEEEEEditor pro plus max ultra</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n ok">5</span><b>极客自己机器上的情形</b><span class="who">他卸了官方再装自己的 ⇒ 只剩一家挂牌 ⇒ 自然接管，无需任何特殊逻辑</span></div>
+    </div>
+    <div class="note"><b>设计结论：</b>⛔ 不写「冲突处理」新规则——一套仲裁天然覆盖两个场景；写新规则反而制造第二套真相。</div>
+  </div>
+
+  <div class="seq">
+    <div class="hd"><span class="eid">E6/E7</span><span class="t">覆盖表指向的插件没了（悬空覆盖）</span><span class="sc">T2 · D1</span></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><b>覆盖表 {".pdf": "X"}</b><span class="who">用户曾设 X 为默认</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n warn">2</span><b>X 被卸载/禁用</b><span class="who">解析时发现指向者不在场（禁用=不参选，E5）</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n">3</span><b>跳过该键</b><span class="who">视同未覆盖 → 回声明序；toast 一次「默认已失效，已恢复自动」</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n ok">4</span><b>键惰性清除</b><span class="who">不专程清盘——下次「设为默认」自然覆盖；避免多余的写盘</span></div>
+    </div>
+    <div class="note"><b>与 E25 的界线：</b>pluginId 精确匹配，拼写不符=同格处理；没有模糊匹配。</div>
+  </div>
+
+  <div class="seq">
+    <div class="hd"><span class="eid">E24</span><span class="t">Windows 层：壳只加候选，⛔ 永不碰 UserChoice</span><span class="sc">T6 · OS 主权在用户</span></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><b>壳登记候选</b><span class="who">HKCU OpenWithProgids += .pdf → LinkDesk（per-user，无需提权）</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n ok">2</span><b>「打开方式」菜单多一项</b><span class="who">LinkDesk 出现在候选列表</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n warn">3</span><b>用户在 Windows 里手选了别的程序</b><span class="who">UserChoice 归用户——壳看见了也装没看见</span></div><span class="arr">➜</span>
+      <div class="step"><span class="n bad">4</span><b>⛔ 壳不做的事</b><span class="who">不自作主张改回、不弹「要不要改回 LinkDesk」、不写 UserChoice 键</span></div>
+    </div>
+    <div class="note"><b>一句话：</b>应用内的默认归覆盖表；OS 层的默认归用户在 Windows 里的手。两层主权互不越界。</div>
+  </div>
+
+  <div class="seq">
+    <div class="hd"><span class="eid">E16/E26</span><span class="t">OS 登记生命周期（装 → 卸 → 开关）</span><span class="sc">T6 · D6</span></div>
+    <div class="threecol">
+      <div class="step" style="max-width:none;"><span class="n ok">装</span><b>阅读器插件激活</b><span class="who">总开关开 ⇒ HKCU 增候选 ⇒ 设置页「系统集成」现算出 .pdf 行（行随插件生灭）</span></div>
+      <div class="step" style="max-width:none;"><span class="n warn">卸</span><b>插件卸载</b><span class="who">撤该扩展名候选（别家也声明则保留）⇒ 设置页该行消失；覆盖表按 E6 处理</span></div>
+      <div class="step" style="max-width:none;"><span class="n">开关</span><b>关 → 开</b><span class="who">关=撤回运行期登记（安装器静态不动）；再开=按当前插件集幂等重放（重复写无害）</span></div>
+    </div>
+    <div class="note"><b>恒等式：</b>exe 永不出现在任何环节（无插件能开＋登记 exe 打开器本身危险）。</div>
+  </div>
+
+  <h2>三、三入口归一——「一处真相」的机械证明（T2.2）</h2>
+  <div class="flow">
+    <span class="node">文件树单击<br><span style="color:var(--text-muted);font-size:10.5px;">FoldersView.doOpenFile</span></span><span class="arr">➜</span>
+    <span class="node">搜索双击<br><span style="color:var(--text-muted);font-size:10.5px;">SearchView.openMatch</span></span><span class="arr">➜</span>
+    <span class="node">OS argv / 拖拽<br><span style="color:var(--text-muted);font-size:10.5px;">useOpenPathIntake</span></span><span class="arr">➜</span>
+    <span class="node start" style="border-color:var(--accent);">resolveOpenTarget(ext)<br><span style="color:var(--text-muted);font-size:10.5px;">覆盖表 → 声明表 → 角色</span></span><span class="arr">➜</span>
+    <span class="node exit">有 handler：开它</span>
+    <span class="node exit">无 handler：T1 提示页</span>
+  </div>
+  <div class="frame-note">
+    <b>frame-note</b>——现状的分叉病：文件树查不到<b>落编辑器</b>、搜索查不到<b>静默不打开</b>（同是「没人认领」两种结局）。本案修法不是补丁两处，而是把解析提成一个纯函数让三入口同吃——修完的验收 = 改一处解析，另两处行为机械跟随。<br>
+    <b>本图与 05/06 的分工：</b>05=真实壳里的样子（集成切换，可交互）；06=概念与主权（布局抽象）；本图=每个分岔的走向（细节详解）。三张合起来才是完整蓝图——对应你说的「文字是地表，图纸才是工程」。
+  </div>
+</div>
+</body>
+</html>

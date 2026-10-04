@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 · 思路总览——文件打开方式与贡献点</title>
+<!-- mockup 仅示意（布局抽象型，非高保真 UI）：概念/数据流/主权关系的图纸。真实实现走 var(--xxx) + ThemeEngine。
+     对应档案：00 §四 T1–T7 / §五 D1–D10；边缘 E1–E28。 -->
+<style>
+:root{
+  --bg-window:#1b1b1b; --bg-card:#242424; --bg-input:#2e2e2e;
+  --text-primary:#e8e8e8; --text-secondary:#a8a8a8; --text-muted:#8f8f8f;
+  --accent:#3d7eff; --accent-hover:#5c93ff; --text-on-accent:#ffffff;
+  --border:#3c3c3c; --separator:#2a2a2a; --error:#e5534b; --status-connected:#3fb950; --warn:#c88a2d;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d0d;color:var(--text-primary);font:13px/1.65 "Segoe UI","Microsoft YaHei",sans-serif;padding:22px;}
+.wrap{max-width:1180px;margin:0 auto;}
+h1{font-size:19px;font-weight:600;}
+.sub{color:var(--text-secondary);margin:4px 0 22px;}
+h2{font-size:15px;margin:30px 0 12px;color:var(--text-primary);}
+h2 .tag{font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px;}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.card .no{display:inline-block;width:22px;height:22px;border-radius:6px;background:var(--accent);color:var(--text-on-accent);text-align:center;line-height:22px;font-size:12px;margin-bottom:8px;}
+.card .t{font-size:13.5px;font-weight:600;margin-bottom:4px;}
+.card .d{font-size:12.5px;color:var(--text-secondary);}
+.card .d b{color:var(--text-primary);}
+/* 分层解析图 */
+.layers{display:flex;gap:14px;align-items:stretch;margin-bottom:14px;}
+.layer{flex:1;background:var(--bg-card);border:1.5px solid var(--border);border-radius:12px;padding:14px;transition:border-color .2s, box-shadow .2s;opacity:.55;}
+.layer.lit{opacity:1;border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,126,255,.18);}
+.layer h3{font-size:13.5px;margin-bottom:8px;}
+.layer .who{font-size:11px;color:var(--text-muted);margin-bottom:10px;}
+.layer .chip{display:block;background:var(--bg-input);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px;color:var(--text-secondary);margin-bottom:6px;}
+.layer .chip b{color:var(--text-primary);font-weight:600;}
+.arrowcol{display:flex;align-items:center;color:var(--text-muted);font-size:18px;flex:none;}
+.player{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;}
+.player .stepcap{min-height:44px;font-size:13px;color:var(--text-primary);}
+.player .stepcap .ref{color:var(--text-muted);font-size:11.5px;}
+.player .ctrl{display:flex;gap:8px;margin-top:10px;}
+.player .ctrl button{background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12.5px;}
+.player .ctrl button:hover{border-color:var(--accent-hover);}
+.player .dots{margin-left:auto;display:flex;gap:5px;align-items:center;}
+.player .dots i{width:8px;height:8px;border-radius:50%;background:var(--bg-input);border:1px solid var(--border);}
+.player .dots i.on{background:var(--accent);border-color:var(--accent);}
+/* before/after */
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ba .card.bad{border-color:rgba(229,83,75,.5);}
+.ba .card.good{border-color:rgba(63,185,80,.5);}
+.ba .hd{font-size:12px;font-weight:600;margin-bottom:6px;}
+.ba .bad .hd{color:var(--error);}
+.ba .good .hd{color:var(--status-connected);}
+.ba code{font:12px/1.7 Consolas,monospace;color:var(--text-primary);background:var(--bg-input);border-radius:5px;padding:1px 6px;display:inline-block;margin:2px 0;}
+.ba .d{margin-top:6px;}
+/* 主权三层 */
+.sov{display:flex;gap:14px;align-items:stretch;}
+.sov .role{flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.sov .role .icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.sov .role h3{font-size:13.5px;margin-bottom:4px;}
+.sov .role .p{font-size:12.5px;color:var(--text-secondary);}
+.sov .role .can{font-size:11.5px;margin-top:8px;color:var(--status-connected);}
+.sov .role .cant{font-size:11.5px;margin-top:3px;color:var(--error);}
+.frame-note{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:12.5px;color:var(--text-secondary);margin-top:30px;}
+.frame-note b{color:var(--text-primary);}
+button:focus-visible{outline:2px solid var(--accent-hover);outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;}}
+@media (max-width:900px){.cards,.ba{grid-template-columns:1fr;}.layers{flex-direction:column;}.arrowcol{transform:rotate(90deg);justify-content:center;}.sov{flex-direction:column;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>06 · 思路总览——「装了就归它，卸了就退回」是怎么成立的 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（布局抽象图：概念/数据流/主权，非高保真）</span></h1>
+  <div class="sub">mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。四条铁律 → 一次解析的完整旅行 → 两处去硬编码 → 主权三层。对应 00 §四/§五。</div>
+
+  <h2>一、四条铁律<span class="tag">全案的宪法——每个任务都能回溯到其中一条</span></h2>
+  <div class="cards">
+    <div class="card"><span class="no">①</span><div class="t">判定归壳，呈现归插件</div><div class="d">「这是不是二进制」「.pdf 谁能开」由壳<b>一处</b>回答；「弹什么、画什么」由拿到文件的插件自己画。壳永远不画文件内容。</div></div>
+    <div class="card"><span class="no">②</span><div class="t">壳不认识任何插件 id</div><div class="d">现在壳里刻着 <b>DEFAULT_TAB_TYPE="editor"</b> —— 换掉编辑器墙上的名字就指向空屋。改成<b>角色挂牌</b>：谁声明谁参选，壳只认牌子不认名字（T7）。</div></div>
+    <div class="card"><span class="no">③</span><div class="t">插件只声明，不耦合</div><div class="d">抢默认 = 声明 <b>fileAssociations</b>；做右键项 = 声明 <b>menus.fileContext</b>＋命令。装/卸/换任何一只，壳与别的插件<b>零改动</b>。</div></div>
+    <div class="card"><span class="no">④</span><div class="t">主权三层（D7）</div><div class="d"><b>壳</b>持用户覆盖表＝户口本；<b>插件</b>只有提名权；<b>文件树</b>只有执行权。插件永不自封默认——微软/Adobe/第三方的 N 只 PDF 阅读器和平共存的前提。</div></div>
+  </div>
+
+  <h2>二、一次解析的完整旅行<span class="tag">点「下一步」看每步发生在哪一层 —— 三入口（文件树/搜索/OS 双击）走的是这同一条路</span></h2>
+  <div class="layers">
+    <div class="layer" id="ly0">
+      <h3>OS 层 / 入口</h3><div class="who">Windows 右键 · 双击 · 拖拽 · 文件树 · 搜索</div>
+      <span class="chip">安装器静态关联（随包文本类）</span>
+      <span class="chip">运行期同步（装/卸阅读器时增撤，T6）</span>
+    </div>
+    <div class="arrowcol">➜</div>
+    <div class="layer" id="ly1">
+      <h3>声明面（插件 plugin.json）</h3><div class="who">插件的「报名表」——纯数据</div>
+      <span class="chip"><b>fileAssociations</b>: [{ext, displayName, <b>role?</b>}]</span>
+      <span class="chip"><b>menus.fileContext</b>: 右键贡献项＋when</span>
+    </div>
+    <div class="arrowcol">➜</div>
+    <div class="layer" id="ly2">
+      <h3>判定面（壳 · 一处真相）</h3><div class="who">resolveOpenTarget —— 三入口同吃</div>
+      <span class="chip">① 覆盖表 <b>workbench.fileAssociations</b>（D1）</span>
+      <span class="chip">② 声明表：先激活先得＋字典序</span>
+      <span class="chip">③ 角色兜底：role="text-fallback"（T7）</span>
+      <span class="chip">isBinary 判定（T1）也在这层</span>
+    </div>
+    <div class="arrowcol">➜</div>
+    <div class="layer" id="ly3">
+      <h3>呈现面（各插件自己画）</h3><div class="who">壳只给 tab，内容归插件</div>
+      <span class="chip">阅读器：自己的视图</span>
+      <span class="chip">editor：文本 ／ 二进制提示块＋toast（T1）</span>
+      <span class="chip">file-tree：选择器 UI（T2）</span>
+    </div>
+  </div>
+  <div class="player">
+    <div class="stepcap" id="stepcap"></div>
+    <div class="ctrl">
+      <button onclick="stepMove(-1)">← 上一步</button>
+      <button onclick="stepMove(1)">下一步 →</button>
+      <button onclick="stepGo(0)">↺ 重播</button>
+      <div class="dots" id="dots"></div>
+    </div>
+  </div>
+
+  <h2>三、两处去硬编码——before / after</h2>
+  <div class="ba">
+    <div class="card bad"><div class="hd">✕ BEFORE —— 壳里刻着插件名</div>
+      <code>DEFAULT_TAB_TYPE = "editor"</code> <span style="color:var(--text-muted);font-size:11px;">tabs.ts:14</span><br>
+      <code>syswrite.cpp: 13 个手写扩展名</code> <span style="color:var(--text-muted);font-size:11px;">vs editor 声明 45 个——已经漂移</span>
+      <div class="d">卸载/替换 editor ⇒ 兜底指向空屋；清单与声明两张皮，全靠人肉对账（违反归一化）。</div></div>
+    <div class="card good"><div class="hd">✓ AFTER —— 壳只认牌子与声明</div>
+      <code>resolveFallbackTabType() = 查 role:"text-fallback" 挂牌者</code><br>
+      <code>构建期收割随包件 fileAssociations → 生成安装器清单</code>
+      <div class="d">第三方编辑器挂牌即可参选兜底（用户挑中才接管）；清单从声明机械生成，漂移在机制上不可能（T7/T6）。</div></div>
+  </div>
+
+  <h2>四、主权三层——为什么插件不能自己抢默认</h2>
+  <div class="sov">
+    <div class="role">
+      <div class="icon" style="background:rgba(61,126,255,.15);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5c93ff" stroke-width="1.3"><rect x="2.5" y="2" width="11" height="12" rx="1.6"/><path d="M5 5.5h6M5 8h6M5 10.5h3.5"/></svg></div>
+      <h3>壳＝户口本持有者</h3><div class="p">用户覆盖表 workbench.fileAssociations 住在这里——它背后是用户的意志。</div>
+      <div class="can">✓ 仲裁、记录、兜底、toast 提醒</div>
+    </div>
+    <div class="role">
+      <div class="icon" style="background:rgba(63,163,122,.15);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#3fb950" stroke-width="1.3"><circle cx="8" cy="5" r="2.6"/><path d="M2.8 13.5c.7-2.7 2.8-4 5.2-4s4.5 1.3 5.2 4"/></svg></div>
+      <h3>插件＝报名者（N 家并存）</h3><div class="p">声明 fileAssociations = 把名字写进候选名单；声明 role = 举手说「我也愿意兜底」。</div>
+      <div class="can">✓ 提名、出现在选择器、被用户挑中</div>
+      <div class="cant">✗ 自封默认 · 改覆盖表 · 顶替别人</div>
+    </div>
+    <div class="role">
+      <div class="icon" style="background:rgba(200,138,45,.15);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#c88a2d" stroke-width="1.3"><path d="M2 3.5h7.5v9H2z"/><path d="M9.5 6h3.2l1.3 1.8v4.7h-4.5"/></svg></div>
+      <h3>文件树＝快递员（执行者）</h3><div class="p">单击文件 → 查解析 → 开标签。它不裁定任何事，换一套文件树插件机制照跑。</div>
+      <div class="can">✓ 调解析、渲染右键菜单与选择器</div>
+      <div class="cant">✗ 决定谁是默认 · 私藏第二套规则</div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>frame-note</b>——VS Code 对标：微软/Adobe/第三方的 pdf 插件谁都能装，但默认永远是用户的 <code style="font:12px Consolas,monospace;">workbench.editorAssociations</code> 设置——插件没有「自封默认」的 API，这正是 N 家共存不打架的原因（D7 的原型）。两只编辑器同时挂牌不写新规则：先激活先得＋提示＋选择器并列（E3），极客单机替换场景被同一机制天然覆盖。牌＝提名不是夺权——这是「万物皆可插件」与「插件绑架用户」的分界线。
+  </div>
+</div>
+<script>
+"use strict";
+const STEPS = [
+  {lit:[0], cap:"用户在某入口动作：文件树单击 / 搜索双击 / Windows 双击 pdf（OS 把路径递进来）——三个入口殊途同归。", ref:"入口=证据①⑥；E18 拖拽同链"},
+  {lit:[1], cap:"壳翻开插件的报名表：谁声明了这个扩展名？谁挂了 role 牌？——纯声明，运行期主进程三表在账。", ref:"fileAssociations 证据①；schema :477-489"},
+  {lit:[2], cap:"resolveOpenTarget 开算：先问覆盖表（用户的小本本，D1）——命中即出，未命中继续。", ref:"T2 解析序第 1 级"},
+  {lit:[2], cap:"覆盖表未命中 → 声明表：先激活先得＋pluginId 字典序 tie-break（E1/E19：第二只装上不静默漂移，只有 toast）。", ref:"T2 解析序第 2 级 / D7"},
+  {lit:[2], cap:"声明表也空 → 角色兜底：当前激活的 role=\"text-fallback\" 挂牌者接手（T7 去硬编码）；连挂牌者都没有 → 提示页语义（E22）。", ref:"T7 / 02 E22"},
+  {lit:[2,3], cap:"isBinary 判定也在判定面（T1 一处真相）——editor 若拿到二进制，就在标签里画提示块＋toast，不再硬解成乱码。", ref:"T1 / D4 / D10"},
+  {lit:[3], cap:"壳开 tab（type=解析出的插件 id），内容归插件画：阅读器画渲染、editor 画文本或提示、file-tree 画选择器——判定与呈现永远分家。", ref:"铁律①"},
+];
+let cur = 0;
+function render(){
+  for(let i=0;i<4;i++) document.getElementById("ly"+i).classList.toggle("lit", STEPS[cur].lit.includes(i));
+  document.getElementById("stepcap").innerHTML = STEPS[cur].cap + ` <span class="ref">—— ${STEPS[cur].ref}</span>`;
+  document.getElementById("dots").innerHTML = STEPS.map((_,i)=>`<i class="${i<=cur?"on":""}"></i>`).join("");
+}
+function stepMove(d){ cur = Math.max(0, Math.min(STEPS.length-1, cur+d)); render(); }
+function stepGo(n){ cur=n; render(); }
+render();
+</script>
+</body>
+</html>

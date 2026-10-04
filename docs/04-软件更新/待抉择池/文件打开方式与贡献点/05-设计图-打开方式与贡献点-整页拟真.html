@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 · 整页拟真——文件打开方式与贡献点（可交互）</title>
+<!-- mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine；本文件 :root 的 token 值为示意近似，非壳真值。
+     类型 = html-blueprint「集成切换」：一个可交互壳 + 场景切换；zone 尺寸实测自壳源码（titlebar 30 / icon-bar 42 / sidebar 216 / tabbar 35 / statusbar 22）。
+     对应档案：04-软件更新/待抉择池/文件打开方式与贡献点（T1–T7 · D1–D10 · 02 边缘 E1–E28）。 -->
+<style>
+:root{
+  --bg-window:#1b1b1b; --bg-card:#242424; --bg-input:#2e2e2e; --bg-titlebar:#161616;
+  --bg-icon-bar:#161616; --bg-side-panel:#1f1f1f;
+  --text-primary:#e8e8e8; --text-secondary:#a8a8a8; --text-muted:#8f8f8f;
+  --accent:#3d7eff; --accent-hover:#5c93ff; --text-on-accent:#ffffff;
+  --border:#3c3c3c; --separator:#2a2a2a; --icon-active:#e8e8e8; --icon-inactive:#8a8a8a;
+  --hover-overlay:rgba(255,255,255,.06); --error:#e5534b; --status-connected:#3fb950;
+  --warn:#c88a2d;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:#0d0d0d; color:var(--text-primary); font:13px/1.6 "Segoe UI","Microsoft YaHei",sans-serif; padding:18px;}
+.page-head{max-width:1320px; margin:0 auto 14px;}
+.page-head h1{font-size:18px; font-weight:600;}
+.page-head .sub{color:var(--text-secondary); margin-top:4px;}
+.scenario-bar{max-width:1320px; margin:0 auto 12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+.scenario-bar .lbl{color:var(--text-muted); font-size:12px;}
+.sc-btn{background:var(--bg-card); border:1px solid var(--border); color:var(--text-secondary); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12.5px;}
+.sc-btn:hover{background:var(--hover-overlay); color:var(--text-primary);}
+.sc-btn.on{background:var(--accent); border-color:var(--accent); color:var(--text-on-accent);}
+.stage{max-width:1320px; margin:0 auto; display:flex; gap:14px; align-items:flex-start;}
+.window{width:min(1280px, calc(100vw - 360px)); min-width:860px; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg-window); box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.side{width:320px; flex:none; display:flex; flex-direction:column; gap:12px;}
+.panel{background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:10px 12px;}
+.panel h3{font-size:12.5px; color:var(--text-secondary); font-weight:600; margin-bottom:6px;}
+.panel .log{font:11.5px/1.7 Consolas,monospace; color:var(--text-muted); white-space:pre-wrap; max-height:180px; overflow:auto;}
+.panel .log .hit{color:var(--status-connected);}
+.panel .kv{font:12px/1.8 Consolas,monospace; color:var(--text-secondary); white-space:pre-wrap;}
+/* ── 壳 zone：尺寸实测（titlebar 30 / icon-bar 42 / tabbar 35 / statusbar 22）── */
+.titlebar{height:30px; background:var(--bg-titlebar); display:flex; align-items:center; padding:0 10px; gap:10px; border-bottom:1px solid var(--separator);}
+.titlebar .logo{width:14px; height:14px; border-radius:4px; background:var(--accent);}
+.titlebar .app{font-size:12px; color:var(--text-secondary);}
+.titlebar .menus{display:flex; gap:2px; margin-left:6px;}
+.titlebar .menus span{padding:2px 8px; border-radius:4px; color:var(--text-secondary); font-size:12px;}
+.titlebar .menus span:hover{background:var(--hover-overlay);}
+.titlebar .drag{flex:1;}
+.titlebar .winbtns{display:flex; gap:14px; color:var(--text-muted); font-size:11px;}
+.body-row{display:flex; height:560px;}
+.icon-bar{width:42px; background:var(--bg-icon-bar); border-right:1px solid var(--separator); display:flex; flex-direction:column; align-items:center; padding-top:8px; gap:2px;}
+.icon-bar .ic{width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:var(--icon-inactive); font-size:14px; position:relative;}
+.icon-bar .ic.active{color:var(--icon-active); background:var(--hover-overlay);}
+.icon-bar .ic.active::before{content:""; position:absolute; left:-5px; top:7px; width:3px; height:18px; border-radius:2px; background:var(--accent);}
+.sidebar{width:216px; background:var(--bg-side-panel); border-right:1px solid var(--separator); display:flex; flex-direction:column;}
+.sidebar .side-head{padding:8px 10px; font-size:12px; color:var(--text-secondary); display:flex; justify-content:space-between;}
+.sidebar .search{margin:0 8px 8px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text-muted); font-size:12px;}
+.tree{flex:1; overflow:auto; padding:2px 4px 10px;}
+.tree .dir{color:var(--text-secondary); font-size:12.5px; padding:3px 6px;}
+.tree .file{display:flex; align-items:center; gap:7px; padding:3.5px 6px 3.5px 18px; border-radius:5px; font-size:12.5px; color:var(--text-primary); cursor:context-menu; border:1px solid transparent;}
+.tree .file:hover{background:var(--hover-overlay);}
+.tree .file.selected{background:var(--hover-overlay); border-color:var(--border);}
+.tree .file .ft{width:16px; text-align:center; font-size:10.5px; color:var(--text-muted); flex:none;}
+.tree .file .ext{margin-left:auto; font-size:10px; color:var(--text-muted);}
+.tree .hintline{padding:6px 8px; font-size:11px; color:var(--text-muted);}
+.main{flex:1; display:flex; flex-direction:column; background:var(--bg-window); min-width:0;}
+.tabbar{height:35px; background:var(--bg-card); border-bottom:1px solid var(--separator); display:flex; align-items:flex-end; padding:0 6px; gap:2px; overflow-x:auto;}
+.tab{display:flex; align-items:center; gap:6px; padding:0 10px; height:29px; border-radius:7px 7px 0 0; color:var(--text-secondary); font-size:12px; border:1px solid transparent; border-bottom:none; white-space:nowrap;}
+.tab.active{background:var(--bg-window); color:var(--text-primary); border-color:var(--separator); box-shadow:inset 0 2px 0 var(--accent);}
+.tab .x{color:var(--text-muted); font-size:11px; cursor:pointer;}
+.content{flex:1; position:relative; overflow:auto; display:flex; align-items:center; justify-content:center;}
+.content .placeholder{color:var(--text-muted); font-size:13px; text-align:center; line-height:2;}
+.content .doc-frame{width:82%; height:82%; border:1px dashed var(--border); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-secondary);}
+.content .doc-frame .big{font-size:15px; color:var(--text-primary);}
+.content .doc-frame .who{font-size:12px; padding:2px 10px; border-radius:999px; border:1px solid var(--border); color:var(--text-secondary);}
+/* T1 未关联二进制：标签内提示块（editor 自绘，约 30 行的示意） */
+.notice{width:70%; border:1px solid var(--border); border-radius:10px; padding:22px 26px; background:var(--bg-card); text-align:left;}
+.notice .t{font-size:14.5px; font-weight:600; margin-bottom:6px;}
+.notice .d{color:var(--text-secondary); font-size:12.5px; margin-bottom:14px;}
+.notice .row{display:flex; gap:10px;}
+.notice button{background:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:6px 14px; cursor:pointer; font-size:12.5px;}
+.notice button.primary{background:var(--accent); border-color:var(--accent); color:var(--text-on-accent);}
+.notice button:hover{background:var(--accent-hover); color:var(--text-on-accent);}
+.statusbar{height:22px; background:var(--bg-window); border-top:1px solid var(--separator); display:flex; align-items:center; padding:0 10px; gap:12px; font-size:11px; color:var(--text-muted);}
+.statusbar .right{margin-left:auto; display:flex; gap:12px;}
+.statusbar .pill{padding:0 8px; border-radius:999px; background:var(--hover-overlay);}
+/* ── 右键菜单（共享 ContextMenu 示意）：width max-content 防压窄（skill 坑①） ── */
+.ctx{position:fixed; width:max-content; min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:4px; z-index:90; box-shadow:0 10px 30px rgba(0,0,0,.45); display:none;}
+.ctx .it{display:flex; align-items:center; gap:8px; padding:5px 10px; border-radius:5px; font-size:12.5px; color:var(--text-primary); cursor:pointer; white-space:nowrap;}
+.ctx .it:hover{background:var(--hover-overlay);}
+.ctx .it .k{margin-left:auto; color:var(--text-muted); font-size:11px; padding-left:18px;}
+.ctx .it.contrib{color:var(--text-primary);}
+.ctx .it.contrib .src{font-size:10px; color:var(--accent-hover); border:1px solid var(--border); border-radius:4px; padding:0 4px; margin-left:6px;}
+.ctx .sep{height:1px; background:var(--separator); margin:4px 6px;}
+/* ── 打开方式选择器（T2 线框落地）── */
+.modal-mask{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:95; display:none; align-items:center; justify-content:center;}
+.picker{width:430px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.55);}
+.picker .ph{padding:12px 16px; border-bottom:1px solid var(--separator); display:flex; justify-content:space-between; align-items:center;}
+.picker .ph .t{font-size:13.5px; font-weight:600;}
+.picker .ph .f{font-size:11.5px; color:var(--text-muted);}
+.picker .cur{padding:9px 16px; background:var(--bg-input); font-size:12px; color:var(--text-secondary); display:none; align-items:center; gap:8px; border-bottom:1px solid var(--separator);}
+.picker .cur b{color:var(--text-primary);}
+.picker .cur button{margin-left:auto; background:none; border:1px solid var(--border); color:var(--text-secondary); border-radius:5px; padding:2px 8px; cursor:pointer; font-size:11px;}
+.picker .list{max-height:260px; overflow:auto; padding:6px;}
+.picker .row{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px;}
+.picker .row:hover{background:var(--hover-overlay);}
+.picker .row .dot{width:22px; height:22px; border-radius:6px; flex:none; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-on-accent);}
+.picker .row .nm{font-size:12.5px;}
+.picker .row .pid{font-size:10.5px; color:var(--text-muted);}
+.picker .row .acts{margin-left:auto; display:flex; gap:6px;}
+.picker .row button{background:var(--bg-input); border:1px solid var(--border); color:var(--text-secondary); border-radius:5px; padding:3px 9px; cursor:pointer; font-size:11px; white-space:nowrap;}
+.picker .row button:hover{color:var(--text-primary); border-color:var(--text-muted);}
+.picker .row button.def{background:var(--accent); border-color:var(--accent); color:var(--text-on-accent);}
+.picker .empty{padding:22px; text-align:center; color:var(--text-muted); font-size:12.5px;}
+/* ── toast（右下角，复用现有通道示意）── */
+.toasts{position:fixed; right:20px; bottom:20px; z-index:99; display:flex; flex-direction:column; gap:8px;}
+.toast{background:var(--bg-card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:9px 14px; font-size:12.5px; color:var(--text-primary); box-shadow:0 8px 24px rgba(0,0,0,.45); max-width:380px; animation:tin .18s ease-out;}
+.toast.warn{border-left-color:var(--warn);}
+.toast.ok{border-left-color:var(--status-connected);}
+@keyframes tin{from{transform:translateY(8px); opacity:0;} to{transform:none; opacity:1;}}
+@media (prefers-reduced-motion: reduce){ .toast{animation:none;} *{transition:none !important;} }
+button:focus-visible,.sc-btn:focus-visible,.tgl:focus-visible,.tab:focus-visible{outline:2px solid var(--accent-hover); outline-offset:2px;}
+.tgl{cursor:pointer;}
+.picker .row button{padding:5px 10px;}
+/* 设置页（场景⑥） */
+.settings{width:100%; height:100%; overflow:auto; padding:26px 34px;}
+.settings h2{font-size:15px; margin-bottom:2px;}
+.settings .grp{color:var(--text-muted); font-size:12px; margin-bottom:18px;}
+.settings .sec{font-size:13px; font-weight:600; margin:16px 0 8px; color:var(--text-secondary);}
+.srow{display:flex; align-items:center; gap:12px; padding:9px 12px; border:1px solid var(--separator); border-radius:8px; margin-bottom:6px; background:var(--bg-card);}
+.srow .nm{font-size:12.5px;}
+.srow .ds{font-size:11px; color:var(--text-muted);}
+.srow .badge{font-size:10px; color:var(--accent-hover); border:1px solid var(--border); border-radius:4px; padding:0 5px;}
+.srow .sp{flex:1;}
+.tgl{width:34px; height:18px; border-radius:999px; background:var(--bg-input); border:1px solid var(--border); position:relative; cursor:pointer; flex:none;}
+.tgl::after{content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:var(--text-muted); transition:.15s;}
+.tgl.on{background:var(--accent); border-color:var(--accent);}
+.tgl.on::after{left:18px; background:var(--text-on-accent);}
+.mini-explorer{border:1px dashed var(--border); border-radius:10px; padding:14px; margin-top:16px;}
+.mini-explorer .t{font-size:12px; color:var(--text-secondary); margin-bottom:8px;}
+.frame-note{max-width:1320px; margin:14px auto 40px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:14px 18px; font-size:12.5px; color:var(--text-secondary);}
+.frame-note b{color:var(--text-primary);}
+.frame-note ol{margin:6px 0 0 18px; display:grid; grid-template-columns:1fr 1fr; gap:4px 22px;}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>05 · 整页拟真——文件打开方式与贡献点 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（可交互：右键/单击树中文件 → 菜单 → 选择器 → 状态面板看解析）</span></h1>
+  <div class="sub">mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。zone 尺寸实测壳源码：titlebar 30 · icon-bar 42 · sidebar 216 · tabbar 35 · statusbar 22。对应档案 T1–T7 / D1–D10 / 边缘 E1–E28。</div>
+</div>
+
+<div class="scenario-bar">
+  <span class="lbl">场景切换：</span>
+  <button class="sc-btn on" data-sc="0">① PDF 三家争霸（未选过）</button>
+  <button class="sc-btn" data-sc="1">② 图片两家（已设默认）</button>
+  <button class="sc-btn" data-sc="2">③ MD 次要方式（不抢单击）</button>
+  <button class="sc-btn" data-sc="3">④ 双编辑器挂牌冲突（极客场景）</button>
+  <button class="sc-btn" data-sc="4">⑤ 未装阅读器（乱码 → 提示页）</button>
+  <button class="sc-btn" data-sc="5">⑥ 设置页 · 系统集成（OS 登记块）</button>
+</div>
+
+<div class="stage">
+  <div class="window">
+    <div class="titlebar">
+      <div class="logo"></div><div class="app">LinkDesk</div>
+      <div class="menus"><span>文件</span><span>查看</span><span>帮助</span></div>
+      <div class="drag"></div>
+      <div class="winbtns"><span>—</span><span>▢</span><span>✕</span></div>
+    </div>
+    <div class="body-row">
+      <div class="icon-bar">
+        <div class="ic active" role="img" aria-label="资源管理器" title="资源管理器"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 5.5h4.6l1.4 1.8h7v6.2a.8.8 0 0 1-.8.8H2.3a.8.8 0 0 1-.8-.8z"/><path d="M1.5 5.5V3.3a.8.8 0 0 1 .8-.8h3.2l1.2 1.4"/></svg></div>
+        <div class="ic" role="img" aria-label="搜索" title="搜索"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></div>
+        <div class="ic" role="img" aria-label="串口" title="串口监视器"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="4.5" width="11" height="7" rx="1.4"/><path d="M5 7.5h.01M7.5 7.5h.01M10 7.5h.01M5 9.5h6"/></svg></div>
+        <div class="ic" role="img" aria-label="设置" title="设置"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4"/></svg></div>
+      </div>
+      <div class="sidebar">
+        <div class="side-head"><span>资源管理器</span><span>⌄</span></div>
+        <div class="search">搜索</div>
+        <div class="tree" id="tree"></div>
+        <div class="hintline" id="treeHint">右键（或单击）文件试试 —— 菜单里看「打开方式…」与插件贡献项</div>
+      </div>
+      <div class="main">
+        <div class="tabbar" id="tabbar"></div>
+        <div class="content" id="content"><div class="placeholder">欢迎页（示意）</div></div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span> Ln 12, Col 4 </span><span>UTF-8</span>
+      <div class="right"><span class="pill" id="sbDefault">默认：—</span><span>⚠ 示意</span></div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel">
+      <h3>覆盖表 workbench.fileAssociations（壳配置键 · D1）</h3>
+      <div class="kv" id="kvOverride">{ }</div>
+    </div>
+    <div class="panel">
+      <h3>resolveOpenTarget 解析日志（一处真相源 · 三入口同吃）</h3>
+      <div class="log" id="log">（等待操作…）</div>
+    </div>
+    <div class="panel">
+      <h3>本场景已装插件（声明面）</h3>
+      <div class="kv" id="kvInstalled"></div>
+      <div style="margin-top:8px;"><button class="sc-btn" id="btnInstall">⚡ 模拟：安装/激活第二只同类型插件</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="frame-note">
+  <b>frame-note —— 验证点（每场景对应档案判据）</b>
+  <ol>
+    <li><b>①</b> 三家都声明 .pdf：默认=先激活先得（状态栏与选择器一致）；【打开】走默认，【设为默认】写覆盖表并即时生效（E1/D7）。</li>
+    <li><b>②</b> 预置覆盖 {jpg:图像大师B}：选择器顶部「当前默认」行＋[恢复自动]；恢复后回声明序（E2/D1）。</li>
+    <li><b>③</b> .md 单击永远 editor；右键菜单多出两条<b>插件贡献项</b>（带 src 小标）——贡献是合并不替换（D/T5、证据④）。</li>
+    <li><b>④</b> 模拟安装 MyEEEEEditor（挂牌 role）→ <b>默认不静默换人</b>＋toast 一次；选择器两家并列；设为默认才接管（E3/D7/T7）。</li>
+    <li><b>⑤</b> 无任何 .pdf 声明：单击 → editor 标签内提示块（不是乱码、不是弹窗）＋toast；这就是 T1 的全部视觉（D4/D10）。</li>
+    <li><b>⑥</b> 设置页动态行随插件装卸生灭；exe 永不出现；开关归壳不归 pdf 插件（D6/T6）。</li>
+    <li>选择器线框 = [01 §T2]；状态面板演示「覆盖表 → 声明表 → 角色」同一解析函数三入口同吃。</li>
+    <li>OS 层右键见 07 图 E24 时序：壳只加候选、⛔ 不碰 Windows UserChoice。</li>
+  </ol>
+</div>
+
+<!-- 右键菜单 -->
+<div class="ctx" id="ctx"></div>
+<!-- 选择器 -->
+<div class="modal-mask" id="mask">
+  <div class="picker">
+    <div class="ph"><div><div class="t">打开方式</div><div class="f" id="pkFile"></div></div><div class="f">✕</div></div>
+    <div class="cur" id="pkCur"></div>
+    <div class="list" id="pkList"></div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+/* ───────── 数据：插件声明面（对应真实机制的 contributes.fileAssociations / menus / role） ───────── */
+const PLUGINS = {
+  editor:{name:"编辑器（官方）", color:"#5a8f5a", assoc:["txt","md","json","log","js","ts","csv","svg"], role:"text-fallback", activated:1},
+  pdfpro:{name:"PDF Reader Pro", color:"#b3543f", assoc:["pdf"], activated:2},
+  adobe:{name:"Adobe PDF 阅读器", color:"#8a3ab5", assoc:["pdf"], activated:3},
+  simplepdf:{name:"简易 PDF", color:"#3f7ab3", assoc:["pdf"], activated:4},
+  imga:{name:"图片查看器 A", color:"#3f8ab3", assoc:["jpg","png"], activated:2},
+  imgb:{name:"图像大师 B", color:"#b3943f", assoc:["jpg","png","webp"], activated:3},
+  mda:{name:"MD 预览 · 作者1", color:"#3fa37a", menus:["md"], assoc:[]},
+  mdb:{name:"MPE 风格 · 作者2", color:"#a33f7a", menus:["md"], assoc:[]},
+  geek:{name:"MyEEEEEditorrrrrr pro plus max ultra", color:"#7a5ab3", assoc:["txt","md","json"], role:"text-fallback", activated:9},
+};
+const FILES = [
+  {name:"论文.pdf", ext:"pdf"}, {name:"照片.jpg", ext:"jpg"}, {name:"笔记.md", ext:"md"},
+  {name:"config.json", ext:"json"}, {name:"示例.svg", ext:"svg"}, {name:"固件.elf", ext:"elf"},
+];
+/* 场景预设：installed=参加解析的插件集合；note=场景开场 toast；presetOverride=预置覆盖 */
+const SCENARIOS = [
+  {name:"PDF 三家", installed:["editor","pdfpro","adobe","simplepdf"], override:{}, note:"场景①：三家都声明 .pdf，你从未选过 —— 默认=先激活先得（PDF Reader Pro），试右键 → 打开方式", flag:""},
+  {name:"图片两家", installed:["editor","imga","imgb"], override:{jpg:"imgb"}, note:"场景②：预置覆盖 {jpg: 图像大师B} —— 选择器顶部出现「当前默认」行，恢复自动试试", flag:""},
+  {name:"MD 次要", installed:["editor","mda","mdb"], override:{}, note:"场景③：.md 单击永远归编辑器；右键看两条贡献菜单项（作者1/作者2）——次要方式无默认之争", flag:""},
+  {name:"双编辑器", installed:["editor","geek","pdfpro"], override:{}, note:"场景④：极客编辑器已挂牌 role 但默认仍是官方 —— 点右下「模拟安装」重放提示；设为默认才接管", flag:""},
+  {name:"未装阅读器", installed:["editor"], override:{}, note:"场景⑤：没有任何插件声明 .pdf —— 单击 论文.pdf，看 T1 的标签内提示（不是乱码）", flag:""},
+  {name:"设置页", installed:["editor","pdfpro","imga"], override:{}, note:"场景⑥：设置 → 通用 → 系统集成 —— 行随插件装卸生灭；试右下「模拟安装」", flag:""},
+];
+let sc = 0, override = {}, installed = [], selectedFile = null, tabs = [], activeTab = -1;
+
+/* ───────── 解析（一处真相源 resolveOpenTarget 的示意实现） ───────── */
+function handlers(ext){ return installed.filter(id => (PLUGINS[id].assoc||[]).includes(ext))
+  .sort((a,b) => (PLUGINS[a].activated||99)-(PLUGINS[b].activated||99) || a.localeCompare(b)); }
+function roleHolders(){ return installed.filter(id => PLUGINS[id].role==="text-fallback")
+  .sort((a,b) => (PLUGINS[a].activated||99)-(PLUGINS[b].activated||99) || a.localeCompare(b)); }
+function resolve(ext, log){
+  const ov = override[ext];
+  if (ov && installed.includes(ov)) { if(log)addLog(`覆盖表命中 .${ext} → ${PLUGINS[ov].name}`, true); return ov; }
+  if (ov && !installed.includes(ov)) { if(log)addLog(`覆盖表指向已卸载/禁用插件 → 跳过（E6 惰性失效）`, false); }
+  const hs = handlers(ext);
+  if (hs.length) { if(log)addLog(`声明表 ${hs.length} 家 → 先激活先得: ${PLUGINS[hs[0]].name}`, true); return hs[0]; }
+  const r = roleHolders();
+  if (r.length && (ext==="" || true)) { if(log)addLog(`无声明者 → 角色兜底: ${PLUGINS[r[0]].name}`, true); return r[0]; }
+  if(log)addLog(`无声明者且无挂牌者 → T1 提示页语义（E22）`, false); return null;
+}
+/* ───────── 视图 ───────── */
+function addLog(s, hit){ const el=document.getElementById("log");
+  el.innerHTML += `<div${hit?' class="hit"':''}>› ${s}</div>`; el.scrollTop = el.scrollHeight; }
+function toast(msg, kind){ const t=document.createElement("div"); t.className="toast "+(kind||"");
+  t.textContent=msg; document.getElementById("toasts").appendChild(t); setTimeout(()=>t.remove(), 4200); }
+function renderTree(){
+  const tree = document.getElementById("tree"); tree.innerHTML="";
+  const d = document.createElement("div"); d.className="dir"; d.textContent="▾ 工作区 / 示例项目"; tree.appendChild(d);
+  FILES.forEach(f => {
+    const el = document.createElement("div"); el.className="file"+(selectedFile===f?" selected":"");
+    el.innerHTML = `<span class="ft">▢</span><span>${f.name}</span><span class="ext">${f.ext?("."+f.ext):""}</span>`;
+    el.addEventListener("click", e => { selectedFile=f; renderTree(); openByDefault(f); });
+    el.addEventListener("contextmenu", e => { e.preventDefault(); selectedFile=f; renderTree(); showMenu(f, e.clientX, e.clientY); });
+    tree.appendChild(el);
+  });
+}
+function showMenu(f, x, y){
+  const ctx = document.getElementById("ctx"); const hs = handlers(f.ext);
+  const menuContrib = installed.filter(id => (PLUGINS[id].menus||[]).includes(f.ext));
+  let html = `<div class="it" data-a="open">打开</div><div class="it" data-a="side">在侧边打开</div>`;
+  html += `<div class="sep"></div>`;
+  menuContrib.forEach(id => { html += `<div class="it contrib" data-a="contrib:${id}">${PLUGINS[id].name}：侧边预览<span class="src">插件贡献</span></div>`; });
+  if (menuContrib.length) html += `<div class="sep"></div>`;
+  html += `<div class="it" data-a="openwith">打开方式…<span class="k">${hs.length} 家</span></div>`;
+  html += `<div class="it" data-a="reveal">在资源管理器中打开</div><div class="it" data-a="copy">复制路径<span class="k">Ctrl+Shift+C</span></div>`;
+  ctx.innerHTML = html; ctx.style.display="block";
+  ctx.style.left = Math.min(x, innerWidth-240)+"px"; ctx.style.top = Math.min(y, innerHeight-260)+"px";
+  ctx.onclick = e => { const a = e.target.dataset && e.target.dataset.a; if(!a) return; ctx.style.display="none";
+    if (a==="open") openByDefault(f, true);
+    else if (a==="openwith") showPicker(f);
+    else if (a==="reveal") toast("（示意）storage:reveal 通道打开资源管理器", "ok");
+    else if (a==="copy") toast("（示意）已复制路径", "ok");
+    else if (a && a.startsWith("contrib:")) { const id=a.slice(8); openTab(f, id, "侧边预览（插件贡献命令 md-preview.openSide）"); } };
+}
+document.addEventListener("click", e => { if(!e.target.closest(".ctx")) document.getElementById("ctx").style.display="none"; });
+function openByDefault(f, fromMenu){
+  if (sc===5){ renderSettings(); return; }
+  const pid = resolve(f.ext, true);
+  if (!pid) { openNoticeTab(f); return; }
+  if (pid==="editor" && f.ext!=="txt" && f.ext!=="md" && f.ext!=="json" && f.ext!=="svg" && !installed.some(id=>id!=="editor"&&(PLUGINS[id].assoc||[]).includes(f.ext))) {
+    /* editor 拿到二进制 → T1 提示页（判定归壳、呈现归插件） */
+    openNoticeTab(f); return;
+  }
+  openTab(f, pid, null);
+}
+function openTab(f, pid, extra){
+  const exist = tabs.findIndex(t => t.name===f.name && t.pid===pid);
+  if (exist>=0){ activeTab=exist; } else { tabs.push({name:f.name, pid, ext:f.ext, extra}); activeTab=tabs.length-1; }
+  renderTabs();
+  const c = document.getElementById("content"); const P=PLUGINS[pid];
+  c.innerHTML = `<div class="doc-frame"><div class="big">${f.name}</div>
+    <div class="who">由插件渲染：${P.name}（pluginId: ${pid}）</div>
+    <div style="font-size:11.5px;color:var(--text-muted)">${extra || "（此处为该插件视图的占位示意 —— pdf/图片阅读器的真实界面由各自插件实现）"}</div></div>`;
+}
+function openNoticeTab(f){
+  const exist = tabs.findIndex(t => t.name===f.name && t.pid==="__notice");
+  if (exist>=0){ activeTab=exist; } else { tabs.push({name:f.name, pid:"__notice", ext:f.ext}); activeTab=tabs.length-1; }
+  renderTabs();
+  document.getElementById("content").innerHTML = `<div class="notice">
+    <div class="t">此文件无法作为文本显示</div>
+    <div class="d">「${f.name}」是二进制文件，以文本打开只会得到乱码（壳判定 isBinary → editor 呈现，T1）。</div>
+    <div class="row"><button class="primary" onclick="showPicker(FILES.find(x=>x.ext==='pdf'))">打开方式…</button>
+    <button onclick="toast('（示意）跳转市场搜索：pdf 阅读器','ok')">在市场搜索阅读器</button></div></div>`;
+  toast("「论文.pdf」无法作为文本显示 —— 可右键选择打开方式或在市场搜索阅读器", "warn");
+}
+function renderTabs(){
+  const tb = document.getElementById("tabbar"); tb.innerHTML="";
+  tabs.forEach((t,i) => { const el=document.createElement("div"); el.className="tab"+(i===activeTab?" active":"");
+    el.innerHTML = `<span>${t.name}</span><span class="x">✕</span>`;
+    el.querySelector(".x").onclick = e => { e.stopPropagation(); tabs.splice(i,1); activeTab=Math.min(activeTab,tabs.length-1); renderTabs(); if(activeTab<0) document.getElementById("content").innerHTML='<div class="placeholder">欢迎页（示意）</div>'; };
+    el.onclick = () => { activeTab=i; renderTabs(); };
+    tb.appendChild(el); });
+  const df = resolve((tabs[activeTab]||{}).ext || "txt", false);
+  document.getElementById("sbDefault").textContent = "默认(."+((tabs[activeTab]||{}).ext||"txt")+"): " + (df?PLUGINS[df].name:"—");
+}
+/* ── 选择器（T2 线框）── */
+function showPicker(f){
+  document.getElementById("mask").style.display="flex";
+  document.getElementById("pkFile").textContent = f.name + "（."+f.ext+"）";
+  const cur = override[f.ext] && installed.includes(override[f.ext]) ? override[f.ext] : null;
+  const curEl = document.getElementById("pkCur");
+  if (cur){ curEl.style.display="flex";
+    curEl.innerHTML = `<span>当前默认：<b>${PLUGINS[cur].name}</b>（来自你的设置）</span><button onclick="clearDefault('${f.ext}')">恢复自动</button>`; }
+  else curEl.style.display="none";
+  const hs = handlers(f.ext); const list = document.getElementById("pkList");
+  if (!hs.length){ list.innerHTML = `<div class="empty">没有任何已装插件声明 .${f.ext}<br><br><button class="sc-btn" onclick="toast('（示意）跳转市场搜索：${f.ext}','ok')">在市场搜索阅读器</button></div>`; return; }
+  list.innerHTML = hs.map(id => `<div class="row">
+    <div class="dot" style="background:${PLUGINS[id].color}">${PLUGINS[id].name[0]}</div>
+    <div><div class="nm">${PLUGINS[id].name}${override[f.ext]===id?' <span style="color:var(--status-connected);font-size:10.5px;">● 默认</span>':(handlers(f.ext)[0]===id?' <span style="color:var(--text-muted);font-size:10.5px;">● 自动默认</span>':'')}</div>
+    <div class="pid">${id}${PLUGINS[id].role?' · role: text-fallback':''}</div></div>
+    <div class="acts"><button onclick="useOnce('${f.ext}','${id}')">打开（仅此一次）</button>
+    <button class="${override[f.ext]===id?'def':''}" onclick="setDefault('${f.ext}','${id}')">设为默认</button></div></div>`).join("");
+}
+function useOnce(ext, id){ document.getElementById("mask").style.display="none";
+  addLog(`仅此一次 → ${PLUGINS[id].name}（不落盘）`, false); openTab(FILES.find(f=>f.ext===ext), id, null); }
+function setDefault(ext, id){ override[ext]=id; renderSide();
+  addLog(`设为默认 → 覆盖表写入 .${ext}: ${id}（D1）`, true); toast(`已设为默认：${PLUGINS[id].name} —— 单击 .${ext} 将打开它`, "ok");
+  showPicker(FILES.find(f=>f.ext===ext)); }
+function clearDefault(ext){ delete override[ext]; renderSide();
+  addLog(`恢复自动 → 删除覆盖表 .${ext}（D1）`, false); toast("已恢复自动（回声明序）", "ok"); showPicker(FILES.find(f=>f.ext===ext)); }
+document.getElementById("mask").addEventListener("click", e => { if(e.target.id==="mask") e.target.style.display="none"; });
+document.addEventListener("keydown", e => { if(e.key==="Escape"){ document.getElementById("mask").style.display="none"; document.getElementById("ctx").style.display="none"; } });
+/* ── 状态面板 ── */
+function renderSide(){
+  document.getElementById("kvOverride").textContent = JSON.stringify(override, null, 1) === "{}" ? "{ }  （空 —— 一切按声明序）" : JSON.stringify(override, null, 1);
+  document.getElementById("kvInstalled").innerHTML = installed.map(id => `· ${PLUGINS[id].name}  <span style="color:var(--text-muted)">[${id}]${PLUGINS[id].role?" ·挂牌":""}</span>`).join("\n");
+}
+/* ── 场景切换 ── */
+function loadScenario(n){
+  sc=n; override = Object.assign({}, SCENARIOS[n].override); installed = SCENARIOS[n].installed.slice();
+  tabs=[]; activeTab=-1; selectedFile=null;
+  document.getElementById("log").innerHTML = ""; addLog(`—— 场景${"①②③④⑤⑥"[n]}「${SCENARIOS[n].name}」载入 ——`, false);
+  document.getElementById("content").innerHTML = '<div class="placeholder">欢迎页（示意）</div>';
+  renderTree(); renderSide(); renderTabs();
+  document.getElementById("btnInstall").style.display = (n===3||n===5) ? "" : "none";
+  if (SCENARIOS[n].note) toast(SCENARIOS[n].note, "");
+}
+document.querySelectorAll(".sc-btn[data-sc]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".sc-btn[data-sc]").forEach(x=>x.classList.remove("on")); b.classList.add("on"); loadScenario(+b.dataset.sc); }));
+/* 模拟安装第二只（E1/E3：默认不静默换人） */
+let geekInstalled=false;
+document.getElementById("btnInstall").addEventListener("click", () => {
+  if (sc===3){ if(!installed.includes("geek")){ installed.push("geek");
+      addLog("安装激活 MyEEEEEditor…（声明 txt/md/json + role）", false);
+      toast("检测到另一款文本编辑器（已挂牌）——当前默认仍是 编辑器（官方），右键→打开方式可换", "warn"); renderSide(); }
+    else toast("极客编辑器已在场（先激活先得：默认仍是官方）", ""); }
+  if (sc===5){ if(!installed.includes("imgb")){ installed.push("imgb");
+      addLog("安装激活 图像大师B…（声明 jpg/png/webp）", false);
+      toast("图像大师B 已安装 —— 设置页「系统集成」应出现 .jpg/.png/.webp 行（OS 登记按开关）", "ok"); renderSide();
+      if(!document.getElementById("settingsPage")) toast("切到设置页看新增行（本场景主区已是设置页则直接看）", ""); } }
+});
+/* ── 场景⑥：设置页（主区） ── */
+function renderSettings(){
+  const rows = [];
+  const exts = new Set(); installed.forEach(id => (PLUGINS[id].assoc||[]).forEach(x => { if(x!=="elf") exts.add(x); }));
+  const sorted = [...exts].sort();
+  document.getElementById("content").innerHTML = `<div class="settings" id="settingsPage">
+    <h2>通用</h2><div class="grp">界面 / 系统集成 / 更新（壳既有分组）</div>
+    <div class="sec">系统集成</div>
+    <div class="srow"><div><div class="nm">跟随插件登记系统「打开方式」</div><div class="ds">app.osAssociations.followPlugins —— 总开关（D6）：关 = 撤回运行期登记，安装器静态登记不动</div></div><div class="sp"></div><div class="tgl on" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'总开关：开（按当前插件集幂等重放，E16）':'总开关：关（撤回运行期登记）','ok')"></div></div>
+    <div style="font-size:11px;color:var(--text-muted);margin:10px 2px 6px;">↓ 以下各行随「随包＋已装插件」的声明<b>现算</b>（不是预想清单）——卸载对应插件，行自动消失：</div>
+    ${sorted.map(x => { const owners = installed.filter(id=>(PLUGINS[id].assoc||[]).includes(x));
+      return `<div class="srow"><div><div class="nm">.${x}</div><div class="ds">声明者：${owners.map(id=>PLUGINS[id].name).join(" · ")}${owners.length>1?"（多家，应用内默认另由「打开方式」裁决）":""}</div></div>
+      <div class="sp"></div>${owners.some(id=>id==="editor")?'<span class="badge">随包</span>':""}<div class="tgl on" onclick="toast('（示意）app.osAssociations.overrides[.${x}] = '+this.classList.toggle('on')+' —— 只管 OS 层登记，应用内默认归覆盖表（D6）','ok')"></div></div>`; }).join("")}
+    <div style="font-size:11px;color:var(--text-muted);margin:12px 2px;">exe 永不出现在此（无插件能开且登记 exe 打开器危险，T6）。行数 = 现算，与 app.iconTheme 那类「壳预知类别」不同（追问 12 的答案）。</div>
+    <div class="mini-explorer"><div class="t">Windows 资源管理器（示意）——右键 论文.pdf：</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2;">打开方式 ▸ <b>LinkDesk（PDF Reader Pro）</b>　← 壳只<b>加候选</b>，⛔ 不碰 Windows UserChoice（E24）<br><span style="color:var(--text-muted)">候选出现与否 = 上方开关链（T6 运行期同步）</span></div></div>
+  </div>`;
+}
+/* 初始：默认载入场景①并把主区切到设置页的场景用 ⑥ 承载 —— 场景⑥点击文件时才渲染设置页 */
+loadScenario(0);
+</script>
+</body>
+</html>
