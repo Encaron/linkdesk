@@ -97,7 +97,8 @@
     "encoding": [
       "decode",
       "detect",
-      "encode"
+      "encode",
+      "isBinary"
     ],
     "env": [
       "get"
@@ -460,7 +461,8 @@
     "encoding": [
       "decode",
       "detect",
-      "encode"
+      "encode",
+      "isBinary"
     ],
     "env": [
       "get"

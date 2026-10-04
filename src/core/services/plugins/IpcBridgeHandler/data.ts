@@ -1,6 +1,6 @@
 /**
  * IpcBridgeHandler 数据域——自 IpcBridgeHandler.ts 拆出（E5.8#0d.10-10g）。
- * pluginState:get/set 二 channel + search:searchFiles + encoding:detect/decode/encode 三 channel
+ * pluginState:get/set 二 channel + search:searchFiles + encoding:detect/decode/encode/isBinary 四 channel
  * + 插件生命周期变更订阅（_lifecycleUnsub 属主）verbatim。
  * 依赖方向：data → PluginStateService/FileSearcher/EncodingService/pluginLoader-lifecycle
  * + linkdesk-api（LinkDeskAPI 订阅类型）；被聚合器委派。
@@ -29,7 +29,7 @@ export function unsubscribeData(): void {
   _lifecycleUnsub = null;
 }
 
-/** pluginState:* / search:* / encoding:* 六 channel 处理器 */
+/** pluginState:* / search:* / encoding:* 七 channel 处理器 */
 export async function handleDataChannel(channel: string, args: unknown[]): Promise<unknown> {
   switch (channel) {
     // ── E5#71：插件持久化存储——集中缓存 + 文件持久化 ──
@@ -63,6 +63,11 @@ export async function handleDataChannel(channel: string, args: unknown[]): Promi
     case "encoding:encode": {
       const [text, encoding] = args as [string, string];
       return EncodingService.encode(text, encoding);
+    }
+    // T1 二进制守卫：纯启发式判定（判定归壳，一处真相源）
+    case "encoding:isBinary": {
+      const [buffer] = args as [Uint8Array];
+      return EncodingService.isBinary(buffer);
     }
     default:
       throw new Error(`未知的 bridge channel: ${channel}`);

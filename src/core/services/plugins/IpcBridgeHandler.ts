@@ -106,6 +106,7 @@ export function initIpcBridgeHandler(): void {
         case "encoding:detect":
         case "encoding:decode":
         case "encoding:encode":
+        case "encoding:isBinary":
           result = await handleDataChannel(req.channel, req.args);
           break;
 

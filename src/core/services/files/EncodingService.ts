@@ -172,6 +172,54 @@ export class EncodingService {
     return iconv.encode(text, enc) as Uint8Array;
   }
 
+  /**
+   * 二进制判定（T1 二进制守卫——判定归壳，一处真相源）。
+   *
+   * 启发式，只读**首 8KB** 样本：
+   *   1. 空 buffer → 文本（false）：空文件不是二进制。
+   *   2. UTF-16 BOM → 文本（false）：UTF-16 正文天然半数 0x00，不能靠 NUL 判。
+   *   3. 无 BOM 的 UTF-16 形态（NUL 按奇/偶位交替 ≥90%）→ 文本（false）：同上，防误杀。
+   *   4. 出现任一 NUL(0x00) → 二进制（true）：文本编码里 0x00 无合法用途，是最强信号。
+   *   5. 控制字符密度 >10% → 二进制（true）：兜住首 8KB 无 NUL 的二进制格式。
+   *     控制字符 = 0x00–0x1F 去掉 \t \n \r \f（正文合法空白）；0x00 已由第 4 步收口。
+   *   ⇒ 否则文本（false）。
+   *
+   * ⚠️ 命名空间：经 `lk.encoding.isBinary(bytes)` 暴露（不是 `lk.files`——插件面无 files 域）。
+   */
+  static isBinary(bytes: Uint8Array): boolean {
+    const SAMPLE = 8192;
+    if (bytes.length === 0) return false;
+
+    // UTF-16 BOM：正文含大量 NUL，但确系文本
+    if (startsWith(bytes, BOM_UTF16_LE) || startsWith(bytes, BOM_UTF16_BE)) return false;
+
+    const sample = bytes.length > SAMPLE ? bytes.subarray(0, SAMPLE) : bytes;
+
+    let nulCount = 0;
+    let nulEven = 0;
+    let controlCount = 0;
+
+    for (let i = 0; i < sample.length; i++) {
+      const b = sample[i];
+      if (b === 0x00) {
+        nulCount++;
+        if (i % 2 === 0) nulEven++;
+      } else if (b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d && b !== 0x0c) {
+        // 0x00 已单独统计；此处为其余控制字符（0x01–0x08 / 0x0b / 0x0e–0x1f）
+        controlCount++;
+      }
+    }
+
+    // 无 BOM 的 UTF-16：NUL 全落在同一奇偶位 ⇒ 文本，不是二进制
+    if (nulCount > 0) {
+      const sameParity = Math.max(nulEven, nulCount - nulEven);
+      if (sameParity / nulCount >= 0.9 && nulCount / sample.length > 0.15) return false;
+      return true;
+    }
+
+    return controlCount / sample.length > 0.1;
+  }
+
   /** 编码名是否为有效编码 */
   static isValidEncoding(name: string): boolean {
     try {

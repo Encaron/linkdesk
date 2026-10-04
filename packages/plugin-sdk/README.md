@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**16 个域接口 → 47 个命名空间 / 254 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
+**16 个域接口 → 47 个命名空间 / 255 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -49,7 +49,7 @@ npm install -D @linkdesk/plugin-sdk
 | `path` | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等） |
 | `env` | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
 | `search` | 1 | `searchFiles` | 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
-| `encoding` | 3 | `detect` `decode` `encode` | 编码检测/转换（主进程 EncodingService） |
+| `encoding` | 4 | `detect` `decode` `encode` `isBinary` | 编码检测/转换（主进程 EncodingService） |
 | `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC） |
 | `fileAssociation` | 1 | `getPluginFor` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
 | `langDef` | 1 | `get` | langDef——语言定义注册表（主进程直答） |

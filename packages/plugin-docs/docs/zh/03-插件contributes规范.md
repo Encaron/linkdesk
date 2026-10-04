@@ -781,6 +781,27 @@ useEffect(() => {
 
 > **pluginId 由顶层 `pluginId` 字段声明**（起要求显式写；`contributes` 下**不写**）。不声明时退回「项目目录名」兜底——兜底路径保留只为兼容仓外存量第三方插件，**新插件一律显式声明**（目录名/仓库名是自由的，靠兜底 = 身份跟着名字漂，且五条后果全不报错）。规则见 [16-命名规范](16-命名规范.md)。
 
+#### 拿到关联文件后：先判二进制，再决定怎么显示
+
+`fileAssociations` 只回答「这个扩展名归你」，**不保证文件内容是文本**——pdf、图片、压缩包都可能落到你手上。壳替你把判定做完了：读盘拿到 `Uint8Array` 之后先问一句 `lk.encoding.isBinary(buffer)`，判真就别硬当文本渲染——`decode` 出来的只会是乱码，而用户会以为是你的插件坏了。
+
+```ts
+const buffer = await lk.filesystem.readBinaryFile(path);
+// 判定归壳（一处真相源）；老宿主没有这个面 ⇒ 特征探测 + 退回纯文本路径
+const probe = lk.encoding as { isBinary?: (b: Uint8Array) => Promise<boolean> };
+const isBinary = typeof probe.isBinary === "function" ? await probe.isBinary(buffer) : false;
+if (isBinary) {
+  // 渲染自己的「无法作为文本显示」占位——别把乱码泼给用户
+  return;
+}
+const text = await lk.encoding.decode(buffer, await lk.encoding.detect(buffer));
+```
+
+- **判定归壳，别自己再来一份**：`isBinary` 采样文件头做启发式判定（含 BOM 与 UTF-16 的特异处理）——扩展名会骗人、内容不会，判据只此一处。
+- **老宿主降级**：`isBinary` 是后加的面，老宿主上没有；写成特征探测（`lk.encoding?.isBinary?.` 形态），缺了就照旧走纯文本路径——乱码照旧，但那是旧宿主的既有表现，不是新引入的问题。
+- **提示块自绘**：占位与出路都由你的插件画（壳不预造「二进制提示」组件——没有第二个真实消费方之前不固化共享 UI）。给用户一条可走的路：换一个能处理它的插件，或在提示里说清这个文件该用什么打开。
+- **别让保存毁文件**：判定为二进制就别允许保存——一次保存会把原始字节覆写成 UTF-8 文本，二进制文件当场损坏。
+
 ### 3.14 `statusBar`——状态栏条目（顶层字段）
 
 ```json

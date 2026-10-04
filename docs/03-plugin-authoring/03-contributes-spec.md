@@ -793,6 +793,28 @@ useEffect(() => {
 
 > **The `pluginId` is declared by the top-level `pluginId` field** (it must be written explicitly; do **not** write it under `contributes`). When it is not declared it falls back to "the project directory name" — the fallback path is kept only for legacy third-party plugins outside the repo, and **new plugins always declare it explicitly** (directory names and repository names are free-form, so relying on the fallback means your identity drifts with the name, and none of the five consequences reports an error). See [16-naming-conventions](16-naming-conventions.md).
 
+#### Once you hold an associated file: check for binary before deciding how to display it
+
+`fileAssociations` only answers "this extension is yours" — it does **not** promise the file's contents are text. A pdf, an image, an archive can all land in your hands. The shell has already done the detection for you: once you have read the bytes as a `Uint8Array`, ask `lk.encoding.isBinary(buffer)` first. If it says true, don't force a text rendering — `decode` would only produce garbage, and the user will think your plugin is broken.
+
+```ts
+const buffer = await lk.filesystem.readBinaryFile(path);
+// Detection belongs to the shell (one source of truth); older hosts lack this
+// surface, so feature-detect and fall back to the plain-text path.
+const probe = lk.encoding as { isBinary?: (b: Uint8Array) => Promise<boolean> };
+const isBinary = typeof probe.isBinary === "function" ? await probe.isBinary(buffer) : false;
+if (isBinary) {
+  // Render your own "can't show this as text" placeholder — don't splash garbage at the user.
+  return;
+}
+const text = await lk.encoding.decode(buffer, await lk.encoding.detect(buffer));
+```
+
+- **Detection belongs to the shell — don't build a second one**: `isBinary` samples the file header heuristically (including BOM and UTF-16 special cases). Extensions lie, content does not — the criterion lives in exactly one place.
+- **Degrade on older hosts**: `isBinary` is a later addition that older hosts do not have. Write it as a feature probe (the `lk.encoding?.isBinary?.` form) and fall back to today's plain-text path when it is missing — the garbling is unchanged, but that is the older host's existing behaviour, not something your plugin just introduced.
+- **Draw the notice yourself**: both the placeholder and the way out are drawn by your plugin (the shell does not pre-build a "binary notice" component — no shared UI is frozen before a second real consumer exists). Give the user a path forward: point them at a plugin that can handle the file, or say in the notice what the file should be opened with.
+- **Don't let a save destroy the file**: when a file is binary, don't allow saving — one save would rewrite the original bytes as UTF-8 text and corrupt the binary file on the spot.
+
 ### 3.14 `statusBar` — status bar entries (a top-level field)
 
 ```json

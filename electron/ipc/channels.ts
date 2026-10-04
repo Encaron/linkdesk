@@ -77,6 +77,8 @@ export const IPC = {
     detect: 'encoding:detect',
     decode: 'encoding:decode',
     encode: 'encoding:encode',
+    // T1 二进制守卫：纯启发式判定（additive——不改 detect 返回值）
+    isBinary: 'encoding:isBinary',
   },
   env: { get: 'env:get' },
   fileAssociation: {

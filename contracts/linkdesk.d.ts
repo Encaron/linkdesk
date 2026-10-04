@@ -1902,6 +1902,8 @@ export interface WorkspaceAPI {
         detect(buffer: Uint8Array): Promise<string>;
         decode(buffer: Uint8Array, encoding: string): Promise<string>;
         encode(text: string, encoding: string): Promise<Uint8Array>;
+        /** T1 二进制守卫：纯启发式判定（判定归壳，一处真相源；旧壳无此方法 ⇒ 插件须特性探测降级） */
+        isBinary(buffer: Uint8Array): Promise<boolean>;
     };
 }
 /** 文件装饰——池内本地注册表。形状对标插件 API 契约 §3.24 */

@@ -106,7 +106,7 @@ export function buildApp() {
   };
 }
 
-/** encoding 命名空间——编码检测/转换（E5.6#11.5a） */
+/** encoding 命名空间——编码检测/转换 + 二进制守卫（E5.6#11.5a；T1 加 isBinary） */
 export function buildEncoding() {
   return {
     detect: (buffer: Uint8Array): Promise<string> =>
@@ -115,6 +115,8 @@ export function buildEncoding() {
       ipcRenderer.invoke(IPC.encoding.decode, buffer, encoding),
     encode: (text: string, encoding: string): Promise<Uint8Array> =>
       ipcRenderer.invoke(IPC.encoding.encode, text, encoding),
+    isBinary: (buffer: Uint8Array): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.encoding.isBinary, buffer),
   };
 }
 

@@ -229,6 +229,7 @@ export const linkdeskMock: Record<string, unknown> = {
     detect: async (..._args: unknown[]) => { console.info("[linkdesk-mock] encoding.detect", ..._args); return ""; },
     decode: async (..._args: unknown[]) => { console.info("[linkdesk-mock] encoding.decode", ..._args); return ""; },
     encode: async (..._args: unknown[]) => { console.info("[linkdesk-mock] encoding.encode", ..._args); },
+    isBinary: async (..._args: unknown[]) => { console.info("[linkdesk-mock] encoding.isBinary", ..._args); return false; },
   },
   decorations: {
     registerProvider: (..._args: unknown[]) => { console.info("[linkdesk-mock] decorations.registerProvider", ..._args); },

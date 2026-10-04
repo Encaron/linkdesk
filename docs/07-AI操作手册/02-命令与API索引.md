@@ -189,7 +189,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**16 个域接口 → 47 个命名空间 / 254 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**16 个域接口 → 47 个命名空间 / 255 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -204,7 +204,7 @@
 | `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 |
 | `dialog` | UiAPI | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | 弹窗——确认/提示/文件选择 |
 | `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost—— |
-| `encoding` | WorkspaceAPI | 3 | `detect` `decode` `encode` | 编码检测/转换（主进程 EncodingService） |
+| `encoding` | WorkspaceAPI | 4 | `detect` `decode` `encode` `isBinary` | 编码检测/转换（主进程 EncodingService） |
 | `env` | WorkspaceAPI | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
 | `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 |
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
