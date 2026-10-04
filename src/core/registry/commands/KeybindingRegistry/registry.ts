@@ -12,18 +12,42 @@ import type { Keybinding, KeybindingConflict } from "./types";
 
 export const _bindings: Keybinding[] = [];
 
+/**
+ * 被用户**清空**的命令名册——「这条命令不要键」（对标 VS Code `keybindings.json` 里的负命令）。
+ *
+ * 🔴 为什么非有不可：「恢复为默认」只删 `source === "user"` 的覆盖，作者（builtin/plugin）
+ * 声明的键会立刻顶上来——对**作者声明过键**的命令，那是「回退」不是「清空」，用户无法让命令彻底无键。
+ * 而内置/插件声明每次启动都会重新注册，光删内存里的绑定活不过一次重启 ⇒ 需要一份**抑制名册**：
+ * 名册里的命令，非 user 来源的注册一律不落地（`registerKeybinding` 顶部守卫）；
+ * 用户重新绑定（source === "user"）或「恢复为默认」都会把它从名册里摘掉（抑制解除）。
+ * 持久化形状见 `persistence.ts`——用户文件里写成 `{ command, key: "" }`。
+ */
+const _unboundCommands = new Set<string>();
+
+/** 该命令是否被用户显式清空（抑制中） */
+export function isCommandUnbound(commandId: string): boolean {
+  return _unboundCommands.has(commandId);
+}
+
+/** 被清空的命令名册——持久化侧用它写出 `key: ""` 标记条目 */
+export function getUnboundCommands(): string[] {
+  return [..._unboundCommands];
+}
+
 /** 检查 key 是否是 chord 的第一键——有已注册的 binding 以此 key 开头 */
 export function isChordPrefix(normalizedKey: string): boolean {
   return _bindings.some((b) => b.key.startsWith(normalizedKey + " "));
 }
 
-/** 清除所有用户快捷键（source === "user"）——重载 keybindings.json 前调用 */
+/** 清除所有用户快捷键（source === "user"）——重载 keybindings.json 前调用。
+ *  连**抑制名册**一起清（它也是用户态）：调用方随后按文件内容重新施加。 */
 export function clearUserKeybindings(): void {
   for (let i = _bindings.length - 1; i >= 0; i--) {
     if (_bindings[i].source === "user") {
       _bindings.splice(i, 1);
     }
   }
+  _unboundCommands.clear();
 }
 
 /** 清空注册表（测试/clearKeybindings 用）——dispatch 组合清理调用 */
@@ -40,6 +64,13 @@ export function clearBindings(): void {
  *  有 pluginId（插件声明）→ 登记进追踪器（卸载自动逆序回滚）；
  *  无 pluginId（builtin/user 快捷键——非插件域）→ 不追踪，返回裸 disposer。 */
 export function registerKeybinding(binding: Keybinding): () => void {
+  // 🔴 被用户清空的命令：非 user 来源（builtin/plugin）一律不落地——抑制名册的守卫点。
+  //    用户自己重新绑定 ⇒ 立刻解除抑制（用户刚表达的意愿优先于之前的清空）。
+  if (binding.source === "user") {
+    _unboundCommands.delete(binding.command);
+  } else if (_unboundCommands.has(binding.command)) {
+    return () => {};
+  }
   const normKey = normalizeKey(binding.key);
   if (_bindings.some((b) => b.command === binding.command && b.key === normKey)) return () => {};
   const entry = { ...binding, key: normKey };
@@ -66,7 +97,9 @@ export function removeKeybindingForCommand(commandId: string): void {
   CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B
 }
 
-/** E3f #59-G：重置为默认——只删 user 绑定，保留 builtin/plugin。 */
+/** E3f #59-G：重置为默认——只删 user 绑定，保留 builtin/plugin。
+ *  ⚠️ 与 `clearKeybindingForCommand` 的区别就在这一行：作者声明过键的命令，重置后**那个键会顶回来**
+ *  （＝回退，不是清空）；同时把该命令从抑制名册摘掉——「恢复为默认」就是「不抑制作者默认」。 */
 export function resetKeybindingToDefault(commandId: string): void {
   let removed = false;
   for (let i = _bindings.length - 1; i >= 0; i--) {
@@ -75,7 +108,29 @@ export function resetKeybindingToDefault(commandId: string): void {
       removed = true;
     }
   }
-  if (removed) CoreEvents.onDidChangeKeybindings.fire();
+  const lifted = _unboundCommands.delete(commandId);
+  if (removed || lifted) CoreEvents.onDidChangeKeybindings.fire();
+}
+
+/**
+ * 清空某命令的绑定——「这条命令不要键」。
+ *
+ * 与 `removeKeybindingForCommand` 的区别（**别混用**）：
+ *  · `removeKeybindingForCommand` = **只删内存里现存的那几条**，给「改绑先清再建」用——
+ *    作者声明还在，重启后照样注册回来；
+ *  · 本函数 = 删现存**全部**（不限 source）＋ 把命令记进**抑制名册**，此后 builtin/plugin 的注册一律被
+ *    `registerKeybinding` 顶掉 ⇒ **重启后仍然无键**，直到用户重新绑定或「恢复为默认」。
+ *
+ * 无键命令的键位显示：注册表里查不到绑定 ⇒ 快捷键页那行落到占位符 `—`（与「从未绑定过」同相）。
+ */
+export function clearKeybindingForCommand(commandId: string): void {
+  for (let i = _bindings.length - 1; i >= 0; i--) {
+    if (_bindings[i].command === commandId) {
+      _bindings.splice(i, 1);
+    }
+  }
+  _unboundCommands.add(commandId);
+  CoreEvents.onDidChangeKeybindings.fire(); // 即便没有可删的绑定，抑制态本身也变了（UI 要刷新）
 }
 
 /**
@@ -163,6 +218,42 @@ export function findKeybindingForCommand(commandId: string): Keybinding | undefi
   if (candidates.length === 0) return undefined;
   const priority = { user: 3, plugin: 2, builtin: 1 };
   return candidates.sort((a, b) => priority[b.source] - priority[a.source])[0];
+}
+
+/* ── 用户文件形状（纯映射，零 IO）——persistence 只负责读写 ── */
+
+/** `keybindings.json` 的一条——`key: ""` ＝ **清空标记**（这条命令不要键，见 `clearKeybindingForCommand`） */
+export interface UserKeybindingEntry {
+  command: string;
+  key: string;
+  when?: string;
+}
+
+/** 注册表 → 用户文件内容（纯函数）。
+ *  清空标记**排在末尾**：同名命令若既有用户绑定又有标记，加载侧「后写者生效」⇒ 往返稳定。 */
+export function buildUserKeybindingsFile(): UserKeybindingEntry[] {
+  const entries: UserKeybindingEntry[] = [];
+  for (const b of _bindings) {
+    if (b.source !== "user") continue;
+    const entry: UserKeybindingEntry = { command: b.command, key: b.key };
+    if (b.when) entry.when = b.when;
+    entries.push(entry);
+  }
+  for (const command of _unboundCommands) entries.push({ command, key: "" });
+  return entries;
+}
+
+/** 用户文件内容 → 注册表（纯函数）——**先清用户态再重建**（用户覆盖优先级由 `registerKeybinding` 保证）。
+ *  空 `key` ⇒ 清空标记；`key` 不是字符串（形状不对）或缺 `command` ⇒ **跳过**（⛔ 不当成清空——别把坏条目
+ *  升级成一条用户没表达过的决定）。 */
+export function applyUserKeybindingsFile(entries: UserKeybindingEntry[]): void {
+  clearUserKeybindings();
+  for (const kb of entries) {
+    if (!kb || typeof kb.command !== "string" || kb.command === "") continue;
+    if (typeof kb.key !== "string") continue;
+    if (kb.key === "") { clearKeybindingForCommand(kb.command); continue; }
+    registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "user" });
+  }
 }
 
 /** E5.5#7-p7：构建同步到主进程的快捷键数据 */

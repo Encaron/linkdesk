@@ -103,6 +103,7 @@ export const linkdeskMock: Record<string, unknown> = {
     saveUserKeybindings: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.saveUserKeybindings", ..._args); },
     removeKeybindingForCommand: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.removeKeybindingForCommand", ..._args); },
     resetKeybindingToDefault: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.resetKeybindingToDefault", ..._args); },
+    clearKeybindingForCommand: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.clearKeybindingForCommand", ..._args); },
     findKeybindingForCommand: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.findKeybindingForCommand", ..._args); },
     setKeybindingCaptureActive: async (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.setKeybindingCaptureActive", ..._args); },
     keyboardEventToKeyString: (..._args: unknown[]) => { console.info("[linkdesk-mock] keybindings.keyboardEventToKeyString", ..._args); return ""; },

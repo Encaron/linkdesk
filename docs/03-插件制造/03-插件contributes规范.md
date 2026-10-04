@@ -215,6 +215,8 @@ useEffect(() => {
 
 **⚠️ 轨道选择（`05 §4`）：** 只把**非文本键**写进 `contributes.keybindings`。`ctrl+c` / `ctrl+v` / `f2` 等文本编辑键写这里 = 主进程 `before-input-event` 无条件吞全池输入框。文本键/焦点绑定键正解 = 池侧容器 `onKeyDown`（DOM 焦点天然分区）。
 
+**⚠️ 用户的「清空」会压掉你的声明。** 快捷键页齿轮菜单里两项看着像、其实不同：**「恢复为默认」**只删用户的覆盖（你的 `key` 顶回来）；**「清空」＝这条命令不要键**——用户清空后，你的 `contributes.keybindings` 对那条命令**不再注册**（壳侧抑制名册拦在注册入口），且**重启后依然如此**。那是用户的显式意愿：⛔ 不是 bug，也不是你的声明写错了，别去猜「为什么我的快捷键没生效」。用户在快捷键页重新绑定、或点「恢复为默认」，都会解除抑制，你的声明随之恢复。落盘形状 = 用户 `keybindings.json` 里一条 `{ "command": "…", "key": "" }`（空 `key` ＝ 清空标记）。需要插件侧主动清空时用 `window.linkdesk.keybindings.clearKeybindingForCommand`（LinkDesk **0.2.46+**；旧壳没有此方法，调用前先探测）。
+
 ### 3.4 `contributes.configuration`——设置项
 
 ```json

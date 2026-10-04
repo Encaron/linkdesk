@@ -7,7 +7,7 @@
 import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../../../services/files/FileService";
 import { normalizePath } from "../../../utils/path/pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "../../../react/events/CoreEvents";
-import { clearUserKeybindings, registerKeybinding, getKeybindings } from "./registry";
+import { buildUserKeybindingsFile, applyUserKeybindingsFile, clearUserKeybindings, type UserKeybindingEntry } from "./registry";
 import { requestOpenKeybindings } from "../../ConfigurationRegistry"; // E5.8#41.14 🔴：切快捷键 tab 契约双通道（替代错配 window 事件死路由）
 
 const KEYBINDINGS_FILENAME = "keybindings.json";
@@ -29,6 +29,9 @@ async function getKeybindingsPath(): Promise<string | null> {
  *
  * 不存在文件 → 用出厂默认（静默跳过）。
  * JSON 格式：`[{ "command": "...", "key": "...", "when?": "..." }]`
+ *   ＋ **清空标记**：`[{ "command": "...", "key": "" }]` ＝ 这条命令不要键（抑制内置/插件默认，见 `registry.ts`）。
+ * 形状映射全在 registry 侧的纯函数里（`applyUserKeybindingsFile`）——本文件只管读写。本函数不 fire 事件，
+ * 调用方（watch／初始化）自己发。
  */
 async function loadUserKeybindings(): Promise<void> {
   const filePath = await getKeybindingsPath();
@@ -39,13 +42,7 @@ async function loadUserKeybindings(): Promise<void> {
 
   try {
     const raw = await readFile(filePath);
-    const userBindings = JSON.parse(raw) as Array<{ command: string; key: string; when?: string }>;
-
-    // 清除旧用户绑定 → 重新注册（用户覆盖出厂优先级由 registerKeybinding 保证）
-    clearUserKeybindings();
-    for (const kb of userBindings) {
-      registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "user" });
-    }
+    applyUserKeybindingsFile(JSON.parse(raw) as UserKeybindingEntry[]);
   } catch (e) {
     console.warn("[KeybindingRegistry] 读取 keybindings.json 失败:", e);
   }
@@ -59,15 +56,7 @@ export async function saveUserKeybindings(): Promise<string | null> {
   const filePath = await getKeybindingsPath();
   if (!filePath) return null;
 
-  const userBindings = getKeybindings()
-    .filter((b) => b.source === "user")
-    .map((b) => {
-      const entry: { command: string; key: string; when?: string } = { command: b.command, key: b.key };
-      if (b.when) entry.when = b.when;
-      return entry;
-    });
-
-  await writeFile(filePath, JSON.stringify(userBindings, null, 2));
+  await writeFile(filePath, JSON.stringify(buildUserKeybindingsFile(), null, 2));
   return filePath;
 }
 

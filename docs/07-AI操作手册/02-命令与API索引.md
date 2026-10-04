@@ -189,7 +189,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**16 个域接口 → 47 个命名空间 / 255 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**16 个域接口 → 47 个命名空间 / 256 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -213,7 +213,7 @@
 | `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
 | `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
 | `hotExit` ⚠️ | ShellAPI | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘。`?`：池侧独有（壳 preload 不注入） |
-| `keybindings` | KeybindingsAPI | 12 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
+| `keybindings` | KeybindingsAPI | 13 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `clearKeybindingForCommand` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
 | `langDef` | EditorAPI | 1 | `get` | langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） |
 | `language` | AppearanceAPI | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
 | `lsp` | EditorAPI | 4 | `spawn` `write` `dispose` `onData` | LSP 桥——自动补全/F12/诊断/重命名 |

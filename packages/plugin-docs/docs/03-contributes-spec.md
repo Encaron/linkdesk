@@ -217,6 +217,8 @@ useEffect(() => {
 
 **⚠️ Track selection (`05 §4`):** only put **non-text keys** in `contributes.keybindings`. Writing text-editing keys such as `ctrl+c` / `ctrl+v` / `f2` here makes the main process's `before-input-event` unconditionally swallow input in every pool text field. The right way to bind text keys / focus-bound keys is a pool-side container `onKeyDown` (DOM focus partitions naturally).
 
+**⚠️ A user's "Clear" overrides your declaration.** Two items in the shortcut page's gear menu look alike but are not: **"Reset to Default"** only removes the user's override (your `key` comes back), while **"Clear" means this command should have no key** — once a user clears it, your `contributes.keybindings` entry for that command is **no longer registered** (the host keeps a suppression list at the registration entry point), and it **stays that way across restarts**. That is the user's explicit intent: ⛔ it is not a bug and your declaration is not wrong, so don't go hunting for "why is my shortcut not registering". Re-binding the command in the page, or choosing "Reset to Default", lifts the suppression and your declaration takes effect again. On disk it is a single `{ "command": "…", "key": "" }` entry (empty `key` = the clear marker) in the user's `keybindings.json`. To clear from plugin code: `window.linkdesk.keybindings.clearKeybindingForCommand` (LinkDesk **0.2.46+**; older shells lack the method — probe before calling).
+
 ### 3.4 `contributes.configuration` — settings
 
 ```json

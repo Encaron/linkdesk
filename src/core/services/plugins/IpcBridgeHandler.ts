@@ -221,6 +221,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "saveUserKeybindings":
     case "removeKeybindingForCommand":
     case "resetKeybindingToDefault":
+    case "clearKeybindingForCommand": // 2026-10-05：清空＝删绑定 ＋ 抑制作者默认（区别于 reset 的回退）
     case "findKeybindingForCommand":
     case "setKeybindingCaptureActive":
       return handleKeybindingsMethod(method, args);

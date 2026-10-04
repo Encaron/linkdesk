@@ -16,6 +16,10 @@ export interface KeybindingsAPI {
     saveUserKeybindings(): Promise<void>;
     removeKeybindingForCommand(commandId: string): Promise<void>;
     resetKeybindingToDefault(commandId: string): Promise<void>;
+    /** 清空该命令的绑定——「这条命令不要键」：删现存全部 ＋ 抑制内置/插件默认（重启后仍无键），
+     *  直到用户重新绑定或「恢复为默认」。⚠️ 与 resetKeybindingToDefault 的区别＝「作者声明过键」时
+     *  reset 会把那个键顶回来（回退），本方法不会。需 LinkDesk 0.2.46+（旧壳上无此方法 ⇒ 调用方先探测） */
+    clearKeybindingForCommand(commandId: string): Promise<void>;
     findKeybindingForCommand(commandId: string): Promise<Keybinding | undefined>;
     setKeybindingCaptureActive(active: boolean): Promise<void>;
     // 纯数据形参——contextBridge 结构化克隆丢 KeyboardEvent 原生属性（.key/.code 是 C++ getter），

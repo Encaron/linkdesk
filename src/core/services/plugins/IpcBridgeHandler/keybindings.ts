@@ -1,14 +1,14 @@
 /**
  * IpcBridgeHandler 快捷键域——自 IpcBridgeHandler.ts 拆出（E5.8#0d.10-10f）。
- * 快捷键八方法（getKeybindings/getKeybindingConflicts/registerKeybinding/saveUserKeybindings/
- * removeKeybindingForCommand/resetKeybindingToDefault/findKeybindingForCommand/
+ * 快捷键九方法（getKeybindings/getKeybindingConflicts/registerKeybinding/saveUserKeybindings/
+ * removeKeybindingForCommand/resetKeybindingToDefault/clearKeybindingForCommand/findKeybindingForCommand/
  * setKeybindingCaptureActive）+ 快捷键变更订阅（_keybindingsUnsub 属主）verbatim。
  * 依赖方向：keybindings → KeybindingRegistry/CoreEvents + linkdesk-api（LinkDeskAPI 订阅类型）；被聚合器委派。
  */
 
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
-  removeKeybindingForCommand, resetKeybindingToDefault,
+  removeKeybindingForCommand, resetKeybindingToDefault, clearKeybindingForCommand,
   findKeybindingForCommand, setKeybindingCaptureActive,
   keybindingResolver, type Keybinding,
 } from "../../../registry/commands/KeybindingRegistry";
@@ -54,6 +54,11 @@ export async function handleKeybindingsMethod(method: string, args: unknown[]): 
     case "resetKeybindingToDefault": {
       const [commandId] = args as [string];
       resetKeybindingToDefault(commandId);
+      break;
+    }
+    case "clearKeybindingForCommand": {
+      const [commandId] = args as [string];
+      clearKeybindingForCommand(commandId);
       break;
     }
     case "findKeybindingForCommand": {

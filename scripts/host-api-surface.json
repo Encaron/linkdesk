@@ -144,6 +144,7 @@
       "save"
     ],
     "keybindings": [
+      "clearKeybindingForCommand",
       "findKeybindingForCommand",
       "getConflicts",
       "getKeybindings",
@@ -508,6 +509,7 @@
       "save"
     ],
     "keybindings": [
+      "clearKeybindingForCommand",
       "findKeybindingForCommand",
       "getConflicts",
       "getKeybindings",

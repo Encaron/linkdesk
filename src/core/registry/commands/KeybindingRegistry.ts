@@ -15,6 +15,7 @@
 
 /* ── 类型 ── */
 export type { Keybinding, KeybindingConflict } from "./KeybindingRegistry/types";
+export type { UserKeybindingEntry } from "./KeybindingRegistry/registry";
 export type { KeyboardInput } from "../../types/ipc/keyboard"; // 保既有 import 路径（E5.7#97 归口 src/core/types/ipc/keyboard）
 
 /* ── 规范化 ── */
@@ -27,6 +28,11 @@ export {
   registerKeybinding,
   removeKeybindingForCommand,
   resetKeybindingToDefault,
+  clearKeybindingForCommand,
+  isCommandUnbound,
+  getUnboundCommands,
+  buildUserKeybindingsFile,
+  applyUserKeybindingsFile,
   getKeybindings,
   findKeybindingForCommand,
   getKeybindingSyncData,
