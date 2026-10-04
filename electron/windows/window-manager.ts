@@ -12,7 +12,7 @@ import * as path from 'path';
 import { diagLog } from '../services/diag-log.js'; // E6#163：诊断日志唯一写入口（带体积上限/轮转）
 import { seedBackgroundColor } from '../theme-seed.js'; // 04「启动过场」④A：池 WCV 背景同源 seed
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
-import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
+import { attachKeyboardRouting, clearKeyboardPassthrough } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
 import { ShellRegistry } from './shell-registry.js'; // E6#47b：多窗壳注册表（自本文件抽出，体积门禁）
 import { resolveFocusedWindowId } from './focus-router.js'; // E5.8#46.12 Step2：聚焦池窗解析（纯函数，单测独立）
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
@@ -255,6 +255,16 @@ export class WindowManager {
     // 壳 UI 推流（pushQuickPick/pushDialog/pushFloatingPanel）默认落该窗。
     const onFocus = () => { this._focusedWindowId = windowId; };
     hostWindow.on('focus', onFocus);
+    // 件 1 卫生要求 2（待抉择池/快捷键页-录制与齿轮菜单.md）：宿主窗失焦 ⇒ 清该池视图的「键盘直通」标志。
+    // 录制器的「点外面取消」是**插件自己文档**里的 mousedown 监听——用户点到插件 WebView **外面**
+    // （壳区域 / 别的视图）时它不触发，取消分支的 setKeybindingCaptureActive(false) 也就不发
+    // ⇒ 悬挂的 true 会让该视图的全局快捷键**永久失效**（键全被放行、壳一个都收不到）。
+    // blur 是主进程侧最接近的兜底；registerPool = 主/脱出/漂移三窗共用创建路径 ⇒ 三窗自动继承。
+    const onHostBlur = () => {
+      const wc = this.poolWindows.get(windowId)?.view?.webContents;
+      if (wc && !wc.isDestroyed()) clearKeyboardPassthrough(wc.id);
+    };
+    hostWindow.on('blur', onHostBlur);
     // E5.8#46.18：宿主窗 OS 置顶状态 → 该窗池 WCV 推 alwaysOnTopChange（TitleBarZone pin 按钮两态跟随）。
     // registerPool = 主/脱出/漂移三窗共用创建路径——三窗统一覆盖（#46.16 只补 createPoolWindow 只覆盖脱出窗的教训：
     // 新监听挂共用路径，任何新窗口类型自动继承）。

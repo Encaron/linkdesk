@@ -70,6 +70,42 @@ function clearMainChord(): void {
   }
 }
 
+// ── 键盘直通（录制 / 捕获态）——录制期间键必须落进池 WebView ──
+
+/**
+ * 案件：`docs/04-软件更新/待抉择池/快捷键页-录制与齿轮菜单.md` 件 1。
+ *
+ * 池插件的录制器（设置插件 `KeybindingSettingsView` 的双框 chord 捕获）起录制时调
+ * `setKeybindingCaptureActive(true)`，但那条信号此前**只活在壳渲染进程里**（`dispatch.ts` 的模块级
+ * 布尔）⇒ 主进程照旧按 keyCache 吞键（`ctrl+k` 是内置 chord 前缀，`:160` 命中即 preventDefault），
+ * 键根本没投给池 WebView，录制器**一次都收不到**。壳侧守卫的眼睛在壳里、拦截器在主进程，两者之间没有神经。
+ *
+ * 按 **webContents.id** 记直通视图（⛔ 不用单个模块级布尔——多窗/多池会互相放开）。
+ */
+const _passthroughViewIds = new Set<number>();
+
+/**
+ * 设置 / 取消某池视图的「键盘直通」——直通期间 `handleBeforeInput` 直接放行（不查表、不 preventDefault、
+ * 不进 chord 状态机），键照落该 WebView 交给池侧录制器。
+ *
+ * 进入直通时先清已挂起的 chord：否则上一次按 `ctrl+k` 留下的 pending 会把录制者的**第一个键**
+ * 当「chord 第二键」吞掉，录制器仍收不到它真正按的那个键。
+ */
+export function setKeyboardPassthrough(viewId: number, active: boolean): void {
+  if (active) {
+    clearMainChord();
+    _passthroughViewIds.add(viewId);
+  } else {
+    _passthroughViewIds.delete(viewId);
+  }
+  debug(`setKeyboardPassthrough(${viewId}, ${active}) → passthrough=[${[..._passthroughViewIds].join(',')}]`);
+}
+
+/** 清掉某视图的直通标志（幂等）——`webContents destroyed` 与宿主窗 `blur` 两个清理点调用。 */
+export function clearKeyboardPassthrough(viewId: number): void {
+  setKeyboardPassthrough(viewId, false);
+}
+
 /** Electron Input → 壳 KeyboardInput 形状 */
 function inputToKeyboardInput(input: Input): KeyboardInput {
   return {
@@ -97,9 +133,16 @@ export function syncKeybindings(data: KeybindingSyncData): void {
 /** 处理单个 before-input-event——同步查表 + chord 状态机。
  *  E5.8#46.8：sourceWindowId 标注来源 WCV 所属窗（attachKeyboardRouting 在 createPoolView 工厂注入）——
  *  随 executeShortcut 载荷转发壳，键盘快捷键按聚焦窗裁决（Ctrl+W 关本窗 tab）。 */
-function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow, sourceWindowId: string): void {
+function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow, sourceWindowId: string, viewId: number): void {
   if (input.type !== 'keyDown') return;
   if (input.isAutoRepeat) return; // key repeat 不触发快捷键——防止 toggle 型命令重复翻转
+
+  // 件 1：该视图在「录制/捕获态」⇒ 一律放行，键照落该 WebView（录制器只认它自己的文档 DOM）。
+  // 位置在 keyDown/isAutoRepeat 早退之后、查表之前——录制态下不查 keyCache、不碰 chord 状态机。
+  if (_passthroughViewIds.has(viewId)) {
+    debug(`  → passthrough view ${viewId}: let "${input.key}" through to WebView`);
+    return;
+  }
 
   const ki = inputToKeyboardInput(input);
   const keyString = keyboardInputToKeyString(ki);
@@ -189,7 +232,10 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
  * 保证 rebuildPool 崩溃恢复后重建的视图也自动带上路由。
  */
 export function attachKeyboardRouting(view: WebContentsView, mainWindow: BrowserWindow, sourceWindowId: string): void {
+  const viewId = view.webContents.id;
   view.webContents.on('before-input-event', (event, input) => {
-    handleBeforeInput(event, input, mainWindow, sourceWindowId);
+    handleBeforeInput(event, input, mainWindow, sourceWindowId, viewId);
   });
+  // 件 1 卫生要求 2 之一：视图销毁 ⇒ 摘掉直通标志（⛔ 不残留——残留会把之后重建视图的同号 id 误当录制态）。
+  view.webContents.on('destroyed', () => clearKeyboardPassthrough(viewId));
 }
