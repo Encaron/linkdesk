@@ -104,6 +104,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("界面"),
             default: "zh",
             enum: ["zh", "en"],
+            // 短名取「显示语言」（VS Code zh 界面同款叫法，照 03 表 §补名规则 5 对标）——⛔ 不叫「界面语言」：
+            // 与本行 description 同字，行名与副文本会重复成一行废话。
+            title: t("显示语言"),
             description: t("界面语言"),
             onApply: (v) => {
               i18n.changeLanguage(v as string);
@@ -124,6 +127,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("界面"),
             default: "titlebar",
             enum: ["titlebar", "hamburger", "both"],
+            title: t("菜单栏样式"),
             description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
           },
           // 04「悬停提示系统」件 1：提示条**总开关**（用户拍板 ④「只给总开关」——不给单条粒度开关）。
@@ -134,6 +138,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "boolean",
             group: t("界面"),
             default: true,
+            title: t("悬停提示"),
             description: t("悬停提示——鼠标停在图标/按钮上时显示名称与快捷键"),
           },
           // ── E6#45f：OS 集成开关（右键菜单 / 文件类型关联）──
@@ -144,6 +149,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "boolean",
             group: t("系统集成"),
             default: false,
+            title: t("文件右键菜单"),
             description: t("在资源管理器文件右键菜单中显示「Open with LinkDesk」"),
             onApply: (v) => void applyOsIntegration("fileMenu", v === true),
           },
@@ -151,6 +157,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "boolean",
             group: t("系统集成"),
             default: false,
+            title: t("文件夹右键菜单"),
             description: t("在资源管理器文件夹右键菜单中显示「Open with LinkDesk」"),
             onApply: (v) => void applyOsIntegration("dirMenu", v === true),
           },
@@ -158,6 +165,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             type: "boolean",
             group: t("系统集成"),
             default: true,
+            title: t("文件关联"),
             description: t("将 LinkDesk 注册为受支持文件类型的编辑器（「打开方式」里可选）"),
             onApply: (v) => void applyOsIntegration("fileAssoc", v === true),
           },
@@ -170,6 +178,7 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             default: 0,
             minimum: -8,
             maximum: 8,
+            title: t("窗口缩放级别"),
             description: t("窗口缩放级别——0 为原始大小，每 ±1 放大/缩小 20%"),
             onApply: (v) => {
               // Number.isFinite 而非 typeof === "number"——后者触发 no-restricted-syntax 的

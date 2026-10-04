@@ -1,7 +1,7 @@
 # 04-软件更新 · 待抉择池（配置项短名：设置页／市场详情页「人话行名」落地）
 
-> 立案：2026-10-04（用户）。**状态：🟢 已拍板全裁 · 已解禁开工（2026-10-04：D1–D7 逐项拍板＋89 条底稿定稿，结论见 §五与 [03 档](03-配置项普查与短名底稿.md)）**（T1–T7 七格到落点）。
-> 一句话：设置页与市场详情页的配置项行名今天直接渲染英文键（`editor.autoSave` 这种），根因 = **schema 没给配置项「短名」留落点**——组名（「编辑器」）、节名（「文件」）、长描述（`description`）都有，唯独行名没有，渲染侧只能拿 key 顶。本件 = 补 per-property `title` 字段（optional）→ 两台消费插件改渲染 → 89 条声明补名 → en 译名 → 齿轮「复制设置名称」→ 市场跳设置复测。
+> 立案：2026-10-04（用户）。**状态：🟢 已拍板全裁 · 第 1 波（基建轴）已完工（2026-10-04：D1–D7 逐项拍板＋底稿定稿；同日收尾经用户拍板**把 `startup.ts` 通用组 7 条并入普查 ⇒ 全表 **89 → 96 条**、壳 **41 → 48 条****；结论见 §五与 [03 档](03-配置项普查与短名底稿.md)）**（T1–T7 七格到落点）。
+> 一句话：设置页与市场详情页的配置项行名今天直接渲染英文键（`editor.autoSave` 这种），根因 = **schema 没给配置项「短名」留落点**——组名（「编辑器」）、节名（「文件」）、长描述（`description`）都有，唯独行名没有，渲染侧只能拿 key 顶。本件 = 补 per-property `title` 字段（optional）→ 两台消费插件改渲染 → 96 条声明补名（原 89 ＋ `startup.ts` 通用组 7）→ en 译名 → 齿轮「复制设置名称」→ 市场跳设置复测。
 > **归属拍板（2026-10-04 用户）**：**凡涉多仓＋软件主体的任务一律进 04 本池**（不拆 05）——本件横跨 SDK／两台消费插件／五台声明插件／壳声明与齿轮，故立于此；此规则已记入 [池表头注](../../00-README.md)。
 
 ## 一、缘起（用户问题原话摘录，2026-10-04）
@@ -10,7 +10,7 @@
 2. 这属于 04-软件更新还是 05-插件更新？——拍板见档头。
 3. 是不是所有声明在设置内的都要更新？怎么做？
 4. 「通用/主题/AI接入」是壳的声明；编辑器/资源管理器/插件市场/串口监视器/设置 各是各插件——**归属理解正确**（精确落点见 [03 普查表](03-配置项普查与短名底稿.md)）。
-5. 是不是全部都要更新，每个配置项加一个标注的人眼可看的？——是，89 条全补（见 §三）。
+5. 是不是全部都要更新，每个配置项加一个标注的人眼可看的？——是，96 条全补（见 §三；含同日扩面的 `startup.ts` 通用组 7 条）。
 6. 中英翻译怎么办（尤其插件侧没有红灯警告的仓）？——机制现成，缺的是供给与防漏（[01 §八](01-方案与落点契约.md)）。
 7. 市场详情页「功能」页上面是详情介绍、下面是英文字母——设置页做好后市场是不是也要更新一次？——是，**同一个字段同笔消费**，不是重做一遍（T3）。
 8. 市场「功能」页配置项点击**不跳**对应类别（如点文件树的配置项不跳「资源管理器」）——是 bug 吗？没命令还是忘了？——**不是没命令也不是忘了**：链路六环全在且逐环核过 file:line（[01 §六](01-方案与落点契约.md)），静态看应当能跳；实机不跳 = 运行时 bug，T6 实机复测＋二分。
@@ -30,7 +30,7 @@
 | ⑥ | 市场跳设置链路六环齐全（静态） | `FeaturesTab.tsx:57` → 壳 `settingsCommands.ts:204-206` → `ConfigurationRegistry.ts:393-421`（pending＋Emitter）→ `IpcBridgeHandler/ui.ts:41-47`（broadcast）→ preload `configuration.ts:64-76` → settings 仓 `useSettingsEvents.ts` 双通道消费 → `SettingsView.tsx:110`（`g.pluginId === selectedGroup`） |
 | ⑦ | 枚举显示名缺 `enumDescriptions` 时回退显示原文（英文值裸奔） | settings 仓 `renderControl.tsx:209`／`mapSegmentedOptions.ts:13` → `enumDescriptions?.[i] ? t(...) : t(v)` |
 | ⑧ | 插件译文进**共享** `translation` 命名空间 ⇒ 跨插件 `t()` 可解析（设置页能译出 editor 的描述，市场补 `t()` 同理可译） | `src/pluginLoader/contributions/i18nResources.ts:90-91`；登记本 `src/core/registry/languages/LanguageRegistry.ts:5-8` |
-| ⑨ | **普查规模 = 89 条**：壳 41（appearance 主题 24 · aiBridge AI接入 14 · update 2 · storage 1）＋ editor 26 ＋ file-tree 18 ＋ serial-monitor 2 ＋ marketplace 1 ＋ settings 1 | 全表见 [03](03-配置项普查与短名底稿.md)（底稿，执行时重普查） |
+| ⑨ | **普查规模 = 96 条**（基线 89 ＋ 2026-10-04 扩面 7）：壳 48（appearance 主题 24 · aiBridge AI接入 14 · update 2 · storage 1 · **startup.ts 通用 7**）＋ editor 26 ＋ file-tree 18 ＋ serial-monitor 2 ＋ marketplace 1 ＋ settings 1 | 全表见 [03](03-配置项普查与短名底稿.md)（底稿，执行时重普查） |
 
 ## 三、任务分解（T1–T7；逐格规格在 [01](01-方案与落点契约.md)，打勾账在 [04](04-任务清单.md)）
 
@@ -40,7 +40,7 @@
 | T2 | **设置插件渲染短名** | 行名 `t(prop.title) ?? configKey`；搜索索引加 title 匹配；类型补 `title?` | settings 仓 `SettingRow.tsx`／`filterGroups.ts`／`types.ts` | T1 |
 | T3 | **市场插件功能页同笔消费** | 上行 `t(title)` 短名、下行 key 保留（对标 VS Code）；**同笔补 `t()`**（今天描述没走翻译） | marketplace 仓 `features-groups.tsx`／`contribs.ts` | T1 |
 | T4 | **五台官方插件仓声明补名＋译名** | 48 条逐条加 `title`＋en 译名＋枚举显示名缺口（≥11 组）；各仓发版＋目录收录 | editor/file-tree/serial-monitor/marketplace/settings 五仓 plugin.json ＋ 各仓 i18n/en.json | T1 |
-| T5 | **壳：声明补名 ＋ 齿轮「复制设置名称」** | 壳 41 条补 `title`（**一律 `t()` 包裹**，`audit-i18n --strict` 拦裸中文）；壳新命令＋菜单项（when=`settingHasTitle`，context key 由设置插件开齿轮时设）；`manual:build` | `src/App/config/*.ts` ＋ `coreCommands.ts` ＋ settings 仓 `gearMenu.ts` ＋ host-reserved 账本 | T1/T2 |
+| T5 | **壳：声明补名 ＋ 齿轮「复制设置名称」** | 壳 48 条补 `title`（**一律 `t()` 包裹**，含 `startup.ts` 通用 7，`audit-i18n --strict` 拦裸中文）；壳新命令＋菜单项（when=`settingHasTitle`，context key 由设置插件开齿轮时设）；`manual:build` | `src/App/config/*.ts` ＋ `coreCommands.ts` ＋ settings 仓 `gearMenu.ts` ＋ host-reserved 账本 | T1/T2 |
 | T6 | **市场跳设置复测＋二分** | dev 版三场景（设置未开/已开/首开）实测；不通照硬约束 15 `git checkout` 二分 | 实机验收＋（视结果）市场/壳/设置仓小修 | T2/T3 |
 | T7 | **收口**：分级门禁＋文档连锁＋保鲜 | 壳红门禁 `check-config-titles`（挂 check）＋ SDK 黄灯腿铺官方各仓＋脚手架模板自带；作者面文档两处（含**门禁等级与 v1 升红条件**说明）＋AI 手册＋cheatsheet；`sync:bundled --latest`（commit 非发版）；JOURNAL 打点 | `scripts/`＋plugin-sdk CI 腿＋`create-linkdesk-plugin`＋`docs/03-plugin-authoring/`＋`docs/03-插件制造/` | 全部 |
 
@@ -60,12 +60,12 @@
 | D3 | 市场功能页下行 | **保留英文 key**（上行短名、下行 ID） | 对标 VS Code；ID 本来就该示人，齿轮复制是设置页的事 |
 | D4 | 设置页行名形态 | **只显短名**（ID 走齿轮「复制设置 ID／复制为 JSON」，均已存在）；无 title 回退显 key | 对标 VS Code 设置页；不留双行 ID 噪音 |
 | D5 | 齿轮新项 | 「**复制设置名称**」，when=`settingHasTitle`（无 title 的行不出现，不留死项），复制**当前语言显示名** | 用户 2026-10-04 命名拍板；context key 面照 `settingKey` 既有模式 |
-| D6 | 防漏门禁强度 | **分级门禁（2026-10-04 用户拍板，原「只报不拦」改判）**：壳=**红灯**挂 `npm run check`（41 条无豁免）；SDK/插件仓＋**脚手架**=**黄灯**（warn 列单不判红，三族判据：无 title／缺 en 译名／缺枚举显示名），预留 `--strict` 开关 **v1 正式版统一切红**。理由：内测期全是自家插件、反悔机会十足，黄灯防「未来给已有插件加配置项忘 title」 | 用户原话「软件自己是红色门禁」「给作者那的脚手架也把门禁加上，但是亮黄灯的门禁」「让已有插件各仓也用这个门禁」 |
+| D6 | 防漏门禁强度 | **分级门禁（2026-10-04 用户拍板，原「只报不拦」改判）**：壳=**红灯**挂 `npm run check`（48 条无豁免）；SDK/插件仓＋**脚手架**=**黄灯**（warn 列单不判红，三族判据：无 title／缺 en 译名／缺枚举显示名），预留 `--strict` 开关 **v1 正式版统一切红**。理由：内测期全是自家插件、反悔机会十足，黄灯防「未来给已有插件加配置项忘 title」 | 用户原话「软件自己是红色门禁」「给作者那的脚手架也把门禁加上，但是亮黄灯的门禁」「让已有插件各仓也用这个门禁」 |
 | D7 | 枚举显示名缺口 | **顺带补齐**（editor 8 组/file-tree 2 组/settings 1 组缺 `enumDescriptions`，壳侧阶段 0 普查） | 「人眼可看」的自然组成；机制现成（取证 ⑦） |
 
 ## 六、验收（七条全绿才算完）
 
-1. dev 版设置页：**全部行显示人话短名**（壳 41＋随包插件 48），无一行裸 key（第三方未声明者 fallback 显 key 属预期）。
+1. dev 版设置页：**全部行显示人话短名**（壳 41＋随包插件 48），无一行裸 key（第三方未声明者 fallback 显 key 属预期）——**壳 48 条含 2026-10-04 扩面的 `startup.ts` 通用 7**。
 2. 英文界面：短名与描述出英文；缺译项回退中文原文且被普查尺报出。
 3. 市场详情「功能」页：上行短名、下行 key；英文界面经 `t()` 正常翻译。
 4. 齿轮菜单：有 title 的行出现「复制设置名称」且复制得到当前语言短名；无 title 的行不出现该项。

@@ -3,9 +3,10 @@
  * 同时是插件侧黄灯腿的**同源入口**（配置项短名案 2026-10-04，层 5 红门禁）。
  *
  * ── 两个模式（同一把尺子，两种消费）──
- *   ① **默认（壳红灯）**：`src/App/config/` 四个声明文件（appearance / aiBridge / update / storage）
- *      里**每一条 property 都必须有 `title:`**——缺一条即判红、**无豁免账**（壳是软件本体，一步到位
- *      不设黄灯；41 条必须齐）。壳声明是 TS 多行写法，故提取住本脚本（`scanSource`）。
+ *   ① **默认（壳红灯）**：壳的五个配置声明文件（`src/App/config/` 的 appearance / aiBridge / update /
+ *      storage ＋ `src/App/startup.ts` 通用组）里**每一条 property 都必须有 `title:`**——缺一条即判红、
+ *      **无豁免账**（壳是软件本体，一步到位不设黄灯；48 条必须齐）。壳声明是 TS 多行写法，故提取住本脚本
+ *      （`scanSource`）。`startup.ts` 那 7 条（`app.language` 等）2026-10-04 用户拍板纳入普查域。
  *   ② **`--plugin <dir>`（黄灯腿真源）**：对一只插件仓跑三族判据（无 title / 缺 en 译名 / 缺枚举显示名），
  *      判据本体 = **`@linkdesk/plugin-sdk/check-config-titles`**（`packages/plugin-sdk/check-config-titles.mjs`）
  *      ——⛔ 壳侧不复写一份判据（两把尺子同一份实现；官方各仓 CI 的 `ci-verify` ⑨ 段调的就是同一个模块）。
@@ -13,9 +14,10 @@
  *
  * ── 🔴 发现式断言（自 check-config-baseline 学来的一条纪律）──
  *   壳的配置声明站点若**漏登记**在下方 `TARGETS` 里，那些键**根本不被扫** ⇒ 门禁静默放行。
- *   故本脚本在真跑时先扫全 `src/` 找出「调 registerConfiguration 且声明 app.* 与 ai.* 键」的生产文件，
- *   与 TARGETS 比对；差额**每次都打印**（⚠️ 行）——本案普查口径 = 四文件 41 条，扩面是一次
- *   公共面决策（⛔ 不由本脚本擅自判红逼人扩范围），但**也绝不静默**。
+ *   故本脚本在真跑时先扫全 `src/` 找出「调 registerConfiguration 且声明 app.* / ai.* / window.* 键」
+ *   的生产文件，与 TARGETS 比对；差额**每次都打印**（⚠️ 行）——本案普查口径 = 五文件 48 条
+ *   （四文件 41 条 ＋ `startup.ts` 7 条，2026-10-04 用户拍板扩面），再扩面是一次公共面决策
+ *   （⛔ 不由本脚本擅自判红逼人扩范围），但**也绝不静默**。
  *
  * 用法：
  *   node scripts/check-config-titles.mjs                                 # 壳红灯（挂 npm run check）
@@ -35,7 +37,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 /**
- * 壳配置声明站点（普查口径 = 配置项短名案 03 表的「壳 41 条」四文件）。
+ * 壳配置声明站点（普查口径 = 配置项短名案 03 表的「壳 48 条」五文件）。
  * ⚠️ 白名单漏登记 = 该文件的门禁静默放行——下方发现式断言每次都把差额打出来。
  */
 const TARGETS = [
@@ -43,6 +45,7 @@ const TARGETS = [
   "src/App/config/aiBridge.ts", // AI 接入 14 条
   "src/App/config/update.ts", // 更新 2 条
   "src/App/config/storage.ts", // 存储 1 条
+  "src/App/startup.ts", // 通用组 7 条：界面 4（显示语言/菜单栏样式/悬停提示/窗口缩放级别）＋系统集成 3
 ];
 
 /** 从 offset 找匹配的右大括号——跳过字符串字面量（对标 check-config-baseline 的同名辅助） */
@@ -65,8 +68,8 @@ function findMatchingBrace(text, start) {
   return -1;
 }
 
-/** 壳侧配置键射程——`"app.xxx": {` / `"ai.xxx": {` 字面量键（与 check-config-baseline 同一条正则） */
-const KEY_SCOPE_RE = /"(?:app|ai)\.[\w.]+":\s*\{/g;
+/** 壳侧配置键射程——`"app.xxx": {` / `"ai.xxx": {` / `"window.zoomLevel": {` 字面量键（与 check-config-baseline 同一条正则） */
+const KEY_SCOPE_RE = /"(?:app|ai|window)\.[\w.]+":\s*\{/g;
 
 /**
  * 纯判据：一段源码里「声明了壳配置项却块内无 title:」的行（不读盘，`--self-test` 注入）。
@@ -96,7 +99,7 @@ export function scanSource(relPath, src) {
 }
 
 /** 同一条射程的非 /g 副本（.test 带 lastIndex 状态，不能共用） */
-const APP_KEY_DECL_RE = /"(?:app|ai)\.[\w.]+":\s*\{/;
+const APP_KEY_DECL_RE = /"(?:app|ai|window)\.[\w.]+":\s*\{/;
 const REGISTER_CALL = "registerConfiguration(";
 
 /** 纯判据：`[{ rel, src }]` 里哪些文件是「壳配置声明站点」 */
@@ -179,7 +182,12 @@ function runSelfTest() {
       0,
     ],
     [
-      "正控⑥：发现式断言——已登记的四个声明文件 ⇒ 0 个未登记",
+      "正控⑤b：window.* 键也在射程（通用组缩放级别，2026-10-04 扩面）＋ 有 title ⇒ 0 条",
+      scanSource("x.ts", `{ properties: { "window.zoomLevel": { type: "number", title: t("窗口缩放级别") } } }`).length,
+      0,
+    ],
+    [
+      "正控⑥：发现式断言——已登记的五个声明文件 ⇒ 0 个未登记",
       unregisteredConfigSources(
         TARGETS.map((rel) => ({ rel, src: `registerConfiguration("x", {\n  properties: { "app.k": { title: t("k") } },\n});` })),
         TARGETS,
@@ -203,6 +211,11 @@ function runSelfTest() {
     [
       "负控①b：ai.* 键同样受红灯管 ⇒ 1 条",
       scanSource("x.ts", `{ properties: { "ai.cli.enabled": { type: "boolean" } } }`).length,
+      1,
+    ],
+    [
+      "负控①c：window.* 键同样受红灯管（扩面后的射程真有牙）⇒ 1 条",
+      scanSource("x.ts", `{ properties: { "window.zoomLevel": { type: "number" } } }`).length,
       1,
     ],
     [
@@ -335,12 +348,12 @@ function main() {
   if (violations.length > 0) {
     console.error(violations.join("\n"));
     console.error(
-      `\n❌ ${violations.length} 处壳配置项缺行名短名（title）——配置项短名案 D1/D6，壳无豁免账（41 条必须齐）。`,
+      `\n❌ ${violations.length} 处壳配置项缺行名短名（title）——配置项短名案 D1/D6，壳无豁免账（48 条必须齐）。`,
     );
     process.exit(1);
   }
   console.log(
-    `✅ 壳配置项短名齐——${TARGETS.length} 个声明文件的每条 app.*/ai.* property 都带 title（发现式断言：已扫 ${sources.length} 个 ts/tsx，无静默漏扫）。`,
+    `✅ 壳配置项短名齐——${TARGETS.length} 个声明文件的每条 app.*/ai.*/window.* property 都带 title（发现式断言：已扫 ${sources.length} 个 ts/tsx，无静默漏扫）。`,
   );
 }
 
