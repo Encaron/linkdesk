@@ -107,6 +107,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
 .panel .acts{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
 .mini{background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11.5px;text-align:left;}
 .mini:hover{color:var(--text-primary);border-color:var(--text-muted);}
+.mini.on{background:var(--accent);border-color:var(--accent);color:var(--text-on-accent);}
 .frame-note{max-width:1320px;margin:14px auto 40px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:12.5px;color:var(--text-secondary);}
 .frame-note b{color:var(--text-primary);}
 .frame-note ol{margin:6px 0 0 18px;}
@@ -145,14 +146,9 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
   </div>
   <div class="side">
     <div class="panel"><h3>覆盖表 workbench.fileAssociations</h3><div class="kv" id="kvOverride">{ }</div></div>
-    <div class="panel"><h3>解析日志（与文件树选择器同一真源）</h3><div class="log" id="log">（等待操作…）</div></div>
-    <div class="panel"><h3>边界演示（点了就看结果）</h3>
-      <div class="acts">
-        <button class="mini" onclick="installPlugin('imgb')">⚡ 模拟安装「图像大师 B」→ .jpg 变两家竞争（E1）</button>
-        <button class="mini" onclick="uninstallPlugin('pdfpro')">⚡ 模拟卸载「PDF Reader Pro」→ 看默认回退（E6）</button>
-        <button class="mini" onclick="setDefault('pdf','adobe')">⚡ 把 .pdf 设为 Adobe（写入覆盖表）</button>
-        <button class="mini" onclick="clearDefault('pdf')">⚡ 恢复 .pdf 自动</button>
-      </div>
+    <div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;">解析日志（同一真源）<button class="mini" style="padding:2px 8px;" onclick="document.getElementById('log').innerHTML='（已清空）'">清空</button></h3><div class="log" id="log">（等待操作…）</div></div>
+    <div class="panel"><h3>边界演示（状态化：高亮＝已生效，再点＝还原）</h3>
+      <div class="acts" id="demoActs"></div>
     </div>
   </div>
 </div>
@@ -298,7 +294,14 @@ function renderGroup(){
 }
 function renderSide(){
   $("kvOverride").textContent = Object.keys(state.override).length ? JSON.stringify(state.override, null, 1) : "{ }  （空 —— 一切按声明序）";
+  const imgb = state.installed.includes("imgb"), pdfpro = state.installed.includes("pdfpro"), adobe = state.override.pdf==="adobe";
+  $("demoActs").innerHTML =
+    `<button class="mini${imgb?" on":""}" onclick="togglePlugin('imgb')">${imgb?"🟢 图像大师 B — 已安装（再点＝卸载）":"⚡ 模拟安装「图像大师 B」→ .jpg 变两家竞争（E1）"}</button>
+     <button class="mini${pdfpro?" on":""}" onclick="togglePlugin('pdfpro')">${pdfpro?"🟢 PDF Reader Pro — 已安装（再点＝卸载，看默认回退 E6）":"⚡ 模拟安装「PDF Reader Pro」（恢复候选）"}</button>
+     <button class="mini${adobe?" on":""}" onclick="togglePdfAdobe()">${adobe?"🟢 .pdf 默认 = Adobe（再点＝恢复自动）":"⚡ 把 .pdf 设为 Adobe（写入覆盖表）"}</button>`;
 }
+function togglePlugin(id){ if (state.installed.includes(id)) uninstallPlugin(id); else installPlugin(id); }
+function togglePdfAdobe(){ if (state.override.pdf==="adobe") clearDefault("pdf"); else setDefault("pdf","adobe"); }
 function installPlugin(id){
   if (state.installed.includes(id)) { toast(`${PLUGINS[id].name} 已在场`, ""); return; }
   state.installed.push(id); renderSide(); addLog(`安装激活 ${PLUGINS[id].name}…（声明 ${(PLUGINS[id].assoc||[]).join("/")}）`, false);
