@@ -135,6 +135,16 @@ button:focus-visible,.sc-btn:focus-visible,.tgl:focus-visible,.tab:focus-visible
 .tgl.on::after{left:18px; background:var(--text-on-accent);}
 .mini-explorer{border:1px dashed var(--border); border-radius:10px; padding:14px; margin-top:16px;}
 .mini-explorer .t{font-size:12px; color:var(--text-secondary); margin-bottom:8px;}
+.settings .mgr-search{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text-primary);font-size:12.5px;margin-bottom:14px;}
+.settings select.sel{background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 8px;font-size:12px;min-width:180px;}
+.plugrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--separator);border-radius:8px;margin-bottom:6px;cursor:pointer;}
+.plugrow:hover{background:var(--hover-overlay);}
+.plugrow .pdot{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--text-on-accent);flex:none;}
+.chipline{display:flex;flex-wrap:wrap;gap:6px;padding:4px 6px 10px;}
+.chipline .cx{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 9px;color:var(--text-secondary);}
+.chipline .cx b{color:var(--status-connected);font-weight:600;}
+details.osblock{border:1px solid var(--separator);border-radius:8px;padding:8px 12px;margin-top:18px;}
+details.osblock summary{cursor:pointer;font-size:12.5px;color:var(--text-secondary);}
 .frame-note{max-width:1320px; margin:14px auto 40px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:14px 18px; font-size:12.5px; color:var(--text-secondary);}
 .frame-note b{color:var(--text-primary);}
 .frame-note ol{margin:6px 0 0 18px; display:grid; grid-template-columns:1fr 1fr; gap:4px 22px;}
@@ -153,7 +163,7 @@ button:focus-visible,.sc-btn:focus-visible,.tgl:focus-visible,.tab:focus-visible
   <button class="sc-btn" data-sc="2">③ MD 次要方式（不抢单击）</button>
   <button class="sc-btn" data-sc="3">④ 双编辑器挂牌冲突（极客场景）</button>
   <button class="sc-btn" data-sc="4">⑤ 未装阅读器（乱码 → 提示页）</button>
-  <button class="sc-btn" data-sc="5">⑥ 设置页 · 系统集成（OS 登记块）</button>
+  <button class="sc-btn" data-sc="5">⑥ 设置页 · 默认打开方式（管理器）</button>
 </div>
 
 <div class="stage">
@@ -213,7 +223,7 @@ button:focus-visible,.sc-btn:focus-visible,.tgl:focus-visible,.tab:focus-visible
     <li><b>③</b> .md 单击永远 editor；右键菜单多出两条<b>插件贡献项</b>（带 src 小标）——贡献是合并不替换（D/T5、证据④）。</li>
     <li><b>④</b> 模拟安装 MyEEEEEditor（挂牌 role）→ <b>默认不静默换人</b>＋toast 一次；选择器两家并列；设为默认才接管（E3/D7/T7）。</li>
     <li><b>⑤</b> 无任何 .pdf 声明：单击 → editor 标签内提示块（不是乱码、不是弹窗）＋toast；这就是 T1 的全部视觉（D4/D10）。</li>
-    <li><b>⑥</b> 设置页动态行随插件装卸生灭；exe 永不出现；开关归壳不归 pdf 插件（D6/T6）。</li>
+    <li><b>⑥</b> 设置页＝「默认打开方式」管理器（Windows 默认应用式，D6/D1 修订——胶囊开关退役）：检索＋竞争类型下拉＋按插件浏览＋OS 登记折叠块；下拉改动＝写覆盖表，与文件树选择器<b>双向同步</b>（同一真相源）。</li>
     <li>选择器线框 = [01 §T2]；状态面板演示「覆盖表 → 声明表 → 角色」同一解析函数三入口同吃。</li>
     <li>OS 层右键见 07 图 E24 时序：壳只加候选、⛔ 不碰 Windows UserChoice。</li>
   </ol>
@@ -256,7 +266,7 @@ const SCENARIOS = [
   {name:"MD 次要", installed:["editor","mda","mdb"], override:{}, note:"场景③：.md 单击永远归编辑器；右键看两条贡献菜单项（作者1/作者2）——次要方式无默认之争", flag:""},
   {name:"双编辑器", installed:["editor","geek","pdfpro"], override:{}, note:"场景④：极客编辑器已挂牌 role 但默认仍是官方 —— 点右下「模拟安装」重放提示；设为默认才接管", flag:""},
   {name:"未装阅读器", installed:["editor"], override:{}, note:"场景⑤：没有任何插件声明 .pdf —— 单击 论文.pdf，看 T1 的标签内提示（不是乱码）", flag:""},
-  {name:"设置页", installed:["editor","pdfpro","imga"], override:{}, note:"场景⑥：设置 → 通用 → 系统集成 —— 行随插件装卸生灭；试右下「模拟安装」", flag:""},
+  {name:"设置页", installed:["editor","pdfpro","imga"], override:{}, note:"场景⑥：设置 →「默认打开方式」——检索＋竞争类型下拉＋按插件浏览（对标 Windows 默认应用）；改下拉＝写覆盖表，与文件树选择器双向同步；试右下「模拟安装」看 .jpg 行出现", flag:""},
 ];
 let sc = 0, override = {}, installed = [], selectedFile = null, tabs = [], activeTab = -1;
 
@@ -403,27 +413,50 @@ document.getElementById("btnInstall").addEventListener("click", () => {
     else toast("极客编辑器已在场（先激活先得：默认仍是官方）", ""); }
   if (sc===5){ if(!installed.includes("imgb")){ installed.push("imgb");
       addLog("安装激活 图像大师B…（声明 jpg/png/webp）", false);
-      toast("图像大师B 已安装 —— 设置页「系统集成」应出现 .jpg/.png/.webp 行（OS 登记按开关）", "ok"); renderSide();
+      toast("图像大师B 已安装 —— 设置页「需要你做选择的类型」应出现 .jpg/.png 行（两家竞争）", "ok"); renderSide();
       if(!document.getElementById("settingsPage")) toast("切到设置页看新增行（本场景主区已是设置页则直接看）", ""); } }
 });
-/* ── 场景⑥：设置页（主区） ── */
+/* ── 场景⑥：设置页「默认打开方式」管理器（对标 Windows 默认应用；胶囊开关退役，D6/D1 修订） ── */
+let mgrQuery = "", mgrOpen = {};
 function renderSettings(){
-  const rows = [];
-  const exts = new Set(); installed.forEach(id => (PLUGINS[id].assoc||[]).forEach(x => { if(x!=="elf") exts.add(x); }));
-  const sorted = [...exts].sort();
+  const extCount = {};
+  installed.forEach(id => (PLUGINS[id].assoc||[]).forEach(x => { (extCount[x] = extCount[x]||[]).push(id); }));
+  const contested = Object.keys(extCount).filter(x => extCount[x].length >= 2).sort()
+    .filter(x => !mgrQuery || ("."+x).includes(mgrQuery) || extCount[x].some(id=>PLUGINS[id].name.toLowerCase().includes(mgrQuery)));
+  const q = mgrQuery.toLowerCase();
+  const browsable = installed.filter(id => (PLUGINS[id].assoc||[]).length
+    && (!mgrQuery || PLUGINS[id].name.toLowerCase().includes(q) || (PLUGINS[id].assoc||[]).some(x=>("."+x).includes(mgrQuery))));
   document.getElementById("content").innerHTML = `<div class="settings" id="settingsPage">
-    <h2>通用</h2><div class="grp">界面 / 系统集成 / 更新（壳既有分组）</div>
-    <div class="sec">系统集成</div>
-    <div class="srow"><div><div class="nm">跟随插件登记系统「打开方式」</div><div class="ds">app.osAssociations.followPlugins —— 总开关（D6）：关 = 撤回运行期登记，安装器静态登记不动</div></div><div class="sp"></div><div class="tgl on" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'总开关：开（按当前插件集幂等重放，E16）':'总开关：关（撤回运行期登记）','ok')"></div></div>
-    <div style="font-size:11px;color:var(--text-muted);margin:10px 2px 6px;">↓ 以下各行随「随包＋已装插件」的声明<b>现算</b>（不是预想清单）——卸载对应插件，行自动消失：</div>
-    ${sorted.map(x => { const owners = installed.filter(id=>(PLUGINS[id].assoc||[]).includes(x));
-      return `<div class="srow"><div><div class="nm">.${x}</div><div class="ds">声明者：${owners.map(id=>PLUGINS[id].name).join(" · ")}${owners.length>1?"（多家，应用内默认另由「打开方式」裁决）":""}</div></div>
-      <div class="sp"></div>${owners.some(id=>id==="editor")?'<span class="badge">随包</span>':""}<div class="tgl on" onclick="toast('（示意）app.osAssociations.overrides[.${x}] = '+this.classList.toggle('on')+' —— 只管 OS 层登记，应用内默认归覆盖表（D6）','ok')"></div></div>`; }).join("")}
-    <div style="font-size:11px;color:var(--text-muted);margin:12px 2px;">exe 永不出现在此（无插件能开且登记 exe 打开器危险，T6）。行数 = 现算，与 app.iconTheme 那类「壳预知类别」不同（追问 12 的答案）。</div>
-    <div class="mini-explorer"><div class="t">Windows 资源管理器（示意）——右键 论文.pdf：</div>
-      <div style="font-size:12px;color:var(--text-secondary);line-height:2;">打开方式 ▸ <b>LinkDesk（PDF Reader Pro）</b>　← 壳只<b>加候选</b>，⛔ 不碰 Windows UserChoice（E24）<br><span style="color:var(--text-muted)">候选出现与否 = 上方开关链（T6 运行期同步）</span></div></div>
+    <h2>默认打开方式</h2><div class="grp">独立分组（示意）——数据真源 = workbench.fileAssociations；<b>文件树选择器与本页是同一真相源的两个入口，谁改都即时互见</b>（D1 修订）</div>
+    <input class="mgr-search" id="mgrSearch" placeholder="检索扩展名（如 .pdf）或插件名…" value="${mgrQuery}" oninput="mgrQuery=this.value; renderSettings()">
+    <div class="sec">需要你做选择的类型 <span style="color:var(--text-muted);font-size:11px;font-weight:400;">——只有 2 家以上声明竞争的类型才出现（E29 单 handler 不进此区）；改动即写覆盖表，与文件树选择器双向同步</span></div>
+    ${contested.length ? contested.map(x => { const hs = extCount[x].slice().sort((a,b)=>(PLUGINS[a].activated||99)-(PLUGINS[b].activated||99)||a.localeCompare(b));
+      const cur = override[x] && installed.includes(override[x]) ? override[x] : hs[0];
+      return `<div class="srow"><div><div class="nm">.${x}</div><div class="ds">当前单击打开：<b style="color:var(--text-primary)">${PLUGINS[cur].name}</b>${override[x]?"（你设置的）":"（自动·先激活先得）"} · 声明者 ${hs.length} 家</div></div>
+      <div class="sp"></div><select class="sel" onchange="this.value===''?clearDefaultFrom('${x}'):setDefaultFrom('${x}',this.value)">
+      <option value="">恢复自动</option>${hs.map(id=>`<option value="${id}" ${id===cur?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select></div>`; }).join("")
+      : `<div style="font-size:12px;color:var(--text-muted);padding:6px 2px;">（当前没有多家竞争的类型——装第二只同类插件后这里才会出现行，试试右下「模拟安装」）</div>`}
+    <div class="sec">按插件浏览 <span style="color:var(--text-muted);font-size:11px;font-weight:400;">——对标 Windows「默认应用」按应用浏览；单一 handler 的类型只在这里只读展示，长尾上百扩展靠这里＋检索摊开、永不平铺（E30）</span></div>
+    ${browsable.map(id => { const P=PLUGINS[id]; const open=!!mgrOpen[id];
+      return `<div><div class="plugrow" onclick="mgrOpen['${id}']=!mgrOpen['${id}'];renderSettings()">
+      <div class="pdot" style="background:${P.color}">${P.name[0]}</div>
+      <div><div class="nm" style="font-size:12.5px;">${P.name}${P.role?' <span class="badge">text-fallback</span>':""}</div>
+      <div class="ds">${(P.assoc||[]).length} 类：${(P.assoc||[]).map(x=>"."+x).join(" ")}</div></div>
+      <div class="sp"></div><span style="color:var(--text-muted);font-size:11px;">${open?"▾":"▸"}</span></div>
+      ${open?`<div class="chipline">${(P.assoc||[]).map(x => { const hs=(extCount[x]||[]).slice().sort((a,b)=>(PLUGINS[a].activated||99)-(PLUGINS[b].activated||99)||a.localeCompare(b)); const cur=override[x]&&installed.includes(override[x])?override[x]:(hs[0]||null);
+        return `<span class="cx">.${x} → <b>${cur?PLUGINS[cur].name:"—"}</b>${hs.length>1?"（"+hs.length+" 家竞争）":""}</span>`; }).join("")}</div>`:""}</div>`; }).join("")}
+    <details class="osblock"><summary>系统「打开方式」登记（OS 层 · 罕见配置 · T6）——与应用内默认无关（三层口径）</summary>
+      <div style="padding:8px 2px 2px;">
+      <div class="srow"><div><div class="nm">跟随插件登记 Windows「打开方式」候选</div><div class="ds">app.osAssociations.followPlugins —— 关 = 壳停止替插件登记并<b>撤回运行期已登记的</b>（安装器静态随包类不动）；<b>应用内默认完全不受影响</b></div></div><div class="sp"></div><div class="tgl on" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'总开关：开（按当前插件集幂等重放，E16）':'总开关：关（撤运行期登记，E16）','ok')"></div></div>
+      <div style="font-size:11px;color:var(--text-muted);margin:8px 2px 2px;">状态（只读示意）：.txt/.md/.json…（随包静态）｜.pdf（PDF Reader Pro 带入·运行期）。exe 永不出现；⛔ 不碰 Windows UserChoice（E24）。</div></div>
+    </details>
   </div>`;
 }
+function setDefaultFrom(ext, id){ override[ext]=id; renderSide();
+  addLog(`设置页下拉 → 覆盖表写入 .${ext}: ${id}（与文件树选择器同写一个真相源，D1）`, true);
+  toast(`.${ext} 默认已改为 ${PLUGINS[id].name} —— 文件树右键选择器里会同步看到`, "ok"); }
+function clearDefaultFrom(ext){ delete override[ext]; renderSide();
+  addLog(`设置页下拉 → 删除覆盖表 .${ext}（恢复自动）`, false); toast(`.${ext} 已恢复自动（回声明序）`, "ok"); }
 /* 初始：默认载入场景①并把主区切到设置页的场景用 ⑥ 承载 —— 场景⑥点击文件时才渲染设置页 */
 loadScenario(0);
 </script>
