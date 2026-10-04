@@ -195,7 +195,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.gearb:focus-visib
   <div class="cols">
     <ol>
       <li><b>已有，直接用</b>：双页签 / 搜索栏（InlineInput）＋JSON 钮 / 左 nav（200px＋计数）· SectionSubtitle 分节副标题 · 设置行骨架（settings-row）· 行尾 hover 齿轮＋非模态菜单（共享 ContextMenu）· toast · SelectBox/下拉 · icon-bar 底部齿轮（壳自有）· 组机制 prop.group · 角色套切换条（≥2 套设置 UI 时顶部出现——本图单套未渲染）。</li>
-      <li><b>缺件①</b>：**插件声明卡（PluginAssocCard）**——「按插件浏览」卡片。无现成组件 ⇒ 造为**设置插件本地件**（唯一消费方；市场详情页等出现第二消费者再升 `@linkdesk/ui`）。数据由宿主新 API 供（listHandlersFor / 插件→扩展名清单），组件零 `window.linkdesk`。</li>
+      <li><b>缺件①（已升格共享件，用户 2026-10-04 拍板）</b>：**插件声明卡 = `PluginCard`**——造进 `@linkdesk/ui`（0.2.41，SourceBadge/EffectiveBadge 共享链先例）：规格 = [03 组件规格](03-组件规格-按插件浏览-插件卡.md)、权威样张 = [mockups/09](mockups/09-设计图-按插件浏览-插件卡共享件.html)（**行内下拉可写、单家可锁定 E35、E32 拆格联动**）；行清单仍由管理器自组（共享面只到卡，D10）。数据由宿主已立案面供（listHandlersFor / plugins.listAll），组件零 `window.linkdesk`。</li>
       <li><b>缺件②</b>：**uiHint `fileAssociationsManager`**——管理器挂进设置页的声明位（BackgroundImagePicker 同款先例）；非通用组件，是设置插件内的分发分支。</li>
       <li><b>缺机制（已立案）</b>：「搜索设置」索引域扩到管理器条目；**组内二级页面承载**（若按插件浏览要做独立子页）——现状组内为平铺行，无二级路由 ⇒ 缺承载就补壳任务另立案。</li>
       <li><b>尺寸纪律</b>：nav 200px／齿轮 24px／行内边距照 settings-row 真值示意；下拉 180px；slider 130px 原长。</li>
@@ -303,8 +303,9 @@ function renderGroup(){
       const fromUser = cell.some(x=>state.override[x]===vid);
       const label = cell.length>3 ? `${cell.slice(0,3).map(x=>"."+x).join(" / ")} 等 ${cell.length} 类` : cell.map(x=>"."+x).join(" / ");
       const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（你设置的）":"（含你设置的）"):"（自动·先激活先得）"} · 候选 ${hs.length} 家${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 改下拉＝整格一起改"}`;
+      const allUser = cell.every(x=>state.override[x]===vid);
       const ctrl = `<select class="sel" aria-label="默认打开方式" onchange="this.value===''?clearBulk('${bid}'):setBulk('${bid}',this.value)">
-        <option value="">恢复自动</option>${hs.map(id=>`<option value="${id}" ${id===vid?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
+        <option value="" ${allUser?"":"selected"}>自动（先激活先得）</option>${hs.map(id=>`<option value="${id}" ${allUser&&id===vid?"selected":""}>${PLUGINS[id].name}</option>`).join("")}</select>`;
       groupRows.push(rowHTML(label, desc, ctrl, [
         {label:"恢复自动（本格 "+cell.length+" 类）", fn:()=>clearBulk(bid)},
         {label:"在文件树中打开选择器（示意）", fn:()=>toast("（示意）file-tree.openWith —— 同一真相源的另一入口")}
@@ -314,13 +315,13 @@ function renderGroup(){
   const cards = browsable.map(id => {
     const P=PLUGINS[id]; const open=!!state.expanded[id];
     const assoc=(P.assoc||[]).slice().sort();
-    const gid = "card_"+id; GEAR_MENUS[gid]=[
-      {label:"打开插件详情（示意）", fn:()=>toast("（示意）跳市场详情页","ok")},
-      {label:"重置与我相关的默认（示意）", fn:()=>{ assoc.forEach(x=>{ if(state.override[x] && handlers(x).length>1) delete state.override[x]; }); renderSide(); renderGroup(); toast("已恢复该插件相关类型的自动","ok"); }},
+    const gid = "card_"+id; const myOv=(assoc||[]).filter(x=>state.override[x]).length; GEAR_MENUS[gid]=[
+      {label:"重置我设的默认（本插件相关 "+myOv+" 类）", fn:()=>{ assoc.forEach(x=>{ if(state.override[x]) delete state.override[x]; }); renderSide(); renderGroup(); toast("已清除 "+myOv+" 类覆盖——全部回自动","ok"); }},
+      {label:"复制插件 ID（示意）", fn:()=>toast("（示意）"+id+"——剪贴板面阶段 0 勘察，无面则 v1 砍此钮（03 §3）","ok")},
     ];
     const body = open ? `<div class="body">${assoc.map(x => {
       const hs=handlers(x); const cur=curDefault(x); const curId=cur?cur.id:null;
-      if (hs.length<2) return `<span class="chip">.${x} → <b>${curId?PLUGINS[curId].name:"—"}</b>（单家·只读，E29）</span>`;
+      if (hs.length<2) return `<span class="chip">.${x} → <b>${curId?PLUGINS[curId].name:"—"}</b>（单家 · 可锁定防漂移 E35——行内下拉见 09）</span>`;
       return `<span class="chip">.${x} → <select aria-label=".${x} 默认" onchange="this.value===''?clearDefault('${x}'):setDefault('${x}',this.value)">
         ${hs.map(pid=>`<option value="${pid}" ${pid===curId?"selected":""}>${PLUGINS[pid].name}</option>`).join("")}</select></span>`; }).join("")}</div>` : "";
     return `<div class="plugcard"><div class="ph" tabindex="0" role="button" aria-expanded="${open}" onclick="state.expanded['${id}']=!state.expanded['${id}'];renderGroup()">
