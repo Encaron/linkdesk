@@ -6,7 +6,8 @@
  *    （测试里 handler 模拟 entry 顶层副作用 registerCommand）→ 重试命中 → executeResult 回传结果；
  * ② 激活后仍 miss（entry 顶层无该命令——命令在视图组件注册的 inherent 边界）→ reject「未在池内注册」回传 error；
  * ③ executeCommand 直调（池→池/壳）miss：激活命中走池侧 handler，不 fallback 壳 IPC；
- * ④ executeCommand 直调二次 miss / 激活回调返回 false → fallback IPC.commands.execute（带原始含 token 参）。
+ * ④ executeCommand 直调二次 miss / 激活回调返回 false → fallback IPC.commands.execute，
+ *    载荷恒归一成壳桥契约 `(id, token=undefined, ...realArgs)`——两种调用形（缺省形 / 池内形）等价。
  *
  * 命令 ID 恒虚构（硬约束 21：demo-plugin 属主 + .say/.ping/.nope 名），不指向真实插件。
  */
@@ -81,7 +82,7 @@ describe('池侧 on-command 激活（E6#62e）', () => {
     expect(ipcMock.invoke.mock.calls.some((c) => c[0] === IPC.commands.execute)).toBe(false);
   });
 
-  it('executeCommand 直调二次 miss → fallback 壳 IPC 带原始含 token 参数', async () => {
+  it('executeCommand 直调二次 miss → fallback 壳 IPC 归一成 (id, token, ...realArgs)', async () => {
     const events = fakeEvents();
     const commands = buildCommands(events);
 
@@ -89,8 +90,21 @@ describe('池侧 on-command 激活（E6#62e）', () => {
 
     const executeCall = ipcMock.invoke.mock.calls.find((c) => c[0] === IPC.commands.execute);
     expect(executeCall?.[1]).toBe('demo-plugin.nope');
-    expect(executeCall?.[2]).toBe(undefined); // token 占位原样保留
+    expect(executeCall?.[2]).toBe(undefined); // token 占位槽
     expect(executeCall?.[3]).toBe('realArg');
+  });
+
+  it('作者形调用（不带 token 占位）→ 实参不许被壳当成 token 吃掉', async () => {
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    const ctx = { pluginId: 'demo-plugin', scrollTo: 'demo.key' };
+
+    await commands.executeCommand('demo-plugin.nope', ctx);
+
+    const executeCall = ipcMock.invoke.mock.calls.find((c) => c[0] === IPC.commands.execute);
+    expect(executeCall?.[1]).toBe('demo-plugin.nope');
+    expect(executeCall?.[2]).toBe(undefined); // 补出的 token 占位槽
+    expect(executeCall?.[3]).toEqual(ctx); // ctx 落在真实实参位（core.openSettings 同形）
   });
 
   it('激活回调返回 false → 不重试直接 fallback', async () => {

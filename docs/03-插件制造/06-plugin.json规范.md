@@ -498,17 +498,21 @@ my-plugin/
           "default": 10,
           "minimum": 1,
           "maximum": 100,
+          "title": "网格大小",
           "description": "网格大小 (mm)"
         },
         "cad.units": {
           "type": "string",
           "default": "mm",
           "enum": ["mm", "cm", "inch"],
+          "enumDescriptions": { "mm": "毫米", "cm": "厘米", "inch": "英寸" },
+          "title": "单位",
           "description": "单位"
         },
         "cad.darkThemeOverride": {
           "type": "boolean",
           "default": false,
+          "title": "强制暗色视图",
           "description": "强制暗色视图"
         }
       }
@@ -519,6 +523,13 @@ my-plugin/
 
 **支持的 type：** `"string"` | `"number"` | `"boolean"` | `"integer"`
 **支持的约束：** `enum`（下拉列表）| `minimum` / `maximum`（数值范围）| `default`（默认值）
+
+**行名（`title`）与下拉显示名（`enumDescriptions`）——都是可选项。**
+
+- `title` = 该行的人话短名。设置页把它渲染为行名（没声明的插件回退显配置键），市场详情「功能」页把它显示在键的上方一行。值域约定与 `description` 同：**中文原文就是 i18n key**——英文译名进你插件自己的 `i18n/en.json`。写成名词短语（≤12 字、去掉插件名前缀）；`renderHint` 为 `"action"` 的行读起来是个按钮，改成动词短语起名。
+- `enumDescriptions` = 下拉里每个 `enum` 值显示的名字。形态是**对象**（值 → 显示名）——写数组会被拒（`npm run build` 报字段类型不对）。没给显示名的值回退显原文，于是没补的下拉会显 `powershell` 而不是「PowerShell」。
+
+🟡 **门禁等级。** 每个插件仓的 verify 腿 `check-config-titles` 在内测期是**黄灯**：缺 `title`、缺英译名、或有 `enum` 没 `enumDescriptions` 都只列一行告警，跑完仍然通过；等 LinkDesk 到 **v1** 才切**红灯**（`--strict` 开关）。现在补齐可免将来全仓返工。（LinkDesk 自己的配置面已经是红灯。）
 
 **插件代码里读设置（走 `window.linkdesk.configuration`——插件通信铁律，禁止 `import @src/core/...`）：**
 ```typescript

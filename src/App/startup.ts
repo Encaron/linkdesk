@@ -104,6 +104,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("界面"),
             default: "zh",
             enum: ["zh", "en"],
+            // 枚举显示名（本案 D7 壳侧余下缺口，2026-10-04 第 3 波补）：⛔ 不写这两条则下拉裸显 `zh`/`en`。
+            // 语言名照惯例各显其母语（VS Code 语言列表同款）——"English" 不译，⛔ 不包 t()。
+            enumDescriptions: [t("中文"), "English"],
             // 短名取「显示语言」（VS Code zh 界面同款叫法，照 03 表 §补名规则 5 对标）——⛔ 不叫「界面语言」：
             // 与本行 description 同字，行名与副文本会重复成一行废话。
             title: t("显示语言"),
@@ -127,6 +130,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
             group: t("界面"),
             default: "titlebar",
             enum: ["titlebar", "hamburger", "both"],
+            // 枚举显示名（同上，D7 壳侧余下缺口）：⛔ 不写则下拉裸显 `titlebar`/`hamburger`/`both`。
+            enumDescriptions: [t("标题栏"), t("汉堡菜单"), t("两者都显示")],
             title: t("菜单栏样式"),
             description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
           },

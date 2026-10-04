@@ -132,13 +132,17 @@ export function buildCommands(events: EventSystemApi) {
     /** 执行命令——先查池侧注册表；miss 走 on-command 激活（#62e）重试一次，仍未找到则 IPC 到壳 */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定，对标 VS Code executeCommand 的 ...args: any[]
     executeCommand: (id: string, ...args: any[]) => {
-      // 壳侧 executeCommand(id, token, ...realArgs) 的 token 是 CancellationToken。
-      // 调用方（ContextMenu/CommandPalette）固定传 undefined 占位。池 handler 不消费 token——
-      // 剥离后传 realArgs。E5.7#63.8 后壳侧 handler 合同同样只收 args——两进程约定归一。
+      // 壳侧 executeCommand(id, token, ...realArgs) 的 token 是 CancellationToken（E5.7#63.8 后
+      // 只留槽位、handler 合同只收 args）。作者契约（linkdesk-api）不带占位槽 ⇒ 两种调用形都要归一
+      // 成 realArgs：缺省形 (obj) → [obj]；池内形（ContextMenu/CommandPalette）(undefined, obj) → [obj]。
       const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
-      // E6#62e：miss 先 import 属主插件入口（模块缓存幂等）再重试一次；仍 miss → fallback 壳 IPC（带原始 token 参）
+      // E6#62e：miss 先 import 属主插件入口（模块缓存幂等）再重试一次；仍 miss → fallback 壳 IPC。
+      // 🔴 壳桥契约是 `commands:execute(id, token, ...realArgs)`（IpcBridgeHandler/commands.ts 按此位
+      //   解构）——⛔ 这里必须**补 undefined 占位**再铺 realArgs：直接把 realArgs 铺进去，第一个实参
+      //   会被壳当成 token 吃掉（`core.openSettings` 的 ctx 落进 token 槽 ⇒ pluginId/scrollTo 静默丢，
+      //   T6「市场点配置项不跳类别」即此形；具名对象展开 expandNamedArgs 也一并失效）。
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 契约 executeCommand<T> 泛型返回：池侧命令返回值经 Promise 透传，边界归一 any（对标原 `?? invoke` 隐式 Promise<any>）
-      return callPoolHandlerWithActivation(id, realArgs, () => ipcRenderer.invoke(IPC.commands.execute, id, ...args)) as Promise<any>;
+      return callPoolHandlerWithActivation(id, realArgs, () => ipcRenderer.invoke(IPC.commands.execute, id, undefined, ...realArgs)) as Promise<any>;
     },
     /** 向后兼容别名——委托 executeCommand（E5.8#1c 去重） */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定（委托 executeCommand，同型豁免）

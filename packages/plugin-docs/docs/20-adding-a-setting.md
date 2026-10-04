@@ -28,18 +28,21 @@
         "my-plugin.autoSave": {                  // ← the key must carry the <pluginId>. prefix
           "type": "boolean",
           "default": true,                       // ← default is required
+          "title": "Auto save",                  // ← the row name (optional; without it the row shows the key)
           "description": "Save automatically on exit"          // ← description is required (rendered as a tooltip)
         },
         "my-plugin.refreshInterval": {
           "type": "number",
           "default": 1000,
+          "title": "Refresh interval",
           "description": "Refresh interval (ms)"
         },
         "my-plugin.units": {
           "type": "string",
           "default": "mm",
           "enum": ["mm", "cm", "inch"],
-          "enumDescriptions": ["Millimeters", "Centimeters", "Inches"],   // ← one-to-one with enum
+          "enumDescriptions": { "mm": "Millimeters", "cm": "Centimeters", "inch": "Inches" },   // ← object: enum value → display name
+          "title": "Display units",
           "description": "Display units"
         }
       }
@@ -55,6 +58,8 @@ npm run validate     # Validate that plugin.json is well-formed
 ```
 
 Once installed into LinkDesk, a "My Plugin" group appears on the left of the settings page and the three controls render automatically on the right — **boolean becomes a toggle, enum becomes a dropdown, number becomes an input box**. You didn't write a single line of UI code.
+
+**Two optional names worth filling in.** `title` is the row's human-readable name — the settings page shows it instead of the raw key, and the marketplace's features tab shows it on the line above the key; a row without one falls back to the key. `enumDescriptions` names each dropdown option (an **object**: value → display name); an option with no entry falls back to the raw value. Both follow the same convention as `description`: the Chinese source text is the i18n key, the English translation goes in your plugin's `i18n/en.json`. Your repo's verify leg `check-config-titles` lists the ones still missing as warnings during the internal-beta period (it becomes an error at v1) — see [06-plugin-json-spec](06-plugin-json-spec.md).
 
 ---
 

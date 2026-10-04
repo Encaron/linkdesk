@@ -501,17 +501,21 @@ After installation, the Settings Editor's left-hand tree automatically gains a g
           "default": 10,
           "minimum": 1,
           "maximum": 100,
+          "title": "Grid size",
           "description": "Grid size (mm)"
         },
         "cad.units": {
           "type": "string",
           "default": "mm",
           "enum": ["mm", "cm", "inch"],
+          "enumDescriptions": { "mm": "Millimeters", "cm": "Centimeters", "inch": "Inches" },
+          "title": "Units",
           "description": "Units"
         },
         "cad.darkThemeOverride": {
           "type": "boolean",
           "default": false,
+          "title": "Force dark view",
           "description": "Force a dark view"
         }
       }
@@ -522,6 +526,13 @@ After installation, the Settings Editor's left-hand tree automatically gains a g
 
 **Supported types:** `"string"` | `"number"` | `"boolean"` | `"integer"`
 **Supported constraints:** `enum` (dropdown list) | `minimum` / `maximum` (numeric range) | `default` (default value)
+
+**Row names (`title`) and dropdown names (`enumDescriptions`) — both optional.**
+
+- `title` = the row's short human-readable name. The Settings Editor renders it as the row label (a plugin that declares none falls back to showing the configuration key), and the marketplace's features tab shows it on the line above the key. Same value convention as `description`: **the Chinese source text is the i18n key** — the English translation goes in your plugin's `i18n/en.json`. Keep it a noun phrase (≤ 12 characters, drop the plugin-name prefix); a row whose `renderHint` is `"action"` reads as a button, so name it as a verb phrase instead.
+- `enumDescriptions` = the name shown for each `enum` value in the dropdown. It is an **object** mapping value → display name (an array is rejected — `npm run build` reports the wrong field type). A value with no entry falls back to showing the raw value, so an enum left unfilled shows `powershell` instead of `PowerShell`.
+
+🟡 **Gate level.** Each plugin repo's verify leg `check-config-titles` runs at **warn** level during the internal-beta period: an item missing `title`, missing its English translation, or declaring an `enum` without `enumDescriptions` is listed as a warning and the run still passes. It flips to **error** (the `--strict` switch) once LinkDesk reaches **v1** — filling these in now avoids a repo-wide sweep later. (LinkDesk's own configuration is already held at the error level.)
 
 **Reading settings from plugin code (through `window.linkdesk.configuration` — an iron rule of plugin communication; `import @src/core/...` is forbidden):**
 ```typescript

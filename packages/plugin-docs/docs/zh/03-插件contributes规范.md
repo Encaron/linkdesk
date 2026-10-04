@@ -226,13 +226,15 @@ useEffect(() => {
         "cad.gridSize": {
           "type": "number",
           "default": 10,
+          "title": "网格大小",
           "description": "网格大小 (mm)"
         },
         "cad.units": {
           "type": "string",
           "default": "mm",
           "enum": ["mm", "cm", "inch"],
-          "enumDescriptions": ["毫米", "厘米", "英寸"],
+          "enumDescriptions": { "mm": "毫米", "cm": "厘米", "inch": "英寸" },
+          "title": "单位",
           "description": "单位"
         },
         "cad.autoSave": {
@@ -258,7 +260,9 @@ useEffect(() => {
 
 **支持的类型（schema 全量）：** `"string"` | `"number"` | `"boolean"` | `"object"` | `"array"`
 
-> **注意：** 没有 `"integer"`——用 `"number"`。`minimum`/`maximum` 运行时类型支持，但 schema 暂未声明（IDE 会提示）——高级用法可写，加载不校验。
+> **注意：** `"integer"` 与 `"number"` 一样已在 schema 里声明；`minimum`/`maximum` 也已声明（用于数值控件）——IDE 都能补全。
+
+> 🟡 `title` 与 `enumDescriptions` 都是可选项；你仓的 verify 腿 `check-config-titles` 在内测期对缺项列告警、v1 起判红——字段语义与示例见 [06-plugin.json规范](06-plugin.json规范.md)。
 
 **字段：**
 
@@ -268,7 +272,8 @@ useEffect(() => {
 | `default` | ✅ | 默认值 |
 | `description` | ✅ | 说明——Settings Editor 渲染为提示 |
 | `enum` | ❌ | 下拉选项（string 类型时可选） |
-| `enumDescriptions` | ❌ | 选项说明——和 enum 一一对应 |
+| `title` | ❌ | **该行的人话短名**——渲染为设置页行名，市场详情「功能」页把它显示在键的上方一行。不声明 = 行上回退显配置键，第三方存量声明照旧能用。值域约定与 `description` 同：中文原文即 i18n key，英文译名进插件自己的 `i18n/en.json`。名词短语、≤12 字（去掉插件名前缀）；`renderHint: "action"` 的行读作按钮，起动词短语 |
+| `enumDescriptions` | ❌ | 下拉选项显示名——**对象**（每个 `enum` 值 → 显示名）；写数组会被 schema 判为字段类型不对。没给显示名的选项回退显原文 |
 | `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"`/`"slider"`/`"segmented"`/`"image"` 等，开放 string——未知 hint 降级回 type 默认渲染）。`"segmented"` = 分段单选（ghost 双轨制，配合 `enum` + `enumDescriptions` 声明，短标签 = enumDescription `—` 前段、tooltip = 全句） |
 | `group` | ❌ | **组内二级标题**——同 `group` 值的 key 在设置页归到子标题下渲染；无 `group` 的 key 保持平铺。声明中文节名即显示；节名标题走 i18n（插件 `contributes.i18n` 提供翻译）。零壳改动——壳机制对插件键同样生效。 |
 | `renderHint` | ❌ | 特殊行的渲染提示（开放 string，未知值降级回 `type` 默认渲染）。`"action"` = 渲染成**按钮**（按钮文字 = `description`，点击执行 `actionCommand`）；`"readonly"` = 渲染成**只读状态行**（值 = 执行 `statusCommand` 的返回值，每 3 秒重取；不读配置存储）。两个值都是通用能力——任何插件声明即生效，用法与示例见 [20-我的插件加一条配置项](20-我的插件加一条配置项.md) |

@@ -21,6 +21,7 @@ import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { shellEvents } from "../../react/events/ShellEvents";
 import { getFloatingPanelViewId, getTabOpenableViews } from "../../../pluginLoader/contributions/viewRegistry";
 import { resolveFloatingPanelOpenForm } from "../../services/ui/floatingPanelForm";
+import { getCurrentFloatingPanelViewId, getCurrentFloatingPanelPluginId } from "../../services/ui/FloatingPanelService";
 
 /* ── M2 生长格 `AI#66`：**通用配置写**（`workbench.action.setConfiguration`，读侧 = `AI#62` 的 `getConfiguration`）──
  *
@@ -225,6 +226,18 @@ export function registerSettingsCommands(): void {
           getCallbacks()?.openTab(settingsPluginId);
           return;
         }
+        // 🪡 2026-10-04（T6 复测）：带 ctx 的调用是**导航请求**（市场详情点配置项 = `{pluginId, scrollTo}`），
+        // 不是面板开关。面板若已经就是本套设置页 ⇒ ⛔ 不许再 emit reveal：reveal 是**身份开关键**
+        // （floatingPanelReveal.ts `decideFloatingPanelReveal`：同 viewId → toggle-close），照发会把
+        // 用户眼前的面板**关掉**——实机表现为「点了不跳类别」。上面两条 `request*` 已把分组/滚动请求
+        // fire 出去（视图在 → 通道 B 即时生效；未开 → 通道 A 在 mount 时消费）。
+        // ⚠️ 判据只看导航意图：裸调（齿轮 / 命令面板 / Ctrl+,）保留原 toggle 语义，一字未动。
+        const navigate = !!(ctx?.pluginId || ctx?.scrollTo);
+        const panelIsThisSettings =
+          fpViewId != null &&
+          getCurrentFloatingPanelViewId() === fpViewId &&
+          (getCurrentFloatingPanelPluginId() ?? settingsPluginId) === settingsPluginId;
+        if (navigate && panelIsThisSettings) return;
         // E5.8#41.16 🔴 复合寻址：双设置套并存时裸 viewId="settings" 会被 getViewByViewId 判歧义 fail-loud →
         // 静默 no-op（Ctrl+,/齿轮失效）。壳侧路径已知激活套 pluginId → 载荷携带，resolve 走复合键精确命中（#41.8 §4.2）。
         if (fpViewId) shellEvents.emit("panel:reveal-floating", { viewId: fpViewId, pluginId: settingsPluginId });
