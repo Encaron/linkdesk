@@ -2,6 +2,23 @@
 
 > 📦 **0.1.x 版本线的完整说明已归档**：[`docs/04-软件更新/CHANGELOG-归档-v0.1.md`](docs/04-软件更新/CHANGELOG-归档-v0.1.md)（54 段；2026-10-01 首次执行「主文件 > 50 版 或 > 300 KB 即归档」的体积纪律）。**本文件只留当前版本线**（0.2.x）。归档只治仓库体积——`CHANGELOG.md` 不进安装包 / npm 包 / 插件 zip，三个分发面本来就不带它。
 
+## v0.2.49（2026-10-05）
+
+**「打开方式」面板归一——不再按入口分叉：右键入口的「就近弹出／不压暗」态废止，面板一律居中并压暗背景（与编辑器、设置页入口完全同形）；空态那颗「在市场搜索阅读器」点下去，面板也不再赖着不走了。**
+
+### fix
+
+- **面板口径改判：锚定态废止，恒为居中模态**。共享件 `OpenWithPicker` 删掉按 `request.anchor` 分叉的第二形态——面板固定 `inset:0; margin:auto` 居中（高度随内容、上限留 60px 呼吸，顶部标题栏拖拽区因此自然不侵入），遮罩恒为壳既有模态遮罩（`--scrim-dialog` 经 `#ld-scrim-plane`，⛔ 零新 rgba／零毛玻璃）。原先「有锚点 ⇒ 按锚点内联钳制 `left/top`」的 `pos` 计算与两条修饰类（`ldk-openwith--centered` / `ldk-openwith-scrim--clear`）一并删除。用户口径（2026-10-05 实机回报后拍板）：**视觉聚焦 / 形态统一 / 不与周围元素打架 / 不显凌乱**。⛔ 面板从此只有一种形态，不再由「有没有锚点」推断。
+- 🔴 **修「在市场搜索阅读器」点下去面板不消失**：空态那一颗按钮走 `searchMarket` 分支时只切了市场、忘了收面板——面板（连同遮罩）压在刚打开的市场之上，切回来时它还停在**过期的空态**。现与 `close` / `openOnce` 同律收面板；`setDefault` 仍**有意留开**（让用户看见默认徽标换到新行）。这是验收期用户实测报出的真遗漏（不在两轮边缘清单内、阶段 8 验收 V1–V7 也没盖住），已补进边缘清单 E41。
+- **契约字段保留但不是删除**：`OpenWithRequest.anchor` 标 `@deprecated` 并写明「壳侧不再消费」——`check-api-surface-additive` 禁减已发布面，故保留；新调用方不要再传。回归测试 13 例（组件 7 ＋ 服务 6）钉住，含正控「传 `anchor` 时面板仍无内联定位、遮罩不带透明变体」与「`searchMarket` 发 `icon:selected` **且**收面板」。
+- ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货。
+
+### 作者轴
+
+- `@linkdesk/ui` **0.2.46**（2026-10-05，独立发版——共享 UI 包，软件本体不动）：`OpenWithPicker` 归一为居中模态（组件＋样式），随包导出面不变、类名净减 2 个。
+- `@linkdesk/plugin-sdk` **0.1.83**（2026-10-05，同链独立发版）：随包 `schemas/host-css-names.json`（宿主 CSS 定义集）**减去** `ldk-openwith--centered` 与 `ldk-openwith-scrim--clear` 两个已删类名——作者按清单写样式时不会误判「这名字宿主还认不认」。纯清单删减，不留悬空名。
+- `@linkdesk/contracts` **0.1.41**（2026-10-05，同链独立发版）：`OpenWithRequest.anchor` 加 `@deprecated` 说明（类型面一字未删，纯注释），告知作者该字段已无消费方。
+
 ## v0.2.48（2026-10-05）
 
 **插件更新撞上「目录被占用」不再是死路：替换不了的更新改成暂存，下次启动自动换上——dev 轨道更新插件从此不用借安装版验证；「默认打开方式」也在设置页里长出了自己的管理器（住设置插件仓，随其仓发版）；「打开方式」选择器同时转正归壳（共享件 ＋ 壳命令），卸载 file-tree 后入口不再跟着消失。**
@@ -10,7 +27,7 @@
 
 - **「默认打开方式」补上批量写口**：`fileAssociation.setDefaultBulk(exts, pluginId|null)` 与单类写口同一实现——一次读改写、一次 `config:changed` 广播（⛔ 不是 N 次写，E31 双向同步靠这条），`pluginId: null` = 逐类恢复自动；归一化/去重/非法跳过与单类写口共用纯函数 `applyDefaultBulkOverride`（单测 4 例钉住）。契约 `fileAssociation` 面 3 方法扩为 4（`@linkdesk/contracts` 0.1.38 已发 npm）。
 - **设置页导航多出「默认打开方式」组**：壳侧在自有 pseudo pluginId `file-associations` 下声明一个配置组（导航项由此出现），组内唯一键＝既有覆盖表键 `workbench.fileAssociations`，带新控件提示 `uiHint: "fileAssociationsManager"`——该**整组**的渲染交给设置插件做自定义视图。🔴 **D1「该键不注册进设置页」的原意保住**：键带自定义提示 ⇒ 泛型对象编辑器永不渲染它，管理器仍是唯一 UI、覆盖表仍是同一处真相源（第三方设置插件不认识该提示时按既有降级契约只读展示）。控件提示词表收第 14 枚，三处同笔（contracts 类型 ∪ `@linkdesk/ui` 数组 ∪ 四份 `plugin.schema` 描述），轻门禁守同步。
-- **「打开方式」选择器转正归壳（纠正案 4.5）**：面板从 file-tree 插件搬进壳共享件 `@linkdesk/ui` 的 `OpenWithPicker`，唯一调用面 = **壳命令** `workbench.action.openWith`（`SHELL_COMMANDS.openWith`，SDK 出 `openWith()` helper）。原 id `file-tree.openWith` 属「住错层」——它消费的全是宿主声明（插件清单／文件关联声明／覆盖表），按判据 A 必须住在声明方与渲染方都够得着的地方。🔴 **命门**：卸载或停用 file-tree 后，设置页「打开方式…（.ext）」入口与编辑器二进制提示条那颗按钮**照样在**（旧行为是一并消失）。面板口径照设计图：居中弹出 + 复用壳既有模态遮罩（`#ld-scrim-plane` ＋ 令牌 `--scrim-dialog`，⛔ 零新 rgba／零毛玻璃）；右键入口传 `anchor` 则就近弹出、**无遮罩**但有透明点击层（点击外部收起）。单实例语义 = 后到者替换。
+- **「打开方式」选择器转正归壳（纠正案 4.5）**：面板从 file-tree 插件搬进壳共享件 `@linkdesk/ui` 的 `OpenWithPicker`，唯一调用面 = **壳命令** `workbench.action.openWith`（`SHELL_COMMANDS.openWith`，SDK 出 `openWith()` helper）。原 id `file-tree.openWith` 属「住错层」——它消费的全是宿主声明（插件清单／文件关联声明／覆盖表），按判据 A 必须住在声明方与渲染方都够得着的地方。🔴 **命门**：卸载或停用 file-tree 后，设置页「打开方式…（.ext）」入口与编辑器二进制提示条那颗按钮**照样在**（旧行为是一并消失）。面板口径照设计图：居中弹出 + 复用壳既有模态遮罩（`#ld-scrim-plane` ＋ 令牌 `--scrim-dialog`，⛔ 零新 rgba／零毛玻璃）；右键入口传 `anchor` 则就近弹出、**无遮罩**但有透明点击层（点击外部收起）。单实例语义 = 后到者替换。🔴 **本节这段读法已被 v0.2.49 改判作废**（锚定态废止 ⇒ 右键入口同样居中＋压暗，`anchor` 被忽略）——两版同批未发，以 v0.2.49 为准。
 - **`@linkdesk/contracts` 新公开面** `OpenWithRequest` / `OpenWithHandler`（`openWith` 命令的入参/出参形状）——数据形状只此一份，共享件与 SDK 都只再导出，⛔ 不另立副本。
 - **受控 `shell.openExternal` 立起（T4）**：插件面新增 `window.linkdesk.shell.openExternal(url)`——把 URL 交给系统默认程序（浏览器／邮件客户端／已注册协议的桌面程序）。**闸门 = 协议白名单**（`http:`/`https:`/`mailto:` ＋ 常量登记的 `vscode:`；`file:`/`javascript:`/`data:` 明确拒绝），单一真相源在 `electron/windows/external-links.ts` 的 `OPEN_EXTERNAL_PROTOCOLS`，与既有的 `window.open` 外链路由**共用同一条判据**（⛔ 不再有两份名单）；清单同笔进宿主保留面账新家族 `externalProtocols`（账 version 4）。被拒时 Promise **reject**（不静默）。这是「以 VS Code 打开」那类贡献点的地基。
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货；管理器 UI 住设置插件仓，随其仓发版（发版链见下方「作者轴」）。

@@ -2,8 +2,8 @@
  * OpenWithPicker——「打开方式…」选择器面板（**共享件**，`@linkdesk/ui` 单实例供给）。
  *
  * 户口 = 共享件（案 10/01 §三「转正」）。权威蓝图 = 案档 `10-纠正案-共享件转正与归一/`
- * `01-住错层纠正-选择器转正与壳级打开面.md`（契约/落点）＋ `03-面板口径-居中与遮罩.md`（居中/遮罩/锚定）
- * ＋ 本纠正案 `08-设计图-打开方式面板-收归壳后.html`（两态容器规则）。像素权威 = `mockups/05`
+ * `01-住错层纠正-选择器转正与壳级打开面.md`（契约/落点）＋ `03-面板口径-居中与遮罩.md`（居中/遮罩）
+ * ＋ 本纠正案 `08-设计图-打开方式面板-收归壳后.html`（容器规则）。像素权威 = `mockups/05`
  * （行布局 / 双动作按钮 / 当前默认徽标 / 空态——⛔ 只迁移不重画，案 00 §五 铁律 5 / D12）。
  *
  * 本件**纯 props in / events out**（照 `PluginCard` 模式）：零 `@/core` import、零 `window.linkdesk`、
@@ -11,13 +11,13 @@
  * 消费方 = 池侧 Host（`src/pool/floating/open-with/OpenWithPickerHost.tsx`，壳文档无可见 DOM ⇒ 面板必须在池里渲染）
  * ＋ 将来的设置页内嵌（喂 props 即可，不用再搬一次）。
  *
- * 🔴 两态（案 03 §二/§三.0）：
- *   · 有 `request.anchor`（文件树右键）⇒ **锚定**：就近弹出、`top ≥ 30`（硬约束 18 拖拽区）、
- *     **无遮罩**（透明点击层——「点外面关掉」但不压暗，否则连续右键会闪）；
- *   · 无锚点（编辑器 / 设置页入口）⇒ **居中** + 遮罩 = 壳既有模态遮罩（`--scrim-dialog` 经
- *     `#ld-scrim-plane`，⛔ 不另写 rgba、⛔ 不加磨砂）。
+ * 🔴 **一律居中 + 遮罩**（案 03 §3.0′——2026-10-05 用户改判，锚定态废止）：
+ *   面板恒为居中模态——`inset:0; margin:auto` 定位，遮罩 = 壳既有模态遮罩（`--scrim-dialog` 经
+ *   `#ld-scrim-plane`，⛔ 不另写 rgba、⛔ 不加磨砂）。理由（用户口径）：视觉聚焦 / 形态统一 /
+ *   不与周围元素打架 / 不显凌乱。`request.anchor` **被忽略**（契约字段保留以兼容已发布面，
+ *   见 `OpenWithRequest.anchor` 的 `@deprecated`）——形态只此一种，⛔ 不再按入口分叉。
  */
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Badge from "../badge/Badge";
@@ -33,12 +33,6 @@ import "./open-with-picker.css";
  * 🔴 必须 > 遮罩：OverlayPortal 包装盒的 z 就是面板层，小于遮罩层则面板被自己的遮罩盖住 =「点一下自己退」。 */
 const OPEN_WITH_Z_INDEX = 4000;
 
-/* ── 锚定钳制常量（照旧实现，⛔ 数值只搬不改）── */
-const PANEL_W = 432; // 与 CSS `.ldk-openwith { width }` 同值
-const ANCHOR_GUTTER = 28; // 右侧留白（旧式 460 = 432 + 28 的等价写法）
-const TOP_SAFE = 30; // 硬约束 18：标题栏拖拽区，锚定态 top 不得侵入
-const MIN_BELOW = 320; // 锚点下方至少留出的面板可视高（超出则上钳）
-
 function OpenWithPicker({
   request,
   handlers,
@@ -48,18 +42,6 @@ function OpenWithPicker({
   onClose,
 }: OpenWithPickerProps) {
   const { t } = useTranslation();
-  const anchored = !!request.anchor;
-
-  /** 锚定态定位——就近弹出 + 视口边缘钳制（居中态无内联定位，由 CSS `--centered` 承担） */
-  const pos = useMemo(() => {
-    const a = request.anchor;
-    if (!a) return undefined;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const left = Math.max(8, Math.min(a.x, vw - PANEL_W - ANCHOR_GUTTER));
-    const top = Math.max(TOP_SAFE, Math.min(a.y, vh - MIN_BELOW));
-    return { left, top };
-  }, [request.anchor]);
 
   /** 当前默认行——仅当**显式**覆盖时可见（`isDefault && !isAuto`，两个字段都由壳侧装配产出） */
   const hasExplicitDefault = handlers.some((h) => h.isDefault && !h.isAuto);
@@ -83,11 +65,11 @@ function OpenWithPicker({
 
   return (
     <>
-      {/* 遮罩/点击层——两类都 portal 进 `#ld-scrim-plane`（浮层权威遮罩平面，QuickPick/Dialog 同款）。
-          居中态着色（`--scrim-dialog`）；锚定态透明（只吞第一击 ⇒ 点外面关，且不闪）。 */}
+      {/* 模态遮罩——portal 进 `#ld-scrim-plane`（浮层权威遮罩平面，QuickPick/Dialog 同款）。
+          一律着色（`--scrim-dialog`）：面板居中后由它提供视觉聚焦，并承担「点外面关掉」。 */}
       {createPortal(
         <div
-          className={`ldk-openwith-scrim${anchored ? " ldk-openwith-scrim--clear" : ""}`}
+          className="ldk-openwith-scrim"
           style={{ zIndex: OPEN_WITH_Z_INDEX - 1 }}
           onClick={onClose}
           aria-hidden="true"
@@ -101,13 +83,7 @@ function OpenWithPicker({
         zIndex={String(OPEN_WITH_Z_INDEX)}
         rootId="open-with-root"
       >
-        <div
-          className={`ldk-openwith${anchored ? "" : " ldk-openwith--centered"}`}
-          style={pos}
-          role="dialog"
-          aria-modal={anchored ? undefined : true}
-          aria-label={t("打开方式")}
-        >
+        <div className="ldk-openwith" role="dialog" aria-modal={true} aria-label={t("打开方式")}>
           <div className="ldk-openwith-head">
             <div>
               <div className="ldk-openwith-title">

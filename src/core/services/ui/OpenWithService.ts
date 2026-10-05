@@ -90,12 +90,10 @@ function normalizeRequest(input: unknown): OpenWithRequest | null {
   const uri = typeof raw.uri === "string" && raw.uri ? raw.uri : undefined;
   const ext = typeof raw.ext === "string" && raw.ext ? normalizeExtension(raw.ext) : undefined;
   if (!uri && !ext) return null;
-  const anchor =
-    raw.anchor && Number.isFinite(raw.anchor.x) && Number.isFinite(raw.anchor.y)
-      ? { x: raw.anchor.x, y: raw.anchor.y }
-      : undefined;
   const name = raw.name ?? (uri ? basenameOf(uri) : undefined);
-  return { uri, name, ext: ext ?? (uri ? extOfPath(uri) : undefined), anchor };
+  // `anchor` 自 2026-10-05 起**被忽略**（面板一律居中，案 03 §3.0′）：不再归一化、也不再下发到池。
+  // 契约字段保留以兼容已发布面（`OpenWithRequest.anchor` 的 `@deprecated`）——此处是它**唯一**的旧消费点。
+  return { uri, name, ext: ext ?? (uri ? extOfPath(uri) : undefined) };
 }
 
 /**
@@ -214,6 +212,10 @@ export async function handleOpenWithAction(action: unknown): Promise<void> {
       // 与图标栏点击同一条路（开市场标签页）。
       const marketId = factorySlots.getActive("marketplace") ?? factorySlots.getDefaultPluginId("marketplace");
       if (marketId) shellEvents.emit("icon:selected", marketId);
+      // 面板随动作收起——动作已交付（切到市场）。留着面板 = 遮罩压在刚打开的市场之上，
+      // 且切回来时它还停在**过期的空态**（2026-10-05 用户实测：点了不消失）。与 close/openOnce
+      // 同律：除 `setDefault`（有意留开——让用户看见默认徽标换到新行）外，动作一律收面板。
+      hideOpenWith();
       return;
     }
     default:

@@ -1,6 +1,8 @@
 /* 「打开方式…」选择器面板（共享件 `@linkdesk/ui`）——全 token 跟随主题，⛔ 零写死色值/裸字号。
    类名一律 `ldk-openwith-` 前缀（硬约束 23）：共享件自成一族，门禁 check-css-namespace 判据⑦ 守之。
-   像素权威 = `mockups/05`（行布局，⛔ 只迁移不重画）＋ 本纠正案 `08` 图（居中/锚定两态的容器规则）。 */
+   像素权威 = `mockups/05`（行布局，⛔ 只迁移不重画）＋ 本纠正案 `08` 图（容器规则）。
+   🔴 口径（案 03 §3.0′，2026-10-05 用户改判）：面板**一律居中 + 遮罩**，⛔ 无第二形态
+   （原锚定态废止——不按入口分叉，故无 `--centered` / `--clear` 任何修饰类）。 */
 
 /* ── 遮罩：满屏平面，色走壳**既有**模态遮罩 token `--scrim-dialog`
    （用户 2026-10-05 拍板：直接用「关闭窗口弹窗」那层黑）——⛔ 不另写 rgba、⛔ 不加磨砂。
@@ -11,14 +13,14 @@
   background: var(--scrim-dialog);
 }
 
-/* 锚定态（文件树右键）：要能「点外面关掉」，但⛔ 不压暗——否则连续右键会闪（08 图注明）。
-   透明点击层 = 本修饰；面板自身层级高于它（内联 z，见组件 OPEN_WITH_Z_INDEX），面板内点击不受影响。 */
-.ldk-openwith-scrim--clear {
-  background: transparent;
-}
-
 .ldk-openwith {
   position: fixed;
+  /* 居中（唯一形态）：inset:0 + margin:auto；高度随内容、上限留 60px 呼吸
+     （顶部 30px 标题栏拖拽区因此自然不侵入——硬约束 18）。 */
+  inset: 0;
+  margin: auto;
+  height: max-content;
+  max-height: calc(100vh - 60px);
   width: 432px;
   max-width: calc(100vw - 24px);
   background: var(--bg-card);
@@ -28,15 +30,6 @@
   overflow: hidden;
   color: var(--text-primary);
   font-size: var(--font-size-md);
-}
-
-/* 居中态（编辑器/设置页入口——无锚点）——inset:0 + margin:auto 居中；高度随内容，上限留 60px 呼吸。
-   锚定态的 left/top 由组件按锚点内联钳制（top ≥ 30 = 硬约束 18 标题栏拖拽区），故此处无规则。 */
-.ldk-openwith--centered {
-  inset: 0;
-  margin: auto;
-  height: max-content;
-  max-height: calc(100vh - 60px);
 }
 
 .ldk-openwith-head {

@@ -3096,7 +3096,11 @@ export interface OpenWithRequest {
     name?: string;
     /** 归一化扩展名（无点、小写——由壳侧 normalizeExt 统一计算，调用方不必预处理） */
     ext?: string;
-    /** 可选锚点（右键入口给 = 就近弹出）；缺省 ⇒ 面板居中弹出 */
+    /**
+     * @deprecated 面板自 2026-10-05 起**一律居中**（案 03 §3.0′，用户改判：视觉聚焦 / 形态统一 /
+     * 不与周围元素打架 / 不显凌乱）——锚定态废止，壳侧不再归一化该字段、⛔ 已无消费方。
+     * 保留仅为兼容已发布契约面（⛔ 不得删除，见 `check-api-surface-additive`）；新调用方⛔ 不要再传。
+     */
     anchor?: {
         x: number;
         y: number;
