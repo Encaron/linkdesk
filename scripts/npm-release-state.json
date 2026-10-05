@@ -3,24 +3,24 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.40",
-      "contentHash": "2419d01c2e24eeac15cfea331733f5f135cfcc2dd000600e46f0effc0fad7938",
+      "version": "0.1.41",
+      "contentHash": "a442d64a3ba807e153216b9ae7747d156ac9b629777f2d54644aa01600c9986b",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "764ccaff62c95af8"
+        "contracts/linkdesk.d.ts": "68911a8f598552b2"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.82",
-      "contentHash": "3be2e8f9ea14e0a7582cd93fb4ed2b21d590060fffa6077bc303a7ce699e1929",
+      "version": "0.1.83",
+      "contentHash": "30d49caf03ab003fe3b63d130777ad94b212630ba2edbcd83d7b05e529ea3c2e",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "1c8992d8afa86026",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
         "packages/plugin-sdk/dev-host/index.html": "4a4a4c87a3088677",
         "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "076df2c3faf99c3d",
         "packages/plugin-sdk/dev-host/mock.ts": "a5c80cf9e01fae04",
-        "packages/plugin-sdk/schemas/host-css-names.json": "2d67b700a72e6ae5",
+        "packages/plugin-sdk/schemas/host-css-names.json": "d2f23fed87be6103",
         "packages/plugin-sdk/schemas/host-menu-slots.json": "3677a4d73c61045f",
         "packages/plugin-sdk/schemas/host-reserved.json": "6c84bbb0837483a8",
         "packages/plugin-sdk/schemas/icon-theme.schema.json": "81be40aac83072fb",
@@ -128,8 +128,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.45",
-      "contentHash": "16d821f9d5985b66de916a67ee24810924f53ba9047128d2b8a71c01293d3b0f",
+      "version": "0.2.46",
+      "contentHash": "202c073ab2ba1cf2ef4da9576962ec25f208b89c47e907ec226c4b4dc3fea3a3",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "786dfd2acf0f3b2d",
         "packages/linkdesk-ui/src/index.ts": "d93b2687d4a3d7c4",
@@ -187,8 +187,9 @@
         "src/components/shared/markdown-view/MarkdownView.tsx": "a28fa9651b7fc912",
         "src/components/shared/number-input/NumberInput.css": "70e8cd72c5faa03f",
         "src/components/shared/number-input/NumberInput.tsx": "33febfb7afc2f592",
-        "src/components/shared/open-with-picker/OpenWithPicker.tsx": "fc9699acf42bbffd",
-        "src/components/shared/open-with-picker/open-with-picker.css": "b5c91f81b6c0b05c",
+        "src/components/shared/open-with-picker/OpenWithPicker.test.tsx": "3d885f763bbc306e",
+        "src/components/shared/open-with-picker/OpenWithPicker.tsx": "91cee8d31f9ad0c7",
+        "src/components/shared/open-with-picker/open-with-picker.css": "d42957e05f60b4b5",
         "src/components/shared/open-with-picker/types.ts": "d8d0e0a5828a7175",
         "src/components/shared/overlay-portal/OverlayPortal.tsx": "11ea66dec807e5c3",
         "src/components/shared/overlay-portal/overlayLayer.test.ts": "8001673b72b06aa3",
