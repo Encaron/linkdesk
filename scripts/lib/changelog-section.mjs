@@ -5,7 +5,9 @@
  *   - `scripts/check-publish-gate.mjs`（E6#57.15d③）：**发布那一下**验「段在且非空」，另供
  *     `--changelog-body` / `--changelog-date` 两个纯输出模式给 CI 取值；
  *   - `scripts/check-changelog-section.mjs`（E6#57.15e）：**每次 `npm run check`** 验同一件事
- *     （规矩 3.7.3：bump 了版本号就必须同笔写 `## v<新版本>` 段）。
+ *     （规矩 3.7.3：bump 了版本号就必须同笔写 `## v<新版本>` 段）；
+ *   - `scripts/check-publish-gate.mjs` 的**攒批提醒**（2026-10-05）：`changelogVersions` 枚举全部
+ *     `## v{}` 段头版本号，列「上一发布 tag → 当前版本」之间**从未发布过**的段 ⇒ 黄灯提醒去累计。
  * 两处各写一份必然漂移（改一处忘一处 ⇒ 一边认一边不认 ⇒ 假红假绿都出现），故抽到这里。
  * 这与 `scripts/lib/text-eol.mjs` 是同一条纪律，也是 `check-scaffold.mjs` 闸 3 写的那个例外：
  * **「解析规则」是别人的实现，从源码现场抽，绝不手抄第二份。**
@@ -51,4 +53,22 @@ export function changelogDate(text, version) {
   if (!line) return "";
   const m = /（([^）]*)）/.exec(line);
   return m ? m[1] : "";
+}
+
+/**
+ * 列出 CHANGELOG 里所有 `## v{version}` 段头的版本号（按文件顺序，去重）。
+ * 供发布门禁的**攒批提醒**取数——段头正则只此一处，故枚举也放这儿，⛔ 别在调用方再写一个。
+ * 收边口径与 `changelogSection` 一致（`(?=[^0-9.]|$)`，防 `v0.1.4` 被当成 `v0.1.47` 的前缀）。
+ */
+export function changelogVersions(text) {
+  const out = [];
+  const seen = new Set();
+  const head = /^## v(\d+(?:\.\d+)*)(?=[^0-9.]|$)/;
+  for (const line of text.split(/\r?\n/)) {
+    const m = head.exec(line);
+    if (!m || seen.has(m[1])) continue;
+    seen.add(m[1]);
+    out.push(m[1]);
+  }
+  return out;
 }

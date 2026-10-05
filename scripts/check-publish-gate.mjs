@@ -17,6 +17,13 @@
  *      ui 作者面内容 == npm 发布基线（= 货架不落后），不等判红。ui 版本号与壳脱钩、自走；漂移了就随本版
  *      bump+publish+mark。判据与黄灯读同一份实现（scripts/lib/npm-author-surface.mjs）。
  *
+ *   ⚠️ **非判据 · 黄灯提醒（2026-10-05 用户拍板，04 池「发行说明累计跳版」）**——壳走「不发版、
+ *      dev 攒批」后，一次发版常跨过若干**从未发布过**的中间版本（各写过 CHANGELOG、各 bump 过
+ *      `package.json`）；而 CI 的 Release 正文只切**当前版本那一段**（`--changelog-body`）⇒ 只写
+ *      本段，用户就看不到跳过的活。故本地门禁多打一条黄灯：列出「上一发布 tag → 当前版本」之间
+ *      未发布的 CHANGELOG 段版本号，提醒去累计。**⛔ 只出声不拦**——跳版是常态，硬拦会天天误伤；
+ *      ⛔ **不进 `--changelog-body` / `--changelog-date` 两个 CI 输出模式**（那俩 stdout 必须干净）。
+ *
  * ── ④ 为什么不在这（归一化，不是漏）──
  *   ④ 已经由 `scripts/check-packaging-files.mjs --with-artifact` 实现，挂在 `npm run electron:build`
  *   尾部。本文件**刻意不重复一份**：同一个断言写两处，就会一处改了另一处没改。发布链路
@@ -67,7 +74,7 @@ import { compareVersions } from "../src/core/utils/plugin/semverUtils.ts";
 
 // 🔴 切段规则**只有一处实现**——`scripts/lib/changelog-section.mjs`，与 `check-changelog-section.mjs`
 //    （E6#57.15e，每次 npm run check 跑）**共用同一份**，不各写一套（理由见该文件头注）。
-import { changelogDate, changelogSection } from "./lib/changelog-section.mjs";
+import { changelogDate, changelogSection, changelogVersions } from "./lib/changelog-section.mjs";
 // 🔴 判据⑤与黄灯同一份实现（E6#166）——surface 名单/内容哈希/发布基线只此一份，别另写。
 import {
   UI_SURFACE,
@@ -233,6 +240,21 @@ function judgeChangelog(section) {
   return { ok: true, msg: `③ CHANGELOG —— \`## v{version}\` 段在位，${section.split("\n").length} 行` };
 }
 
+/**
+ * 攒批提醒的取数（黄灯 · 非判据）：从**本地最高 release tag** 到当前版本之间，CHANGELOG 里
+ * 存在、却**从未发布过**的中间版本号（升序）。无 tag（首次发布）⇒ `{ last: null, skipped: [] }`。
+ * 纯函数（`changelogText` / `tags` 由调用方注入）——`--self-test` 可复跑。出处见文件头。
+ */
+function unreleasedGap(changelogText, pkgVersion, tags) {
+  const released = tags.map((t) => t.replace(/^v/, "")).filter((v) => /^\d+\.\d+\.\d+$/.test(v));
+  if (released.length === 0) return { last: null, skipped: [] };
+  const last = released.reduce((a, b) => (compareVersions(b, a) > 0 ? b : a));
+  const skipped = changelogVersions(changelogText).filter(
+    (v) => compareVersions(v, last) > 0 && compareVersions(v, pkgVersion) < 0
+  );
+  return { last, skipped: skipped.sort(compareVersions) };
+}
+
 function fail(msg) {
   process.stderr.write(`\n🔴 ${msg}\n`);
 }
@@ -311,6 +333,27 @@ function runSelfTest() {
   // 日期
   push("③ 段头日期", { ok: changelogDate(CL, "0.1.49") === "2026-09-12", msg: changelogDate(CL, "0.1.49") }, true);
   push("③ 段头无日期", { ok: changelogDate(CL, "0.1.4x") === "", msg: "" }, true);
+
+  // ⚠️ 攒批提醒（黄灯 · 非判据）——纯函数取数；真实场景：发布端 v0.2.41 → 本次 0.2.48，中间各段从未发布
+  const CLB = [
+    "# Changelog",
+    "",
+    "## v0.2.48（2026-10-05）",
+    "- 本次",
+    "## v0.2.47（2026-10-05）",
+    "- 中段",
+    "## v0.2.42（2026-10-04）",
+    "- 中段",
+    "## v0.2.41（2026-10-04）",
+    "- 已发布",
+    "",
+  ].join("\n");
+  const gapEq = (got, want) => ({ ok: JSON.stringify(got) === JSON.stringify(want), msg: `实得 ${JSON.stringify(got)}` });
+  push("攒批：v0.2.41 → 发 0.2.48，中间两段未发布", gapEq(unreleasedGap(CLB, "0.2.48", ["v0.2.41"]).skipped, ["0.2.42", "0.2.47"]), true);
+  push("攒批：紧邻发版（v0.2.47 → 0.2.48）无跳过", gapEq(unreleasedGap(CLB, "0.2.48", ["v0.2.47"]).skipped, []), true);
+  push("攒批：多 tag 取最高（v0.2.41/v0.2.42 ⇒ 只剩 0.2.47）", gapEq(unreleasedGap(CLB, "0.2.48", ["v0.2.41", "v0.2.42"]).skipped, ["0.2.47"]), true);
+  push("攒批：无 tag（首次发布）不出声", gapEq(unreleasedGap(CLB, "0.2.48", []).skipped, []), true);
+  push("攒批：同版重发（tag＝当前版本）无跳过", gapEq(unreleasedGap(CLB, "0.2.48", ["v0.2.48"]).skipped, []), true);
 
   // ⑤（E6#166 对货不对号：判据读发布基线内容哈希；输入 synthetic，不碰盘不联网）
   push("⑤ ui 货一致（基线 == 当前）", judgeUiSurfaceSynced({ uiPkgText: JSON.stringify({ version: "0.2.33" }), baselineHash: "hashA", currentHash: "hashA", driftText: null }), true);
@@ -392,7 +435,8 @@ function main() {
     }
   }
   // 传了 --expect-tag ⇒ 这是 CI 的发布运行，此刻 tag 必然已存在（见 judgeVersionAdvance 头注）
-  checks.push(judgeVersionAdvance(pkgVersion, localVersionTags(), { selfTagIsThisRelease: expectedTag !== null }));
+  const tags = localVersionTags();
+  checks.push(judgeVersionAdvance(pkgVersion, tags, { selfTagIsThisRelease: expectedTag !== null }));
   checks.push(judgeVersionMatch(pkgVersion, existsSync(PRODUCT) ? readFileSync(PRODUCT, "utf8") : null));
   checks.push(judgeChangelog(changelogSection(changelogText, pkgVersion)));
   checks.push(judgeUiSurfaceSynced(readUiAuthorFaceStatus()));
@@ -407,6 +451,17 @@ function main() {
     `ℹ️  判据④（产物 asar 里真有 electron/product.json）不在此处——由 scripts/check-packaging-files.mjs ` +
       `挂在 electron:build 尾部执行，发布链路必然跑到。\n`
   );
+
+  // ⚠️ 非判据 · 黄灯（2026-10-05）：攒批跳过的未发布版本——只出声，不拦（见文件头）。
+  const gap = unreleasedGap(changelogText, pkgVersion, tags);
+  if (gap.skipped.length > 0) {
+    process.stdout.write(
+      `\n⚠️  发行说明累计提醒（黄灯 · 不拦）\n` +
+        `   自上一发布版 v${gap.last} 起有 ${gap.skipped.length} 段未发布：\n` +
+        `     ${gap.skipped.join("  ")}\n` +
+        `   ⇒ 请确认本版 \`## v${pkgVersion}\` 段顶部已累计上面各段——CI 的 Release 正文只切本段。\n`
+    );
+  }
 
   if (checks.some((c) => !c.ok)) {
     fail(`版本 ${pkgVersion} 未过发布门禁，拒绝发布。`);
