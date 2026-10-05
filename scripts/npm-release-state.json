@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.80",
-      "contentHash": "aba41f478b8d8e0a47bd7d9c369a9a43e087e8d69d64d2eb8885211f7c3117ae",
+      "version": "0.1.81",
+      "contentHash": "8814ef904933de89fe74fa7cd500894999f81a6c2e25410659a379c2205a10af",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "863cd3fd248d9bb9",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -79,7 +79,7 @@
         "packages/plugin-sdk/src/eslint/preset.ts": "97a3a085f4a4e2ba",
         "packages/plugin-sdk/src/eslint/rules.ts": "e15373dc0075fecf",
         "packages/plugin-sdk/src/github-http.ts": "d73115f7e71469ee",
-        "packages/plugin-sdk/src/index.ts": "f03d615b84f3f085",
+        "packages/plugin-sdk/src/index.ts": "a61471c40bef7ef6",
         "packages/plugin-sdk/src/marketplace-schema.test.ts": "2004d6a3a8b0e058",
         "packages/plugin-sdk/src/own-dict-coverage.test.ts": "0f84ac2fbc38c80c",
         "packages/plugin-sdk/src/pack.test.ts": "e3f78cdc70153c82",
@@ -244,8 +244,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.65",
-      "contentHash": "91c147e830f2a4909a93f75c857bfaddb384aec5e652bed7184cdf9a83967661",
+      "version": "0.1.66",
+      "contentHash": "a964e8e9073f835428f6071422e0acfd352c6f462564111a5c726cc3a1493375",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "aedaf30bbdcec6d7",
@@ -269,7 +269,7 @@
         "packages/plugin-docs/docs/18-cross-region-wiring.md": "47a88e44dc167f6d",
         "packages/plugin-docs/docs/19-component-cheatsheet.md": "23056747703a3488",
         "packages/plugin-docs/docs/20-adding-a-setting.md": "c467999886ee5069",
-        "packages/plugin-docs/docs/21-command-ification-spec.md": "40a7005a9b2c8193",
+        "packages/plugin-docs/docs/21-command-ification-spec.md": "c49c9bd6077b1173",
         "packages/plugin-docs/docs/22-menu-contribution-points.md": "00a4e5d8b2ef456a",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
         "packages/plugin-docs/docs/themes/02-theme-field-index.md": "6aa2a97c0462aa76",
@@ -294,7 +294,7 @@
         "packages/plugin-docs/docs/zh/18-区域间互动.md": "f46c4a6bcc1c3010",
         "packages/plugin-docs/docs/zh/19-组件速查.md": "c57eff383553accb",
         "packages/plugin-docs/docs/zh/20-我的插件加一条配置项.md": "f20d5265c0fad76a",
-        "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "f3cabc45cd16ce0b",
+        "packages/plugin-docs/docs/zh/21-插件命令化规范.md": "4c0aca94ec7a1fa0",
         "packages/plugin-docs/docs/zh/22-菜单贡献点.md": "83886cd766f4d071",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "56ff29393bfc7234",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
