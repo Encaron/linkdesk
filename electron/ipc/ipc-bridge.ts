@@ -213,7 +213,7 @@ export class IpcBridge {
           this.broadcast(IPC.contextKey.changed, { key, value });
         }
 
-        // ── 件 1（待抉择池/快捷键页-录制与齿轮菜单.md）：键盘直通——录制态的键必须落进池 WebView ──
+        // ── 件 1（已落地/快捷键页-录制与齿轮菜单.md）：键盘直通——录制态的键必须落进池 WebView ──
         // 池插件起/停录制时调 `setKeybindingCaptureActive(x)`，走单通道 `plugins:call`（args[0] = 方法名，
         // 与上面 hasNoRequestTimeout 的嗅法同源）。主进程此前对它零消费 ⇒ 录制期间仍按 keyCache 吞键
         // （`ctrl+k` 是内置 chord 前缀），键压根进不了池、录制器一次都收不到（用户「怎么都按不上去」）。

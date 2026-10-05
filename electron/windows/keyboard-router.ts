@@ -73,7 +73,7 @@ function clearMainChord(): void {
 // ── 键盘直通（录制 / 捕获态）——录制期间键必须落进池 WebView ──
 
 /**
- * 案件：`docs/04-软件更新/待抉择池/快捷键页-录制与齿轮菜单.md` 件 1。
+ * 案件：`docs/04-软件更新/已落地/快捷键页-录制与齿轮菜单.md` 件 1。
  *
  * 池插件的录制器（设置插件 `KeybindingSettingsView` 的双框 chord 捕获）起录制时调
  * `setKeybindingCaptureActive(true)`，但那条信号此前**只活在壳渲染进程里**（`dispatch.ts` 的模块级

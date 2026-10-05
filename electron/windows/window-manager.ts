@@ -255,7 +255,7 @@ export class WindowManager {
     // 壳 UI 推流（pushQuickPick/pushDialog/pushFloatingPanel）默认落该窗。
     const onFocus = () => { this._focusedWindowId = windowId; };
     hostWindow.on('focus', onFocus);
-    // 件 1 卫生要求 2（待抉择池/快捷键页-录制与齿轮菜单.md）：宿主窗失焦 ⇒ 清该池视图的「键盘直通」标志。
+    // 件 1 卫生要求 2（已落地/快捷键页-录制与齿轮菜单.md）：宿主窗失焦 ⇒ 清该池视图的「键盘直通」标志。
     // 录制器的「点外面取消」是**插件自己文档**里的 mousedown 监听——用户点到插件 WebView **外面**
     // （壳区域 / 别的视图）时它不触发，取消分支的 setKeybindingCaptureActive(false) 也就不发
     // ⇒ 悬挂的 true 会让该视图的全局快捷键**永久失效**（键全被放行、壳一个都收不到）。
