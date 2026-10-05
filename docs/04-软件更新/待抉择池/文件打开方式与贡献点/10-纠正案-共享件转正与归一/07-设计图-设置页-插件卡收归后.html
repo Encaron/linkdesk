@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · 设置页插件卡收归后（共享件 + 两处齿轮）——细节详解 · 可交互</title>
+<!-- mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。
+     ══ 文档锚点（改本图必须同笔改这些文档；反之亦然）══
+       01-住错层纠正-选择器转正与壳级打开面.md  C1.4（settings 改消费）/ C1.6（编辑器按钮换共享 Button）/ C1.7（共享件导出）
+       02-归一化-齿轮锚点与假菜单项.md          §一 两处齿轮事实 / §二 载荷律 / §四 空转项修法（方案 A 推荐）
+       03-面板口径-居中与遮罩.md                §四 入口一致性矩阵（设置页入口无锚点 ⇒ 居中）
+       04-契约API与文档连锁.md                  §三 常量归一（SHELL_COMMANDS.openWith）
+     ══ 帧 ↔ 文档 ══
+       帧 A（图 1）= 插件卡＋卡齿轮    → 02 §五（复制插件 id 复现）/ 01 C1.4 / 04 §三
+       帧 B（图 2）= 竞争行齿轮（方案 A）→ 02 §四 方案 A（＝本图采用的推荐方案）
+       帧 C（图 3）= 编辑器提示块两钮   → 01 C1.6（Button 归一）
+     ══ 口径 ══ 壳 zone 尺寸照实测（titlebar 30 / icon-bar 42 / tabbar 35 / statusbar 22），颜色全走 token。
+     本图的几何读数由页内脚本量出并显示（底部「读数」条），不靠肉眼。 -->
+<style>
+:root{
+  --bg-window:#1b1b1b; --bg-card:#242424; --bg-input:#2e2e2e; --bg-titlebar:#161616;
+  --bg-icon-bar:#161616; --bg-side-panel:#1f1f1f;
+  --text-primary:#e8e8e8; --text-secondary:#a8a8a8; --text-muted:#8f8f8f;
+  --accent:#3d7eff; --accent-hover:#5c93ff; --text-on-accent:#ffffff;
+  --border:#3c3c3c; --separator:#2a2a2a; --error:#e5534b; --status-connected:#3fb950; --warn:#c88a2d;
+  --hover-overlay:#ffffff14;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Microsoft YaHei",sans-serif;padding:18px;}
+.page-head{max-width:1180px;margin:0 auto 14px;}
+.page-head h1{font-size:18px;font-weight:600;}
+.page-head .sub{color:var(--text-secondary);margin-top:4px;}
+.anchorbox{max-width:1180px;margin:10px auto 18px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:10px 14px;font-size:12px;color:var(--text-secondary);}
+.anchorbox .lbl{display:block;font-size:10.5px;letter-spacing:.06em;color:var(--text-muted);margin-bottom:3px;}
+.anchorbox b{color:var(--text-primary);}
+.anchorbox code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
+.frame{max-width:1180px;margin:0 auto 26px;}
+.frame-caption{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.frame-caption .n{font:600 13px "Segoe UI";color:var(--text-primary);}
+.frame-caption .tag{font-size:10.5px;border:1px solid var(--border);border-radius:4px;padding:0 6px;color:var(--accent-hover);}
+.frame-caption .use{font-size:11px;color:var(--text-muted);}
+.window{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-window);box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.titlebar{height:30px;background:var(--bg-titlebar);display:flex;align-items:center;padding:0 10px;gap:10px;border-bottom:1px solid var(--separator);}
+.titlebar .logo{width:14px;height:14px;border-radius:4px;background:var(--accent);}
+.titlebar .app{font-size:12px;color:var(--text-secondary);}
+.titlebar .menus{display:flex;gap:2px;margin-left:6px;}
+.titlebar .menus span{padding:2px 8px;border-radius:4px;color:var(--text-secondary);font-size:12px;}
+.titlebar .drag{flex:1;}
+.titlebar .winbtns{display:flex;gap:14px;color:var(--text-muted);font-size:11px;}
+.body-row{display:flex;height:520px;}
+.icon-bar{width:42px;background:var(--bg-icon-bar);border-right:1px solid var(--separator);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;}
+.icon-bar .ic{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#8a8a8a;cursor:pointer;position:relative;font-size:15px;}
+.icon-bar .ic.active{color:var(--text-primary);background:var(--hover-overlay);}
+.icon-bar .ic.active::before{content:"";position:absolute;left:-5px;top:7px;width:3px;height:18px;border-radius:2px;background:var(--accent);}
+.icon-bar .gear-slot{margin-top:auto;}
+.setcol{flex:1;display:flex;flex-direction:column;min-width:0;}
+.settings-tab-bar{height:34px;display:flex;align-items:flex-end;gap:2px;padding:0 10px;background:var(--bg-card);border-bottom:1px solid var(--separator);}
+.settings-tab{padding:5px 14px;border-radius:7px 7px 0 0;border:1px solid transparent;border-bottom:none;background:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;}
+.settings-tab.active{background:var(--bg-window);color:var(--text-primary);border-color:var(--separator);box-shadow:inset 0 2px 0 var(--accent);}
+.settings-search-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--separator);}
+.settings-search-bar .s-search{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text-secondary);font-size:12px;}
+.setpage{flex:1;display:flex;min-width:0;}
+.setnav{width:200px;flex-shrink:0;border-right:1px solid var(--separator);background:var(--bg-side-panel);overflow-y:auto;padding:8px 0;}
+.setnav .nv{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:6px 20px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;border:none;background:none;text-align:left;}
+.setnav .nv.active{background:var(--hover-overlay);color:var(--text-primary);box-shadow:inset 2px 0 0 var(--accent);}
+.setnav .nv .cnt{font-size:10.5px;color:var(--text-muted);border:1px solid var(--separator);border-radius:999px;padding:0 6px;}
+.setcontent{flex:1;overflow:auto;padding:18px 24px;min-width:0;position:relative;}
+.setcontent .g-title{font-size:16px;font-weight:600;}
+.setcontent .g-desc{font-size:12px;color:var(--text-muted);margin:3px 0 14px;}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:14px;}
+.seg button{background:none;border:none;color:var(--text-secondary);font-size:12px;padding:5px 12px;cursor:pointer;}
+.seg button.g-on{background:var(--hover-overlay);color:var(--text-primary);box-shadow:inset 0 -2px 0 var(--accent);}
+.statusbar{height:22px;background:var(--bg-window);border-top:1px solid var(--separator);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:11px;color:var(--text-muted);}
+/* ── 共享件 PluginCard（真实类名 ldk-plugin-card*；样式示意）── */
+.ldk-plugin-card{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg-card);}
+.ldk-plugin-card--expanded{border-color:var(--separator);}
+.ldk-plugin-card--disabled{opacity:.55;}
+.ldk-plugin-card-head{display:flex;align-items:center;gap:10px;padding:8px 12px;position:relative;border-radius:10px 10px 0 0;}
+.ldk-plugin-card--expanded .ldk-plugin-card-head{border-bottom:1px solid var(--separator);}
+.ldk-plugin-card-toggle{display:flex;align-items:center;gap:10px;flex:1;min-width:0;background:none;border:none;padding:0;color:inherit;text-align:left;cursor:pointer;}
+.ldk-plugin-card-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;background:var(--accent);flex:none;}
+.ldk-plugin-card-ident{min-width:0;line-height:1.3;}
+.ldk-plugin-card-titleline{display:flex;align-items:center;gap:6px;}
+.ldk-plugin-card-title{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
+.ldk-plugin-card-sub{font-size:11px;color:var(--text-muted);}
+.ldk-plugin-card-summary{margin-left:auto;font-size:11px;color:var(--text-muted);white-space:nowrap;}
+.ldk-plugin-card-summary b{color:var(--status-connected);font-weight:600;}
+.ldk-plugin-card-chevron{color:var(--text-muted);font-size:11px;}
+.ldk-plugin-card-gear{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:3px;color:var(--text-muted);cursor:pointer;font-size:13px;}
+.ldk-plugin-card-gear:hover,.ldk-plugin-card-gear.on{background:var(--hover-overlay);color:var(--text-primary);}
+.ldk-plugin-card-body{max-height:250px;overflow:auto;}
+/* 卡内行（管理器自组，不进共享包——03 §1） */
+.acrow{display:flex;align-items:center;gap:10px;min-height:30px;padding:4px 12px 4px 14px;border-bottom:1px solid var(--separator);font-size:12px;}
+.acrow:last-child{border-bottom:none;}
+.acrow .cext{font:12px Consolas,monospace;color:var(--accent-hover);flex:0 0 84px;}
+.pill{display:inline-block;font-size:10.5px;padding:1px 8px;border-radius:9px;background:var(--bg-input);color:var(--text-secondary);}
+.pill.user{color:var(--accent-hover);border:1px solid var(--accent);}
+.pill.auto{color:var(--status-connected);}
+.pill.contested{color:var(--warn);border:1px solid var(--border);}
+.pill.gap{color:var(--error);border:1px solid var(--border);}
+.acrow .who{margin-left:auto;font-size:11px;color:var(--text-muted);}
+/* ── 共享 ContextMenu（示意：真实走共享件）── */
+.ctxmenu{position:absolute;min-width:172px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:4px;box-shadow:0 10px 28px rgba(0,0,0,.55);z-index:20;}
+.ctxmenu .mi{display:flex;align-items:center;gap:8px;padding:5px 9px;border-radius:5px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;}
+.ctxmenu .mi:hover{background:var(--hover-overlay);color:var(--text-primary);}
+.ctxmenu .mi .k{margin-left:auto;font-size:10.5px;color:var(--text-muted);}
+.ctxmenu .sep{height:1px;background:var(--separator);margin:4px 2px;}
+.ctxmenu .hdr{padding:4px 9px 6px;font-size:10.5px;color:var(--text-muted);}
+.mut{font-size:11px;color:var(--text-muted);}
+/* ── 共享 Button（ldk-button*，示意）── */
+.ldk-button{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--text-on-accent);border:1px solid transparent;border-radius:6px;padding:5px 12px;font-size:12.5px;cursor:pointer;}
+.ldk-button--ghost{background:transparent;color:var(--text-secondary);border-color:var(--separator);}
+.ldk-button--ghost:hover{color:var(--text-primary);background:var(--hover-overlay);}
+/* ── 编辑器提示块（帧 C）── */
+.edwrap{display:flex;height:300px;}
+.edtabs{height:35px;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bg-card);border-bottom:1px solid var(--separator);font-size:12px;}
+.edtabs .t{display:flex;align-items:center;gap:6px;padding:0 10px;height:35px;color:var(--text-secondary);border-bottom:2px solid var(--accent);}
+.edvoid{flex:1;display:flex;align-items:center;justify-content:center;}
+.binnotice{width:460px;text-align:center;}
+.binnotice .icn{font-size:26px;color:var(--text-muted);}
+.binnotice .msg{font-size:13.5px;color:var(--text-secondary);margin:8px 0 3px;}
+.binnotice .hint{font-size:11.5px;color:var(--text-muted);}
+.binnotice .btns{display:flex;gap:8px;justify-content:center;margin-top:14px;}
+.badbtn{border:1px solid var(--border);background:none;color:var(--text-secondary);border-radius:6px;padding:5px 12px;font-size:12.5px;cursor:pointer;}
+.badbtn-note{margin-top:10px;font-size:11px;color:var(--error);}
+.frame-note{border:1px solid var(--separator);border-top:none;border-radius:0 0 10px 10px;background:var(--bg-card);padding:10px 14px;font-size:12px;color:var(--text-secondary);}
+.frame-note li{margin-left:18px;margin-top:3px;}
+.frame-note b{color:var(--text-primary);}
+.frame-note code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
+.readout{max-width:1180px;margin:0 auto 30px;border:1px dashed var(--border);border-radius:8px;padding:10px 14px;font:11.5px Consolas,monospace;color:var(--status-connected);white-space:pre-wrap;}
+.readout b{color:var(--text-primary);font-family:inherit;}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>07 · 设置页「文件关联」插件卡——收归后在共享件里的形态</h1>
+  <div class="sub">帧 A 插件卡＋卡齿轮 ｜ 帧 B 竞争行齿轮（本图采用 <b>02 §四 方案 A</b>：按该行类型打开选择器）｜ 帧 C 同波：编辑器提示块两颗钮换共享 <code>Button</code></div>
+</div>
+
+<div class="anchorbox">
+  <span class="lbl">文档锚点</span>（可点）：<code>../01-住错层纠正-选择器转正与壳级打开面.md</code> C1.4 / C1.6 ｜
+  <code>../02-归一化-齿轮锚点与假菜单项.md</code> §一 §二 §四 ｜
+  <code>../03-面板口径-居中与遮罩.md</code> §四 ｜ <code>../04-契约API与文档连锁.md</code> §三。
+  <br>本图解决的是「<b>齿轮里到底有哪些项、每项吃什么载荷、点了会发生什么</b>」——即 02 §五 报告的「选项是假的」那一类问题在 UI 上的正确形态。
+</div>
+
+<!-- ══════════ 帧 A ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 A · 插件卡（共享件 `ldk-plugin-card`）＋ 卡齿轮</span><span class="tag">定稿形态</span><span class="use">可交互：点齿轮 / 点卡头展开</span></div>
+  <div class="window">
+    <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span>
+      <span class="menus"><span>文件</span><span>查看</span><span>帮助</span></span>
+      <span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
+    <div class="body-row">
+      <div class="icon-bar"><span class="ic">📁</span><span class="ic active">⚙</span><span class="ic">🧩</span><span class="ic gear-slot">🔧</span></div>
+      <div class="setcol">
+        <div class="settings-tab-bar"><button class="settings-tab active">设置</button><button class="settings-tab">键位</button></div>
+        <div class="settings-search-bar"><span class="s-search">搜索设置…</span></div>
+        <div class="setpage">
+          <div class="setnav">
+            <button class="nv">外观</button>
+            <button class="nv active">文件关联 <span class="cnt">45</span></button>
+            <button class="nv">键位</button>
+            <button class="nv">AI 通道</button>
+          </div>
+          <div class="setcontent">
+            <div class="g-title">文件关联</div>
+            <div class="g-desc">按类型或按插件查看「默认打开方式」。有第二个处理器的类型记作<b>竞争</b>（绿灯）。</div>
+            <div class="seg"><button>按类型浏览</button><button class="g-on">按插件浏览</button></div>
+
+            <!-- 卡 1：展开 + 齿轮张开 -->
+            <div class="ldk-plugin-card ldk-plugin-card--expanded">
+              <div class="ldk-plugin-card-head">
+                <button class="ldk-plugin-card-toggle">
+                  <span class="ldk-plugin-card-icon">编</span>
+                  <span class="ldk-plugin-card-ident">
+                    <span class="ldk-plugin-card-titleline"><span class="ldk-plugin-card-title">编辑器</span></span>
+                    <span class="ldk-plugin-card-sub">editor · v1.0.22</span>
+                  </span>
+                  <span class="ldk-plugin-card-summary">声明 <b>45</b> 类 · 竞争 12 类</span>
+                  <span class="ldk-plugin-card-chevron">⌄</span>
+                </button>
+                <button class="ldk-plugin-card-gear on" id="gearA" title="更多操作">⚙</button>
+              </div>
+              <div class="ldk-plugin-card-body">
+                <div class="acrow"><span class="cext">.md</span><span class="pill auto">自动</span><span class="mut">唯一处理器</span><span class="who">编辑器</span></div>
+                <div class="acrow"><span class="cext">.txt</span><span class="pill auto">自动</span><span class="mut">唯一处理器</span><span class="who">编辑器</span></div>
+                <div class="acrow"><span class="cext">.svg</span><span class="pill user">默认：编辑器</span><span class="who">来源：用户覆盖</span></div>
+                <div class="acrow"><span class="cext">.json</span><span class="pill contested">竞争</span><span class="mut">2 个处理器</span><span class="who">编辑器 / 数据视图</span></div>
+              </div>
+              <!-- 卡齿轮菜单（共享 ContextMenu；PluginCard 固定送 context={pluginId}） -->
+              <div class="ctxmenu" id="menuA" style="left:430px;top:118px;">
+                <div class="hdr">插件：editor（载荷 context={pluginId}）</div>
+                <div class="mi">🧹 清除相关默认覆盖 <span class="k">C1.4</span></div>
+                <div class="sep"></div>
+                <div class="mi">📋 复制插件 id <span class="k">02 §五</span></div>
+              </div>
+            </div>
+
+            <!-- 卡 2：折叠 + 停用 -->
+            <div class="ldk-plugin-card ldk-plugin-card--disabled">
+              <div class="ldk-plugin-card-head">
+                <button class="ldk-plugin-card-toggle">
+                  <span class="ldk-plugin-card-icon" style="background:var(--text-muted);color:var(--bg-window)">P</span>
+                  <span class="ldk-plugin-card-ident">
+                    <span class="ldk-plugin-card-titleline"><span class="ldk-plugin-card-title">PDF 阅读器</span><span class="pill" style="font-size:10px">已停用</span></span>
+                    <span class="ldk-plugin-card-sub">pdf-reader · v0.4.1</span>
+                  </span>
+                  <span class="ldk-plugin-card-summary">声明 <b>2</b> 类</span>
+                  <span class="ldk-plugin-card-chevron">›</span>
+                </button>
+                <button class="ldk-plugin-card-gear" title="更多操作">⚙</button>
+              </div>
+            </div>
+
+            <div class="ldk-plugin-card">
+              <div class="ldk-plugin-card-head">
+                <button class="ldk-plugin-card-toggle">
+                  <span class="ldk-plugin-card-icon" style="background:var(--status-connected);color:var(--bg-window)">图</span>
+                  <span class="ldk-plugin-card-ident">
+                    <span class="ldk-plugin-card-titleline"><span class="ldk-plugin-card-title">图片查看器</span></span>
+                    <span class="ldk-plugin-card-sub">image-viewer · v1.2.0</span>
+                  </span>
+                  <span class="ldk-plugin-card-summary">声明 <b>6</b> 类 · 竞争 3 类</span>
+                  <span class="ldk-plugin-card-chevron">›</span>
+                </button>
+                <button class="ldk-plugin-card-gear" title="更多操作">⚙</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>设置 · 文件关联</span><span>已启用 12 / 14</span></div>
+  </div>
+  <div class="frame-note">
+    <b>① 为什么卡是共享件</b>：卡头＝真 <code>&lt;button&gt;</code>（展开）＋ 齿轮＝叠在其上的<b>兄弟</b> <code>&lt;button&gt;</code>（不是 button 套 button）——嵌套按钮禁令的正解，`PluginCard.tsx:97-141`。
+    <li><b>② 齿轮项凭什么只有两条</b>：卡齿轮由 <code>PluginCard</code> 渲染，它<b>固定送</b> <code>context={{pluginId}}</code>（`PluginCard.tsx:153`）⇒ 菜单项只能是「按插件身份就能干完的事」。
+    「清除相关默认覆盖」在有键时才出现（无键时点它没意义）；「复制插件 id」恒在。</li>
+    <li><b>③ 载荷律</b>（02 §二）：整菜单共享的 <code>context</code> 由共享件给，逐项身份走 <code>commandArgs</code>；handler 收到 <code>args=[...commandArgs, context]</code> ⇒ 读 <code>args[0]</code> 是 <code>{pluginId}</code>。</li>
+    <li><b>④ 本帧对「选项是假的」的回答</b>：菜单项的三条硬要求＝① 命令已声明 ② 载荷形状与 handler 读取一致 ③ 有可见回执（02 §五 的 try/catch 修法）；
+    三者缺一就不许上屏（05 §三 R3 上尺子）。</li>
+  </div>
+</div>
+
+<!-- ══════════ 帧 B ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 B · 竞争行齿轮（按类型浏览那一侧的对照）</span><span class="tag">本图采用 02 §四 方案 A</span><span class="use">载荷 commandArgs=[exts]</span></div>
+  <div class="window">
+    <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span>
+      <span class="menus"><span>文件</span><span>查看</span><span>帮助</span></span>
+      <span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
+    <div class="body-row" style="height:420px">
+      <div class="icon-bar"><span class="ic">📁</span><span class="ic active">⚙</span><span class="ic">🧩</span><span class="ic gear-slot">🔧</span></div>
+      <div class="setcol">
+        <div class="settings-tab-bar"><button class="settings-tab active">设置</button><button class="settings-tab">键位</button></div>
+        <div class="settings-search-bar"><span class="s-search">搜索设置…</span></div>
+        <div class="setpage">
+          <div class="setnav"><button class="nv">外观</button><button class="nv active">文件关联 <span class="cnt">45</span></button><button class="nv">键位</button><button class="nv">AI 通道</button></div>
+          <div class="setcontent">
+            <div class="g-title">文件关联</div>
+            <div class="g-desc">竞争区：同一个扩展名有 ≥2 个处理器时聚合成一格（05 §二 判据：归一化扩展名 + 已启用插件数 ≥2）。</div>
+            <div class="seg"><button class="g-on">按类型浏览</button><button>按插件浏览</button></div>
+            <div style="border:1px solid var(--separator);border-radius:10px;overflow:hidden;position:relative">
+              <div class="acrow" style="background:var(--bg-card)"><span class="cext">.pdf</span><span class="pill contested">竞争 · 2</span><span class="mut">当前：未设默认（自动）</span>
+                <span class="who">editor / pdf-reader</span>
+                <button class="ldk-plugin-card-gear on" id="gearB" style="margin-left:6px">⚙</button></div>
+              <div class="acrow"><span class="cext">.md</span><span class="pill auto">自动</span><span class="who">editor</span><button class="ldk-plugin-card-gear">⚙</button></div>
+              <div class="acrow"><span class="cext">.png</span><span class="pill user">默认：图片查看器</span><span class="who">来源：用户覆盖</span><button class="ldk-plugin-card-gear">⚙</button></div>
+              <!-- 行齿轮菜单：管理器自弹 ⇒ 身份走 commandArgs -->
+              <div class="ctxmenu" id="menuB" style="left:470px;top:56px;">
+                <div class="hdr">行：.pdf（载荷 commandArgs=[[".pdf"]]）</div>
+                <div class="mi">🧹 清除该行默认覆盖 <span class="k">args[0]=exts</span></div>
+                <div class="sep"></div>
+                <div class="mi">👁 打开方式…（.pdf） <span class="k">方案 A</span></div>
+              </div>
+            </div>
+            <div class="mut" style="margin-top:10px">
+              注：这一项是本纠正案**改对**的那一项——旧形态（`在文件树中打开选择器`）没有载荷、父菜单也没有 `context` ⇒ handler 收到 `args[0]=undefined` ⇒ 要么去开文件树里碰巧聚焦的文件、要么弹「没有选中的文件」（02 §四 已核实）。
+              方案 B（用户可选）＝整条不出现，图上即为「无此项」。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>设置 · 文件关联</span><span>竞争 12 类</span></div>
+  </div>
+  <div class="frame-note">
+    <b>① 两种齿轮、两种载荷</b>：卡齿轮＝共享件固定 `context={pluginId}`（管理器管不着）；行齿轮＝管理器自弹，身份走 `commandArgs=[exts]`。
+    <li><b>② 方案 A 的前提</b>：只有当「打开方式」面板归壳、且能<b>按类型</b>打开（不需要真文件路径）时，这一项才成立 —— 这正是 01（面板转正）换来的能力。</li>
+    <li><b>③ 文案改口径</b>：label 从「在文件树中打开选择器」改成「打开方式…（.{{ext}}）」——不再暗示「在文件树里」（它现在是壳的面板，与文件树无关）。</li>
+    <li><b>④ 为什么「清除」放第一项</b>：行齿轮的主用途是「把这一格恢复自动」；破坏性动作放最上且措辞明确（“该行”＝本格的类型）。</li>
+  </div>
+</div>
+
+<!-- ══════════ 帧 C ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 C · 同波：编辑器提示块两颗钮换共享 <code>Button</code>（01 C1.6）</span><span class="tag">对照帧</span><span class="use">左＝现状（手搓）｜右＝改后（共享件）</span></div>
+  <div class="window">
+    <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="menus"><span>文件</span><span>查看</span><span>帮助</span></span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
+    <div class="edwrap" style="height:auto">
+      <div style="flex:1;display:flex;flex-direction:column;border-right:1px solid var(--separator)">
+        <div class="edtabs"><span class="t">📄 手册.pdf</span></div>
+        <div class="edvoid" style="padding:26px 0">
+          <div class="binnotice">
+            <div class="icn">📄</div>
+            <div class="msg">此文件无法作为文本显示</div>
+            <div class="hint">.pdf 不是可编辑的文本格式</div>
+            <div class="btns">
+              <button class="badbtn">在市场搜索阅读器</button>
+              <button class="badbtn">打开方式…</button>
+            </div>
+            <div class="badbtn-note">❌ 现状：两颗钮是 editor 手搓的样式（`.editor-binary-notice-btn`）——与壳按钮不是一套</div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div class="edtabs"><span class="t">📄 手册.pdf</span></div>
+        <div class="edvoid" style="padding:26px 0">
+          <div class="binnotice">
+            <div class="icn">📄</div>
+            <div class="msg">此文件无法作为文本显示</div>
+            <div class="hint">.pdf 不是可编辑的文本格式</div>
+            <div class="btns">
+              <button class="ldk-button--ghost ldk-button">在市场搜索阅读器</button>
+              <button class="ldk-button--ghost ldk-button">打开方式…</button>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:var(--status-connected)">✅ 改后：<code>@linkdesk/ui</code> 的 <code>Button variant="ghost"</code>——与设置页 <code>ai.cli.openInstall</code> 那颗同款</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar"><span>编辑器</span><span>只读预览</span></div>
+  </div>
+  <div class="frame-note">
+    <b>① 用户第 2 条的原话落点</b>：「编辑器使用 @linkdesk/ui 提供的共享组件按钮，类似 ai.cli.openInstall 展示的按钮」——那颗钮在设置页是 <code>renderHint:"action"</code> 渲染出的共享 <code>Button</code>（`src/App/config/aiBridge.ts:98-106`）。
+    <li><b>② 为什么用 ghost 档</b>：这两颗都是<b>次级动作</b>（主操作是「关掉这个文件 / 换一个」）；实心 accent 会跟标签页抢眼——`Button.tsx:9-11` 的语义档正是为此。</li>
+    <li><b>③ 依赖要先补</b>：editor 现在只依赖 <code>@linkdesk/plugin-sdk</code>（`package.json:22`），本格要照 file-tree 的写法补 <code>@linkdesk/ui</code>。</li>
+    <li><b>④ 同时改的还有动作面</b>：「打开方式…」不再调 <code>file-tree.openWith</code> 裸路径，改调壳命令（01 §三）。</li>
+  </div>
+</div>
+
+<div class="readout" id="readout">读数：</div>
+
+<script>
+/* 页内几何读数对账（html-blueprint §九：不靠肉眼）——量真实渲染值，打印出来 */
+(function () {
+  function rect(el){ return el ? el.getBoundingClientRect() : null; }
+  function r2(n){ return Math.round(n * 10) / 10; }
+  var out = [];
+  var card = document.querySelector('.ldk-plugin-card-head');
+  var gear = document.querySelector('#gearA');
+  var menuA = document.querySelector('#menuA');
+  var menuB = document.querySelector('#menuB');
+  var ghost = document.querySelector('.ldk-button--ghost');
+  var bar = document.querySelector('.titlebar');
+  var iconbar = document.querySelector('.icon-bar');
+  var tabbar = document.querySelector('.settings-tab-bar');
+  var status = document.querySelector('.statusbar');
+  out.push('titlebar 高 = ' + r2(rect(bar).height) + 'px   (期望 30)');
+  out.push('icon-bar 宽 = ' + r2(rect(iconbar).width) + 'px   (期望 42)');
+  out.push('设置标签条高 = ' + r2(rect(tabbar).height) + 'px   (期望 34)');
+  out.push('statusbar 高 = ' + r2(rect(status).height) + 'px   (期望 22)');
+  out.push('卡头高 = ' + r2(rect(card).height) + 'px   齿轮命中框 ' + r2(rect(gear).width) + '×' + r2(rect(gear).height) + 'px (期望 ≥24×24)');
+  out.push('齿轮菜单宽 = ' + r2(rect(menuA).width) + 'px (卡齿轮) / ' + r2(rect(menuB).width) + 'px (行齿轮)');
+  out.push('齿轮菜单左缘 vs 卡右缘 = ' + r2(rect(menuA).left) + ' vs ' + r2(rect(card.closest(".ldk-plugin-card")).right) + ' (期望：菜单不越出窗口右缘)');
+  out.push('ghost 按钮高 = ' + r2(rect(ghost).height) + 'px；边框半径 ' + getComputedStyle(ghost).borderRadius);
+  out.push('齿轮命中框 ≥24px（E: 触摸/精确点击下限）、菜单项行高 = ' + r2(rect(document.querySelector('.ctxmenu .mi')).height) + 'px');
+  document.getElementById('readout').innerHTML = '<b>页内几何读数</b>（window.innerWidth=' + window.innerWidth + '）\n' + out.join('\n');
+})();
+
+/* 交互：点齿轮开合菜单；点卡头展开/收起（与真实组件同语义：齿轮是兄弟节点，不冒泡到展开钮） */
+(function () {
+  document.querySelectorAll('[id^="gear"]').forEach(function (g) {
+    g.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var menu = document.getElementById(g.id === 'gearA' ? 'menuA' : 'menuB');
+      var open = menu.style.display !== 'none';
+      menu.style.display = open ? 'none' : 'block';
+      g.classList.toggle('on', !open);
+    });
+  });
+  document.querySelectorAll('.ldk-plugin-card-toggle').forEach(function (t) {
+    t.addEventListener('click', function () {
+      var card = t.closest('.ldk-plugin-card');
+      var body = card.querySelector('.ldk-plugin-card-body');
+      if (!body) return;
+      var on = card.classList.toggle('ldk-plugin-card--expanded');
+      body.style.display = on ? 'block' : 'none';
+      var ch = card.querySelector('.ldk-plugin-card-chevron');
+      if (ch) ch.textContent = on ? '⌄' : '›';
+      var g = card.querySelector('.ldk-plugin-card-gear');
+      if (!on && g) { g.classList.remove('on'); var m = document.getElementById('menuA'); if (m) m.style.display = 'none'; }
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 · 「打开方式」面板收归壳后——居中模态 × 锚定 × 遮罩 × 拖拽区（细节详解 · 可交互）</title>
+<!-- mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。
+     ══ 文档锚点（改本图必须同笔改这些文档；反之亦然）══
+       01-住错层纠正-选择器转正与壳级打开面.md  §三 转正方案 / C1.1 共享件 / C1.2 壳命令 / §七 验收
+       03-面板口径-居中与遮罩.md                 §二 居中三分支 / §三 遮罩（待用户拍板，本图帧 3 供对比）/ §四 入口矩阵 / §六 验收
+       02-归一化-齿轮锚点与假菜单项.md           §四 方案 A（设置页按类型入口，本图帧 5 小图）
+     ══ 帧 ↔ 文档 ══
+       帧 1 居中态（编辑器入口）      → 03 §2.2 分支② + §六 验收 1/3/4
+       帧 2 锚定态（文件树右键）      → 03 §2.2 分支① + §六 验收 5
+       帧 3 遮罩对比（要/不要）       → 03 §三（待用户拍板；推荐「要」＝左）
+       帧 4 改动前 × 改动后（根因）   → 03 §一（根因六步）＋ 硬约束 18
+       帧 5 窗口 500px 高压 + 空态    → 03 §六 验收 6/7
+     ══ 口径 ══ 面板宽 432（源自现状 CSS，本图沿用）；非右键入口居中；锚定态 top ≥ 30；遮罩**无磨砂**。
+     几何读数由页内脚本量出并显示（底部「读数」条）。 -->
+<style>
+:root{
+  --bg-window:#1b1b1b; --bg-card:#242424; --bg-input:#2e2e2e; --bg-titlebar:#161616;
+  --bg-icon-bar:#161616; --bg-side-panel:#1f1f1f;
+  --text-primary:#e8e8e8; --text-secondary:#a8a8a8; --text-muted:#8f8f8f;
+  --accent:#3d7eff; --accent-hover:#5c93ff; --text-on-accent:#ffffff;
+  --border:#3c3c3c; --separator:#2a2a2a; --error:#e5534b; --status-connected:#3fb950; --warn:#c88a2d;
+  --hover-overlay:#ffffff14;
+  --z-overlay-backdrop:500;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Microsoft YaHei",sans-serif;padding:18px;}
+.page-head{max-width:1180px;margin:0 auto 14px;}
+.page-head h1{font-size:18px;font-weight:600;}
+.page-head .sub{color:var(--text-secondary);margin-top:4px;}
+.anchorbox{max-width:1180px;margin:10px auto 18px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:10px 14px;font-size:12px;color:var(--text-secondary);}
+.anchorbox .lbl{display:block;font-size:10.5px;letter-spacing:.06em;color:var(--text-muted);margin-bottom:3px;}
+.anchorbox b{color:var(--text-primary);}
+.anchorbox code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
+.frame{max-width:1180px;margin:0 auto 26px;}
+.frame-caption{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;}
+.frame-caption .n{font:600 13px "Segoe UI";color:var(--text-primary);}
+.frame-caption .tag{font-size:10.5px;border:1px solid var(--border);border-radius:4px;padding:0 6px;color:var(--accent-hover);}
+.frame-caption .use{font-size:11px;color:var(--text-muted);}
+.window{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-window);box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.win-sm{width:min(720px,100%);}
+.titlebar{height:30px;background:var(--bg-titlebar);display:flex;align-items:center;padding:0 10px;gap:10px;border-bottom:1px solid var(--separator);position:relative;}
+.titlebar .logo{width:14px;height:14px;border-radius:4px;background:var(--accent);}
+.titlebar .app{font-size:12px;color:var(--text-secondary);}
+.titlebar .menus{display:flex;gap:2px;margin-left:6px;}
+.titlebar .menus span{padding:2px 8px;border-radius:4px;color:var(--text-secondary);font-size:12px;}
+.titlebar .drag{flex:1;}
+.titlebar .winbtns{display:flex;gap:14px;color:var(--text-muted);font-size:11px;}
+/* 拖拽区红线（演示用）：真实壳里 30px 是 OS 级拖拽带，z-index 无效 */
+.dragband{position:absolute;left:0;top:0;right:0;height:30px;border-bottom:1px dashed rgba(229,83,75,.85);background:rgba(229,83,75,.10);pointer-events:none;z-index:9;}
+.dragband::after{content:"30px · -webkit-app-region: drag（硬约束 18：fixed 叠加层必须 top ≥ 30）";position:absolute;right:6px;top:2px;font-size:10px;color:var(--error);}
+.appbody{position:relative;height:430px;display:flex;}
+.appbody.sm{height:300px;}
+.icon-bar{width:42px;background:var(--bg-icon-bar);border-right:1px solid var(--separator);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex:none;}
+.icon-bar .ic{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#8a8a8a;font-size:15px;}
+.icon-bar .ic.active{color:var(--text-primary);background:var(--hover-overlay);}
+.side{width:216px;background:var(--bg-side-panel);border-right:1px solid var(--separator);padding:8px;font-size:12px;color:var(--text-secondary);flex:none;}
+.side .sh{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:2px 6px 6px;}
+.side .it{padding:4px 8px;border-radius:5px;font:12px Consolas,monospace;color:var(--text-secondary);}
+.side .it.file.cursor{background:var(--hover-overlay);color:var(--text-primary);outline:1px solid var(--separator);}
+.side .it.anchor{position:relative;}
+.side .it.anchor::after{content:"← 右键锚点";position:absolute;right:2px;font-size:10px;color:var(--accent-hover);font-family:"Segoe UI";}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.tabbar{height:35px;background:var(--bg-card);border-bottom:1px solid var(--separator);display:flex;align-items:center;gap:6px;padding:0 10px;}
+.tabbar .tb{display:flex;align-items:center;gap:6px;padding:0 10px;height:35px;font-size:12px;color:var(--text-secondary);}
+.tabbar .tb.on{color:var(--text-primary);box-shadow:inset 0 -2px 0 var(--accent);}
+.content{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.statusbar{height:22px;background:var(--bg-window);border-top:1px solid var(--separator);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:11px;color:var(--text-muted);}
+/* 编辑器提示块（面板的入口之一） */
+.binnotice{width:430px;text-align:center;}
+.binnotice .icn{font-size:24px;color:var(--text-muted);}
+.binnotice .msg{font-size:13.5px;color:var(--text-secondary);margin:8px 0 3px;}
+.binnotice .hint{font-size:11.5px;color:var(--text-muted);}
+.binnotice .btns{display:flex;gap:8px;justify-content:center;margin-top:14px;}
+.ldk-button{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--text-on-accent);border:1px solid transparent;border-radius:6px;padding:5px 12px;font-size:12.5px;cursor:pointer;}
+.ldk-button--ghost{background:transparent;color:var(--text-secondary);border-color:var(--separator);}
+.ldk-button--ghost:hover{color:var(--text-primary);background:var(--hover-overlay);}
+/* 遮罩：满屏、压暗、**无磨砂**（与 OverlayPortal 的 SCRIM 平面同口径） */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);z-index:var(--z-overlay-backdrop);}
+.scrim.off{display:none;}
+/* ── 面板本体（收归后＝共享件；类名 ldk-openwith*）── */
+.ldk-openwith{position:absolute;width:432px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.6);z-index:600;overflow:hidden;}
+/* 居中态：inset:0 + margin:auto（抗窗口缩放；超高时不出屏） */
+.ldk-openwith--centered{inset:0;margin:auto;height:max-content;max-height:calc(100% - 60px);}
+.ldk-openwith--anchored{left:280px;top:64px;}
+.ow-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--separator);}
+.ow-head .t{font-size:12.5px;font-weight:600;}
+.ow-head .s{font-size:11px;color:var(--text-muted);}
+.ow-x{margin-left:auto;width:22px;height:22px;border:none;background:none;border-radius:4px;color:var(--text-muted);cursor:pointer;font-size:13px;}
+.ow-x:hover{background:var(--hover-overlay);color:var(--text-primary);}
+.ow-list{padding:6px;max-height:240px;overflow:auto;}
+.ow-row{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;font-size:12.5px;}
+.ow-row:hover{background:var(--hover-overlay);}
+.ow-row .ic{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;background:var(--accent);flex:none;}
+.ow-row .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ow-row .st{font-size:10.5px;color:var(--accent-hover);border:1px solid var(--border);border-radius:4px;padding:0 5px;flex:none;}
+.ow-row .acts{margin-left:auto;display:flex;gap:6px;flex:none;}
+.ow-act{background:none;border:1px solid var(--separator);border-radius:5px;color:var(--text-secondary);font-size:11px;padding:2px 8px;cursor:pointer;}
+.ow-act:hover{color:var(--text-primary);background:var(--hover-overlay);}
+.ow-act.primary{border-color:var(--accent);color:var(--accent-hover);}
+.ow-empty{padding:22px 16px;text-align:center;}
+.ow-empty .m{font-size:12.5px;color:var(--text-secondary);}
+.ow-empty .sm{font-size:11px;color:var(--text-muted);margin-top:4px;}
+.ow-empty .ldk-button{margin-top:12px;}
+.ow-foot{padding:7px 12px;border-top:1px solid var(--separator);font-size:11px;color:var(--text-muted);display:flex;gap:8px;align-items:center;}
+.ow-foot .auto{margin-left:auto;color:var(--status-connected);}
+/* 改动前（对照） */
+.ldk-openwith--bug{position:absolute;left:0;top:0;width:432px;max-height:200px;}
+.bugmark{position:absolute;left:6px;top:34px;font-size:11px;color:var(--error);z-index:12;}
+.frame-note{border:1px solid var(--separator);border-top:none;border-radius:0 0 10px 10px;background:var(--bg-card);padding:10px 14px;font-size:12px;color:var(--text-secondary);}
+.frame-note li{margin-left:18px;margin-top:3px;}
+.frame-note b{color:var(--text-primary);}
+.frame-note code{font:11.5px Consolas,monospace;color:var(--accent-hover);}
+.row2{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+.row2 > *{flex:1;}
+.togglebar{max-width:1180px;margin:0 auto 8px;display:flex;gap:8px;flex-wrap:wrap;}
+.togglebar button{background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;}
+.togglebar button.on{border-color:var(--accent);color:var(--accent-hover);}
+.caption-sm{font-size:11px;color:var(--text-muted);margin:6px 0 4px;}
+.readout{max-width:1180px;margin:0 auto 30px;border:1px dashed var(--border);border-radius:8px;padding:10px 14px;font:11.5px Consolas,monospace;color:var(--status-connected);white-space:pre-wrap;}
+.readout b{color:var(--text-primary);font-family:inherit;}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>08 · 「打开方式」面板——收归壳后的形态（居中 · 锚定 · 遮罩 · 拖拽区）</h1>
+  <div class="sub">同一份共享件、三种入场：有没有 <code>anchor</code> 决定形态，<b>不</b>由「谁调用的」决定（03 §四）。</div>
+</div>
+
+<div class="anchorbox">
+  <span class="lbl">文档锚点</span>（可点）：<code>../03-面板口径-居中与遮罩.md</code> §一 根因 / §2.2 三分支 / §三 遮罩（待你拍板）/ §四 入口矩阵 / §六 验收 ｜
+  <code>../01-住错层纠正-选择器转正与壳级打开面.md</code> §三 落点 / C1.2 壳命令 ｜ <code>../02-归一化-齿轮锚点与假菜单项.md</code> §四（设置页按类型入口）。
+  <br><b>本图要回答的两个待拍板问题</b>：① 面板改成居中（帧 1）；② 四周要不要压暗（帧 3 左右对比）。
+</div>
+
+<!-- ══════════ 帧 1 ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 1 · 居中态（编辑器入口，无锚点）</span><span class="tag">定稿形态</span><span class="use">可交互：切遮罩 / 切空态</span></div>
+  <div class="togglebar">
+    <button id="tgScrim" class="on">遮罩：开（推荐）</button>
+    <button id="tgEmpty">切到「空态」（没装 pdf 阅读器）</button>
+    <button id="tgBand">显示 30px 拖拽区红线</button>
+  </div>
+  <div class="window" id="win1">
+    <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="menus"><span>文件</span><span>查看</span><span>帮助</span></span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span><span class="dragband" id="band1" style="display:none"></span></div>
+    <div class="appbody">
+      <div class="icon-bar"><span class="ic">📁</span><span class="ic">🧩</span><span class="ic active">📄</span></div>
+      <div class="side"><div class="sh">资源管理器</div>
+        <div class="it file">手册.md</div><div class="it file cursor">手册.pdf</div><div class="it file">数据.json</div></div>
+      <div class="main">
+        <div class="tabbar"><span class="tb on">📄 手册.pdf</span><span class="tb">📝 笔记.md</span></div>
+        <div class="content">
+          <div class="binnotice">
+            <div class="icn">📄</div>
+            <div class="msg">此文件无法作为文本显示</div>
+            <div class="hint">.pdf 不是可编辑的文本格式</div>
+            <div class="btns">
+              <button class="ldk-button ldk-button--ghost">在市场搜索阅读器</button>
+              <button class="ldk-button ldk-button--ghost">打开方式…</button>
+            </div>
+          </div>
+          <!-- 遮罩 + 面板 -->
+          <div class="scrim" id="scrim1"></div>
+          <div class="ldk-openwith ldk-openwith--centered" id="panel1">
+            <div class="ow-head"><span class="t">打开方式</span><span class="s">手册.pdf · 扩展名 .pdf</span><button class="ow-x" title="关闭">✕</button></div>
+            <div class="ow-list" id="list1">
+              <div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="st">当前默认</span>
+                <span class="acts"><button class="ow-act">恢复自动</button><button class="ow-act primary">打开（仅此一次）</button></span></div>
+              <div class="ow-row"><span class="ic" style="background:var(--accent)">编</span><span class="nm">编辑器</span><span class="st">文本</span>
+                <span class="acts"><button class="ow-act">设为默认</button><button class="ow-act primary">打开（仅此一次）</button></span></div>
+            </div>
+            <div class="ow-foot"><span>本面板由壳提供（共享件）</span><span class="auto">2 个处理器</span></div>
+            <div class="ow-empty" id="empty1" style="display:none">
+              <div class="m">没有任何已装插件声明 .pdf</div>
+              <div class="sm">装一个能看 PDF 的插件，或去市场找找</div>
+              <button class="ldk-button ldk-button--ghost">在市场搜索阅读器</button>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar"><span>编辑器</span><span>2 个处理器 · .pdf</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 为什么居中</b>（03 §2.1）：编辑器那颗「打开方式…」钮<b>没有「点」</b>可锚——锚定是「从右键那个位置长出来」的隐喻；硬造一个钮矩形会让面板贴在提示块上，与模态语义冲突。设置页入口同理。
+    <li><b>② 实现口径</b>：<code>inset:0 + margin:auto</code>（不是 <code>translate(-50%,-50%)</code>——面板高度随处理器行数变，translate 在超高时会顶出屏外）。
+    <code>max-height: calc(100% - 60px)</code> ⇒ 上下各留 30px，正好避开拖拽带（硬约束 18）。</li>
+    <li><b>③ ✕ 现在为什么能点</b>：旧 bug 的面板落在 <code>(0,0)</code>、✕ 恰好压在 <b>30px 拖拽带</b>里，被 OS 级 <code>drag</code> 吃掉事件（帧 4 有对照）。居中后面板整体在带外。</li>
+    <li><b>④ 遮罩口径</b>：满屏压暗、<b>不磨砂</b>（与壳里 <code>ld-scrim-plane</code> 同口径「遮罩满屏<b>无磨砂</b>」）；遮罩平面 z=500（<code>--z-overlay-backdrop</code>），面板 z 高于它。</li>
+    <li><b>⑤ 空态</b>（切到空态看）：文案「没有任何已装插件声明 .pdf」＋「在市场搜索阅读器」——那颗钮同样是共享 <code>Button</code>。</li>
+  </div>
+</div>
+
+<!-- ══════════ 帧 2 ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 2 · 锚定态（文件树右键，有锚点）</span><span class="tag">不退化</span><span class="use">top ≥ 30；无遮罩</span></div>
+  <div class="window">
+    <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="menus"><span>文件</span><span>查看</span><span>帮助</span></span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span><span class="dragband"></span></div>
+    <div class="appbody">
+      <div class="icon-bar"><span class="ic active">📁</span><span class="ic">🧩</span><span class="ic">📄</span></div>
+      <div class="side"><div class="sh">资源管理器</div>
+        <div class="it file">手册.md</div><div class="it file anchor">手册.pdf</div><div class="it file">数据.json</div></div>
+      <div class="main">
+        <div class="tabbar"><span class="tb on">📝 笔记.md</span></div>
+        <div class="content" style="align-items:flex-start;justify-content:flex-start;padding:16px">
+          <div class="mut" style="font-size:12px;color:var(--text-muted)">（右键菜单弹出 → 选「打开方式…」→ 面板从锚点就近弹出，不压暗背景：连续操作不累）</div>
+          <div class="ldk-openwith ldk-openwith--anchored" id="panel2">
+            <div class="ow-head"><span class="t">打开方式</span><span class="s">手册.pdf · .pdf</span><button class="ow-x">✕</button></div>
+            <div class="ow-list">
+              <div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="st">当前默认</span><span class="acts"><button class="ow-act primary">打开</button></span></div>
+              <div class="ow-row"><span class="ic" style="background:var(--accent)">编</span><span class="nm">编辑器</span><span class="acts"><button class="ow-act">设为默认</button><button class="ow-act primary">打开</button></span></div>
+            </div>
+            <div class="ow-foot"><span>锚定：就近弹出</span><span class="auto">top = max(30, anchor.y)</span></div>
+          </div>
+        </div>
+        <div class="statusbar"><span>文件树</span><span>已选中 手册.pdf</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>① 与帧 1 是同一份共享件</b>：差别只在入场时有没有 <code>anchor</code>（03 §四 入口矩阵）。⛔ 不许实现成「file-tree 调就锚定、别的调就居中」——那等于没归一。
+    <li><b>② 钳制</b>：<code>left = min(anchor.x, 视口宽 - 面板宽 - 留白)</code>、<code>top = max(30, min(anchor.y, 视口高 - 最小高))</code>——两个方向都要夹（现状代码只做了 top 的半条）。</li>
+    <li><b>③ 无遮罩但有透明点击层</b>：锚定态要能「点外面关掉」，但不能压暗（否则连续右键会闪）。</li>
+  </div>
+</div>
+
+<!-- ══════════ 帧 3 ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 3 · 遮罩对比（03 §三 · <b>待你拍板</b>）</span><span class="tag">等你选</span><span class="use">左＝推荐「要」 ｜ 右＝「不要」</span></div>
+  <div class="row2">
+    <div>
+      <div class="caption-sm">✅ 左：要遮罩（推荐）——四周压暗、<b>不磨砂</b>、面板居中</div>
+      <div class="window win-sm">
+        <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
+        <div class="appbody sm">
+          <div class="icon-bar"><span class="ic active">📄</span></div>
+          <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
+            <div class="content">
+              <div class="scrim" style="background:rgba(0,0,0,.5)"></div>
+              <div class="ldk-openwith ldk-openwith--centered" style="width:300px">
+                <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
+                <div class="ow-list"><div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="acts"><button class="ow-act primary">打开</button></span></div></div>
+              </div>
+            </div>
+            <div class="statusbar"><span>编辑器</span><span>—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="caption-sm" style="color:var(--text-secondary)">理由：居中后需要背景分离；编辑器入口本身就是「这文件打不开，请你选一个」的<b>阻断式</b>场景，压暗帮注意力收束；与壳既有遮罩同源（无磨砂）。</div>
+    </div>
+    <div>
+      <div class="caption-sm">右：不要遮罩——面板居中、周边不压暗（点外面照样关）</div>
+      <div class="window win-sm">
+        <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
+        <div class="appbody sm">
+          <div class="icon-bar"><span class="ic active">📄</span></div>
+          <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
+            <div class="content">
+              <div class="ldk-openwith ldk-openwith--centered" style="width:300px">
+                <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
+                <div class="ow-list"><div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="acts"><button class="ow-act primary">打开</button></span></div></div>
+              </div>
+            </div>
+            <div class="statusbar"><span>编辑器</span><span>—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="caption-sm">代价：面板与标签页/内容同层次，第一眼不容易分清「现在这一层在等谁」。</div>
+    </div>
+  </div>
+  <div class="frame-note"><b>给用户的一句话</b>（实施时会正式问一次）：<i>「面板改成居中了，要不要像普通弹窗那样四周压暗（只压暗、不磨砂）？我推荐要。」</i> —— 选「不要」也能做，本图右侧就是它的样子。</div>
+</div>
+
+<!-- ══════════ 帧 4 ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 4 · 改动前 × 改动后（根因对照 · 03 §一）</span><span class="tag">验收判据</span><span class="use">✕ 能不能点是唯一区别</span></div>
+  <div class="row2">
+    <div>
+      <div class="caption-sm" style="color:var(--error)">❌ 改动前：无锚点 ⇒ 无定位 ⇒ 落到 <code>position:fixed</code> 的静态位置 = 视口左上角 (0,0)</div>
+      <div class="window win-sm">
+        <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span><span class="dragband"></span></div>
+        <div class="appbody sm">
+          <div class="icon-bar"><span class="ic active">📄</span></div>
+          <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
+            <div class="content" style="align-items:flex-start;justify-content:flex-start">
+              <div class="ldk-openwith ldk-openwith--bug">
+                <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x" style="pointer-events:none;opacity:.55">✕</button></div>
+                <div class="ow-empty"><div class="m">没有任何已装插件声明 .pdf</div><div class="sm">·✕ 压在 30px 拖拽带里 ⇒ 点不动</div></div>
+              </div>
+              <div class="bugmark">↑ 面板卡在窗口左上角；✕ 落在拖拽带内 ⇒ OS 吃掉点击</div>
+            </div>
+            <div class="statusbar"><span>编辑器</span><span>—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="caption-sm">根因链（03 §一 六步）：裸路径入参 → 无 anchor → <code>pos=undefined</code> → 不写 inline 定位 → 基础 CSS 无 top/left → 静态位置 (0,0) → 头部进拖拽带。</div>
+    </div>
+    <div>
+      <div class="caption-sm" style="color:var(--status-connected)">✅ 改动后：居中（<code>inset:0;margin:auto</code>），✕ 可点、Esc 可关、点外可关</div>
+      <div class="window win-sm">
+        <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span><span class="dragband"></span></div>
+        <div class="appbody sm">
+          <div class="icon-bar"><span class="ic active">📄</span></div>
+          <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
+            <div class="content">
+              <div class="scrim" style="background:rgba(0,0,0,.42)"></div>
+              <div class="ldk-openwith ldk-openwith--centered" style="width:300px">
+                <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
+                <div class="ow-list"><div class="ow-row"><span class="ic" style="background:var(--accent)">编</span><span class="nm">编辑器</span><span class="acts"><button class="ow-act primary">打开</button></span></div></div>
+              </div>
+            </div>
+            <div class="statusbar"><span>编辑器</span><span>—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="caption-sm">同一份共享件、同一个入参形状（<code>OpenWithRequest</code>）；差别只是「有没有 anchor ⇒ 走哪个分支」。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 帧 5 ══════════ -->
+<div class="frame">
+  <div class="frame-caption"><span class="n">帧 5 · 窗口很矮（500px）＋ 空态 ＋ 设置页按类型入口</span><span class="tag">边界与第三入口</span></div>
+  <div class="row2">
+    <div>
+      <div class="caption-sm">窗口矮：面板 <code>max-height: calc(100% - 60px)</code> ⇒ 上不出拖拽带、下不出屏，清单内部滚动</div>
+      <div class="window win-sm">
+        <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span><span class="dragband"></span></div>
+        <div class="appbody" style="height:170px">
+          <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
+            <div class="content">
+              <div class="scrim" style="background:rgba(0,0,0,.42)"></div>
+              <div class="ldk-openwith ldk-openwith--centered" style="max-height:calc(100% - 60px)">
+                <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
+                <div class="ow-list" style="max-height:70px">
+                  <div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="acts"><button class="ow-act primary">打开</button></span></div>
+                  <div class="ow-row"><span class="ic" style="background:var(--accent)">编</span><span class="nm">编辑器</span><span class="acts"><button class="ow-act primary">打开</button></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="statusbar"><span>窗口 500px 高压测</span><span>—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="caption-sm">第三入口（02 §四 方案 A）：设置页行齿轮「打开方式…（.pdf）」⇒ <b>只有类型、没有文件</b> ⇒ 面板仍居中，标题栏显示类型</div>
+      <div class="window win-sm">
+        <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
+        <div class="appbody sm" style="height:230px">
+          <div class="main"><div class="tabbar"><span class="tb on">⚙ 设置 · 文件关联</span></div>
+            <div class="content">
+              <div class="scrim" style="background:rgba(0,0,0,.42)"></div>
+              <div class="ldk-openwith ldk-openwith--centered" style="width:340px">
+                <div class="ow-head"><span class="t">打开方式</span><span class="s">扩展名 .pdf（无具体文件）</span><button class="ow-x">✕</button></div>
+                <div class="ow-list">
+                  <div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="st">当前默认</span><span class="acts"><button class="ow-act primary">设为默认</button></span></div>
+                  <div class="ow-row"><span class="ic" style="background:var(--accent)">编</span><span class="nm">编辑器</span><span class="acts"><button class="ow-act">设为默认</button></span></div>
+                </div>
+                <div class="ow-foot"><span>入口：设置页行齿轮</span><span class="auto">无「打开（仅此一次）」——没有文件可开</span></div>
+              </div>
+            </div>
+            <div class="statusbar"><span>设置</span><span>—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="caption-sm">这条正是「面板归壳」换来的能力：旧契约要一个真文件路径，所以设置页那个入口<b>当时就不可能对</b>（02 §四）。</div>
+    </div>
+  </div>
+</div>
+
+<div class="readout" id="readout">读数：</div>
+
+<script>
+/* 页内几何读数对账（html-blueprint §九） */
+(function () {
+  function r(el){ return el ? el.getBoundingClientRect() : null; }
+  function q(n){ return Math.round(n * 10) / 10; }
+  var out = [];
+  var win1 = document.querySelector('#win1');
+  var body1 = win1.querySelector('.appbody');
+  var p1 = document.querySelector('#panel1');
+  var p2 = document.querySelector('#panel2');
+  var b = r(body1), a = r(p1), c = r(p2);
+  var winBox = r(win1.querySelector('.titlebar'));
+  out.push('窗口内容区高 = ' + q(b.height) + 'px（30px 拖拽带之外的可视区）');
+  out.push('帧1 面板：' + q(a.width) + '×' + q(a.height) + 'px   top(相对内容区) = ' + q(a.top - b.top) + 'px   期望 top ≥ 30 ⇒ ' + ((a.top - b.top) >= 30 ? 'PASS' : 'FAIL'));
+  out.push('帧1 水平居中偏差 = ' + q(Math.abs((a.left + a.width / 2) - (b.left + b.width / 2))) + 'px（期望 < 1）');
+  out.push('帧1 垂直居中偏差 = ' + q(Math.abs((a.top + a.height / 2) - (b.top + b.height / 2))) + 'px（期望 < 1）');
+  out.push('帧2 锚定面板 top(相对内容区) = ' + q(c.top - b.top) + 'px ⇒ ' + ((c.top - b.top) >= 30 ? 'PASS（不侵拖拽带）' : 'FAIL'));
+  out.push('帧2 锚定左缘 = ' + q(c.left - b.left) + 'px（期望：贴锚点附近且不越右缘；右缘 ' + q(c.right) + ' ≤ 视口 ' + window.innerWidth + '）');
+  out.push('面板宽 = ' + q(a.width) + 'px（现状 CSS 值 432，本图沿用）');
+  out.push('遮罩平面 z = ' + getComputedStyle(document.querySelector('#scrim1')).zIndex + '；面板 z = ' + getComputedStyle(p1).zIndex + '（期望：面板 > 遮罩(500)）');
+  var band = document.querySelector('#win1 .dragband');
+  var bandBottom = band ? r(band).bottom - b.top : null;
+  out.push('拖拽带下沿(相对内容区) = ' + (bandBottom === null ? '（已隐藏）' : q(bandBottom) + 'px（期望 30）'));
+  document.getElementById('readout').innerHTML = '<b>页内几何读数</b>\n' + out.join('\n');
+})();
+
+/* 交互：遮罩开关 / 空态切换 / 拖拽带显隐 */
+(function () {
+  var scrim = document.getElementById('scrim1');
+  var band = document.getElementById('band1');
+  var empty = document.getElementById('empty1');
+  var list = document.getElementById('list1');
+  var tgS = document.getElementById('tgScrim');
+  var tgE = document.getElementById('tgEmpty');
+  var tgB = document.getElementById('tgBand');
+  tgS.addEventListener('click', function () {
+    var on = !scrim.classList.contains('off');
+    scrim.classList.toggle('off', on);
+    tgS.textContent = on ? '遮罩：关' : '遮罩：开（推荐）';
+    tgS.classList.toggle('on', !on);
+  });
+  tgE.addEventListener('click', function () {
+    var isEmpty = empty.style.display !== 'none';
+    empty.style.display = isEmpty ? 'none' : 'block';
+    list.style.display = isEmpty ? 'block' : 'none';
+    tgE.textContent = isEmpty ? '切到「空态」（没装 pdf 阅读器）' : '切回「有处理器」';
+  });
+  tgB.addEventListener('click', function () {
+    var show = band.style.display === 'none';
+    band.style.display = show ? 'block' : 'none';
+    tgB.classList.toggle('on', show);
+    tgB.textContent = show ? '隐藏 30px 拖拽区红线' : '显示 30px 拖拽区红线';
+  });
+  band.style.display = 'block'; tgB.classList.add('on'); tgB.textContent = '隐藏 30px 拖拽区红线';
+})();
+</script>
+</body>
+</html>
