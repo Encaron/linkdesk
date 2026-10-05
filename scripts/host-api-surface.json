@@ -311,6 +311,7 @@
       "setActive"
     ],
     "shell": [
+      "openExternal",
       "openInTerminal",
       "openPluginFolder",
       "pluginLocation",
@@ -659,6 +660,7 @@
       "setActive"
     ],
     "shell": [
+      "openExternal",
       "openInTerminal",
       "openPluginFolder",
       "pluginLocation",
@@ -1491,6 +1493,12 @@
       "settingKey",
       "settingModified",
       "settingResetsToDefault"
+    ],
+    "externalProtocols": [
+      "http",
+      "https",
+      "mailto",
+      "vscode"
     ],
     "protocolIds": [
       "bracket"

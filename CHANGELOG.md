@@ -12,6 +12,7 @@
 - **设置页导航多出「默认打开方式」组**：壳侧在自有 pseudo pluginId `file-associations` 下声明一个配置组（导航项由此出现），组内唯一键＝既有覆盖表键 `workbench.fileAssociations`，带新控件提示 `uiHint: "fileAssociationsManager"`——该**整组**的渲染交给设置插件做自定义视图。🔴 **D1「该键不注册进设置页」的原意保住**：键带自定义提示 ⇒ 泛型对象编辑器永不渲染它，管理器仍是唯一 UI、覆盖表仍是同一处真相源（第三方设置插件不认识该提示时按既有降级契约只读展示）。控件提示词表收第 14 枚，三处同笔（contracts 类型 ∪ `@linkdesk/ui` 数组 ∪ 四份 `plugin.schema` 描述），轻门禁守同步。
 - **「打开方式」选择器转正归壳（纠正案 4.5）**：面板从 file-tree 插件搬进壳共享件 `@linkdesk/ui` 的 `OpenWithPicker`，唯一调用面 = **壳命令** `workbench.action.openWith`（`SHELL_COMMANDS.openWith`，SDK 出 `openWith()` helper）。原 id `file-tree.openWith` 属「住错层」——它消费的全是宿主声明（插件清单／文件关联声明／覆盖表），按判据 A 必须住在声明方与渲染方都够得着的地方。🔴 **命门**：卸载或停用 file-tree 后，设置页「打开方式…（.ext）」入口与编辑器二进制提示条那颗按钮**照样在**（旧行为是一并消失）。面板口径照设计图：居中弹出 + 复用壳既有模态遮罩（`#ld-scrim-plane` ＋ 令牌 `--scrim-dialog`，⛔ 零新 rgba／零毛玻璃）；右键入口传 `anchor` 则就近弹出、**无遮罩**但有透明点击层（点击外部收起）。单实例语义 = 后到者替换。
 - **`@linkdesk/contracts` 新公开面** `OpenWithRequest` / `OpenWithHandler`（`openWith` 命令的入参/出参形状）——数据形状只此一份，共享件与 SDK 都只再导出，⛔ 不另立副本。
+- **受控 `shell.openExternal` 立起（T4）**：插件面新增 `window.linkdesk.shell.openExternal(url)`——把 URL 交给系统默认程序（浏览器／邮件客户端／已注册协议的桌面程序）。**闸门 = 协议白名单**（`http:`/`https:`/`mailto:` ＋ 常量登记的 `vscode:`；`file:`/`javascript:`/`data:` 明确拒绝），单一真相源在 `electron/windows/external-links.ts` 的 `OPEN_EXTERNAL_PROTOCOLS`，与既有的 `window.open` 外链路由**共用同一条判据**（⛔ 不再有两份名单）；清单同笔进宿主保留面账新家族 `externalProtocols`（账 version 4）。被拒时 Promise **reject**（不静默）。这是「以 VS Code 打开」那类贡献点的地基。
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货；管理器 UI 住设置插件仓，随其仓发版（发版链见下方「作者轴」）。
 
 ### fix
@@ -37,6 +38,9 @@
 - `@linkdesk/plugin-docs` **0.1.65**（2026-10-05，同链独立发版）：六组作者文档同笔更新（菜单贡献点「载荷：commandArgs vs context」、共享件菜单载荷分两段、命令化规范「⛔ 不硬编码宿主命令 id」、`plugin.json` 的 `extension`/`displayName` 语义、组件速查 `OpenWithPicker` 行）。
 - `@linkdesk/plugin-sdk` **0.1.81**（2026-10-05，同链独立发版）：宿主命令面改走**子路径** `@linkdesk/plugin-sdk/shell-commands`（新增 exports 项），`SHELL_COMMANDS` / `openWith()` **不再从根 barrel 出**。为什么：根 barrel re-export `vite-config.js`（静态 import `vite` / `@vitejs/plugin-react`），插件源码一旦从根 barrel 取值，**整条构建链会被打进插件 zip**——实测 Windows 上直接红（rollup 的 node-entry 要解析仅 macOS 有的 `fsevents`）。子路径只出「一个常量对象 ＋ 一个 helper」，零重依赖。**本版是 0.1.80 的更正**：照 0.1.80 的文档从根 barrel 取值的插件 build 不过。
 - `@linkdesk/plugin-docs` **0.1.66**（2026-10-05，同链独立发版）：`21-命令化规范` 中英同笔改 `import { SHELL_COMMANDS, openWith } from "@linkdesk/plugin-sdk/shell-commands"`（上一条的文档面——照根 barrel 写法会让插件 build 红）。
+- `@linkdesk/contracts` **0.1.40**（2026-10-05，本案 T4 同链独立发版）：`shell` 面加第 7 个方法 `openExternal(url)`——受控外链（插件请求宿主把 URL 交系统默认程序打开）。类型面只增不改。
+- `@linkdesk/plugin-sdk` **0.1.82**（2026-10-05，同链独立发版）：随包 `schemas/host-reserved.json` 收新家族 `externalProtocols`（受控 openExternal 的协议白名单，账 version 3→4）＋ dev-host mock 随契约重生（279 桩）；`README.md` 速查表随契约重生（47 命名空间 / **260** 方法）。纯清单追加。
+- `@linkdesk/plugin-docs` **0.1.67**（2026-10-05，同链独立发版）：`01-插件API契约` 中英同笔加「外部链接」段（`shell.openExternal` 四协议白名单、拒 `file:`/`javascript:`/`data:`、`window.open` 已被壳 deny）＋ `16-命名规范` 中英同笔加「受控 openExternal 协议白名单」行。
 
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货。
 

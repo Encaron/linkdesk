@@ -231,6 +231,9 @@ export function buildShell() {
     pluginLocation: (pluginId: string) => ipcRenderer.invoke(IPC.shell.pluginLocation, pluginId),
     openPluginFolder: (pluginId: string, kind: PluginFolderKind) =>
       ipcRenderer.invoke(IPC.shell.openPluginFolder, pluginId, kind),
+    // T4：受控 openExternal——白名单在**主进程**（`sanitizeExternalUrl`，与 window.open 外链路由同源），
+    // 池侧只转发：闸门放在唯一能拿到 OS 能力的那一端，preload 处不做第二份校验。
+    openExternal: (url: string) => ipcRenderer.invoke(IPC.shell.openExternal, url),
   };
   /* jscpd:ignore-end */
 }

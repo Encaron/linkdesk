@@ -2774,6 +2774,20 @@ export interface ShellAPI {
          *  诚实边界：整个应用会退出再起——未保存的编辑器内容由热退出（hotExit）负责，工作区布局走持久化恢复。
          *  壳 preload 独有（池不需要自己重启宿主）；调用后本进程随即终止，不要再依赖它的返回。 */
         relaunch?(): Promise<void>;
+        /**
+         * T4（2026-10-05，本案「文件打开方式与贡献点」）：**受控 openExternal**——请求宿主把 URL
+         * 交给系统默认程序打开（浏览器 / 邮件客户端 / 已注册协议的处理器，如 VS Code）。
+         *
+         * 🔴 **白名单不是建议，是闸门**：只有 `http:` / `https:` / `mailto:` 与宿主常量登记过的协议
+         * （今日含 `vscode:`）放行；**其余一律拒**（`file:` / `javascript:` / `data:` 明确拒——插件的文件面
+         * 走 `workspace` / `filesystem`，不经 OS 壳；把外部输入当脚本执行更不是宿主该替谁做的事）。
+         * 被拒 = 这个 Promise **reject**（不静默），调用方应当接住并给用户一个说法。
+         *
+         * ⚠️ 「转交系统」的诚实边界：宿主**不感知**目标程序装没装——`vscode://` 拉起的是 OS 的答复，
+         * 没装时由 Windows 自己弹「如何打开」。宿主只保证「协议在白名单内、URL 结构合法」。
+         * 白名单清单进宿主保留面账（家族 `externalProtocols`），改它 = 一次公共面决策。
+         */
+        openExternal(url: string): Promise<void>;
     };
     /** 热退出暂存——编辑器未保存内容落盘。`?`：池侧独有（壳 preload 不注入） */
     hotExit?: {

@@ -240,6 +240,9 @@ export const IPC = {
     openPluginFolder: 'shell:open-plugin-folder',
     // E6#73j（G4）：真重启应用（退出并重新启动进程）——更新视图插件后壳 reload 不重建池
     relaunch: 'shell:relaunch',
+    // T4：受控 openExternal——插件请求宿主「用系统默认程序打开这个 URL」；主进程按白名单校验后转交
+    // （白名单单一真相源 = electron/windows/external-links.ts 的 OPEN_EXTERNAL_PROTOCOLS）
+    openExternal: 'shell:open-external',
   },
   system: { memoryPressure: 'system:memory-pressure' },
   tabs: {

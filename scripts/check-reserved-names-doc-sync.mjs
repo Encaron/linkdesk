@@ -136,6 +136,7 @@ const HOST_RULE_RE = /宿主保留的名字不许占|names the host reserves are
 export const FAMILY_LABELS = {
   commandPrefixes: { zh: "宿主命令前缀", en: "Host command prefix" },
   protocolIds: { zh: "宿主协议 id", en: "Host protocol id" },
+  externalProtocols: { zh: "受控 openExternal 协议白名单", en: "Allowed external protocols (openExternal)" },
   pseudoPluginIds: { zh: "宿主伪 pluginId", en: "Host pseudo plugin id" },
   configKeys: { zh: "宿主配置键", en: "Host config key" },
   appearanceRecipeIds: { zh: "宿主配方 id", en: "Host recipe id" },

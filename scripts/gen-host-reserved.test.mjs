@@ -33,6 +33,7 @@ function fixture() {
     appearanceSentinels: ["followTheme"],
     appearanceIdGrants: { light: ["theme-defaults"] },
     protocolIds: ["bracket"],
+    externalProtocols: ["mailto"],
   };
   const raw = JSON.stringify(ledger, null, 2) + "\n";
   return { ledger, raw, actual: JSON.parse(JSON.stringify(ledger)) };

@@ -108,11 +108,14 @@ export const FAMILIES = [
   { key: "appearanceIconThemeIds", label: "宿主保底图标主题 id" },
   { key: "appearanceSentinels", label: "宿主外观哨兵值" },
   { key: "protocolIds", label: "宿主内置协议 id" },
+  { key: "externalProtocols", label: "受控 openExternal 的协议白名单（T4）" },
 ];
 
 // 🆕 宿主指定的公开 context key（第三种来源——T3）：判据与常量同住
 //    `scripts/lib/host-reserved-public-keys.mjs`（本档 800 行临线，判据塞不进）。
 import { HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS } from "./lib/host-reserved-public-keys.mjs";
+// 🆕 两类协议家族（内置协议 id ／ T4 受控 openExternal 白名单）：判据同住 `scripts/lib/`（本档 800 行临线）。
+import { collectProtocolIds, collectExternalProtocols } from "./lib/host-reserved-protocols.mjs";
 
 /** 外观四栏的键名（证照校验与运行时渲染共用——⛔ 别在别处再写一份字面量） */
 export const APPEARANCE_COLUMNS = [
@@ -178,8 +181,9 @@ function objectLiteralAt(src, afterAt) {
  *      3 = `contextKeysPublic` 的口径从「纯派生（`ctxRead − ctxWrite`）」改成「派生 ＋ **宿主指定**
  *          （`HOST_SANCTIONED_PUBLIC_CONTEXT_KEYS`）」——文件打开方式与贡献点 T3：宿主裁定
  *          `resourceExtname` / `resourceIsFile` 为公共约定面（**写的人是 file-tree、读的人是任意第三方插件**），
- *          而壳自己既不写也不静态读它们 ⇒ 纯派生口径**看不见**（改口径 ⇒ 抬版）。 */
-export const LEDGER_VERSION = 3;
+ *          而壳自己既不写也不静态读它们 ⇒ 纯派生口径**看不见**（改口径 ⇒ 抬版）。
+ *      4 = **加家族** `externalProtocols`（本案 T4 受控 openExternal）：宿主承认「可交系统打开」的协议白名单进账——公开契约，非普通常量。 */
+export const LEDGER_VERSION = 4;
 
 export const LEDGER_COMMENT =
   "宿主保留面账（生成式·E6#111b／1.32 定稿，1.49 补 version）——插件不得占用这些名字。" +
@@ -421,13 +425,8 @@ export function collectHostReserved(root = ROOT) {
       ctxRead.add(m[1]);
     }
   }
-  /* ⑥ 宿主内置协议 id —— `registerProtocol({ id: "..." })` 的宿主写入点（与命令 id 同一个全局名册，
-   *    E6#111b 判据⑦：插件协议 id 不得撞它。今日唯一写入点 = 内置方括号协议） */
-  const protocols = new Set();
-  for (const f of walk(path.join(root, "src"), (x) => x.endsWith(".ts") && !x.includes(".test."))) {
-    const src = fs.readFileSync(f, "utf8");
-    for (const m of src.matchAll(/registerProtocol\s*\(\s*\{[\s\S]{0,400}?\bid\s*:\s*["']([^"']+)["']/g)) protocols.add(m[1]);
-  }
+  /* ⑥ 两类协议家族（宿主内置协议处理器 id ／ T4 受控 openExternal 白名单）：判据与常量同住
+   *    `scripts/lib/host-reserved-protocols.mjs`（⚠️ 后者扫的是**壳源码** `electron/`，是账里唯一源自 electron/ 的家族）。 */
 
   /* ⑦ 🔴 约定面派生（E6#111h／1.38）：**宿主 `when` 读 ∧ 宿主源码不写** ⇒ 宿主公开约定面。
    *    出处 = 1.37 §13.5 裁决（丙）：`settings` 的 4 个裸名旗子（`settingKey` / `settingFollowTheme` /
@@ -455,7 +454,8 @@ export function collectHostReserved(root = ROOT) {
     appearanceIconThemeIds: [...iconThemeIds].sort(),
     appearanceSentinels: [...sentinels].sort(),
     appearanceIdGrants: APPEARANCE_ID_GRANTS,
-    protocolIds: [...protocols].sort(),
+    protocolIds: collectProtocolIds(root),
+    externalProtocols: collectExternalProtocols(root),
     retired: readRetiredColumn(root),
   };
 }
@@ -793,7 +793,7 @@ async function main() {
   console.log("宿主保底图标主题 id", JSON.stringify(out.appearanceIconThemeIds));
   console.log("宿主外观哨兵", JSON.stringify(out.appearanceSentinels));
   console.log("外观 id 证照", JSON.stringify(out.appearanceIdGrants));
-  console.log("宿主内置协议 id", JSON.stringify(out.protocolIds));
+  console.log("宿主内置协议 id", JSON.stringify(out.protocolIds), "· 受控 openExternal 白名单", JSON.stringify(out.externalProtocols));
 }
 
 main();

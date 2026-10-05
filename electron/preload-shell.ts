@@ -543,6 +543,8 @@ try {
       openPluginFolder: (pluginId: string, kind: PluginFolderKind) => ipcRenderer.invoke(IPC.shell.openPluginFolder, pluginId, kind),
       // E6#73j（G4）：真重启应用——壳 preload 独有（池不需要自己重启宿主，见 linkdesk-api/shell.ts 注释）
       relaunch: () => ipcRenderer.invoke(IPC.shell.relaunch),
+      // T4：受控 openExternal——壳侧自己的视图（关于页/更新页外链）也走同一条闸门；白名单在主进程
+      openExternal: (url: string) => ipcRenderer.invoke(IPC.shell.openExternal, url),
       // E6#46b：intake 订阅——shell 命名空间上的壳内私有扩展（工厂返回走结构兼容，同 buildShellApp 先例）
       ...buildShellIntakeExtras(),
     },

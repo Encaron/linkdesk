@@ -48,7 +48,7 @@ import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
-import { setupExternalLinkRouting } from './windows/external-links.js'; // E6#70c：外链 → 系统浏览器
+import { setupExternalLinkRouting, sanitizeExternalUrl } from './windows/external-links.js'; // E6#70c：外链 → 系统浏览器；T4 加白名单闸门
 import { parseLaunchPaths, type LaunchPaths } from './windows/launch-args.js'; // E6#46a：intake 解析半
 import { readWindowsState } from './windows/windows-state.js'; // E6#47f：冷启动恢复最后活跃窗
 import { APP_SCHEME, APPEARANCE_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
@@ -322,6 +322,19 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
     ipcMain.handle(IPC.shell.relaunch, () => {
       app.relaunch();
       app.exit(0);
+    });
+
+    // T4（受控 openExternal）：插件面 `window.linkdesk.shell.openExternal(url)` —— 请求宿主
+    // 「用系统默认程序打开这个 URL」。**闸门 = 白名单**（D5：http/https/mailto ＋ 常量登记协议如 vscode；
+    // file:/javascript:/data: 拒）。判据只有一条实现（`sanitizeExternalUrl`，与 window.open 外链路由同源）——
+    // ⛔ 别在这里再写第二个名单。
+    // 拒 = 抛错（调用方的 Promise reject）而不是静默：静默会让「我点了没反应」变成一个查不出来的 bug。
+    ipcMain.handle(IPC.shell.openExternal, async (_e, url: unknown) => {
+      const safe = sanitizeExternalUrl(url);
+      if (!safe) {
+        throw new Error(`openExternal 拒绝：协议不在白名单内（${typeof url === 'string' ? url : typeof url}）`);
+      }
+      await shell.openExternal(safe);
     });
 
     // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
