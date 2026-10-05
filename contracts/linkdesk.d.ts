@@ -2372,10 +2372,13 @@ export interface PluginsAPI {
             newVersion: string;
             stagedDir: string;
         }>;
-        /** 主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
+        /** 主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版）。
+         *  0.2.48：`deferred: true` = 旧版目录被占用（dev 轨道 Vite 句柄主场景，磁盘未动、暂存原样）——
+         *  调用方提示「重启后自动替换」，启动时 `commitPendingStagedUpdates` 补提交；version = 暂存的新版号。 */
         packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{
             pluginId: string;
             version: string;
+            deferred?: boolean;
         }>;
     };
     /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */

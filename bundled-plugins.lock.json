@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-10-05T02:13:36.708Z",
+  "syncedAt": "2026-10-05T04:18:21.925Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.54",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.54/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:78aeef53f532bb2b4b956c67a4a7f68444e8477b8f6a639b0f435d1d028c3b01\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:bd540ade2fa9bb0b28e1f7939ae47d48f3d58ef637ef08cdc1b3382aa1e94efb\nplugin.json:7cb5b1878e68d27d97e1be950fbe27e83284fdd4d3b2119dcc9947b5b2830a63\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:c472e4fd8befa8a6c1560ed7e288045e5e232a3e256494bb72fb632bb6c86d24",
+      "version": "1.0.55",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.55/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:242498e4c3a46422f11ea348608377abd9072ddb185b0238ff1e9d532630a70d\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:b1370a4db31d51d0a9d92a9d52df2a27cfbf20ed5e178e91e303d1c6f932b479\nplugin.json:71860adabead38539c89b4371bfe2a8a9ad7bcdbf7b6fb6883e6782ddb1ccacd\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:47472e339f1a884bb9ab21613c512bb55c99d956c08f5791618b83aaaee154fe",
       "seed": true
     },
     {

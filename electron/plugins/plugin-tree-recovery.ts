@@ -27,8 +27,8 @@ import * as path from "path";
 /** 更新提交的备份后缀（`plugins:commitUpdate` 单复本） */
 const BAK_SUFFIX = ".bak";
 
-/** 用户安装代码根——{userData}/plugins（与 plugin-install-handlers 的 userPluginsRoot 同义） */
-function userPluginsRoot(): string {
+/** 用户安装代码根——{userData}/plugins（commit-staged-update 启动补提交同用此单一解析点） */
+export function userPluginsRoot(): string {
   return path.join(app.getPath("userData"), "plugins");
 }
 

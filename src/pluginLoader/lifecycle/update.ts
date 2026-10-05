@@ -13,7 +13,7 @@ import { loadPlugin } from "../resolution/runtime"; // 更新后尽力即时重�
 import { linkdesk, pluginsApi, log, errMsg, loadedPluginIds, refreshManifestFromDisk } from "../resolution/state";
 import { parseManifestJson } from "../jsonc"; // 作者 plugin.json JSONC——唯一解析入口
 // E6#11c/#13b/c（段 B）：更新流结果类型——types.ts 契约面（PluginUpdateResult / PluginUpdateCheckResult）
-import type { PluginUpdateResult, PluginUpdateCheckResult, PluginInstallJobRef } from "../../core/api/linkdesk-api/types";
+import type { PluginUpdateResult, PluginUpdateCheckResult, PluginInstallJobRef, PluginInstallResult } from "../../core/api/linkdesk-api/types";
 import {
   jobProgress,
   packageOps,
@@ -181,7 +181,7 @@ export async function updatePlugin(
 
     // ── commit（主进程同卷原子 rename：target→.bak→staged→target→rm .bak；失败复原旧版→抛）──
     jobProgress(jobId, "committing", pluginId, `替换旧版 ${name}@${currentVersion}`);
-    let committed: { pluginId: string; version: string };
+    let committed: { pluginId: string; version: string; deferred?: boolean };
     try {
       committed = await ops.packageCommitUpdate(pluginId, staged.stagedDir);
     } catch (commitErr) {
@@ -190,6 +190,29 @@ export async function updatePlugin(
         try { await loadPlugin(pluginId, "update"); } catch { /* 非致命——启动发现接管 */ }
       }
       throw commitErr;
+    }
+    // ── 0.2.48：旧版目录被占用（dev 轨道 Vite 对常驻插件目录的监视句柄，退避救不了）⇒ 主进程转 deferred ──
+    // 磁盘未动（旧版在位、新版已暂存）⇒ 旧实例载回、账本/三表零变化；启动时主进程 commitPendingStagedUpdates
+    // 补提交（.bak 复原之后、.stage 清理之前），账本 boot 对账自愈版本号。这不是失败——如实提示，别推红字 [重试]。
+    if (committed.deferred) {
+      if (needsMixReapply) await reapplyThemeAfterUnload(); // 主题/语言 revert 已发生——旧版继续在场就须回填
+      if (wasActive) {
+        try { await loadPlugin(pluginId, "update"); } catch { /* 非致命——旧版仍在位，重启即恢复 */ }
+      }
+      settleInstallJob(jobId, "success", {
+        success: true, pluginId, version: committed.version, needRestart: true,
+      } satisfies PluginInstallResult);
+      pushToast({
+        message: i18n.t("{{name}} 的更新（{{to}}）已就绪——当前版本目录被占用，重启 LinkDesk 后自动替换。", {
+          name,
+          to: committed.version,
+        }),
+        source: pluginId,
+        severity: "info",
+        ttl: 0,
+        actions: [{ label: i18n.t("立即重启"), isPrimary: true, onClick: relaunchApp }],
+      });
+      return { success: true, pluginId, currentVersion, version: committed.version, needRestart: true };
     }
     if (needsMixReapply) await reapplyThemeAfterUnload();
 

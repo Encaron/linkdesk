@@ -54,7 +54,7 @@ export function packageOps(): {
   packageCancel?: (jobId: string) => Promise<boolean>;
   packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
   packageStageUpdate?: (pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef) => Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
-  packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string }>;
+  packageCommitUpdate?: (pluginId: string, stagedDir: string) => Promise<{ pluginId: string; version: string; deferred?: boolean }>;
 } {
   const api = pluginsApi();
   if (!api.packageDownload || !api.packageExtract) {

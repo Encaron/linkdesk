@@ -43,6 +43,7 @@ import type { PluginInstallJobRef } from "../../../src/core/api/linkdesk-api/typ
 // E6#33c（锚①）：updateTargetDirection——更新目标版本方向判定单复本（upgrade/downgrade/same，降级放行语义）
 import { compareVersions, updateTargetDirection } from "../../../src/core/utils/plugin/semverUtils.js";
 import { parseManifestJson } from "../../../src/pluginLoader/jsonc.js";
+import { applyStagedUpdate, DirBusyError, readStagedManifest } from "../../plugins/commit-staged-update.js";
 
 let _registered = false;
 
@@ -269,69 +270,28 @@ export function registerPluginInstallHandlers(): void {
     }
   });
 
-  /** 占用退避重试（2026-10-04 取证）：Windows 上**目录内某个文件被别的进程持着打开句柄**时，目录改名直接
-   *  EPERM（实测：目录被 fs.watch 不影响、目录是 CWD 报 EBUSY——只有文件句柄这一条会出 EPERM）。
-   *  持柄者常在几百毫秒内自己放掉（实测 dev 会话：同一插件连败 4 次后第 5 次成功、重启即好），
-   *  退避几次比让用户手点十几遍强；残留的持久占用由下面那句可执行提示兜底（说清关什么，不再误报成因）。
-   *  判据只吃占用/权限三码：其余错误（ENOENT 等）立刻上抛——重试不掩盖真问题。
-   *  ⚠️ 语义零变更：重试全败仍抛错、旧版本原样未动，与单次 rename 同结果，只是多等最多 ~5s。 */
-  const RENAME_BUSY_RETRY_DELAYS_MS = [0, 250, 700, 1500, 2500];
-  async function renameBusyRetry(from: string, to: string): Promise<void> {
-    for (let i = 0; i < RENAME_BUSY_RETRY_DELAYS_MS.length; i++) {
-      const delay = RENAME_BUSY_RETRY_DELAYS_MS[i];
-      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-      try {
-        await fs.rename(from, to);
-        if (i > 0) console.warn(`[plugins:commit-update] 目录占用已释放——第 ${i + 1} 次尝试成功：${from}`);
-        return;
-      } catch (e) {
-        const code = (e as NodeJS.ErrnoException)?.code ?? "";
-        if (code !== "EPERM" && code !== "EACCES" && code !== "EBUSY") throw e;
-        console.warn(`[plugins:commit-update] rename 被占用（${code}）——第 ${i + 1} 次失败，退避后重试：${from}`);
-      }
-    }
-    throw new Error(
-      "旧版本目录被其他进程占用，替换失败——请关闭可能占用它的程序（DevTools、杀软扫描、资源管理器预览窗格、编辑器）后重试",
-    );
-  }
+  // 占用退避重试已随实现单复本迁往 commit-staged-update.ts（0.2.48——启动补提交共用同一函数）。
 
-  // ── plugins:commit-update(pluginId, stagedDir) → { pluginId, version } ──
+  // ── plugins:commit-update(pluginId, stagedDir) → { pluginId, version, deferred? } ──
   // 原子替换（05 §二·六）：target → .bak → staged 入位 → rm .bak。rename 中途失败 → .bak 复原（失败旧版保留）。
-  // 两个 rename 同卷（tmp 与 plugins 同在 {userData}）→ 原子。stagedDir 必须落本进程 tmp 内（防任意路径替换）。
+  // 两个 rename 同卷（tmp 与 plugins 同在 {userData}）→ 原子。实现单复本 = commit-staged-update.ts
+  // （启动补提交 `commitPendingStagedUpdates` 用同一函数——jscpd 纪律）。
+  // 🆕 0.2.48：首次 rename busy 耗尽（**磁盘未动、暂存原样**——dev 轨道 Vite 对常驻插件目录的监视句柄
+  //  是主场景，退避救不了）⇒ 不再抛错，转 `deferred: true` 返回：壳提示「重启后自动替换」，
+  //  启动时 `commitPendingStagedUpdates` 在 .bak 复原之后、.stage 清理之前补提交（再校验三关）。
   loggedHandle(IPC.plugins.commitUpdate, async (_event, pluginId: string, stagedDir: string) => {
-    if (typeof pluginId !== "string" || !pluginId) throw new Error("缺少 pluginId");
-    if (typeof stagedDir !== "string" || !stagedDir) throw new Error("缺少暂存目录");
-    const target = path.join(userPluginsRoot(), pluginId); // 2026-09-05 塌平单根
-    // E6#73j（G8）：同会话内重试——上轮 commit 死在两次 rename 之间时，磁盘上只剩 target.bak。
-    // 此处若不先把 .bak 放回，下方「清遗留 .bak」会删掉旧版**唯一副本**，随后 rename 又因 target 不存在而抛错
-    // ⇒ 插件永久丢失。判据与 boot 复原同一套：目录在不在。（boot 已在启动时扫过，本分支只覆盖不重启的重试。）
-    const bak = `${target}.bak`;
-    if (!existsSync(target) && existsSync(bak)) {
-      await fs.rename(bak, target);
-    }
-    if (!existsSync(target)) throw new Error(`插件 "${pluginId}" 未安装——无旧目录可替换`);
-    const stageRoot = path.resolve(downloadTmpDir());
-    const stageAbs = path.resolve(stagedDir);
-    if (stageAbs !== stageRoot && !stageAbs.startsWith(stageRoot + path.sep)) {
-      throw new Error(`暂存目录不在受控 tmp 内（${stagedDir}）——拒绝提交`);
-    }
-    if (!existsSync(stageAbs)) throw new Error(`暂存目录不存在: ${stagedDir}`);
-    if (existsSync(bak)) await fs.rm(bak, { recursive: true, force: true }); // 上轮遗留 .bak 清理（此刻新版必已在位）
     emitProgress("committing", { pluginId, message: `替换旧版 ${pluginId}` });
-    await renameBusyRetry(target, bak); // 旧目录先挪走（本步失败 → 旧版原样未动）
     try {
-      await fs.rename(stageAbs, target); // 新版入位
+      const r = await applyStagedUpdate(pluginId, stagedDir);
+      emitProgress("committing", { pluginId, message: `已替换 ${pluginId}@${r.version}` });
+      return r;
     } catch (e) {
-      try { await renameBusyRetry(bak, target); } catch { /* 复原失败——遗留 .bak 由下轮 commit 前清理兜底 */ }
-      throw new Error(`替换失败，已恢复旧版: ${e instanceof Error ? e.message : String(e)}`);
+      if (e instanceof DirBusyError) {
+        const staged = await readStagedManifest(stagedDir);
+        emitProgress("committing", { pluginId, message: `旧版被占用，已暂存——下次启动自动替换 ${pluginId}` });
+        return { pluginId, version: typeof staged?.version === "string" ? staged.version : "0.0.0", deferred: true };
+      }
+      throw e;
     }
-    await fs.rm(bak, { recursive: true, force: true }).catch(() => { /* .bak 清理失败非致命 */ });
-    let version = "0.0.0";
-    try {
-      const m = parseManifestJson(await fs.readFile(path.join(target, "plugin.json"), "utf8"));
-      if (typeof m?.version === "string") version = m.version;
-    } catch { /* 读版本失败 → 0.0.0 占位 */ }
-    emitProgress("committing", { pluginId, message: `已替换 ${pluginId}@${version}` });
-    return { pluginId, version };
   });
 }

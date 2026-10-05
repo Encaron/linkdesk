@@ -34,6 +34,7 @@ import { registerProtocol } from './plugins/protocol.js';
 import { ingestPluginBundles } from './plugins/bundle-ingest.js'; // E6#7（1.2-4）：启动解压 .linkdesk-plugin
 import { installBundledPlugins } from './plugins/bundled-install.js'; // E6#15c：首启自动装 bundled-plugins（发货夹）
 import { recoverInterruptedUpdates } from './plugins/plugin-tree-recovery.js'; // E6#73j（G8）：复原被中断的更新替换（<id>.bak）
+import { commitPendingStagedUpdates } from './plugins/commit-staged-update.js'; // 0.2.48：启动补提交被占用挡下的暂存更新（.stage-*，dev Vite 句柄主场景）
 import { cleanupStaleDownloads } from './services/plugin-download.js'; // E6#31a：启动清残留下载临时文件（.part/孤立包，01 §四·五 B1）
 import { cleanupUpdateResidue } from './services/update-download.js'; // E6#57.6d/e：启动清更新残留（.part + 方向守卫：删旧安装器，防自降级）
 import { readPendingInstallSync } from './services/update-install.js'; // M5 AI#17：装前捎带的调试开关（同步读，卡在 ready 之前）
@@ -641,6 +642,10 @@ app.whenReady().then(async () => {
   // E6#73j（G8）：先把「进程死在两次 rename 之间」留下的 <id>.bak 放回原位，再谈 ingest/发货/扫表。
   // 必须抢在这三步之前——否则发货夹会把内置版补进「看起来没装」的位置，覆盖掉本该复原的用户版。
   await recoverInterruptedUpdates();
+  // 0.2.48：启动补提交——上次「点过更新但 commit 被占用挡下」的 .stage-* 暂存（dev 轨道 Vite 句柄主场景）。
+  // 位置在 .bak 复原之后（rename 链安全）、ingest（三表扫描要见到新版）与 cleanupStaleDownloads
+  // （会删 .stage-*）之前；内部再校验三关（清单可读/目标在场/版本方向），失败留给启动清理。
+  await commitPendingStagedUpdates();
   // E6#7（1.2-4）+ 2026-09-05 塌平单根：启动解压 userData/plugins 顶层待安装的 *.linkdesk-plugin → <id>/。
   // 必须抢在 loadAllPluginManifests + createWindow 之前——落盘后三表扫描、壳发现、协议解析、
   // 账本 reconcile 才能同见这批包（"放 zip → 重启 → 出现"的启动语义）。失败不阻断（内部吞错）。

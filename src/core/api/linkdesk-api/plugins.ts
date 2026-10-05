@@ -56,8 +56,10 @@ export interface PluginsAPI {
      *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
      *  E6#73j（G1）：job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
     packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef): Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
-    /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版） */
-    packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{ pluginId: string; version: string }>;
+    /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版）。
+     *  0.2.48：`deferred: true` = 旧版目录被占用（dev 轨道 Vite 句柄主场景，磁盘未动、暂存原样）——
+     *  调用方提示「重启后自动替换」，启动时 `commitPendingStagedUpdates` 补提交；version = 暂存的新版号。 */
+    packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{ pluginId: string; version: string; deferred?: boolean }>;
   };
 
   /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */

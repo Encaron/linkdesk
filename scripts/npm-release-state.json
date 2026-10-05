@@ -3,19 +3,19 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.36",
-      "contentHash": "2803a6429d168432b6f862b0c1f060e64e6bd919df8ce6458aae4fcd122fb784",
+      "version": "0.1.37",
+      "contentHash": "d8e6674fa047566e79a8b0e1cd44342c86032f978a2e4a4f5baedb2117b5e2dc",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "b1baf45160309dc1"
+        "contracts/linkdesk.d.ts": "bbdea7eef455c44a"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.75",
-      "contentHash": "1068c17d30aa288549afaa3ed23cc534da611ec6abfa03557cbc681a2972c5ab",
+      "version": "0.1.76",
+      "contentHash": "2eb76e1df6e6dc6b0b516b62cfc7511d59477ebf3400dad57e18723b0d1d1f20",
       "fileHashes": {
-        "packages/plugin-sdk/README.md": "d515e50fd99b94dd",
+        "packages/plugin-sdk/README.md": "1d7ac591b0133906",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
         "packages/plugin-sdk/dev-host/index.html": "4a4a4c87a3088677",
         "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "47e94677ed975fd6",
