@@ -29,23 +29,34 @@ function sha256(buf) {
 }
 
 /**
- * zip 内**顶层** `plugin.json` 的 `version`。
+ * zip 内**顶层** `plugin.json` 的解析结果。
  * 容忍单层 wrapper 目录（与 `electron/plugins/bundle-zip.ts` 的 `locateManifest` 同规：
  * 按路径段数排序取最浅的那个）；取不到 / 解析失败 → `null`（调用方决定怎么处置）。
+ *
+ * 定位规则只有这一份：`readZipVersion` 是它的特例，`gen-assoc-exts` 也读它
+ * （同一件事写两遍必漂移——见文件头）。
  * @param {import("jszip")} zip 已 loadAsync 的 zip 实例
  */
-export async function readZipVersion(zip) {
+export async function readZipManifest(zip) {
   const norm = Object.keys(zip.files)
     .map((n) => n.replace(/\\/g, "/"))
     .filter((n) => n.slice(n.lastIndexOf("/") + 1) === "plugin.json")
     .sort((a, b) => a.split("/").length - b.split("/").length);
   if (norm.length === 0) return null;
   try {
-    const parsed = JSON.parse(await zip.files[norm[0]].async("string"));
-    return typeof parsed.version === "string" ? parsed.version : null;
+    return JSON.parse(await zip.files[norm[0]].async("string"));
   } catch {
     return null;
   }
+}
+
+/**
+ * zip 内**顶层** `plugin.json` 的 `version`（取不到 / 解析失败 → `null`）。
+ * @param {import("jszip")} zip 已 loadAsync 的 zip 实例
+ */
+export async function readZipVersion(zip) {
+  const manifest = await readZipManifest(zip);
+  return manifest && typeof manifest.version === "string" ? manifest.version : null;
 }
 
 /** 内容指纹串（定义见文件头）；`zip` 为已 loadAsync 的实例 */

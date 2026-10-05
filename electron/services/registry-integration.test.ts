@@ -70,7 +70,7 @@ describe('setIntegrationEnabled —— 开（③ 命令构造）', () => {
     expect(adds.some((a) => a.includes(DIR_BG_KEY) && a.includes('"%V"'))).toBe(true);
   });
 
-  it('文件关联：13 个扩展名各一条 OpenWithProgids + ProgId/Capabilities/RegisteredApplications', async () => {
+  it('文件关联：静态清单（随包件声明收割）每个扩展名一条 OpenWithProgids + ProgId/Capabilities/RegisteredApplications', async () => {
     const { exec, calls } = makeExec(new Set());
     await setIntegrationEnabled('fileAssoc', true, EXE, exec);
     const adds = calls.filter((c) => c[0] === 'add').map((c) => c.join(' '));

@@ -19,6 +19,7 @@ import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
 import type { WindowManager } from '../windows/window-manager.js';
 import { setKeyboardPassthrough } from '../windows/keyboard-router.js';
 import { IPC } from './channels.js';
+import { notifyOsAssociationsConfigChanged } from '../services/os-associations-sync.js'; // T6（第 5 波）
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
@@ -186,6 +187,7 @@ export class IpcBridge {
   private onConfigChangedNotify = (_event: Electron.IpcMainEvent, { key, value }: { key: string; value: unknown }) => {
     this.sendAllShellsConfigChanged({ key, value }); // E6#47b-1：全局状态发全部壳
     this.broadcast(IPC.config.changed, { key, value });
+    notifyOsAssociationsConfigChanged(key); // T6：app.osAssociations.* 变了要重放 OS 关联（窄口自查）
   };
 
   /**
@@ -304,6 +306,7 @@ export class IpcBridge {
         const [key, value] = pending.args as [string, unknown];
         this.sendAllShellsConfigChanged({ key, value }); // E6#47b-1：全局状态发全部壳
         this.broadcast(IPC.config.changed, { key, value });
+        notifyOsAssociationsConfigChanged(key); // T6：同上（插件/池走 proxy 改配置的这条腿）
       }
     }
   };

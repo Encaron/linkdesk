@@ -101,7 +101,9 @@ export const ABSOLUTE_PATH_EXEMPT = [
     why: "**黑名单**不是落点——写保护把系统目录列出来**拒写**（`C:/Windows` / `Program Files`）。它反向证明落点纪律：这几个目录永远不许成为落点。",
   },
   {
-    file: "electron/services/registry-integration.ts",
+    // T6（第 5 波）：常量随代码搬了家——registry-integration 的执行器/键路径抽到共用底座
+    // `reg-exec.ts`（静态半 registry-integration ＋ 动态半 os-associations 共用一份）。
+    file: "electron/services/reg-exec.ts",
     contains: "process.env.SystemRoot",
     why: "**系统工具绝对路径**不是落点——`reg.exe` 走 System32 绝对路径是**防 PATH 劫持**（头注写了：按名调用会先命中 PATH 里排前的同名程序）。",
   },

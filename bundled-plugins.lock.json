@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-10-05T14:03:57.200Z",
+  "syncedAt": "2026-10-05T15:43:55.860Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.57",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.57/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:f2b89f85eb0001bd7ea13b28ac5923f827e4662724db344ff520d995cb8a3b82\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:1e0b17e7f2143039d7211fd0c23bd9a6a9e2b215f8225af066130a3f4100619d\nplugin.json:06215d0b979e9a3b3c1825f99a3bf9fd7f521ea33f889d2b549ece7619a37f18\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:47472e339f1a884bb9ab21613c512bb55c99d956c08f5791618b83aaaee154fe",
+      "version": "1.0.58",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.58/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:095dc7e977896baa687f8680c09b906a275e3e93ae1d9a616ace82a9a81c11c9\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\nen.json:047bfcd4c0aebb4145859ea0ecf9b89774e3f5b9f2dad5f3dd4a026ab95b718a\nplugin.json:6caf823beeef7112d95e81cfb80cd479eef41967c854c9d1a67f46dedbd3d893\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:47472e339f1a884bb9ab21613c512bb55c99d956c08f5791618b83aaaee154fe",
       "seed": true
     },
     {
@@ -54,9 +54,9 @@
     {
       "id": "settings",
       "repo": "Encaron/linkdesk-plugin-settings",
-      "version": "1.0.36",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.36/settings.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:3d1d6658f29d3437d4713c7a389be1440b746424d9568bff719a5764722d654c\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-iBIfR0sh.js:b310c18cac86399f3b988a53d8610864ba931f9ffcb7a1ede556f64afa54e842\ni18n/en.json:97790e0d7010aa56a0f8c996c929ed40218a0223ade732283776526c13584166\nindex.bundle.css:7afe40aa7209c46377885917ad4cc5dd95a74ccb75cea9e99e047274e122667d\nindex.bundle.js:e63b3786293faf88f25192f1285d4cbbe12f79d6918c390361680a5ec44afc34\nplugin.json:c0e1281b850b6db679f26f27d9ff69e17691923dd271b2bf7aebb24044b23014\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:4ca58292a263375983582c78e84e5115f62062a349bf19067d6119ef9c9ceda2",
+      "version": "1.0.37",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.37/settings.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:1de6a4caa67ffa517dcdda5cd3094ccc3e85a84a074599df419fa417357758e2\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-DU6Gmt3r.js:99c8d51c9d4d0c0a254bb493f6479c28aeb4ea5bd5836290a6582ccfa6f25349\ni18n/en.json:b86164db92dc8c186d0e543d6c2905faec3c14a8320421e4eb5ed09a84021a74\nindex.bundle.css:7ac9164f46ad20df2d71d5a04d689f81ac2762cf97c7a0916b1ed14a182fcdf4\nindex.bundle.js:ecfd837aa445d471ccaeb327b5ac1ed78a89bbb021046e8df162764d2a25fd52\nplugin.json:0d309621a3843569f465a9c76cd0590b86d3793be433c4bd57527be3452ccc7b\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:2c87d7ff1b4ea4028576e6f8f5dad39a49acf1118181f12e80a4d760acd4b0c9",
       "seed": true
     },
     {

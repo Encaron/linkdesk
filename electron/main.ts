@@ -23,6 +23,7 @@ import { registerManualHandlers } from './ipc/handlers/manual-handlers.js'; // M
 import { registerAiBridgeHandlers } from './ipc/handlers/ai-bridge-handlers.js'; // M4 AI#38.4：AI 接入状态（app:getAiBridge）
 import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
+import { scheduleOsAssociationsSync } from './services/os-associations-sync.js'; // T6（第 5 波）：插件声明 → OS「打开方式」候选
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
 import { registerAppearanceHandlers } from './ipc/handlers/appearance-handlers.js'; // E5.8#50.11：外观资产
 import { registerStorageHandlers } from './ipc/handlers/storage-handlers.js'; // 「打开缓存目录」设置行（主进程解析生效缓存目录并 openPath）
@@ -142,6 +143,11 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   registerAiBridgeHandlers();  // M4 AI#38.4：AI 接入状态 main 直答（app:getAiBridge，壳内私有）
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
+  // T6（第 5 波）：装配好 OS 关联同步依赖后**显式补一次启动同步**——启动路径上
+  // `loadAllPluginManifests()` 早于本函数（在那个函数里 registerRegistryHandlers 才装好订阅），
+  // 那一批 45 条注册事件不会有订阅者收到；而「上次退出残留的候选」「开关当前是关的」两种态
+  // 都只能靠这一次主动跑收掉。去抖 + 幂等，重复调用（壳崩重建）无副作用。
+  scheduleOsAssociationsSync('startup');
   registerHotExitHandlers();   // E5.7#38
   registerAppearanceHandlers(); // E5.8#50.11：外观资产——选择图片拷贝入库
   registerStorageHandlers(); // 「打开缓存目录」设置行——生效缓存目录读数 + 先建目录再 openPath

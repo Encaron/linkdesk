@@ -18,7 +18,9 @@ import {
   setActiveProtocol,
 } from '../../../src/core/registry/ProtocolRegistry.js';
 import {
+  listDeclaredExtensions,
   listHandlersFor,
+  onAssociationsChanged,
   onSecondContender,
   resolveOpenTarget,
   WORKBENCH_FILE_ASSOCIATIONS_KEY,
@@ -27,30 +29,40 @@ import { IPC } from '../channels.js';
 import { IpcBridge } from '../ipc-bridge.js';
 import { fileService } from '../../services/file-service.js';
 import { getIntegrationState, setIntegrationEnabled, type OsIntegrationKind } from '../../services/registry-integration.js'; // E6#45f
+import { configureOsAssociationsSync, scheduleOsAssociationsSync } from '../../services/os-associations-sync.js'; // T6（第 5 波）
 
 let _registered = false;
 
 /**
- * D1 用户覆盖表现值——settings.json 平键直读（storage-handlers `resolveEffectiveCacheDir` 同款：
- * 每次调用现读，零缓存失效复杂度；读不动/缺键 = 未覆盖常态）。键形带点小写，查询侧
- * `resolveOpenTarget` 对键做同款归一，此处只验形状（string→string）不重排。
+ * settings.json 平表现读（缺文件/读不动 = 空表——首次启动常态，不是错误）。
+ * 本文件的两个读点（D1 覆盖表 / T6「跟随插件」两键）共用这一份读法：
+ * storage-handlers `resolveEffectiveCacheDir` 同款——每次现读，零缓存失效复杂度。
  */
-async function readOverrideTable(): Promise<Record<string, string>> {
+async function readSettingsJson(): Promise<Record<string, unknown>> {
   try {
     const raw = await fileService.readTextFile(
       fileService.join(fileService.appDataDir(), 'settings.json')
     );
-    const settings = JSON.parse(raw) as Record<string, unknown>;
-    const table = settings[WORKBENCH_FILE_ASSOCIATIONS_KEY];
-    if (!table || typeof table !== 'object') return {};
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(table as Record<string, unknown>)) {
-      if (typeof v === 'string' && v) out[k] = v;
-    }
-    return out;
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
   } catch {
-    return {}; // 没有 settings.json / 读不动 = 未覆盖（首次启动常态，不是错误）
+    return {};
   }
+}
+
+/**
+ * D1 用户覆盖表现值——settings.json 平键直读（键形带点小写，查询侧 `resolveOpenTarget`
+ * 对键做同款归一，此处只验形状（string→string）不重排）。
+ */
+async function readOverrideTable(): Promise<Record<string, string>> {
+  const settings = await readSettingsJson();
+  const table = settings[WORKBENCH_FILE_ASSOCIATIONS_KEY];
+  if (!table || typeof table !== 'object') return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(table as Record<string, unknown>)) {
+    if (typeof v === 'string' && v) out[k] = v;
+  }
+  return out;
 }
 
 export function registerRegistryHandlers(): void {
@@ -101,10 +113,30 @@ export function registerRegistryHandlers(): void {
     IpcBridge.active?.broadcast(IPC.fileAssociation.secondContender, event, 'shell');
   });
 
+  // ── T6（第 5 波）：插件声明的文件类型进出 OS「打开方式」候选（运行期动态半）──
+  // 装配点选这里的理由（本文件就是主进程的装配点）：三份输入在这儿都够得着——
+  //   · 注册表现状（getIntegrationState：ProgId 树 = 「文件关联」开关事实）
+  //   · settings.json 平键现读（readSettingsJson）
+  //   · 活跃声明集合（listDeclaredExtensions：卸载/禁用即出表，E5/E7 同规）
+  // 触发③（启动）：main.ts 在插件清单加载完之后显式调一次（见那里的注释）。
+  configureOsAssociationsSync({
+    statePath: fileService.join(fileService.appDataDir(), 'os-associations-dynamic.json'),
+    readSettings: readSettingsJson,
+    isProgIdRegistered: async () => (await getIntegrationState()).fileAssoc,
+    listDeclared: listDeclaredExtensions,
+  });
+  // 触发①：注册/回收（插件装/卸/激活）
+  onAssociationsChanged(() => scheduleOsAssociationsSync('plugin-lifecycle'));
+
   // E6#45f：OS 集成开关——读现状 / 开-关某项（写 HKCU 注册表，per-user 免提权；幂等）。
   // exePath = process.execPath（dev 下为 electron.exe——不做特判：dev 验的就是这条链）
   ipcMain.handle(IPC.registry.getIntegrationState, () => getIntegrationState());
-  ipcMain.handle(IPC.registry.setIntegrationEnabled, (_event, kind: OsIntegrationKind, enabled: boolean) =>
-    setIntegrationEnabled(kind, enabled, process.execPath)
-  );
+  ipcMain.handle(IPC.registry.setIntegrationEnabled, async (_event, kind: OsIntegrationKind, enabled: boolean) => {
+    const state = await setIntegrationEnabled(kind, enabled, process.execPath);
+    // T6 触发补充：「文件关联」一关，ProgId 整树被删 ⇒ 动态候选必须同笔撤掉，否则资源管理器的
+    // 「打开方式」里会挂出**指向空 ProgId 的僵尸行**；再打开则回填。这一步不能靠配置通知兜底
+    // （开关的 onApply 与配置落盘谁先谁后不定），必须在写注册表这个点上就地补。
+    if (kind === 'fileAssoc') scheduleOsAssociationsSync('integration-toggle:fileAssoc');
+    return state;
+  });
 }

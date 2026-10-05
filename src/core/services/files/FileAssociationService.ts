@@ -55,6 +55,18 @@ import { FALLBACK_PLUGIN_ID } from "../../utils/plugin/fallbackPluginId";
 export const WORKBENCH_FILE_ASSOCIATIONS_KEY = "workbench.fileAssociations";
 
 /**
+ * T6（第 5 波）「跟随插件」两键——**本文件是字面量唯一 owner**（同上条先例）：
+ *   · `…followPlugins`（boolean，默认 true）：插件装/卸时是否让声明过的类型自动进出
+ *     OS「打开方式」候选（运行期动态半，见 `electron/services/os-associations.ts`）。
+ *   · `…overrides`（object，默认 `{}`）：稀疏例外表 `{".pdf": false}`——单个类型不跟随；
+ *     v1 **不给 UI**（只有手工改 settings.json 能到），故不设 per-type 行。
+ * 壳侧声明住 `src/App/startup.ts` 的「系统集成」节；主进程消费方按这两条字面量读 settings.json
+ * （`electron/services/os-associations-sync.ts`）——⛔ 两边各写一遍必然漂移成「开关静默失效」。
+ */
+export const OS_ASSOCIATIONS_FOLLOW_PLUGINS_KEY = "app.osAssociations.followPlugins";
+export const OS_ASSOCIATIONS_OVERRIDES_KEY = "app.osAssociations.overrides";
+
+/**
  * 覆盖表存储键形：**带点小写**（D1 示例 `{".pdf":"pdf-reader-x"}`）——归一口径与 `normalizeExtension`
  * 同源（E10）。查询侧 `resolveOpenTarget` 对键做同款归一 ⇒ `.PDF`/`pdf`/`.pdf` 写法都命中同一键。
  */
@@ -137,6 +149,36 @@ export function onSecondContender(cb: (event: SecondContenderEvent) => void): ()
   };
 }
 
+/* ── T6：关联表变化事件（插件装/卸/激活 ⇒ 声明的扩展名集合变了） ── */
+
+/** 声明集合变化订阅（无载荷——消费方自己来读 `listDeclaredExtensions()`） */
+const _associationsChangedSubs = new Set<() => void>();
+
+/**
+ * 订阅「声明集合变了」——注册/回收（插件装/卸/禁用）时各触发一次。
+ *
+ * 消费方只有一处：主进程 registry-handlers 装配处的**运行期 OS 关联同步**
+ * （`os-associations.ts`：插件声明的类型要出现在资源管理器「打开方式」里，卸载要撤掉）。
+ * ⚠️ 只报「变了」，不带差量——差量由消费方对「想在册的集合」与「已写过的集合」自己 diff
+ * （订阅方要的从来是最终态，不是事件流；启动期一次注册 45 条也只该同步一次）。
+ */
+export function onAssociationsChanged(cb: () => void): () => void {
+  _associationsChangedSubs.add(cb);
+  return () => {
+    _associationsChangedSubs.delete(cb);
+  };
+}
+
+function notifyAssociationsChanged(): void {
+  for (const cb of _associationsChangedSubs) {
+    try {
+      cb();
+    } catch (e) {
+      console.warn('[FileAssociationService] associationsChanged 订阅者抛错:', e);
+    }
+  }
+}
+
 /* ── 注册 ── */
 
 /**
@@ -200,6 +242,9 @@ export function registerFileAssociation(association: FileAssociation): () => voi
     _roleHolders.set(role, holders);
   }
 
+  // T6：注册完成即报（插件激活 ⇒ 声明的类型集合可能变了）
+  notifyAssociationsChanged();
+
   // E5.8#10：引用级删除——只删自己这条，不误删后来注册者（设计 §8 同名覆盖风险表）
   return trackRegistration(association.pluginId, () => {
     const current = _associations.get(ext);
@@ -220,6 +265,8 @@ export function registerFileAssociation(association: FileAssociation): () => voi
       const holders = _roleHolders.get(role);
       if (holders?.delete(association.pluginId) && holders.size === 0) _roleHolders.delete(role);
     }
+    // T6：表已改完再报（订阅方同步读 `listDeclaredExtensions()` 也看到最终态）
+    notifyAssociationsChanged();
   });
 }
 
@@ -235,6 +282,14 @@ export function getPluginFor(extension: string): string | undefined {
   const list = _associations.get(ext);
   if (!list || list.length === 0) return undefined;
   return list[0].pluginId;
+}
+
+/**
+ * 列出**当前在册**的全部扩展名（归一化无点小写、字典序）——T6 运行期 OS 关联同步的输入。
+ * 在册 = 插件已激活且注册未被回收（卸载/禁用即出表，E5/E7 同规）。
+ */
+export function listDeclaredExtensions(): string[] {
+  return [..._associations.keys()].sort();
 }
 
 /**
@@ -373,4 +428,5 @@ export function clearFileAssociations(): void {
   _roleHolders.clear();
   _roleSeq = 0;
   _secondContenderAnnounced.clear();
+  notifyAssociationsChanged(); // T6：清空也是「变了」（拆干净后 OS 侧候选该全撤）
 }

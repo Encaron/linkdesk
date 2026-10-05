@@ -22,7 +22,11 @@
  * 语言切换重跑（HMR/StrictMode）时注册文案取首语言。
  */
 import { registerConfiguration } from "../../core/registry/ConfigurationRegistry";
-import { WORKBENCH_FILE_ASSOCIATIONS_KEY } from "../../core/services/files/FileAssociationService";
+import {
+  OS_ASSOCIATIONS_FOLLOW_PLUGINS_KEY,
+  OS_ASSOCIATIONS_OVERRIDES_KEY,
+  WORKBENCH_FILE_ASSOCIATIONS_KEY,
+} from "../../core/services/files/FileAssociationService";
 
 /** t() 类型——仅声明组取 key（同 config/appearance.ts） */
 type ConfigT = (key: string) => string;
@@ -41,6 +45,31 @@ export function registerFileAssociationConfiguration(t: ConfigT): void {
         uiHint: "fileAssociationsManager",
         title: t("默认打开方式"),
         description: t("按类型或按插件管理文件的默认打开方式——「恢复自动」= 交回插件声明顺序"),
+        default: {},
+      },
+      // ── T6（第 5 波）：OS 登记跟随插件（下折块两键，D6 定形态）──
+      // 🔴 归属：D6 钉死「OS 块降级为**本组**底部的折叠块」——故两项声明在本贡献点（同一个
+      //    `file-associations` 组）里，由管理器视图整组渲染（⛔ 不放「通用 → 系统集成」节：
+      //    那是安装器静态三项 `app.osIntegration.*` 的地盘，两者是静态半/动态半的分工，别混）。
+      // 🔴 写面：两项都**不带 onApply**——真正干活的是主进程同步模块
+      //    （`electron/services/os-associations-sync.ts`，触发点 = 插件装/卸 + 本键配置变化）。
+      //    总开关在这里只是一个布尔值，落盘后由主进程平键直读（同覆盖表那套读法）。
+      [OS_ASSOCIATIONS_FOLLOW_PLUGINS_KEY]: {
+        type: "boolean",
+        uiHint: "fileAssociationsManager",
+        title: t("跟随插件登记"),
+        description: t(
+          "插件装了就把它的文件类型加进系统「打开方式」，卸载就撤掉；关掉=停止登记并撤回运行期加的类型（安装包自带的类型不动，本页的默认设置不受影响）"
+        ),
+        default: true,
+      },
+      // 稀疏例外表：`{".pdf": false}` = 这一个类型不跟随。v1 无界面（管理器不画它，只画上面那个总开关），
+      // 留给将来高级位——故 title/description 同样只服务搜索索引与第三方只读展示。
+      [OS_ASSOCIATIONS_OVERRIDES_KEY]: {
+        type: "object",
+        uiHint: "fileAssociationsManager",
+        title: t("跟随例外"),
+        description: t('按类型单独关掉跟随，写法如 {".pdf": false}——无界面项，改配置文件使用'),
         default: {},
       },
     },

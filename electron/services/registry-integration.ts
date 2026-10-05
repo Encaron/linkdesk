@@ -1,7 +1,7 @@
 /**
  * OS 集成注册表服务——E6#45f（软件内开关：#45 注册表三键/文件关联的运行时读写）。
  *
- * 与安装器（`build/installer.nsh`）写的是**同一批键**（HKCU\Software\Classes\... + LinkDesk.Document），
+ * 与安装器（引导器 `syswrite.cpp`）写的是**同一批键**（HKCU\Software\Classes\... + LinkDesk.Document），
  * 所以「安装时勾的」与「软件里开的」天然一致——本服务只是给用户一个不用重装就能改的口子
  * （比 VS Code 强：它只能重跑安装器）。
  *
@@ -11,10 +11,20 @@
  *   ③ **幂等**：`setIntegrationEnabled` 先读现状，与目标一致就直接返回（注册表读取是真相源，
  *      壳启动同步进来的值不会反过来触发一次无意义写）。
  *
+ * 执行器 / 键路径常量搬到了 `reg-exec.ts`（与插件动态半 `os-associations.ts` 共用一份）。
  * 可注入 executor（单测给替身；生产 = child_process.execFile）——命令构造与状态解析是纯逻辑，单测钉住。
+ *
+ * ⚠️ 扩展名清单 = **生成物** `os-associations-static.generated.ts`（从随包插件声明收割）；
+ *    ⛔ 本文件不再手抄（手抄版 13 条与声明 45 条早已漂移，T6 件 1 收掉这个漂移）。
+ *    本服务管的是**静态半**；插件装卸产生的**动态半**见 `os-associations.ts`。
  */
 
-import { execFile } from 'node:child_process';
+import { CLS, PROGID, REG, defaultRegExec, type RegExec } from './reg-exec.js';
+import { STATIC_ASSOC_EXTENSIONS } from './os-associations-static.generated.js';
+
+// 重导出：既有消费方（preload-shell / 单测）从本模块取 RegExec 的历史 import 面保持不变
+export type { RegExec };
+
 
 export type OsIntegrationKind = 'fileMenu' | 'dirMenu' | 'fileAssoc';
 
@@ -24,45 +34,18 @@ export interface OsIntegrationState {
   fileAssoc: boolean;
 }
 
-/** reg.exe 执行器——返回退出码与 stdout（不抛：非零退出码是有意义的信号，如「键不存在」） */
-export type RegExec = (args: string[]) => Promise<{ code: number; stdout: string }>;
-
-/**
- * 🔴 用 **System32 绝对路径**而不是裸 `reg.exe` 两名原因：
- *   ① 防 PATH 劫持（按名调用会先命中 PATH 里排前的同名程序）；
- *   ② `scripts/check-lsp-deps.mjs` 哨兵会把 spawn/exec 调用里的二进制字面量当「仓库内必须存在的文件」查——
- *      裸 `reg.exe` 会被解析成 `<repo>/reg.exe` 而红灯（实测撞过）。
- */
-const REG_EXE = `${process.env.SystemRoot ?? 'C:\\Windows'}\\System32\\reg.exe`;
-
-/**
- * reg.exe 子命令与开关常量——**必须走常量、不许在调用处写回字面量**：
- * 该哨兵把调用参数里含 `/` 或 `\` 的字面量一律当路径（`isAbsolute('/ve')` 在 Windows 下为真）⇒
- * 写回 `'/ve'` 会再次红灯。flag 不是路径，认出来也就不该被它查。
- */
-const REG = { add: 'add', query: 'query', delete: 'delete', ve: '/ve', v: '/v', d: '/d', f: '/f', t: '/t' } as const;
-
-const defaultRegExec: RegExec = (args) =>
-  new Promise((resolve) => {
-    execFile(REG_EXE, args, { windowsHide: true }, (err, stdout) => {
-      // reg query 查不到键 = 退出码 1（err 非空）——这不是异常，是「不存在」这一事实
-      const code = err && typeof (err as { code?: unknown }).code === 'number' ? (err as { code: number }).code : err ? 1 : 0;
-      resolve({ code, stdout: stdout ?? '' });
-    });
-  });
-
-/* ── 键路径（与 installer.nsh 逐字同源；改一处必须两处同改） ── */
-
-const CLS = 'HKCU\\Software\\Classes';
+/** 右键菜单项名（三处菜单共用）；供应商能力键树住 `HKCU\Software\LinkDesk` */
 const MENU_KEY = 'OpenWithLinkDesk';
 const VENDOR = 'HKCU\\Software\\LinkDesk';
-const PROGID = 'LinkDesk.Document';
 
-/** 文件类型关联登记的 13 个扩展名（与 installer.nsh 的 lkAssocExt 清单同源） */
-export const ASSOC_EXTENSIONS = [
-  '.txt', '.py', '.js', '.json', '.md', '.html', '.css',
-  '.ts', '.tsx', '.yaml', '.xml', '.csv', '.log',
-] as const;
+/**
+ * 文件类型关联登记的扩展名——**安装器静态半**的软件内镜像。
+ * 🔴 真相源 = `os-associations-static.generated.ts`（scripts/gen-assoc-exts.mjs 从随包插件
+ *    `contributes.fileAssociations` 收割，与引导器 `lk-assoc-exts.generated.h` 同源同序）。
+ *    本开关「文件关联」写/撤的就是这批类型；插件装卸带来的**动态半**由 os-associations.ts 管，
+ *    且那边**只碰不在本清单里的**扩展名——两边不交叉。
+ */
+export const ASSOC_EXTENSIONS = STATIC_ASSOC_EXTENSIONS;
 
 /** 各开关的「判据键」——读它是否存在即该开关当前是否启用 */
 const DETECT_KEYS: Record<OsIntegrationKind, string> = {
@@ -97,7 +80,7 @@ async function deleteMenuKey(exec: RegExec, key: string): Promise<void> {
   await exec([REG.delete, key, REG.f]);
 }
 
-/** 文件类型关联（ProgId + 13 扩展名 OpenWithProgids + Capabilities + RegisteredApplications） */
+/** 文件类型关联（ProgId + 静态清单各扩展名的 OpenWithProgids + Capabilities + RegisteredApplications） */
 async function writeFileAssoc(exec: RegExec, exePath: string): Promise<void> {
   await exec([REG.add, `${CLS}\\${PROGID}`, REG.ve, REG.d, 'LinkDesk Document', REG.f]);
   await exec([REG.add, `${CLS}\\${PROGID}\\DefaultIcon`, REG.ve, REG.d, exePath, REG.f]);

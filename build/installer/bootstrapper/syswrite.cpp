@@ -14,7 +14,9 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "uuid.lib")     // CLSID_ShellLink / IID_IShellLinkW 的符号在这
 
-// ── 常量：**与 installer.nsh 的 !define 逐字对应**（改一处必须同笔改另一处）─────────
+// ── 常量：键名/值格式的实机照抄依据见 syswrite.h 文件头 ─────────────────────────
+//    ⚠️ `build/installer.nsh` 是**未接线的后路**（NSIS 已全退场，electron-builder.yml 无 `nsis:` 段）
+//       ——⛔ 不要照它改这里；本文件是清单唯一真相源。
 static const wchar_t* kClasses = L"Software\\Classes";
 static const wchar_t* kVendor  = L"Software\\LinkDesk";
 static const wchar_t* kProgId  = L"LinkDesk.Document";
@@ -57,11 +59,13 @@ static const wchar_t* kArpKeyName = L"d7b1f08d-e543-5ebb-a1d6-cfc088dc2c70";
 static const wchar_t* kArpKeyPath =
     L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\d7b1f08d-e543-5ebb-a1d6-cfc088dc2c70";
 
-/** 13 个扩展名（#45a 原文清单，顺序与 installer.nsh 一致）。 */
-static const wchar_t* kExts[] = {
-    L".txt", L".py", L".js", L".json", L".md", L".html", L".css",
-    L".ts", L".tsx", L".yaml", L".xml", L".csv", L".log",
-};
+/* 静态扩展名清单（kExts[]）——**生成物**，住同目录 `lk-assoc-exts.generated.h`：由
+ * scripts/gen-assoc-exts.mjs 从随包插件（seed）的 `contributes.fileAssociations` 收割，
+ * `npm run check` 的 gen:assoc-exts --check 逐字节比对（漂移即红）。
+ * 🔴 **本文件不再手抄清单**——手抄版 13 条与真实声明（45 条）早已漂移（T6 件 1 就是收掉这个漂移）。
+ * ⚠️ kExts[] 只用于写/删 `OpenWithProgids` 值与 `Capabilities\FileAssociations` 值；
+ *    扩展名键本身、以及 `UserChoice`（用户主权，E24）**一律不碰**。 */
+#include "lk-assoc-exts.generated.h"
 
 // ── 注册表小工具 ──────────────────────────────────────────────────────────
 static bool SetStr(HKEY root, const std::wstring& sub, const wchar_t* name, const std::wstring& val)
@@ -153,7 +157,7 @@ TaskOptions DefaultTaskOptions()
     return o;
 }
 
-// ── 文件类型编辑器注册（ProgId ＋ 13 扩展名 ＋ Capabilities ＋ RegisteredApplications）──
+// ── 文件类型编辑器注册（ProgId ＋ 静态清单 kExts ＋ Capabilities ＋ RegisteredApplications）──
 bool WriteAssociations(const std::wstring& installDir)
 {
     const std::wstring exe = installDir + L"\\" + kAppExe;
@@ -578,7 +582,7 @@ bool DeleteContextMenus()
 bool DeleteAssociations()
 {
     bool ok = true;
-    // 13 个扩展名 ×2：OpenWithProgids 值删 ＋ Capabilities\FileAssociations 值删
+    // 静态清单 kExts ×2：OpenWithProgids 值删 ＋ Capabilities\FileAssociations 值删
     // 🔴 只删值、**不动扩展名键本身**（`.txt` 这些键不是我们建的，删了是砸别人的注册）
     for (const wchar_t* ext : kExts) {
         ok &= DelValue(HKEY_CURRENT_USER, std::wstring(kClasses) + L"\\" + ext + L"\\OpenWithProgids", kProgId);

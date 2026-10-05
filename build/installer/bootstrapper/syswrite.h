@@ -1,10 +1,13 @@
 // ══════════════════════════════════════════════════════════════════════════
 // 件 2b · 系统写入（注册表 / 快捷方式 / PATH / ARP）
 //
-// 【清单从哪来】`build/installer.nsh` 的 `customInstall` **逐 key 照抄**——
-//   05-实现交接.md §4.3 的原话是「key 逐条不得增删」。**本文件不自行发明键。**
-//   ⚠️ installer.nsh 未退役（2d 实测通过后）之前，**改这里必须同笔改那里**；
-//   退役后本文件即成为该清单的唯一真相源。
+// 【清单从哪来】**两类分开看**——
+//   · 键名/键树（ProgId 三键、右键菜单、ARP、PATH、快捷方式）：照 `build/installer.nsh` 的
+//     `customInstall` **逐 key 照抄**（05-实现交接.md §4.3「key 逐条不得增删」）。**本文件不自行发明键。**
+//     ⚠️ NSIS 已全退场（electron-builder.yml 无 `nsis:` 段，installer.nsh 是**未接线的后路**）
+//       ⇒ 本文件即该清单**唯一真相源**，⛔ 不要再「同笔改 nsh」。
+//   · 扩展名清单（kExts[]）：**生成物**——scripts/gen-assoc-exts.mjs 从随包插件（seed）的
+//     `contributes.fileAssociations` 收割，见 `lk-assoc-exts.generated.h`。⛔ 本文件不手抄它。
 //
 // 【实机照抄依据】2026-10-01 在装了 0.2.33（NSIS 版）的机器上读了一遍现键，
 //   本文件的键名/值格式（含引号、`,0` 后缀、空串值、DWORD 类型）全部与读数逐字对齐：
@@ -34,7 +37,7 @@ struct TaskOptions {
 TaskOptions DefaultTaskOptions();
 
 // ── 写入块（各自独立返回，便于分段进度与失败定位）──────────────────────────
-/** ProgId 三键 ＋ 13 个扩展名 ×2（OpenWithProgids 值 ＋ Capabilities\FileAssociations）
+/** ProgId 三键 ＋ 静态清单 kExts（`lk-assoc-exts.generated.h`）×2（OpenWithProgids 值 ＋ Capabilities\FileAssociations）
  *  ＋ `Software\LinkDesk\Capabilities` 两值 ＋ `Software\RegisteredApplications` 一值。 */
 bool WriteAssociations(const std::wstring& installDir);
 
@@ -83,8 +86,8 @@ DWORD EstimatedSizeKb(const std::wstring& dir);
 bool WriteInstallerLanguage(const std::wstring& code);
 
 // ══ 卸载侧（件 2d）════════════════════════════════════════════════════════
-// **逐条照抄 `build/installer.nsh` 的 `customUnInstall`**（key 逐条不得增删；未退役前改这里
-// 必须同笔改那里，退役后本文件即唯一真相源）。两处**有意超出** nsh 清单（出处 02 §二幕⑨
+// **逐条照抄 `build/installer.nsh` 的 `customUnInstall`**（key 逐条不得增删；NSIS 已全退场 ⇒
+// 本文件即唯一真相源，见文件头）。两处**有意超出** nsh 清单（出处 02 §二幕⑨
 // 「反注册：快捷方式 / 右键菜单 / 编辑器注册 / PATH 项 / 安装目录」——nsh 时代这两件由
 // electron-builder 代做，T3-b 后没人做了）：
 //   · `DeleteShortcuts`（桌面＋开始菜单的启动项 .lnk ×2 ＋ **旧版遗留的开始菜单卸载项**——与 CreateShortcuts 严格互逆）
@@ -119,7 +122,7 @@ bool PurgeLegacyUninstallArtifacts(const std::wstring& installDir);
  *  OpenWithLinkDesk）——与安装时勾没勾无关，清理要彻底（不存在则无害）。 */
 bool DeleteContextMenus();
 
-/** 文件关联反注册：13 个扩展名 × `OpenWithProgids` 值删 ＋ `Capabilities\FileAssociations` 值删
+/** 文件关联反注册：静态清单 kExts × `OpenWithProgids` 值删 ＋ `Capabilities\FileAssociations` 值删
  *  （🔴 **不动扩展名键本身**——那不是我们建的）＋ ProgId / Capabilities 键删 ＋
  *  `Software\RegisteredApplications` 值删。 */
 bool DeleteAssociations();

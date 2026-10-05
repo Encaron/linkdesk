@@ -151,7 +151,12 @@ node tools\dom-probe.mjs --preview "screen=home&lang=zh-CN" --click "#lkdd-btn" 
   收在 100、解压段 11 条真读数。exe 壳 + marker + 载荷 = **107,298,451 字节**。
 - **系统写入实测（件 2b，2026-10-02，`tools\syswrite-test.ps1` 七路全绿 0 失败）**：ARP 逐键与实机现装
   对齐（含 `EstimatedSize` 429079 == 目录实测 429079 KB、**无 `Publisher`**、`Comments` 空串）· ProgId 三键 ·
-  13 扩展名 `OpenWithProgids`（**零长度**值）· Capabilities ＋ `RegisteredApplications` · 右键三键 ·
+  13 扩展名 `OpenWithProgids`（**REG_NONE 零长度**值）· Capabilities ＋ `RegisteredApplications` · 右键三键 ·
+  ⚠️ **这 13 条是 2026-10-02 的读数**；清单来源自第 5 波 T6（2026-10-05）起改为**构建期收割**——
+  `scripts/gen-assoc-exts.mjs` 读种子插件声明 → `lk-assoc-exts.generated.h` → 本目录 `src/syswrite.cpp`
+  的 `kExts[]`（门禁 `gen-assoc-exts --check`）。⛔ 别再往本文档/源码里手抄扩展名列表；
+  判据 ③ 禁列（`.exe` 等可执行类）由同一生成器产 `DENIED_ASSOC_EXTENSIONS` 两半共用。
+  （清单口径与运行期动态半见 [安装器勾选页与注册表 §六](../../../docs/02-Electron架构/插件生态与发布/07-Shell集成与多窗口/03-安装器勾选页与注册表.md)。）
   PATH 追加/幂等/`PathBackup`/**类型不降级** · 桌面＋开始菜单快捷方式（桌面实机被重定向到
   `D:\360MoveData\…` ⇒ 只能走 `SHGetKnownFolderPath`）。壳 1,030,656 ＋ marker 64 ＋ 载荷 106,302,512
   = **107,333,232 字节**；解压后 439,376,833 字节。

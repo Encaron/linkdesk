@@ -45,6 +45,7 @@ const TARGETS = [
   "src/App/config/update.ts",
   "src/App/config/aiBridge.ts", // AI#38.13：AI 接入分区（独立 pluginId "ai-bridge"，键前缀 ai.*）
   "src/App/config/storage.ts", // 设置页-打开缓存目录：存储两键并入「通用」组（app.storage.*，两行=按钮上/只读下）
+  "src/App/config/fileAssociations.ts", // T6（第 5 波）：OS 关联跟随插件两键（app.osAssociations.*）随「默认打开方式」组声明
 ];
 
 /** 从 offset 找匹配的右大括号——跳过字符串字面量（对标 check-ipc-audit findMatchingBrace） */
