@@ -194,6 +194,7 @@
 - pastel 1.1.1 已在 GitHub Release 上可装（「添加市场源」填该仓 URL 即见），但**官方目录 `Encaron/linkdesk-marketplace` 仍是 1.1.0**。
 - 候选**已生成**：`npm run catalog:official` ⇒ `scratch/official-catalog.next.json`。合并读数 = **新增 0 ／ 更新 1（`theme-iconset-pastel` 1.1.0→1.1.1）／ 同版改元数据 4（file-tree · lang-defaults · marketplace · serial-monitor）／ 别人的行原样保留 0**。
   ⤷ 那 4 条「同版改元数据」＝**另一棒（发版收录线）的落地差**（官方目录里这四条的元数据与各仓现状已不一致）。
+  ⤷ 🔴 **订正（2026-10-06 同日逐字段实测）**：**这条读数是工具产物，不是另一棒的落地差**——四条的**元数据字段逐项零差异**；触发「同版改元数据」桶的唯一原因是 `versions[]` 里**旧版本的 `changelog`**：官方目录留着，而各插件仓自仓那份（SDK publish 写的镜像）已裁剪 ⇒ 合并时被判「同版但内容有变」。⇒ **别拿它当「有另一棒在写」的证据**（判资源占用看**目录仓 `git log` 最近一笔的时刻**）；⚠️ 也**别把 `catalog:official` 的候选整份覆盖上去**——那会把这 4 条的旧 changelog 真的删掉（**只有外科式单行才安全**）。
 - **不写它的两条理由**：
   1. 🔴 **§五／§六 自己写着**「**官方目录收录与 `sync:bundled` 是全局串行资源——一次只许一棒在写**」，而此刻该资源上**正有另一棒在飞**（上面那 4 条即是证据）；
   2. `sync-official-catalog.mjs` 的**设计就是「只生成、不推」**（脚本头：「写它要用户点头」）——它把「看一眼 diff」当成交接物。
@@ -201,13 +202,13 @@
 
 #### ▶ 续做实录（2026-10-06 同日，用户「你继续做，直接做完这个任务」）
 
-> 上面压着不做的**第一条理由**（全局串行资源被另一棒占用）到此刻**已释放**：那 4 条「同版改元数据」是上一棒**已收手**留下的落差，不是**在飞**的写操作（`git log` 看得到它最后一次写是 2026-10-05T19:04Z，此后目录仓无新笔）。加上用户明示把这一步做完 ⇒ **写它**（红线②「写它要用户点头」就此满足）。
+> 上面压着不做的**第一条理由**（全局串行资源被另一棒占用）到此刻**已释放**，且**证据本身也被订正**：那 4 条「同版改元数据」既不是**在飞**的写操作，也不是**已收手**留下的落差，而是**工具产物**（见上「订正」）；判占用该看的是**目录仓 `git log`**——最后一次写是 2026-10-05T19:04Z、此后无新笔，资源空闲。加上用户明示把这一步做完 ⇒ **写它**（红线②「写它要用户点头」就此满足）。
 
 - **写法＝外科式单行**（照 `c88e7f3` / `109fd45` 先例，⛔ 不是整文件覆盖）：本地克隆 `E:\linkdesk-marketplace` 上，把 pastel 那一条的当前版字段（`version` / `icon` / `readmeUrl` / `downloadUrl` / `size` / `publishedAt`）换成插件仓自仓 `marketplace.json` 的权威值，`versions` **只前插** 1.1.1 条目、**不裁旧史**，`updatedAt` 刷新 ⇒ `13 insertions / 7 deletions`。
 - **四道自证**（都在写盘前或写盘时拦）：① 格式往返自检（`parse→stringify` 与原文件**逐字节相同**，否则拒写——防「整个文件重排」把 diff 炸成万行）② 命中条数必须**恰好 1** ③ 写盘后**逐行比对**，断言「只 1 行变化」（另外 17 行含第三方行全部逐字节未动）④ 与官方工具候选 `scratch/official-catalog.next.json` **交叉核对**：6 个字段**逐字段一致**（⇒ 手工这一笔与 `catalog:official` 若跑一次会得到的东西同物）。
 - **写入与核验**：提交 **`a856f05`**（`Encaron/linkdesk-marketplace` main）⇒ Contents API 读回 blob sha `829ecdaf…` **=== 本地 `git hash-object`** ⇒ **逐字节相同**（没走 raw CDN，避开 `max-age=300` 那 5 分钟）。
 - **平账**：`npm run sync:bundled -- --latest`（先 `--dry-run`）⇒ 官方目录 18 条（指向我们插件仓 17 条）里**只有 pastel 一条动**：`↑ theme-iconset-pastel：1.1.0 → 1.1.1（纯市场，仅账）`——`seed:false` ⇒ **只刷账不拉箱子**；账 diff = `syncedAt` ＋ 那一条的 `version`/`downloadUrl`/`fingerprint`（4 行）；收尾「箱内 6 只 / 账 seed:true 6 只 / ✓ 出厂种子与账一致」⇒ **D5 剩下的那半兑现**。
-- ⛔ **那 4 条「同版改元数据」未动**（file-tree · lang-defaults · marketplace · serial-monitor 的元数据与各仓现状不一致）：不属本案、且属发版收录线的家务 ⇒ **原样留给那条线**（本笔只碰自己那一条，正是「不许删改第三方行」纪律的同一约束）。
+- ⛔ **那 4 条「同版改元数据」未动**：原因见上「订正」——**不是**漂移（逐字段零差异），是 `changelog` 裁剪造成的读数；而且整份覆盖候选反而会删掉它们目录里的旧 changelog。**只有自己这一条动**，正是「不许删改第三方/别人的行」纪律的同一约束。
 
 ### 7.7 §四 验收总表（逐条对着 §四 报）
 
@@ -224,7 +225,7 @@
 - **插件轴**：pastel **1.1.1** 已 Release ＋ 推送；五仓 `vitest.config.ts` 注释口径已推送。
 - **壳仓**：⛔ **未发版**（本案零运行期改动，照 2026-10-03 口径——壳攒批）；`R7` 已进 `npm run check`。
 - **出厂账（D5 平账）**：`bundled-plugins.lock.json` 的 pastel 行 **1.1.0 → 1.1.1**（`syncedAt` ＋ 版本/下载址/指纹共 4 行），箱内 6 只种子与账一致。
-- **遗留（下一棒）**：① D3 并腿与否请复核（§7.3，本会话判定见该节与记忆 `plugin-repo-gate-model` §十二）；② 官方目录里那 4 条「同版改元数据」落差（file-tree · lang-defaults · marketplace · serial-monitor，**不属本案**）留给发版收录线。
+- **遗留（下一棒）**：① D3 并腿与否请复核（§7.3，本会话判定见该节与记忆 `plugin-repo-gate-model` §十二）；② 挂给「发版收录线」一条**小险**：`catalog:official` 的候选**整份覆盖**会删掉 4 条（file-tree · lang-defaults · marketplace · serial-monitor）的旧 `changelog` ⇒ 收录只能用**外科式单行**（本案实测与订正见 §7.6）。
 
 > **相关记忆**：`icon-theme-upgrade-pipeline`（图标主题升级流水线与坑，含本条耦合的来历与画法）。
 > **相关档案**：`docs/02-Electron架构/插件生态与发布/插件源码外移层/03-逐个迁移.md`（`convert-material-icons` 当初被判定「保留」的那轮复核）。
