@@ -145,9 +145,15 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
   <br>本图解决的是「<b>齿轮里到底有哪些项、每项吃什么载荷、点了会发生什么</b>」——即 02 §五 报告的「选项是假的」那一类问题在 UI 上的正确形态。
 </div>
 
+<div class="anchorbox" style="border-style:none;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);">
+  <b>⛔ 本图只画「改动点」——既有控件不重画</b>（案 <code>00-README.md</code> §五 铁律 5 / D12；用户 2026-10-05：「已有的 UI 表现我是满意的，任务做的更多是迁移」）。<br>
+  <b>在产 UI 的像素权威 = <code>../mockups/08</code> ／ <code>../mockups/09</code></b>（画的正是今天真实界面）：行内<b>下拉＝共享 <code>SelectBox</code></b>、卡头徽标、齿轮菜单形态都照在产平移，本图只改<b>位置与菜单项内容</b>。⚠️ 本图与 mockups 冲突时<b>一律以 mockups 为准</b>；落地判据是「同一控件改动前后<b>类名与 DOM 结构不变</b>」。<br>
+  ⚠️ 帧 A 的行内下拉按<b>在产形态</b>补画（此前本图只画了静态文字，易被误读成「要重做行」——这里对齐 09 图）。
+</div>
+
 <!-- ══════════ 帧 A ══════════ -->
 <div class="frame">
-  <div class="frame-caption"><span class="n">帧 A · 插件卡（共享件 `ldk-plugin-card`）＋ 卡齿轮</span><span class="tag">定稿形态</span><span class="use">可交互：点齿轮 / 点卡头展开</span></div>
+  <div class="frame-caption"><span class="n">帧 A · 插件卡（共享件 `ldk-plugin-card`）＋ 卡齿轮</span><span class="tag">定稿形态</span><span class="use">可交互：点齿轮 / 点卡头展开；行内下拉＝共享 SelectBox（在产形态，⛔ 不重画）</span></div>
   <div class="window">
     <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span>
       <span class="menus"><span>文件</span><span>查看</span><span>帮助</span></span>
@@ -184,10 +190,10 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
                 <button class="ldk-plugin-card-gear on" id="gearA" title="更多操作">⚙</button>
               </div>
               <div class="ldk-plugin-card-body">
-                <div class="acrow"><span class="cext">.md</span><span class="pill auto">自动</span><span class="mut">唯一处理器</span><span class="who">编辑器</span></div>
-                <div class="acrow"><span class="cext">.txt</span><span class="pill auto">自动</span><span class="mut">唯一处理器</span><span class="who">编辑器</span></div>
-                <div class="acrow"><span class="cext">.svg</span><span class="pill user">默认：编辑器</span><span class="who">来源：用户覆盖</span></div>
-                <div class="acrow"><span class="cext">.json</span><span class="pill contested">竞争</span><span class="mut">2 个处理器</span><span class="who">编辑器 / 数据视图</span></div>
+                <div class="acrow"><span class="cext">.md</span><span class="pill auto">自动</span><span class="mut">唯一处理器</span><span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-xs);padding:1px 8px;font-size:11px;color:var(--text-primary)">编辑器 <i style="font-style:normal;color:var(--text-muted)">▾</i></span></div>
+                <div class="acrow"><span class="cext">.txt</span><span class="pill auto">自动</span><span class="mut">唯一处理器</span><span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-xs);padding:1px 8px;font-size:11px;color:var(--text-primary)">编辑器 <i style="font-style:normal;color:var(--text-muted)">▾</i></span></div>
+                <div class="acrow"><span class="cext">.svg</span><span class="pill user">默认：编辑器</span><span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-xs);padding:1px 8px;font-size:11px;color:var(--text-primary)">编辑器 <i style="font-style:normal;color:var(--text-muted)">▾</i></span></div>
+                <div class="acrow"><span class="cext">.json</span><span class="pill contested">竞争</span><span class="mut">2 个处理器</span><span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-xs);padding:1px 8px;font-size:11px;color:var(--text-primary)">编辑器 <i style="font-style:normal;color:var(--text-muted)">▾</i></span></div>
               </div>
               <!-- 卡齿轮菜单（共享 ContextMenu；PluginCard 固定送 context={pluginId}） -->
               <div class="ctxmenu" id="menuA" style="left:430px;top:118px;">

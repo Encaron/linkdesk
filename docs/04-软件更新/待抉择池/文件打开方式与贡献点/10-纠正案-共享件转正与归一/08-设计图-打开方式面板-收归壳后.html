@@ -7,15 +7,15 @@
 <!-- mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine。
      ══ 文档锚点（改本图必须同笔改这些文档；反之亦然）══
        01-住错层纠正-选择器转正与壳级打开面.md  §三 转正方案 / C1.1 共享件 / C1.2 壳命令 / §七 验收
-       03-面板口径-居中与遮罩.md                 §二 居中三分支 / §三 遮罩（待用户拍板，本图帧 3 供对比）/ §四 入口矩阵 / §六 验收
+       03-面板口径-居中与遮罩.md                 §二 居中三分支 / §三 遮罩（✅ 2026-10-05 已拍板 §3.0：要，用壳既有的模态遮罩）/ §四 入口矩阵 / §六 验收
        02-归一化-齿轮锚点与假菜单项.md           §四 方案 A（设置页按类型入口，本图帧 5 小图）
      ══ 帧 ↔ 文档 ══
        帧 1 居中态（编辑器入口）      → 03 §2.2 分支② + §六 验收 1/3/4
        帧 2 锚定态（文件树右键）      → 03 §2.2 分支① + §六 验收 5
-       帧 3 遮罩对比（要/不要）       → 03 §三（待用户拍板；推荐「要」＝左）
+       帧 3 遮罩定稿（要/不要对照）   → 03 §3.0（✅ 2026-10-05 已拍板：要，用壳既有那层黑）
        帧 4 改动前 × 改动后（根因）   → 03 §一（根因六步）＋ 硬约束 18
        帧 5 窗口 500px 高压 + 空态    → 03 §六 验收 6/7
-     ══ 口径 ══ 面板宽 432（源自现状 CSS，本图沿用）；非右键入口居中；锚定态 top ≥ 30；遮罩**无磨砂**。
+     ══ 口径 ══ 面板宽 432（源自现状 CSS，本图沿用）；非右键入口居中；锚定态 top ≥ 30；遮罩**无磨砂**，值 = 壳既有模态遮罩 token（`--scrim-dialog`，与「关闭窗口」弹窗同款）。
      几何读数由页内脚本量出并显示（底部「读数」条）。 -->
 <style>
 :root{
@@ -79,8 +79,8 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
 .ldk-button{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--text-on-accent);border:1px solid transparent;border-radius:6px;padding:5px 12px;font-size:12.5px;cursor:pointer;}
 .ldk-button--ghost{background:transparent;color:var(--text-secondary);border-color:var(--separator);}
 .ldk-button--ghost:hover{color:var(--text-primary);background:var(--hover-overlay);}
-/* 遮罩：满屏、压暗、**无磨砂**（与 OverlayPortal 的 SCRIM 平面同口径） */
-.scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);z-index:var(--z-overlay-backdrop);}
+/* 遮罩：满屏、压暗、**无磨砂**——值取壳既有模态遮罩 token --scrim-dialog（DialogHost/关闭窗口弹窗同款，src/index.css:54） */
+.scrim{position:absolute;inset:0;background:var(--scrim-dialog, rgba(0,0,0,.5));z-index:var(--z-overlay-backdrop);}
 .scrim.off{display:none;}
 /* ── 面板本体（收归后＝共享件；类名 ldk-openwith*）── */
 .ldk-openwith{position:absolute;width:432px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.6);z-index:600;overflow:hidden;}
@@ -133,16 +133,21 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
 </div>
 
 <div class="anchorbox">
-  <span class="lbl">文档锚点</span>（可点）：<code>../03-面板口径-居中与遮罩.md</code> §一 根因 / §2.2 三分支 / §三 遮罩（待你拍板）/ §四 入口矩阵 / §六 验收 ｜
+  <span class="lbl">文档锚点</span>（可点）：<code>../03-面板口径-居中与遮罩.md</code> §一 根因 / §2.2 三分支 / §三 遮罩（✅ 已拍板 §3.0）/ §四 入口矩阵 / §六 验收 ｜
   <code>../01-住错层纠正-选择器转正与壳级打开面.md</code> §三 落点 / C1.2 壳命令 ｜ <code>../02-归一化-齿轮锚点与假菜单项.md</code> §四（设置页按类型入口）。
-  <br><b>本图要回答的两个待拍板问题</b>：① 面板改成居中（帧 1）；② 四周要不要压暗（帧 3 左右对比）。
+  <br><b>本图回答的两个问题（现在都已有定论）</b>：① 面板改成居中（帧 1 ✅）；② 四周要不要压暗（帧 3 ✅ **2026-10-05 已拍板：要，直接用「关闭窗口弹窗」那层黑**）。
+</div>
+
+<div class="anchorbox" style="border:1px solid var(--border);background:var(--bg-card);">
+  <b>⛔ 既有控件不重画</b>（案 <code>00-README.md</code> §五 铁律 5 / D12）：面板的<b>行布局、两颗动作按钮、当前默认徽标、空态</b>都照<b>在产形态</b>平移（像素权威 = <code>../mockups/05</code>），本图只画 <b>居中／遮罩／锚定</b> 三处改动。<br>
+  <b>✅ 遮罩定论（2026-10-05 用户原话）</b>：「让我拍板的，那个周围变黑的，直接用『关闭窗口时候弹窗的周围变黑的效果』就行」⇒ 采<b>壳既有模态遮罩</b>：平面 <code>#ld-scrim-plane</code> ＋ token <code>--scrim-dialog</code>（<code>src/index.css:54</code>，即 DialogHost 的模态遮罩，与本仓库 <code>DialogHost.tsx:115</code> 同写法）；⛔ 不另写 rgba、⛔ 不加磨砂；锚定态仍不加（帧 2）。
 </div>
 
 <!-- ══════════ 帧 1 ══════════ -->
 <div class="frame">
   <div class="frame-caption"><span class="n">帧 1 · 居中态（编辑器入口，无锚点）</span><span class="tag">定稿形态</span><span class="use">可交互：切遮罩 / 切空态</span></div>
   <div class="togglebar">
-    <button id="tgScrim" class="on">遮罩：开（推荐）</button>
+    <button id="tgScrim" class="on">遮罩：开（已拍板）</button>
     <button id="tgEmpty">切到「空态」（没装 pdf 阅读器）</button>
     <button id="tgBand">显示 30px 拖拽区红线</button>
   </div>
@@ -231,17 +236,17 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
 
 <!-- ══════════ 帧 3 ══════════ -->
 <div class="frame">
-  <div class="frame-caption"><span class="n">帧 3 · 遮罩对比（03 §三 · <b>待你拍板</b>）</span><span class="tag">等你选</span><span class="use">左＝推荐「要」 ｜ 右＝「不要」</span></div>
+  <div class="frame-caption"><span class="n">帧 3 · 遮罩定稿（03 §3.0 · <b>✅ 已拍板</b>）</span><span class="tag">定稿</span><span class="use">左＝定稿「要」 ｜ 右＝未采用的「不要」</span></div>
   <div class="row2">
     <div>
-      <div class="caption-sm">✅ 左：要遮罩（推荐）——四周压暗、<b>不磨砂</b>、面板居中</div>
+      <div class="caption-sm">✅ 左：定稿——要遮罩、四周压暗（<b>直接用「关闭窗口弹窗」那层黑</b>：<code>--scrim-dialog</code>）、<b>不磨砂</b>、面板居中</div>
       <div class="window win-sm">
         <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
         <div class="appbody sm">
           <div class="icon-bar"><span class="ic active">📄</span></div>
           <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
             <div class="content">
-              <div class="scrim" style="background:rgba(0,0,0,.5)"></div>
+              <div class="scrim" style="background:var(--scrim-dialog, rgba(0,0,0,.5))"></div>
               <div class="ldk-openwith ldk-openwith--centered" style="width:300px">
                 <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
                 <div class="ow-list"><div class="ow-row"><span class="ic" style="background:var(--status-connected);color:var(--bg-window)">P</span><span class="nm">PDF 阅读器</span><span class="acts"><button class="ow-act primary">打开</button></span></div></div>
@@ -254,7 +259,7 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
       <div class="caption-sm" style="color:var(--text-secondary)">理由：居中后需要背景分离；编辑器入口本身就是「这文件打不开，请你选一个」的<b>阻断式</b>场景，压暗帮注意力收束；与壳既有遮罩同源（无磨砂）。</div>
     </div>
     <div>
-      <div class="caption-sm">右：不要遮罩——面板居中、周边不压暗（点外面照样关）</div>
+      <div class="caption-sm">右：❌ 未采用——面板居中、周边不压暗（点外面照样关）</div>
       <div class="window win-sm">
         <div class="titlebar"><span class="logo"></span><span class="app">LinkDesk</span><span class="drag"></span><span class="winbtns">─ ▢ ✕</span></div>
         <div class="appbody sm">
@@ -273,7 +278,7 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
       <div class="caption-sm">代价：面板与标签页/内容同层次，第一眼不容易分清「现在这一层在等谁」。</div>
     </div>
   </div>
-  <div class="frame-note"><b>给用户的一句话</b>（实施时会正式问一次）：<i>「面板改成居中了，要不要像普通弹窗那样四周压暗（只压暗、不磨砂）？我推荐要。」</i> —— 选「不要」也能做，本图右侧就是它的样子。</div>
+  <div class="frame-note"><b>✅ 已拍板（2026-10-05 用户原话）</b>：<i>「那个周围变黑的，直接用『关闭窗口时候弹窗的周围变黑的效果』就行」</i> ⇒ 采左图，且遮罩<b>不是新设计</b>而是复用壳既有那一层黑（<code>#ld-scrim-plane</code> ＋ <code>--scrim-dialog</code>，即 <code>DialogHost</code>／关闭窗口弹窗同款）；⛔ 不许另写 rgba、⛔ 不许加磨砂（03 §3.0）。右图仅留作对照。</div>
 </div>
 
 <!-- ══════════ 帧 4 ══════════ -->
@@ -308,7 +313,7 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
           <div class="icon-bar"><span class="ic active">📄</span></div>
           <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
             <div class="content">
-              <div class="scrim" style="background:rgba(0,0,0,.42)"></div>
+              <div class="scrim" style="background:var(--scrim-dialog, rgba(0,0,0,.5))"></div>
               <div class="ldk-openwith ldk-openwith--centered" style="width:300px">
                 <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
                 <div class="ow-list"><div class="ow-row"><span class="ic" style="background:var(--accent)">编</span><span class="nm">编辑器</span><span class="acts"><button class="ow-act primary">打开</button></span></div></div>
@@ -334,7 +339,7 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
         <div class="appbody" style="height:170px">
           <div class="main"><div class="tabbar"><span class="tb on">📄 手册.pdf</span></div>
             <div class="content">
-              <div class="scrim" style="background:rgba(0,0,0,.42)"></div>
+              <div class="scrim" style="background:var(--scrim-dialog, rgba(0,0,0,.5))"></div>
               <div class="ldk-openwith ldk-openwith--centered" style="max-height:calc(100% - 60px)">
                 <div class="ow-head"><span class="t">打开方式</span><span class="s">.pdf</span><button class="ow-x">✕</button></div>
                 <div class="ow-list" style="max-height:70px">
@@ -355,7 +360,7 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
         <div class="appbody sm" style="height:230px">
           <div class="main"><div class="tabbar"><span class="tb on">⚙ 设置 · 文件关联</span></div>
             <div class="content">
-              <div class="scrim" style="background:rgba(0,0,0,.42)"></div>
+              <div class="scrim" style="background:var(--scrim-dialog, rgba(0,0,0,.5))"></div>
               <div class="ldk-openwith ldk-openwith--centered" style="width:340px">
                 <div class="ow-head"><span class="t">打开方式</span><span class="s">扩展名 .pdf（无具体文件）</span><button class="ow-x">✕</button></div>
                 <div class="ow-list">
@@ -414,7 +419,7 @@ body{background:#0d0d0d;color:var(--text-primary);font:13px/1.6 "Segoe UI","Micr
   tgS.addEventListener('click', function () {
     var on = !scrim.classList.contains('off');
     scrim.classList.toggle('off', on);
-    tgS.textContent = on ? '遮罩：关' : '遮罩：开（推荐）';
+    tgS.textContent = on ? '遮罩：关' : '遮罩：开（已拍板）';
     tgS.classList.toggle('on', !on);
   });
   tgE.addEventListener('click', function () {

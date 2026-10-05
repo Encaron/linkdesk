@@ -32,13 +32,18 @@ export interface OpenWithRequest {
   ext?: string;      // 归一化扩展名（无点、小写）
   anchor?: { x: number; y: number };  // 可选：右键入口给（就近弹出）；缺省 ⇒ 居中
 }
-/** 处理器条目（面板行的数据形状；由壳侧组装，⛔ 插件不自行构造） */
+/** 处理器条目（面板行的数据形状；由壳侧组装，⛔ 插件不自行构造）。
+ *  title = **处理器名**（插件显示名，取 `pluginManager.list()` 行的 `manifest.name ?? pluginId`）；
+ *  typeLabel = **类型名**（声明里的 `displayName`，如「Rust」）；⛔ 两者不可互换（见 01 C1.8）。 */
 export interface OpenWithHandler {
-  pluginId: string; title: string; isDefault: boolean; isAuto: boolean;
+  pluginId: string; title: string; typeLabel?: string; isDefault: boolean; isAuto: boolean;
+  /** 图标 manifest——壳侧用共享 helper `pickIdentityArt()` 产出（照设置页先例，见 01 C1.9） */
+  manifest?: { icon?: string; iconSource?: "svg" | "codicon" | "url" | "lucide" };
 }
 ```
 
 - **顺带（同笔，低成本）**：既有的 `MenuItemDescriptor.commandArgs` 文档串补一句「共享件会固定送它自己的 `context`，见 [02](./02-归一化-齿轮锚点与假菜单项.md) §二 载荷律」——⛔ 文档串里**不许出现工单编号**（`check-manual-surface` 规则①扫的就是这份产物）。
+- **`contributes.fileAssociations[].displayName` 的语义正名（必做）**：它是**文件类型显示名**（`.rs → "Rust"`，见 `editor/plugin.json:405-406`），⛔ **不是**插件/处理器名——壳把它当处理器名用就是「面板行写着 Rust」的根因（[01](./01-住错层纠正-选择器转正与壳级打开面.md) C1.8）。这条要同时进 ① 生成源里的字段注释 ② 作者文档（§四 `06-plugin.json-spec` 中英同笔）。
 - **怎么验**：`node scripts/generate-contract.mjs` 后 `git diff contracts/linkdesk.d.ts` 出现新类型且**不含编号**；`npm run check` 的 `check-contracts` 绿。
 
 ---
@@ -68,7 +73,7 @@ export interface OpenWithHandler {
 |:--|:--|
 | `22-menu-contribution-points.md` / `zh/22-菜单贡献点.md` | 新增「载荷律」一节（正文见 [02](./02-归一化-齿轮锚点与假菜单项.md) §二） |
 | `21-command-ification-spec.md` / `zh/21-插件命令化规范.md` | 新增「调用**宿主命令**」一节：`SHELL_COMMANDS` ＋ `openWith()` helper；说明「⛔ 别硬编码宿主命令 id」 |
-| `06-plugin-json-spec.md` / `zh/06-plugin.json规范.md` | `contributes.fileAssociations` 的**类型归一**规则（`normalizeExt`：去点/小写/拒绝空白与分隔符）＋ 声明不足的后果（碰不上竞争） |
+| `06-plugin-json-spec.md` / `zh/06-plugin.json规范.md` | `contributes.fileAssociations` 的**类型归一**规则（`normalizeExt`：去点/小写/拒绝空白与分隔符）＋ 声明不足的后果（碰不上竞争）＋ 🔴 **`displayName` 的语义 = 文件类型显示名**（文件头写死这句：想给插件起名走 manifest 顶层 `name`，⛔ 别写在关联声明里——写错的面就是「打开方式列表里出现 Rust」） |
 | `19-component-cheatsheet.md` / `zh/19-组件速查.md` | 新增两条：`Button`（含 `variant`/`size` 语义档）、`OpenWithPicker`（props 契约 ＋ 使用场景：宿主调命令即可，⛔ 别自己实现面板） |
 | `05-ui-conventions.md` / `zh/05-插件UI写法规约.md` | 共享组件消费侧写法（含「共享件固定送自己的 context」这条坑） |
 | `00-readme.md` / `zh/00-README.md` | 索引行若有「命令/菜单/组件」条目，补新节指向 |
@@ -122,6 +127,8 @@ export interface OpenWithHandler {
 | 竞争行齿轮的「在文件树中打开选择器」文案本身就不对（不是「在文件树」，而是「打开选择器」） | `FileAssociationsManagerView.tsx:167-169` label | 随 [02](./02-归一化-齿轮锚点与假菜单项.md) §四 方案 A/B 一并定文案 |
 | `Editor` 的 `OPEN_WITH_WIRED` 是一枚**没有到期日**的开关 | `BinaryNotice.tsx:33` ＋ 头注「宿主侧动作尚未实现，故先不显示」 | [01](./01-住错层纠正-选择器转正与壳级打开面.md) C1.6 作废它 ⇒ 本条随即消账 |
 | 壳历史改名表里 `explorer.openWith → file-tree.openWith` 在本次改名后**指向过时** | `src/core/services/configuration/renameMigrations.ts:74` | 若将来真把 id 改成 `workbench.action.openWith`，该映射要不要追加一跳？**先探**该表语义（它是插件改名轮次表，壳级 id 不属于任何 plugin）⇒ 结论写回本栏 |
+| `settings` 的 `HandlerSnapshot.displayName` 注释写着「是**插件**显示名」，而壳给的是声明里的**类型名** | `settings/…/file-associations-manager/model.ts:116`（消费点 `:275/342` 拿它当行内下拉的选项文案） | 与 [01](./01-住错层纠正-选择器转正与壳级打开面.md) C1.8 同笔改（标签换 `title`，注释改正）；改完 `grep -n "插件\*\*显示名"` = 0 |
+| 插件侧 preload 拿不到 `plugins.listAll`（壳独有读面），面板用它取图标 ⇒ 静默空、全白纸 | `OpenWithPanel.tsx:81-87` ＋ `electron/preload-pool/namespaces-plugin.ts:47-59` | [01](./01-住错层纠正-选择器转正与壳级打开面.md) C1.9 修完 ⇒ `grep -rn "plugins?.listAll" /e/linkdesk-plugins/official/*/src` = 0（本条消账） |
 | `settings` 的三条齿轮命令 `params` 在 `plugin.json` 里声明了，但运行时 `registerCommand` 不带 meta | `fileAssociationsGearCommands.ts:27-29` 头注 | 核 `plugin.json:139/152/165` 的 params 描述是否与 `readContestedRowGearTarget` 容忍的两形状一致（不一致 ⇒ 作者照文档写会踩空） |
 | 主案 `04-任务清单.md` 的 **「4B-补」格正文写着「✅ 2026-10-05 五项全落」而方框仍是 `- [ ]`**（同格 4C 已是 `[x]`）——账实不符，两种可能：漏打勾 or 五项里有的没落 | `04-任务清单.md` 的 4B-补行 vs 4C 行 | **照 [§附四](../04-任务清单.md) 纪律**：动方框前先真跑一遍五项读数（组计数徽标／三处空态／跨插件命令隐藏／尺寸／写面进账）——**能复现 ⇒ 打勾并记读数；不能 ⇒ 把正文的「✅」改回实际状态**（⛔ 别直接勾了了事） |
 
@@ -135,4 +142,6 @@ export interface OpenWithHandler {
 - [ ] 作者手册 6 组文件中英同笔改完，`00-readme` 索引可达新节
 - [ ] AI 操作手册三层（`00-README` / `01或03` / `02-命令与API索引`）说法一致，零编号
 - [ ] 发版矩阵 6 个包/插件按表发完（壳不发）
-- [ ] 顺带发现栏 **7 条**全部带「怎么核」或已消账
+- [ ] `OpenWithHandler` 的 `title`／`typeLabel` 语义分离，且**生成源文档串与作者文档两处都写明**「`displayName` = 类型名」（[01](./01-住错层纠正-选择器转正与壳级打开面.md) C1.8）
+- [ ] 面板行图标与设置页同源（`title`/`manifest` 都由壳命令组装，`pickIdentityArt` 仅命中一处）（[01](./01-住错层纠正-选择器转正与壳级打开面.md) C1.9）
+- [ ] 顺带发现栏 **9 条**全部带「怎么核」或已消账
