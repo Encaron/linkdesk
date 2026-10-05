@@ -65,7 +65,9 @@
     "../../src/components/shared/image-picker/**/*.ts",
     "../../src/components/shared/image-picker/**/*.tsx",
     "../../src/components/shared/segment-preview/**/*.ts",
-    "../../src/components/shared/segment-preview/**/*.tsx"
+    "../../src/components/shared/segment-preview/**/*.tsx",
+    "../../src/components/shared/plugin-card/**/*.ts",
+    "../../src/components/shared/plugin-card/**/*.tsx"
   ],
   "exclude": [
     "../../src/components/shared/**/*.test.ts",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-10-05T06:02:12.167Z",
+  "syncedAt": "2026-10-05T07:38:52.133Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -54,9 +54,9 @@
     {
       "id": "settings",
       "repo": "Encaron/linkdesk-plugin-settings",
-      "version": "1.0.34",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.34/settings.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:7af52e676b1c996f5cf192df554890ddadd7a8fc0b584fed29ad63729f7c1e1f\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-2zXASaYB.js:cc56a48e4fff2ee4dd9ace4d25ef345d353643cafd7bf5820b2d8137bcd71d1e\ni18n/en.json:24f2f203fd4994cb3138e58c7d1d15cc5ad44249a4504c40c16e8d3e36802fb5\nindex.bundle.css:d7e127c4ac3eb0cf893cccc40217396958c22992b5e4b3b1114574b3e754ba33\nindex.bundle.js:9ac3294e3a298c5c77f5cbfb2f059c91887bc635fed9459dc40ed7a27d8900af\nplugin.json:c18efacc00585dded5bcf0763b786febad30239e3078253bb5ac62af6385217f\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:536cf652eb0343911c3734c62fbd3f788810c3c6e6e751ad1c0ecb02772bc8cc",
+      "version": "1.0.35",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.35/settings.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:a07ba974de0a2cef61ff3a4d432217cbcbe68dd1b1bb651ed83239ce3f24f0b3\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-C259Ubby.js:efc70f8f0cff3b07d07f1bb93c19000de197a478dab92138985df6bc9339ae14\ni18n/en.json:1de46a16300c218db8271ee782a296bbd38bfbc6d55665e8422c1932f9e44796\nindex.bundle.css:7afe40aa7209c46377885917ad4cc5dd95a74ccb75cea9e99e047274e122667d\nindex.bundle.js:c3c12a7ebc7f5db90a9e78d26a0887a6a57adbaee297935884d4664bee8941f6\nplugin.json:57418a975f2bd5a40d108fa3471da25b0c23626d0549ead5ce5120137e5e7ec2\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:3e3ffbc8649dd36a2cfa0aa5522aa15708ab7bde0dc584d107cb34aab9648550",
       "seed": true
     },
     {

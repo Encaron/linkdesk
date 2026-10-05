@@ -15,7 +15,7 @@
  * 改公共导出面只改 src/index.ts 一处。
  */
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync, readdirSync, rmSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, rmSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -79,6 +79,24 @@ writeFileSync(
   resolve(DIST, "index.d.ts"),
   `/** @linkdesk/ui 公共类型入口（E6#54b 构建生成——勿手改；改导出面改 packages/linkdesk-ui/src/index.ts 后重跑 build） */\n${[...valueLines, ...typeLines].join("\n")}\n`,
 );
+
+// ── 4b. 声明面自检（2026-10-05）——桶里引用的每个 ./<folder>/<File> 都必须有真 d.ts ──
+// 🔴 为什么必须有这一步：d.ts 发射走 tsconfig.decl.json 的**逐目录 include 白名单**（不是跟随 barrel），
+//    所以「新组件加进 barrel、忘了加白名单」时故障是**静默的**——JS 与 CSS 照常进包（vite 跟随 barrel），
+//    唯独声明缺席 ⇒ **只有包外消费者**踩到：`import { X } from "@linkdesk/ui"` 报 TS2307 找不到模块，
+//    而壳内消费（同仓源码）与本地测试全绿。实证 = `@linkdesk/ui@0.2.43` 漏发 PluginCard 的 d.ts。
+//    fail-closed：宁可这一步发不出去，也不发一份类型断链的包。
+const declBarrel = readFileSync(resolve(DIST, "index.d.ts"), "utf8");
+const missingDecl = [];
+for (const m of declBarrel.matchAll(/from\s+"\.\/([^"]+)"/g)) {
+  if (!existsSync(resolve(DIST, `${m[1]}.d.ts`))) missingDecl.push(m[1]);
+}
+if (missingDecl.length > 0) {
+  throw new Error(
+    `dist/index.d.ts 引用了不存在的声明模块：${missingDecl.join(", ")}\n` +
+      `  ⇒ 多半是 tsconfig.decl.json 的 include 白名单漏了新组件目录（桶里加了导出、声明没发射）`,
+  );
+}
 // ── 5. 盖「生产日期」（E6#166）：出处戳随包走，作者看一眼就知道剪自哪个壳 ─────────────────
 const shellVersion = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")).version;
 let commit = "unknown";
