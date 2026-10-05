@@ -7,13 +7,20 @@
  *   node scripts/check-ui-surface-additive.mjs --self-test  # 自测（正控 3 ／ 负控 5）
  *   node scripts/check-ui-surface-additive.mjs --init       # 建基线（首次落地专用；写侧 gen 亦可）
  *
- * ── 判定式（三条硬边界，改之前先读）──
+ * ── 判定式（四条硬边界，改之前先读）──
  *   ① **比集合**：面按排序后的集合比（`scripts/lib/ui-surface.mjs` 的 `diffUiSurface`）⇒
  *      只改顺序、只改 barrel 注释**不产生 diff**。快照形状烂 ⇒ fail-closed（拒绝判定并红）。
  *   ② **基线降级链 = tag → HEAD → 工作区**（照 `check-api-surface-additive.mjs` 同一形状）：
  *      上一个 `v*` tag 里没有快照就比 HEAD，HEAD 也没有才比工作区，每一档都打印「基线自本格开始」；
  *      三处都没有 ⇒ 拒绝判定并红（⛔ 不静默放行——比空 = 永远绿，那正是本门禁要治的病）。
+ *      基线**可以是旧形态**（G1 之前的 tag 里就是裸名字数组）——两代形态由 `surfaceNames` 归一，
+ *      ⛔ 不许要求基线也是新形态（那会把所有历史 tag 一次性判红）。
  *   ③ **失败必须给出可执行的下一步**：「改回去」或「走退役登记 + 钉线窗口」二选一，⛔ 没有第三条路。
+ *   ④ **账本完整性**（「插件最低壳版本门禁」G1 起新增此腿）：**工作区那份** `scripts/ui-surface.json`
+ *      四栏（components/hooks/helpers/types）**每一项都得有 `since`**——缺一即红。
+ *      防的是「回填只回填了一半」：半个账本比没账本更坏，插件会拿它算出一个**偏低的假地板**然后照样绿
+ *      （判据本体在 `scripts/lib/ui-surface.mjs` 的 `ledgerGaps`，⛔ 不在这里另写一套）。
+ *      ⚠️ 只判**工作区**那份：基线档里的旧形态是历史事实，不追认；随 SDK 下发的那份由生成器 `--check` 对账。
  *
  * ── 「有登记即放行」的唯一归属不在本文件 ──
  *   匹配规则 = `scripts/lib/retired-ledger.mjs` 的 `exemptionFor`（格 2/格 3 共用那份，⛔ 不另写一套）；
@@ -23,16 +30,17 @@
  *   账读不到 ⇒ 按「没有登记」处理（fail-closed）。
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   ROOT,
+  SDK_LEDGER_REL,
   SNAPSHOT_REL,
   collectUiSurface,
   diffUiSurface,
   flattenUiSurface,
   isUiSurfaceShape,
-  serializeSurface,
+  ledgerGaps,
 } from "./lib/ui-surface.mjs";
 import { exemptionFor, readRegistry } from "./lib/retired-ledger.mjs";
 
@@ -114,6 +122,29 @@ function run() {
   } catch (err) {
     console.log(`🔴 ui-surface-additive：面重算失败 ⇒ **拒绝判定**（不静默放行）：${err.message}`);
     return 2;
+  }
+
+  // ── ④ 账本完整性先行（G1）：工作区那份四栏每一项都得有 since——缺一即红 ──
+  const wtLedgerPath = resolve(ROOT, SNAPSHOT_REL);
+  let wtLedger = null;
+  if (existsSync(wtLedgerPath)) {
+    try {
+      wtLedger = JSON.parse(readFileSync(wtLedgerPath, "utf8"));
+    } catch (err) {
+      console.log(`🔴 ui-surface-additive：${SNAPSHOT_REL} 不是合法 JSON（${err.message}）⇒ 账本判不了 ⇒ **拒绝判定**。`);
+      return 2;
+    }
+  }
+  const gaps = ledgerGaps(wtLedger);
+  if (gaps.length > 0) {
+    console.log(`\n🔴 ui-surface-additive：账本不完整——**四栏（components / hooks / helpers / types）每一项都必须带 \`since\`**：\n`);
+    for (const g of gaps.slice(0, MAX_ROWS)) console.log(`     · ${g}`);
+    if (gaps.length > MAX_ROWS) console.log(`     · …另有 ${gaps.length - MAX_ROWS} 处`);
+    console.log(`\n   为什么这条要判红：半份账本比没有账本更坏——插件会拿它算出一个**偏低的假地板**，`);
+    console.log(`   然后照样绿（本格事故的成因就是「地板值是个手写常量、谁也不知道该多少」）。`);
+    console.log(`\n   ⇒ 修法：\`npm run ui-surface:regen -- --backfill\`（从 git 历史回填每个导出名的出生壳版本）`);
+    console.log(`     再 \`npm run ui-surface:regen\` 同笔投影 ${SDK_LEDGER_REL}，两份一起提交。`);
+    return 1;
   }
 
   let baseline;
@@ -277,34 +308,67 @@ function selfTest() {
     push("负控7（主路径）：tag 里有快照 ⇒ kind=tag（不作任何降级）", b.kind === "tag" && b.ref === "v0.9.9" && !b.why, `${b.kind} / ${b.ref}`);
   }
 
+  // ── ④ 账本完整性（G1 新增的判红出口）：完整 = 绿，缺点 / 旧形态 = 红 ──
+  /** 新形态账本夹具：每个名字都带 since */
+  const ledger = () => ({
+    generatedAt: "2026-10-06T00:00:00.000Z",
+    shellVersion: "0.2.49",
+    components: { Button: { since: "0.2.13" }, PluginCard: { since: "0.2.48" } },
+    hooks: { useClickPreview: { since: "0.2.13" } },
+    helpers: { inferSliderStep: { since: "0.2.13" } },
+    types: { ContextMenuProps: { since: "0.2.13" } },
+    count: 5,
+  });
+  {
+    const got = ledgerGaps(ledger());
+    push("正控4：完整账本（四栏每一项都带 since）⇒ 0 条缺口（门禁不因本腿报红）", got.length === 0, got.join(" / "));
+  }
+  {
+    const l = ledger();
+    delete l.components.PluginCard.since;
+    const got = ledgerGaps(l);
+    push("负控8：某一项缺 since ⇒ 报点并点名（防「回填只回填了一半」——它会算出一个偏低的假地板）", got.length === 1 && got[0].includes("components.PluginCard"), got.join(" / "));
+  }
+  {
+    const got = ledgerGaps({ components: ["Button"], hooks: [], helpers: [], types: [] });
+    push("负控9：账本还是旧形态（裸名字数组、无 since）⇒ 报点且要求 --backfill", got.length === 4 && got.every((g) => g.includes("--backfill")), got.join(" / "));
+  }
+  {
+    const got = ledgerGaps(null);
+    push("负控10：账本文件不在（null）⇒ 报点（⛔ 不静默当它完整）", got.length === 1 && /不是对象/.test(got[0]), got.join(" / "));
+  }
+
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log(`${c.ok ? "✅" : "🔴"} ${c.name}${c.ok ? "" : `\n     ↳ ${c.detail}`}`);
+  const positives = cases.filter((c) => c.name.startsWith("正控")).length;
   console.log(
     bad.length === 0
-      ? `\n✅ check-ui-surface-additive self-test 全过（${cases.length} 例：正控 3 ／ 负控 8）——门禁不是在恒绿。`
+      ? `\n✅ check-ui-surface-additive self-test 全过（${cases.length} 例：正控 ${positives} ／ 负控 ${cases.length - positives}）——门禁不是在恒绿。`
       : `\n🔴 check-ui-surface-additive self-test ${bad.length} 例不符（共 ${cases.length} 例）。`,
   );
   return bad.length === 0 ? 0 : 1;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   --init：建基线（首次落地专用）
-   ══════════════════════════════════════════════════════════════════════════ */
-
+   --init：建基线（首次落地专用）——**转交生成器**，本文件不再自备写侧
+   ══════════════════════════════════════════════════════════════════════════
+   G1 起基线多了一栏 `since`，而 since **只能从 git 历史回溯**（不许硬编）⇒ 写侧的活全在
+   `scripts/gen-ui-surface.mjs`（`--backfill` 回填 ＋ 增量打戳 ＋ 随 SDK 包投影两份）。
+   本文件保留 `--init` 只为兼容肌肉记忆：它**转交**给生成器，⛔ 不自己写文件——
+   否则「谁写账本」就有两个实现，两份迟早分叉（正是本仓 E6#110 治过一轮的病）。
+*/
 function init() {
-  let current;
-  try {
-    current = collectUiSurface(ROOT);
-  } catch (err) {
-    console.log(`🔴 面重算失败，基线没建成：${err.message}`);
-    return 2;
+  const r = spawnSync(process.execPath, [resolve(ROOT, "scripts/gen-ui-surface.mjs"), "--backfill"], {
+    cwd: ROOT,
+    stdio: "inherit",
+  });
+  if ((r.status ?? 1) !== 0) {
+    console.log(`🔴 --init 转交生成器失败（退出码 ${r.status}）——基线没建成，见上面的输出。`);
+    return r.status ?? 2;
   }
-  const out = resolve(ROOT, SNAPSHOT_REL);
-  const existed = existsSync(out);
-  writeFileSync(out, serializeSurface(current));
-  console.log(`✅ 已建立基线 ${SNAPSHOT_REL}（${flattenUiSurface(current).length} 条面）${existed ? "（覆盖了原文件）" : "（新建）"}`);
-  console.log(`   🔴 **基线自 E6#121 开始，之前的历史不追认**。`);
-  console.log(`   ⇒ 同笔提交它（\`git add ${SNAPSHOT_REL}\`），之后 tag 里带上它，门禁就从下一条 tag 起比 tag。`);
+  console.log(`\n   🔴 基线自此刻起生效，**之前的历史不追认**（只加不删的比对从这条基线开始）；`);
+  console.log(`      ⚠️ 但 \`since\` 是**回溯出来的**（每个导出名的出生壳版本），与基线无关——⛔ 别手改。`);
+  console.log(`   ⇒ 同笔提交它（\`git add ${SNAPSHOT_REL} ${SDK_LEDGER_REL}\`），之后 tag 里带上它，门禁就从下一条 tag 起比 tag。`);
   return 0;
 }
 

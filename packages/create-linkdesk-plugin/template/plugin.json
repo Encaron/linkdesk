@@ -16,10 +16,13 @@
   "pluginId": "{{pluginName}}",
   "name": "{{displayName}}", // 显示名——标签页 / 插件详情等 UI 出现处
   "version": "0.1.0", // 语义化版本 x.y.z——市场更新比较靠它；+1 时务必同笔补 CHANGELOG.md 的新段
-  // ── 最低壳版本──
-  // 模板消费 @linkdesk/ui（组件由壳池 vendor 单实例供给）⇒ 必须声明 ≥ 重锚号 0.2.13：低于它的旧壳
-  // 没有组件可解析，装上即视图全崩。SDK lint 腿（check-ui-min-app-version）机械把关，漏声明判红。
-  "minAppVersion": "0.2.13",
+  // ── 最低壳版本（minAppVersion）──
+  // 🔴 它是「**你的插件能在多旧的 LinkDesk 上跑**」的下限——不是「你装过 / 测过的壳版本」。
+  // 你从 @linkdesk/ui 每静态导入一个导出，就欠这个导出一个下限：旧壳里没有那个导出时，插件
+  // **整只加载失败**（不是「那个组件不显示」）。这个数不用你查表——工具按你实际导入的名字算：
+  // 改完代码跑一次 `npm run lint`，照它报的值改这一行。
+  // 本模板只静态导入了 HintTip（该导出自 0.2.20 起提供）⇒ 下面这个数就是算出来的地板。
+  "minAppVersion": "0.2.20",
   "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）
   "author": "{{author}}", // 作者名
   // ── 图标——三图模型（完整规则见作者面 06 号《plugin.json 规范》§marketIcon）──

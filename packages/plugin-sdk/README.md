@@ -101,6 +101,14 @@ Create no global.d.ts at all. In `.ts`/`.tsx`, `window.linkdesk.tabs.create({...
 }
 ```
 
+#### `minAppVersion` — the oldest shell your plugin runs on
+
+**One rule**: if your plugin consumes `@linkdesk/ui`, the gate checks `minAppVersion` — `npm run lint` tells you the floor to declare, and `build` / `publish` refuse to produce an artifact while the declaration is below it.
+
+**One why**: the shell supplies those components at runtime (this package externalizes `@linkdesk/ui`), so a **static** import of an export an older shell does not have makes the **whole plugin fail to load** — not just that one component.
+
+**One pointer**: semantics, the "which shell first shipped it" table and the traps → **`docs/03-plugin-authoring/04-distribution-format.md` §minAppVersion** (+ `19-component-cheatsheet.md` §2.1) in the LinkDesk repository.
+
 ### 3. Build — produce the `.linkdesk-plugin` distributable
 
 ```bash

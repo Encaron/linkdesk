@@ -225,9 +225,12 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
   const uiCssImport = runUiCssImportCheck(absRoot);
   /**
    * 🔴 E6#129（2026-09-19）：第十条 check 腿 —— **`@linkdesk/ui` 消费 ⇒ `minAppVersion` 声明门禁**
-   *   （`checks/ui-min-app-version.ts`）。L9 起组件由壳池 vendor 单实例供给、与壳同号锁步（E6#124
-   *   重锚 = 0.2.13）——新 SDK 把 ui external 化，旧壳装了没声明的插件 = 组件无处解析、视图全崩。
-   *   存量 = 0（四只消费仓 #128 已声明 `0.2.13`，其余官方仓不消费 ui）⇒ 纯预防。
+   *   （`checks/ui-min-app-version.ts`）。L9 起组件由壳池 vendor 单实例供给——插件运行时用的是**壳那一版**，
+   *   旧壳上没有的导出名 = ESM 链接期解析失败 ⇒ **整个插件崩掉**。
+   *   🔴「插件最低壳版本门禁」（2026-10-06）起**地板从账本算**（`schemas/ui-surface.json`，
+   *   地板 = max(基线, 静态具名导入的导出名 since)）——**不再是手写常量 0.2.13**：旧常量只说得清
+   *   「vendor 机制从哪版起」，导入新组件却只声明 0.2.13 的插件照样绿（本格事故形态）。
+   *   存量 = 0（四只消费仓 #128 已声明，其余官方仓不消费 ui）⇒ 纯预防。
    *   ⚠️ 同 `check-ui-css-import`：**没有 disable 豁免出口**——「知情地把旧壳用户放到无供给的 ui 上」
    *      是语义错误不是合法偏离。⚠️ 刻意独立成腿不并入 ui-css-import：判据物是**声明面**
    *      （plugin.json 的 minAppVersion），那边是 import specifier，独立统计/独立收紧。

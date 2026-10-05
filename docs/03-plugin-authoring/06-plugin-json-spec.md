@@ -244,7 +244,7 @@ Multi-theme package:
 | `suggests` | `array` | Optionally related plugins `[{ plugin: string, reason: string }]` |
 | `requires` | `string[]` | Plugin-level activation dependencies — declared by pluginId; at load time dependencies are loaded before this plugin. No version constraints. See "The `requires` field in depth" below |
 | `screenshots` | `string[]` | Array of screenshot URLs (enabled in Phase 5+) |
-| `minAppVersion` | `string` | Minimum app version requirement |
+| `minAppVersion` | `string` | Minimum app version requirement — **an older shell refuses to load the whole plugin**; gated when you consume `@linkdesk/ui`, see "The `minAppVersion` field in depth" below |
 | `docs` | `string` | Bundled documentation path (for resource plugins) |
 | `cardDocMap` | `object` | Card ID → documentation anchor mapping |
 | `i18n` | `object` | Plugin-bundled translations `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }` — key = the plugin UI's source text (the author's native language is recommended). It lives under `contributes.i18n`, not at the top level. 🔴 **Text your plugin declares must be translated in your own repo** (whoever declares it translates it — see `03 §3.9`) |
@@ -258,6 +258,21 @@ The description and the changelog **are file-based** — `README.md` / `CHANGELO
 These two fields did exist during early development, but they **never had a reader** (readers read files inside the package by **fixed file name** and never look at any declared field), so they **were removed on 2026-09-11**.
 
 > **Writing them into `plugin.json` has no effect; they are simply ignored** (the top level uses lenient validation, so writing them raises no error — which makes them a lie). **If you copied these two fields from an old tutorial or an old commit → delete them and switch to files.**
+
+### The `minAppVersion` field in depth
+
+**Semantics**: the **oldest app version your plugin runs on**. Below it the loader **refuses to load the whole plugin** (toast "requires app version ≥X" + `markLoadFailed`) — the user sees a **plugin that does not work**, not "one feature missing". ⇒ **too low is far more dangerous than too high**.
+
+**How you set it**: **not the shell you tested on, the things you actually use**. Shared components are served by the shell, and "which shell first shipped this export" is a fact (that is [the table in 19 §2.1](19-component-cheatsheet.md), generated from the shell repo's ledger); take the **maximum** `since` over the exports you **import statically** and that is your floor. **You never compute it yourself** — the tooling does:
+
+**This is gated** (leg `check-ui-min-app-version`, shipped inside `@linkdesk/plugin-sdk`):
+
+- `npm run lint` prints the number to use (⚠️ WARN-level, **never fails** — it tells you, it does not stop you); `npm run verify` turns your CI red; `build` / `publish` block **before writing the artifact**.
+- The rule: declared ≥ floor (floor = baseline ∪ max `since` over your imported names); importing a name that is not in the ledger ⇒ red (a typo or a private API is not a promised export surface).
+- ⛔ **No disable exit** (a disable comment has no effect) — "knowingly putting older-shell users on a shell that lacks that export" is a semantic error, not a legitimate deviation.
+- A plugin that does not consume `@linkdesk/ui` is out of scope for this leg (`minAppVersion` itself is always optional; how to set it when you only use newer shell commands / IPC is your judgement).
+
+Full semantics, the three traps (a static import has no partial downgrade / the default `dev` cannot show it / `dev --real` is one-directional) and how to read the error: [04-distribution-format §minAppVersion](04-distribution-format.md).
 
 ### The `requires` field in depth
 

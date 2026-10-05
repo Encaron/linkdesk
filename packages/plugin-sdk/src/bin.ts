@@ -18,6 +18,7 @@ import { runPluginDev } from "./dev-server.js";
 import { runPluginDevReal } from "./dev-real.js";
 import { runPluginPublish } from "./publish.js";
 import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
+import { runUiMinAppVersionCheck } from "./eslint/checks/ui-min-app-version.js";
 import { importIconTheme, renderImportReport } from "./import-icon-theme.js";
 
 const VITE_CONFIG_FILES = [
@@ -38,11 +39,14 @@ const USAGE = `linkdesk-plugin-sdk <command>
               → CDP reload「LinkDesk Pool」（LinkDesk 须以 --remote-debugging-port=9222 启动）。
               真 IPC/串口/LSP 类插件的秒级真机调试（壳零新代码；LINKDESK_USER_PLUGINS_DIR /
               LINKDESK_CDP_PORT 可覆盖）
-  build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）
+  build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）。
+              产包前先核对 minAppVersion 声明：用了旧壳没有的 @linkdesk/ui 导出却没抬声明 ⇒
+              不出包（旧壳上插件**整只加载失败**，不是少个组件）
   pack        纯数据插件（主题/语言/图标集——无 entry、无可编译表面）的打包通道（E6#98c）：
               打包目录整树（plugin.json 在顶）→ <pluginId>.linkdesk-plugin。排除 node_modules/dist/
               package.json/隐藏项。--out <path> 可指定输出文件（缺省 = 插件根 <pluginId>.linkdesk-plugin）
   publish     一键发布（E6#26）——自动链路：建 GitHub Release → 上传 .linkdesk-plugin → 更新工程
+              产包前同样核对 minAppVersion 声明（判据同 build，见上）
               origin 仓库根 marketplace.json（多市场源模型）。发前预览确认；--yes 跳过（CI）；
               --dry-run 只预览不碰网络；--force-build 发布前先跑本 SDK 的 build（AI#51 逃逸口——
               publish 复用 dist 现成分发件，资产版本/新鲜度源头断言拦 stale，重 build 即过）。
@@ -68,8 +72,36 @@ async function cmdLint(root: string): Promise<number> {
   return report.eslintRows.some((r) => r.severity === 2) ? 1 : 0;
 }
 
+/**
+ * 🔴 产包前的**声明核对**（「插件最低壳版本门禁」G2 在插件仓这一侧的接线，2026-10-06）。
+ *
+ * 为什么落在这里、而不只靠 `lint`：`lint` 刻意是 **WARN 级、永不 fail**（三档制——作者本地不被拦，
+ * 知情绕行靠 eslint-disable），而 `build` / `publish` 是**产出分发件**的动作：声明不诚实
+ * （用了旧壳没有的导出，却声明一个装得下的旧版本）的包一旦产出，装到旧壳上就是**整只插件加载
+ * 失败**，而且现场没有任何提示——正是本格要治的那件事。
+ *   判据本体 = lint 的第十条腿（`runUiMinAppVersionCheck`），⛔ 这里不另算一份地板（单一算点，
+ *   见案卷 D2／E6#117）。作者面说明：`04-插件分发格式.md §minAppVersion`。
+ * 返回 null = 过关；返回字符串 = 该打印并中止的红。
+ */
+function uiDeclarationRed(root: string): string | null {
+  const rows = runUiMinAppVersionCheck(root);
+  if (rows.length === 0) return null;
+  return [
+    "❌ minAppVersion 声明核对未过——插件用到的 @linkdesk/ui 导出，超出声明的旧壳范围：",
+    ...rows.map((r) => `   ${r.file}:${r.line}  ${r.message}`),
+    "   修法：把 plugin.json 的 minAppVersion 抬到报错里的地板值（或更高），或换掉那个导出。",
+    "   为什么必须拦在产包前：旧壳上没有这个导出时，插件**整只加载失败**（不是「那个组件不显示」）。",
+  ].join("\n");
+}
+
 async function cmdBuild(): Promise<number> {
   const root = process.cwd();
+  // 先核对再构建：声明不诚实的包不该被产出（⛔ 不是构建完再拦——那已经白烧了一轮构建）
+  const red = uiDeclarationRed(root);
+  if (red) {
+    console.error(red);
+    return 1;
+  }
   const hasConfig = VITE_CONFIG_FILES.some((f) => existsSync(join(root, f)));
   if (hasConfig) {
     await build(); // 作者自定义 vite.config.*（通常就是 defineLinkdeskPluginConfig()）
@@ -183,6 +215,13 @@ async function main(): Promise<void> {
       const unknown = flags.filter((a) => a !== "--yes" && a !== "--dry-run" && a !== "--force-build");
       if (unknown.length > 0 || rest.some((a) => !a.startsWith("-"))) {
         console.error(USAGE);
+        code = 1;
+        break;
+      }
+      // 产包前同一道声明核对（⛔ 判据同 build，见 uiDeclarationRed——不是第二份实现）
+      const red = uiDeclarationRed(process.cwd());
+      if (red) {
+        console.error(red);
         code = 1;
         break;
       }

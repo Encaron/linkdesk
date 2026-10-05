@@ -102,10 +102,26 @@ Wording discipline (hard constraint 11): don't frame it as two categories "built
 
 ### minAppVersion / requires / permissions
 
-All three are declared in the schema (see [03-contributes](03-contributes-spec.md)) and none is enforced at install time—their semantics align with [02 Lifecycle §9](02-plugin-lifecycle.md):
+All three are declared in the schema (see [03-contributes](03-contributes-spec.md)) and none is enforced at install time—their semantics align with [02 Lifecycle §9](02-plugin-lifecycle.md).
 
-- `minAppVersion` — checked at load time (not satisfied → toast + skip)
-- **Mechanical gate (SDK lint)**: consuming `@linkdesk/ui` at runtime ⇒ `plugin.json` must declare `minAppVersion` ≥ `0.2.13` (the UI re-anchor version — vendor supply of shared components exists only from that shell onward; `import type` is exempt as compile-time-erased). Enforced by `linkdesk-plugin-sdk lint` (`check-ui-min-app-version`), no disable exit
+#### minAppVersion — **the oldest app version your plugin runs on**
+
+Below it the **loader refuses to load you** (toast "requires app version ≥X" + `markLoadFailed`). 🔴 What the user gets is **the whole plugin unusable**, not "one feature missing" — so **too low is far more dangerous than too high**.
+
+**How you set it: not the shell you tested on, the things you actually use.**
+
+- Shared components are **served by the shell** (only the shell's copy exists at runtime, see [19 §2](19-component-cheatsheet.md)); "which shell first shipped this export" is a **fact** — that is exactly [the table in 19 §2.1](19-component-cheatsheet.md) (generated from the shell repo's export-surface ledger, ⛔ not hand-written).
+- You **imported** an export statically ⇒ you need at least the shell that first had it. Take the **maximum** `since` over all imported names — that is your floor.
+- **You never compute it yourself**: `@linkdesk/plugin-sdk` does. `npm run lint` prints the number to use; `npm run verify` turns CI red; `build` / `publish` block **before writing a distribution artifact** (⛔ a dishonest declaration should never be packaged). ⚠️ `lint` is **WARN-level and never fails** — it tells you, it does not stop you; do not read "lint ran clean" as "the declaration is right".
+
+**Three things that catch people out:**
+
+- 🔴 **A static `import` has no partial downgrade.** Importing an export that an older shell lacks at the top level means **the whole plugin fails to link** (not "that feature does not appear"). If you want users on older shells to keep the rest of your plugin, switch that one to a **dynamic `import()`** or a **runtime guard** — ⚠️ **that is your choice, not a requirement**: when to load is your call, the shell does not make it for you and the gate will not fail you for it.
+- 🔴 **The default `dev` cannot show you this class of problem.** The default `dev` = **mocked host + the `@latest` ui from your `node_modules`** — every component is there and renders fine, so everything stays green. **To expose it you must either `dev --real` against a real shell or install the package into a real shell.**
+- 🔴 **`dev --real` is one-directional**: it answers "**does this run on this shell**", **not** "**what is the oldest shell I can run on**". For the floor, read the gate output above.
+
+#### requires / permissions
+
 - `requires` — runtime dependency orchestration applies (missing dependency → suspend as PENDING + cycle fail-loud + cascading uninstall in reverse topological order, see [02 §4](02-plugin-lifecycle.md))
 - **Auto-install at install time (shell-side, opt-in via the request)**: when the install request carries a catalog source URL (the marketplace passes the listing's source), missing `requires` dependencies are installed automatically **inside the same install job** — inline and recursive, no second concurrency slot; a failing dependency fails the parent job (naming the dependency) and rolls back the parent's extracted files so a retry starts clean. Already-installed dependencies are skipped; disabled ones are never auto-enabled. Declaring `requires` is all an author does — no shell changes needed
 - `permissions` — declaring them informs the user; the authorization model is still pending

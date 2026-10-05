@@ -36,6 +36,14 @@
  *   · 🔴 其中 **`plugin-css-prefix-audit.mjs` 是「故意不接线」**：它要 SDK `dist/`，而 `dist/` 是
  *     `.gitignore` 的 ⇒ 接进链会让**干净检出当场红**。这是记忆 `gate-selftest-must-be-wired` 的
  *     **判据内例外**（真门禁 = 随包 SDK 单测，已随 vitest 挂在 check 里）。⛔ **别把它算成「无自测门禁」**。
+ *   · 🔴 **`packages/plugin-sdk/**` 里的判据同样不在域内**（域的步长是 `scripts/check-*.mjs` 文件名）。
+ *     它们**不是漏扫**：随包 lint 腿（`src/eslint/checks/*.ts`）的自测都在同目录 `*.test.ts`，
+ *     由 check 链**末步 `vitest run`** 全量跑（`vitest.config.ts` 的 include 覆盖 `packages/` 下任意层的 `*.test.ts`）。
+ *     🔴 本段注释⛔ 不要写成含双星的 glob——双星后紧跟斜杠会在块注释里**提前收尾**（今天真踩了一次：门禁当场语法错）。
+ *     ⇒ **「有自测 ＋ 已接线」这两件事在 SDK 那侧同样成立**，只是宿主不是 `scripts/check-*.mjs`。
+ *     ⛔ 别为它们在本域开豁免条目（那会把「域」这个概念搅浑）——它们**压根不在域里**，压根不需要豁免。
+ *     例：`ui-min-app-version.test.ts`（「插件最低壳版本门禁」G2 的地板判据，22 例：地板公式纯函数 ＋
+ *     四形态消费口径 ＋ 收名口径 ＋ 真账本能读到）。
  *
  * ── 自洽 ──
  *   本门禁自己也有 `--self-test` 且被链接线，自测里含「把某道自测步从链里删掉 ⇒ 红」与

@@ -18,10 +18,12 @@ import {
   SCRATCH_ROOT,
   TEMPLATE_DIR,
   checkGitBehavior,
+  checkMinAppVersionFloor,
   checkSetupPointer,
   failures,
   generate,
   getPrefixCheck,
+  getUiFloorApi,
   scanInternalSymbols,
 } from "./check-scaffold.mjs";
 
@@ -152,6 +154,97 @@ function setupPointerSelfTestCases() {
 }
 
 /**
+ * 断言 13 的负控（**真变异**，照断言 11 的先例——只动生成物、不碰仓内模板）：
+ *
+ *   ① 正控：真跑 CLI 出来的工程 ⇒ `minAppVersion` **正好等于**按它自己导入算出的地板（0 问题）
+ *   ② 负控 A：把生成物的 `minAppVersion` 改回一个**旧号**（本格事故的形态：抄上一个数）⇒ 必须红
+ *   ③ 负控 B：把生成物的导入名换成一个**更晚才有**的导出（声明不动）⇒ 必须红，且报出新的地板
+ *      —— ②③ 一起证明这条断言**不是恒真的**、也不是拿常量判的（地板跟着账本走）
+ *   ④ 还原：两个文件写回原字节 ⇒ 判据回绿，且 sha256 与变异前**逐字节相同**
+ */
+function floorSelfTestCases() {
+  const out = [];
+  const push = (file, ok, n, why, first) => out.push({ file, ok, n, why, ...(first ? { first } : {}) });
+
+  const genDir = generate(); // 真跑 CLI（不模拟）
+  const api = getUiFloorApi();
+  if (!genDir || !api) {
+    push(
+      "断言 13（负控）",
+      false,
+      failures.length,
+      "真生成 / 判据加载失败——断言 13 无从验证（原因见上）",
+      failures.splice(0).join("；"),
+    );
+    return out;
+  }
+
+  const manifestPath = join(genDir, "plugin.json");
+  const srcPath = join(genDir, "src", "index.tsx");
+  const originals = { manifest: readFileSync(manifestPath, "utf8"), src: readFileSync(srcPath, "utf8") };
+  const sha = (s) => createHash("sha256").update(s, "utf8").digest("hex");
+
+  // ① 正控：真生成物 —— 声明值必须 == 算出来的地板（不是「≥ 就行」：抄高也会被拦）
+  const clean = checkMinAppVersionFloor(genDir, api);
+  push(
+    "断言 13 正控（真生成物）",
+    clean.problems.length === 0 && clean.declared !== null && clean.declared === clean.floor,
+    clean.problems.length,
+    `真跑 CLI 出来的工程：minAppVersion 必须 == 按模板自身导入算出的地板（实得 ${clean.declared} / 地板 ${clean.floor}）`,
+    clean.problems[0],
+  );
+
+  // ② 负控 A：声明改回旧号 ⇒ 必须红（报点里要有真正的那个地板）
+  const oldDeclared = originals.manifest.replace(/("minAppVersion"\s*:\s*")[^"]*(")/, "$10.2.13$2");
+  const mutatedDeclare = oldDeclared !== originals.manifest;
+  writeFileSync(manifestPath, oldDeclared);
+  const badDeclare = checkMinAppVersionFloor(genDir, api);
+  const gotFloor = badDeclare.problems.some((p) => p.includes(`地板是 ${clean.floor}`));
+  push(
+    "断言 13 负控 A（声明抄成旧号 0.2.13）",
+    mutatedDeclare && gotFloor,
+    badDeclare.problems.length,
+    `把 minAppVersion 抄成一个旧号 ⇒ 必须红，且报出真地板 ${clean.floor}`,
+    mutatedDeclare
+      ? `红了 ${badDeclare.problems.length} 条${gotFloor ? "" : `，但没报「地板是 ${clean.floor}」：${badDeclare.problems.join("；")}`}`
+      : "变异没生效——生成物 plugin.json 里找不到 minAppVersion（模板改形了？）",
+  );
+  writeFileSync(manifestPath, originals.manifest); // 先还原声明，让 ③ 只考验导入轴
+
+  // ③ 负控 B：导入名换成一个更晚才有的导出（声明不动）⇒ 地板必须跟着账本变、判据必须红
+  const swapped = originals.src.replace(/(import\s*\{)[^}]*(\}\s*from\s*"@linkdesk\/ui")/, "$1 PluginCard $2");
+  const mutatedImport = swapped !== originals.src;
+  writeFileSync(srcPath, swapped);
+  const badImport = checkMinAppVersionFloor(genDir, api);
+  const movedFloor = badImport.floor !== clean.floor;
+  push(
+    "断言 13 负控 B（换成一个更晚的导出 PluginCard）",
+    mutatedImport && movedFloor && badImport.problems.length > 0,
+    badImport.problems.length,
+    `换掉导入名（声明不动）⇒ 地板必须从 ${clean.floor} 抬到 ${badImport.floor} 并判红——证明地板跟着账本走、不是常量`,
+    mutatedImport
+      ? `实得地板 ${badImport.floor}（原 ${clean.floor}），红了 ${badImport.problems.length} 条`
+      : "变异没生效——生成物 src/index.tsx 里找不到对 @linkdesk/ui 的具名导入（模板改形了？同笔改这里）",
+  );
+
+  // ④ 还原：逐字节 + 判据回绿
+  writeFileSync(srcPath, originals.src);
+  const byteIdentical =
+    sha(readFileSync(manifestPath, "utf8")) === sha(originals.manifest) &&
+    sha(readFileSync(srcPath, "utf8")) === sha(originals.src);
+  const again = checkMinAppVersionFloor(genDir, api);
+  push(
+    "断言 13 还原（写回原字节）",
+    byteIdentical && again.problems.length === 0,
+    again.problems.length,
+    "两个文件还原后判据回绿，且 sha256 与变异前**逐字节相同**",
+    byteIdentical ? `还原后仍有 ${again.problems.length} 条问题` : "还原后 sha256 与原始不同",
+  );
+
+  return out;
+}
+
+/**
  * `--self-test`：**负控**——把断言 9 拿去喂两个「坏 CLI」，证明它不是恒真的。
  *
  *   桩 A「从不建仓」（= 7.6 之前的老行为）⇒ 情形① 必须红
@@ -228,6 +321,9 @@ if (!args.includes("--no-git")) {
   // 断言 12 的负控：真模板必须过；把 mock 体抄回来必须红（三条判据全中）
   cases.push(...setupPointerSelfTestCases());
 
+  // 断言 13 的负控：真生成物地板齐平 → 声明抄旧号必红 → 换更晚的导出地板跟着变 → 还原逐字节
+  cases.push(...floorSelfTestCases());
+
   const failed = cases.filter((c) => !c.ok);
   for (const c of cases) {
     console.log(`  ${c.ok ? "✔" : "❌"} ${c.file}：${c.why}（判据红了 ${c.n} 条）`);
@@ -248,7 +344,8 @@ if (!args.includes("--no-git")) {
   console.log(
     `\ncheck-scaffold self-test ✔️ ${cases.length}/${cases.length} 例全过` +
       `（建仓两条相反路径 + 内部符号脏/净两样本 + 断言 11 的真变异：改回裸类名必红、还原逐字节相同` +
-      ` + 断言 12 指针形态：真模板过、把 mock 体抄回来必红）`,
+      ` + 断言 12 指针形态：真模板过、把 mock 体抄回来必红` +
+      ` + 断言 13 地板：真生成物齐平、声明抄旧号必红、换更晚的导出地板跟着账本抬）`,
   );
   return 0;
 }

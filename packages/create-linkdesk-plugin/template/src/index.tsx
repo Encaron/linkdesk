@@ -14,10 +14,16 @@
  *
  * 命令：本插件自带一个能跑的命令样板（src/commands.ts）——**顶层**调用注册（命令 handler
  * 要能无视图执行，顶层副作用才是唯一注册时机）；声明在 plugin.json 的 contributes.commands[]。
+ *
+ * 🔴 共享件来自 `@linkdesk/ui`（壳在运行时供给那**唯一一份**，见 READMEs「共享的东西不写在这里」）：
+ * 本文件从它**静态具名导入**了 `HintTip`。你每多导入一个导出，`plugin.json` 的 `minAppVersion`
+ * 下限就由工具重算一次——**旧壳里没有这个导出时，插件会整只加载失败**（不是「那个组件不显示」）。
+ * ⇒ 改完代码跑 `npm run lint` 拿新值，别照抄这里的数字。
  */
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { HintTip } from "@linkdesk/ui";
 import { registerPluginCommands } from "./commands";
 import "./index.css";
 
@@ -51,9 +57,13 @@ export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string
       <p className="{{pluginName}}-starter__hint">
         <code>src/commands.ts</code> {t("里有一条能跑的命令样板——按钮、命令面板、AI 调的是同一条。")}
       </p>
-      <button className="{{pluginName}}-starter__button" onClick={callHello}>
-        {t("调一次命令")}
-      </button>
+      {/* HintTip 是共享件的样板用法：它只往你给的这一个子元素上挂属性（提示 + 快捷键），
+          不包一层 DOM、不动布局——共享件应当这样融入你的界面，而不是重写一份。 */}
+      <HintTip command="{{pluginName}}.hello">
+        <button className="{{pluginName}}-starter__button" onClick={callHello}>
+          {t("调一次命令")}
+        </button>
+      </HintTip>
       {reply && (
         <p className="{{pluginName}}-starter__reply" role="status">
           {reply}

@@ -40,6 +40,12 @@
  *   （`@linkdesk/plugin-sdk/vitest-setup`），模板这份只该是**一行指针**——本断言把「收敛」钉住：
  *   三条判据（含 subpath / 无 mock 标志串 / 行数 ≤ 5），负控见 `--self-test`。
  *
+ * 🔴 **「插件最低壳版本门禁」G3（2026-10-06）新增断言 13：生成物的 `minAppVersion` = 算出来的地板**。
+ *   模板默认值靠人抄 ⇒ 必然出现「插件早跑了新壳、模板还留着旧号」——作者照抄旧号，装到旧壳上
+ *   **整只加载失败**（不是少个组件）。⇒ 本断言判**相等**（抄低会崩、抄高白丢老壳用户，两面都拦）。
+ *   判据同样**不在这里重写**：调 SDK `ui-min-app-version` 腿的同一批导出（`loadUiSurfaceLedger` /
+ *   `collectUiImportNames` / `computeUiFloor` / `runUiMinAppVersionCheck`）——同断言 11 的理由。
+ *
  * 🔴 **闸 3（规则不许腐烂）的关键设计**：期望是**契约**，必须**显式写死**；从模板现场读 = 断言恒真 = 假门禁
  * （这正是 `check-file-size.mjs` 被关掉的同类错误）。**契约要显式，实现要现场读。**
  * 唯一的例外是「解析规则」这类**别人的实现**（CHANGELOG 切段正则 / 占位符 values 集合）——
@@ -125,10 +131,12 @@ const PLACEHOLDER_SCAN_EXEMPT = /^\.github\//;
 export const failures = [];
 const fail = (msg, hint) => failures.push(hint ? `${msg}\n     ↳ ${hint}` : msg);
 
-/* ── 断言 11 的判据来源：SDK 的 dist（**同一条腿的同一个函数**，不手抄第二份） ── */
+/* ── 断言 11 / 13 的判据来源：SDK 的 dist（**同一条腿的同一个函数**，不手抄第二份） ── */
 
 const SDK_DIR = join(ROOT, "packages", "plugin-sdk");
 const SDK_PREFIX_MODULE = join(SDK_DIR, "dist", "eslint", "checks", "plugin-prefix.js");
+/** 断言 13 的判据模块——`minAppVersion` 声明核对那条腿（与作者跑 `lint` / `build` 是**同一个函数**） */
+const SDK_UI_FLOOR_MODULE = join(SDK_DIR, "dist", "eslint", "checks", "ui-min-app-version.js");
 const SDK_SRC_DIR = join(SDK_DIR, "src");
 
 /** 递归求最新改动时间（空目录 → 0），用来判 dist 是否落后于源码 */
@@ -142,17 +150,16 @@ function newestMtime(dir) {
 }
 
 /**
- * 取断言 11 的判据函数（懒加载；dist 缺失或落后于 `src/**` 时**先构建**）。
- * 返回 `null` = 拿不到判据（原因已记进 `failures` ⇒ 门禁红，**绝不静默放过**）。
+ * 确保 SDK 的 dist 新鲜（断言 11 / 13 都要它）：`samplePath` 缺失或落后于 `src/**` ⇒ **先构建一次**。
+ * 返回 `false` = dist 不可用（已记 `failures` ⇒ 门禁红，**绝不静默放过**）。
+ * 一次运行只构建一次——多道断言共用它，别对每道各建一遍。
  */
-let prefixCheckFn; // undefined = 尚未尝试；null = 试过且失败
-export function getPrefixCheck() {
-  if (prefixCheckFn !== undefined) return prefixCheckFn;
-  prefixCheckFn = null;
-
+let sdkDistFresh = false;
+function ensureSdkDist(samplePath) {
+  if (sdkDistFresh) return true;
   const stale =
-    !existsSync(SDK_PREFIX_MODULE) ||
-    (existsSync(SDK_SRC_DIR) && newestMtime(SDK_SRC_DIR) > statSync(SDK_PREFIX_MODULE).mtimeMs);
+    !existsSync(samplePath) ||
+    (existsSync(SDK_SRC_DIR) && newestMtime(SDK_SRC_DIR) > statSync(samplePath).mtimeMs);
   if (stale) {
     // Windows 上 `npm` 只能经 shell 启动（`npm.cmd` 直启在 Git Bash 下 EINVAL，同 assertPublishFidelity）。
     // 🔴 用**整条命令串**而不是「命令 + 参数数组」：Node 的 DEP0190 只对后者告警（参数不转义、只拼接），
@@ -160,13 +167,26 @@ export function getPrefixCheck() {
     const r = spawnSync(`npm run --prefix "${SDK_DIR}" build`, { cwd: ROOT, encoding: "utf8", shell: true });
     if (r.status !== 0) {
       fail(
-        "构建 @linkdesk/plugin-sdk 的 dist 失败——断言 11 没有判据可用（**拿不到判据就报红，不许静默放过**）",
+        "构建 @linkdesk/plugin-sdk 的 dist 失败——断言 11 / 13 没有判据可用（**拿不到判据就报红，不许静默放过**）",
         (r.stderr || r.stdout || "").trim().split("\n").slice(0, 5).join("\n     ") +
           "\n     修好 SDK 的 tsc 构建，或手工 `npm run --prefix packages/plugin-sdk build` 看完整输出",
       );
-      return null;
+      return false;
     }
   }
+  sdkDistFresh = true;
+  return true;
+}
+
+/**
+ * 取断言 11 的判据函数（懒加载；dist 缺失或落后于 `src/**` 时**先构建**）。
+ * 返回 `null` = 拿不到判据（原因已记进 `failures` ⇒ 门禁红，**绝不静默放过**）。
+ */
+let prefixCheckFn; // undefined = 尚未尝试；null = 试过且失败
+export function getPrefixCheck() {
+  if (prefixCheckFn !== undefined) return prefixCheckFn;
+  prefixCheckFn = null;
+  if (!ensureSdkDist(SDK_PREFIX_MODULE)) return null;
 
   try {
     // 同步 require：本仓 engines 是 Node ≥24，可直接 require ESM。
@@ -189,6 +209,40 @@ export function getPrefixCheck() {
     );
   }
   return prefixCheckFn;
+}
+
+/** 断言 13 要用的四处导出——同一个模块，缺一即 dist 与源码不同步 */
+const UI_FLOOR_EXPORTS = ["loadUiSurfaceLedger", "computeUiFloor", "collectUiImportNames", "runUiMinAppVersionCheck"];
+
+/**
+ * 取断言 13 的判据（懒加载，dist 新鲜度判据同 `getPrefixCheck`）。`null` = 拿不到（已记 `failures`）。
+ * ⛔ 刻意**不在本脚本另抄一份地板公式**——判据住在 SDK 那条腿里（单一算点，改判据只改一处）。
+ */
+let uiFloorApi; // undefined = 尚未尝试；null = 试过且失败
+export function getUiFloorApi() {
+  if (uiFloorApi !== undefined) return uiFloorApi;
+  uiFloorApi = null;
+  if (!ensureSdkDist(SDK_UI_FLOOR_MODULE)) return null;
+
+  try {
+    const req = createRequire(import.meta.url);
+    const mod = req(SDK_UI_FLOOR_MODULE);
+    const missing = UI_FLOOR_EXPORTS.filter((k) => typeof mod[k] !== "function");
+    if (missing.length > 0) {
+      fail(
+        `SDK dist 的 ui-min-app-version 少了导出 ${missing.join("、")}（${SDK_UI_FLOOR_MODULE}）——dist 与源码不同步`,
+        "先 `npm run --prefix packages/plugin-sdk build`；别在这里补一条自己的判据",
+      );
+      return null;
+    }
+    uiFloorApi = mod;
+  } catch (e) {
+    fail(
+      `加载断言 13 的判据失败（${SDK_UI_FLOOR_MODULE}）：${e instanceof Error ? e.message : String(e)}`,
+      "先 `npm run --prefix packages/plugin-sdk build`；本断言刻意不自带判据——那是 ui-min-app-version 腿的同一处实现",
+    );
+  }
+  return uiFloorApi;
 }
 
 // ── 现场读「别人的实现」（不手抄第二份——闸 3） ──
@@ -281,6 +335,66 @@ export function checkSetupPointer(text) {
     out.push(`行数 ${lines} > ${SETUP_POINTER_MAX_LINES}——指针不该长成一个文件（注释也算行）`);
   }
   return out;
+}
+
+/** 断言 13 的判据本体（纯函数——`--self-test` 拿它做负控，不重复实现）：
+ *  返回 `{ problems, declared, floor, imports, red }`，`problems` 空 = 过。
+ *
+ *  守的是哪句话（案卷 02 §四）：**模板的 `minAppVersion` 默认值 = 按模板自己导入的 `@linkdesk/ui`
+ *  导出算出来的地板**——而**不是**一个抄下来的旧号（「顺手留着上一个数」正是本格事故的形态：
+ *  插件跑了新壳、旧壳用户装上即整只崩）。所以这里判**相等**，不是「≥ 就行」：
+ *    · 抄低了 ⇒ 旧壳上装得上、加载即崩（真事故）；
+ *    · 抄高了 ⇒ 白白放弃老壳用户（与「默认值 = 模板自身导入的地板」同一条纪律的两面）。
+ *  地板与判定都取自 SDK 的 `ui-min-app-version` 腿（`api` 那四个导出）——⛔ 本脚本不算第二份。
+ */
+export function checkMinAppVersionFloor(dir, api) {
+  const problems = [];
+  const ledger = api.loadUiSurfaceLedger();
+  if (!ledger) {
+    return {
+      problems: ["读不到 SDK 随包账本（packages/plugin-sdk/schemas/ui-surface.json）——判据没有依据"],
+      declared: null,
+      floor: null,
+      imports: [],
+      red: 0,
+    };
+  }
+
+  const manifestPath = join(dir, "plugin.json");
+  let declared = null;
+  if (!existsSync(manifestPath)) {
+    problems.push("生成物没有 plugin.json——没得核对");
+  } else {
+    const errors = [];
+    const parsed = parseJsonc(readFileSync(manifestPath, "utf8"), errors, { allowTrailingComma: true });
+    if (errors.length > 0) {
+      problems.push(`plugin.json 不是合法 JSONC：${errors.map((e) => printParseErrorCode(e.error)).join("、")}`);
+    } else {
+      declared = typeof parsed?.minAppVersion === "string" ? parsed.minAppVersion : null;
+      if (declared === null) problems.push("plugin.json 未声明 `minAppVersion`（模板必须带一个算出来的默认值）");
+    }
+  }
+
+  const imports = api.collectUiImportNames(dir);
+  const floor = api.computeUiFloor(ledger, imports.map((i) => i.name)); // { floor, baseline, driver, missing }
+  const red = api.runUiMinAppVersionCheck(dir);
+
+  const names = imports.map((i) => i.name).join("、") || "（无）";
+  if (floor.missing.length > 0) {
+    problems.push(`模板导入了账本里没有的导出：${floor.missing.join("、")}——拼错 / 私有 API / 子路径都不是许诺的导出面`);
+  }
+  if (red.length > 0) {
+    problems.push(`生成物过不了那条腿（${red.length} 处）：\n     ${red.map((v) => `${v.file}:${v.line} ${v.message.split("：")[0]}`).join("\n     ")}`);
+  }
+  if (declared !== null && floor.floor !== null && declared !== floor.floor) {
+    const driver = floor.driver ? `${floor.driver.name}（since ${floor.driver.since}）` : `基线（vendor 供给起点那一批）`;
+    problems.push(
+      `minAppVersion = ${declared}，但按模板自身导入算出的地板是 ${floor.floor}` +
+        `（导入 ${names}；顶上去的是 ${driver}）——模板默认值必须是这个地板：` +
+        `抄低了旧壳上加载即崩，抄高了白白放弃老壳用户`,
+    );
+  }
+  return { problems, declared, floor: floor.floor, imports, red: red.length };
 }
 
 function runAssertions(genDir) {
@@ -449,6 +563,21 @@ function runAssertions(genDir) {
         `模板的 ${setupRel} 不是指针形态：\n     ${setupProblems.join("\n     ")}`,
         `共享 mock 的真源是 SDK 的 \`${SETUP_IMPORT_MARKER}\`——模板这份只该是「一两行注释 ＋ 一行 import」；` +
           "插件专属的桩住各仓自己的测试文件里（那条纪律写在模板 AGENTS.md 里）",
+      );
+    }
+  }
+
+  // 断言 13：生成物的 `minAppVersion` == 按模板自身导入算出的地板（判据 = SDK 那条腿，见 checkMinAppVersionFloor）
+  const floorApi = getUiFloorApi();
+  if (floorApi) {
+    const verdict = checkMinAppVersionFloor(genDir, floorApi);
+    if (verdict.problems.length > 0) {
+      fail(
+        `生成物的 minAppVersion 默认值不对（声明 ${verdict.declared ?? "无"} / 地板 ${verdict.floor ?? "无法算"}）：\n     ` +
+          verdict.problems.join("\n     "),
+        "模板的 `plugin.json` 默认值必须是「按模板自身 `@linkdesk/ui` 导入算出来的地板」——" +
+          "改模板导入后同笔改它（作者面说明：《插件分发格式》§minAppVersion / 《组件速查》§2.1）；" +
+          "题面见案卷 02 §四、03 §二 T1",
       );
     }
   }
@@ -655,7 +784,7 @@ async function main() {
     `✅ 脚手架生成物符合契约——${EXPECTED_FILES.length} 个文件 / ${EXPECTED_SCRIPTS.length} 条命令 / ` +
       `pluginId 已声明 / 占位符与 CLI values 齐平 / CHANGELOG 段可切 / i18n 零死 key / npm 打包不丢文件 / ` +
       `建仓三语义（仓外建·仓内不建·--no-git 不建）/ 零内部任务号 / 零裸类名·关键帧（与 check-css-namespace 腿同源）/ ` +
-      `vitest.setup.ts 是一行指针（真源 = SDK 共享测试地基）。`,
+      `vitest.setup.ts 是一行指针（真源 = SDK 共享测试地基）/ minAppVersion = 按模板导入算出的地板。`,
   );
 }
 
