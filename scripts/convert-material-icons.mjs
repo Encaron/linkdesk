@@ -2,9 +2,10 @@
 /**
  * material-icon-theme → LinkDesk 图标主题 mappings 转换脚本（可复用升级）。
  *
- * E5.8#133.6 精简版：只转换「语言生态精选清单」（按生态分类的常用图标），
- * 不再全量搬运——用户拍板（2026-08-28）「太多，用普通精简版，常用图标 .c/.py 等都用上」。
- * 目标 ~80 个 SVG，覆盖日常 90% 场景，git 不堆 1123 个全量。
+ * E5.8#133.6 精简版：只转换「精选清单」（按类分组的常用图标），不再全量搬运——
+ * 用户拍板（2026-08-28）「太多，用普通精简版」；2026-10-05 二轮拍板再扩一档
+ * （原精选偏语言生态，Windows 桌面/嵌入式的 .exe/.docx/压缩包/工程配置一概命中不了）。
+ * 目标 ~270 个 SVG，覆盖日常场景，git 仍不堆上游 1123 个全量。
  *
  * 用法：node scripts/convert-material-icons.mjs <源 material-icons.json> <插件目录>
  * 例：  node scripts/convert-material-icons.mjs \
@@ -51,6 +52,26 @@ const COMMON_EXTENSIONS = [
   "md", "markdown", "txt",
   // 媒体
   "svg", "png", "jpg", "jpeg", "gif", "webp", "ico", "pdf",
+  // ── v1.1.0 扩充（用户拍板 2026-10-05：原来的精选太窄，Windows 桌面/嵌入式日常一堆命中不了）──
+  // 可执行 / 二进制 / 安装包
+  "exe", "msi", "dll", "so", "lib", "a", "o", "obj", "bin", "hex", "wasm",
+  "jar", "class", "apk", "deb", "rpm", "dmg", "iso", "img", "dat", "vmdk", "lock",
+  // 压缩包
+  "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "tgz", "zst", "cab",
+  // Office / 电子书
+  "docx", "doc", "xlsx", "xls", "pptx", "ppt", "odt", "ods", "odp", "rtf", "epub", "key",
+  // 字体
+  "ttf", "otf", "woff", "woff2", "eot",
+  // 图片 / 音视频
+  "bmp", "tiff", "psd", "ai", "fig", "sketch",
+  "mp3", "mp4", "wav", "avi", "mkv", "mov", "flac", "aac", "ogg", "webm", "m4a", "heic", "avif",
+  // 语言扩充（⚠️ 不含 ".v"——material 把 v 归给 V 语言，而嵌入式那边它常是 Verilog，两个解释都成立 ⇒ 不收，宁可回退默认图标）
+  "asm", "s", "sv", "svh", "vhd", "vhdl", "graphql", "gql", "prisma", "proto",
+  "ex", "exs", "erl", "clj", "cljs", "hs", "jl", "nix", "pl", "pm",
+  "hbs", "ejs", "pug", "jade", "twig", "liquid", "astro", "sol", "zig", "nim",
+  "groovy", "gradle", "fs", "fsx", "vb", "vbs", "lisp", "scm", "tcl", "coffee", "styl",
+  // 数据 / 科学计算
+  "ipynb", "sqlite", "sqlite3", "db", "mdb", "parquet", "pkl", "tf", "hcl",
 ];
 
 const COMMON_FILE_NAMES = [
@@ -65,6 +86,20 @@ const COMMON_FILE_NAMES = [
   ".gitignore", ".env.local", ".npmrc", ".editorconfig", ".gitattributes",
   // 文档
   "readme.md", "changelog.md", "license", "license.md",
+  // ── v1.1.0 扩充（同上）──
+  // 工程 / 构建配置
+  "meson.build", "justfile", "gradle.properties", ".clangd",
+  "jest.config.js", "vitest.config.ts", "angular.json", "nuxt.config.js", "svelte.config.js",
+  ".prettierrc", ".eslintrc", ".eslintignore", ".babelrc",
+  ".nvmrc", ".node-version", ".python-version", ".ruby-version",
+  "pnpm-lock.yaml", "yarn.lock", "pipfile", "poetry.lock",
+  "gemfile", "rakefile", ".npmignore", ".yarnrc", ".gitmodules",
+  "jenkinsfile", ".travis.yml", ".bazelrc",
+  ".htaccess", "robots.txt", "favicon.ico",
+  ".env.development", ".env.production",
+  // 文档（无扩展名的 readme/changelog 单独成键）
+  "readme", "changelog", "contributing.md", "todo.md", "authors",
+  "security.md", "code_of_conduct.md", "license.txt",
 ];
 
 const COMMON_FOLDERS = [
@@ -77,6 +112,29 @@ const COMMON_FOLDERS = [
   // 资源 / 结构
   "components", "assets", "public", "lib", "libs", "config", "include", "vendor",
 ];
+
+/* ── 上游归属在本仓语境下不合适时的本地改指（每条都要写清为什么）──
+ * 键是 material 的 fileExtensions 原键，值是上游 iconDefinition key。
+ */
+const EXTENSION_OVERRIDES = {
+  // material 把 .o/.obj 归给 `3d`（那是给 Wavefront 3D 模型用的）——
+  // 在工程/嵌入式语境里它们是编译目标文件，跟着 .a/.lib 走「库/目标文件」才对。
+  o: "lib",
+  obj: "lib",
+};
+
+/* ── 本地自绘图标（上游没有，资产住本仓 icons/material/，不由本脚本拷贝）──
+ * 拷 SVG 的那一步会跳过这些名字；映射仍照常写进 pastel.json。
+ */
+const LOCAL_EXTENSIONS = {
+  // Keil uVision 工程/选项文件——material-icon-theme 与 vscode-icons 两个主流包都没有 Keil 图标
+  // （vscode-icons 那个 file_type_uv 是 Python 的 uv 包管理器，无关）⇒ 本仓自绘 icons/material/uvprojx.svg。
+  uvproj: "uvprojx",
+  uvprojx: "uvprojx",
+  uvopt: "uvprojx",
+  uvoptx: "uvprojx",
+};
+const LOCAL_ICON_FILES = new Set(Object.values(LOCAL_EXTENSIONS).map((n) => `${n}.svg`));
 
 /* ── 1. iconDefinition key → imagePath（相对插件根） ── */
 const theme = JSON.parse(fs.readFileSync(srcJson, "utf8"));
@@ -98,10 +156,10 @@ const defToImage = (key) => {
 };
 
 /* ── 2. 转换映射段（VS Code → LinkDesk，带精选清单过滤） ── */
-const build = (map, keys, keyTransform = (k) => k) => {
+const build = (map, keys, keyTransform = (k) => k, resolve = (k, v) => v) => {
   const out = {};
   for (const k of keys) {
-    const imagePath = defToImage(map?.[k]);
+    const imagePath = defToImage(resolve(k, map?.[k]));
     if (imagePath) out[keyTransform(k)] = { imagePath };
   }
   return out;
@@ -122,13 +180,24 @@ for (const [lkKey, matKey] of DEFAULT_ICON_MAP) {
 }
 
 const mappings = {
+  "$schema": "./node_modules/@linkdesk/plugin-sdk/schemas/icon-theme.schema.json",
   ...defaultIcons,
   // VS Code fileExtensions key 无点（"ts"）→ LinkDesk extensions key 带点（".ts"）
-  extensions: build(theme.fileExtensions, COMMON_EXTENSIONS, (k) => `.${k}`),
+  extensions: build(theme.fileExtensions, COMMON_EXTENSIONS, (k) => `.${k}`, (k, v) => EXTENSION_OVERRIDES[k] ?? v),
   files: build(theme.fileNames, COMMON_FILE_NAMES),
   folders: build(theme.folderNames, COMMON_FOLDERS),
   foldersExpanded: build(theme.folderNamesExpanded, COMMON_FOLDERS),
 };
+
+/* 本地自绘图标补进映射表（资产已在仓里，这里只写映射；缺资产则报错——那是真坏了） */
+for (const [ext, icon] of Object.entries(LOCAL_EXTENSIONS)) {
+  const rel = `icons/material/${icon}.svg`;
+  if (!fs.existsSync(path.join(pluginDir, rel))) {
+    console.error(`✗ 本地图标缺资产：${rel}（映射 ${ext} 引用它，但仓里没有）`);
+    process.exit(1);
+  }
+  mappings.extensions[`.${ext}`] = { imagePath: rel };
+}
 
 /* ── 4. 收集被引用 SVG → 拷贝 ── */
 const matDir = path.join(pluginDir, "icons", "material");
@@ -148,6 +217,7 @@ for (const e of allEntries) {
   const fileName = path.basename(rel);
   if (seen.has(fileName)) continue;
   seen.add(fileName);
+  if (LOCAL_ICON_FILES.has(fileName)) continue; // 本仓自绘资产，不从上游拷也不计缺失
   const src = path.join(srcIconsDir, fileName);
   if (!fs.existsSync(src)) { missing++; continue; }
   fs.copyFileSync(src, path.join(matDir, fileName));
