@@ -24,6 +24,37 @@ Break any of these and your plugin **installs but then breaks** (it can even tak
 
 ---
 
+## Before You Add Anything — Three Placement Questions (shell, shared component, or plugin?)
+
+**What to do**: for every new control / action / utility function, **answer these three questions before you write code** — getting the layer wrong costs you building it twice and then moving it.
+
+```
+Q1 Whose data does it consume?
+     └ Host declarations (plugin list / file-association contribution / settings / theme · icon · keybinding) ⇒ shell or shared component, regardless of how many consumers exist today ⇒ done
+     └ The plugin's own private data ⇒ go to Q2
+Q2 Will it be rendered in ≥2 places / used by other plugins?
+     └ Yes ⇒ an @linkdesk/ui shared component
+     └ No ⇒ plugin-private (only now is private allowed; add a comment saying why it is private)
+Q3 Is it an action (something AI / CLI / another plugin must be able to trigger)?
+     └ Yes ⇒ a shell command + an @linkdesk/plugin-sdk helper (⛔ never a plugin-internal function / event)
+```
+
+**How to know you got it right**: look it up in the table.
+
+| Nature of the capability | Where it belongs | Precedent / counter-example |
+|:--|:--|:--|
+| A view / control consuming host declarations | **Shell or shared component** | ✅ `PluginCard` (the host's plugin list); ❌ the open-with panel (originally lived inside a plugin) |
+| A UI block rendered in ≥2 places | **Shared component** | ✅ `Button`, `PluginCard` |
+| Serves only the plugin's own private data, rendered only by that plugin | **Plugin-private** (comment: "private · reason") | ✅ `BinaryNotice` (presenting a decision belongs to the plugin being backed up) |
+| An action AI / CLI / another plugin must trigger | **Shell command + SDK helper** | ✅ the `workbench.action.*` family |
+| A pure utility function (normalization, parsing) | Shell core or a toolkit (**defined once**) | ✅ `normalizeExt` (⛔ never copy one into a plugin) |
+
+> 🔴 **"Put it in the plugin first, share it once a second consumer shows up" is not an option** — it is the reversed reading this project has abolished (D10 is about *not pre-building shared pieces for needs that do not exist yet*; it says nothing about *which layer an already-needed capability belongs to*).
+> The **presentation** of host declarations (the open-with panel, the settings renderer, plugin cards) always comes from the shell or a shared component ⇒ plugins only **declare contribution points**, they never render someone else's list.
+> Details → [05-ui-conventions](05-ui-conventions.md) (shared components and context menus) + [19-component-cheatsheet](19-component-cheatsheet.md).
+
+---
+
 ## Step 1: Generate the Project Skeleton
 
 **What to do**

@@ -431,7 +431,19 @@ export function expandNamedArgs(
 async function runCommand(commandId: string, args: unknown[], strict: boolean): Promise<unknown> {
   const cmd = _commands.get(commandId);
   if (!cmd) {
-    console.warn(`[CommandRegistry] 命令 "${commandId}" 未注册`);
+    // R3 运行期半条（`docs/…/10-纠正案-共享件转正与归一/05-防复发-机械准入原则.md` §三 R3 配套）：
+    // dev 构建把**空转命令**喊到 `error`——菜单项/键位/命令面板指向不存在的命令时当场在控制台现形。
+    // 为什么运行期还要这一半：R3 的静态面判不干净**动态注册**的壳命令（`Object.entries(映射表)` 循环注册），
+    // 静态面宁可漏报也不假红 ⇒ 漏的那些靠这里在真跑一次时暴露。⛔ 生产一字不变（静默不当噪声——
+    // 存量第三方插件里指向不存在命令的项不该在用户机上刷屏）。
+    if (process.env.NODE_ENV === "development") {
+      console.error(
+        `[CommandRegistry] 空转命令（未注册）："${commandId}" —— 菜单项/键位/命令面板指向了没人认领的命令，`
+          + `点了或按下去不会有任何反应（R3 门禁的运行期半条）`,
+      );
+    } else {
+      console.warn(`[CommandRegistry] 命令 "${commandId}" 未注册`);
+    }
     if (strict) throw new Error(`命令 "${commandId}" 未注册`);
     return undefined;
   }

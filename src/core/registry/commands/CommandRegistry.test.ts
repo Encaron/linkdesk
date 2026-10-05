@@ -187,3 +187,50 @@ describe("CommandRegistry 严格执行出口（M4 AI#32 缺口①）", () => {
     await expect(pLenient).resolves.toBeUndefined();
   });
 });
+
+describe("CommandRegistry 空转命令可见性（R3 半条：dev 喊 error / 生产不变）", () => {
+  const withNodeEnv = async (env: string, run: () => Promise<void>) => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = env;
+    try {
+      await run();
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
+  };
+
+  it("dev 构建：未注册命令 ⇒ console.error 且带命令 id（菜单项/键位指向不存在的命令时当场现形）", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await withNodeEnv("development", async () => {
+      await expect(executeCommand("demo.ghostCommand")).resolves.toBeUndefined();
+    });
+    expect(err).toHaveBeenCalledTimes(1);
+    expect(String(err.mock.calls[0][0])).toContain("demo.ghostCommand");
+    expect(warn).not.toHaveBeenCalled();
+    err.mockRestore();
+    warn.mockRestore();
+  });
+
+  it("生产（非 development）：未注册命令 ⇒ 仍是原来的 warn，⛔ 不新增 error 噪声", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await withNodeEnv("production", async () => {
+      await expect(executeCommand("demo.ghostCommand")).resolves.toBeUndefined();
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain("demo.ghostCommand");
+    expect(err).not.toHaveBeenCalled();
+    err.mockRestore();
+    warn.mockRestore();
+  });
+
+  it("strict 出口不受影响：未注册仍抛（dev 的 error 与抛错两条并存）", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await withNodeEnv("development", async () => {
+      await expect(executeCommandStrict("demo.ghostCommand")).rejects.toThrow("未注册");
+    });
+    expect(err).toHaveBeenCalledTimes(1);
+    err.mockRestore();
+  });
+});

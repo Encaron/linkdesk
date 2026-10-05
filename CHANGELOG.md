@@ -18,6 +18,12 @@
 - `@linkdesk/ui` **0.2.46**（2026-10-05，独立发版——共享 UI 包，软件本体不动）：`OpenWithPicker` 归一为居中模态（组件＋样式），随包导出面不变、类名净减 2 个。
 - `@linkdesk/plugin-sdk` **0.1.83**（2026-10-05，同链独立发版）：随包 `schemas/host-css-names.json`（宿主 CSS 定义集）**减去** `ldk-openwith--centered` 与 `ldk-openwith-scrim--clear` 两个已删类名——作者按清单写样式时不会误判「这名字宿主还认不认」。纯清单删减，不留悬空名。
 - `@linkdesk/contracts` **0.1.41**（2026-10-05，同链独立发版）：`OpenWithRequest.anchor` 加 `@deprecated` 说明（类型面一字未删，纯注释），告知作者该字段已无消费方。
+- `@linkdesk/plugin-docs` **0.1.68**（2026-10-06，独立发版）：作者手册中英新增「加东西之前——落位三问」，即「这东西该住壳、共享件，还是插件？」的 Q1/Q2/Q3 决策链 ＋ 落位判据表——与壳侧判据 A、`CLAUDE.md` 硬约束 28 同源（⛔ 不再让作者先去踩一遍本案的坑）。
+
+### 内部
+
+- **「能力落位」从口头判据变成门禁**（纠正案 第 5.5 波 · 阶段 9）。判据 A（消费宿主声明的控件／动作必须住壳或 `@linkdesk/ui` 共享件）此前只在文档里，本案的 bug 正是它没被机械拦住 ⇒ 新增**六条腿**并全部挂进 `npm run check`（各带 `--self-test`，合计 91 例负控）：`check-no-foreign-command-ids`（跨仓命令 id 硬编码）· `check-host-capability-placement`（宿主声明消费方住错层）· `check-menu-items-executable`（菜单项指向的命令无人认领／恒空转）· `check-duplicate-capability`（同一能力的第二份实现，黄灯只报）· `check-shell-command-constants`（壳常量与 SDK 字面量对账）· `check-shared-components-zero-shell-deps`（共享件反向依赖壳内部模块）。🔴 三条腿按 **pre-4.5 的树**跑红自证（壳域 24 处 ＋ settings 1 处 ＋ editor 1 处跨仓命令 id；`OpenWithPanel.tsx` 消费宿主声明；editor 菜单 7/7 指向无人认领的命令），现行树全绿。制度层同笔落地：`新能力设计流程.md` §十 ＋ `CLAUDE.md` 硬约束 28 ＋ `AGENTS.md` 红线速记 ＋ 作者手册中英「落位三问」。
+- **空转命令在 dev 构建下改报错**（上面第 3 条腿的运行期半条）：`CommandRegistry` 对「被菜单／键位／命令面板引用却没人注册」的命令，此前一律 `console.warn`；现按 `NODE_ENV === "development"` 分叉——dev 下 `console.error` 并点明「指向了没人认领的命令」（**生产分支字面一字不变**）。静态扫描判不干净的**动态注册**命令靠这条在开发期立刻露头；测试 +5 例。
 
 ## v0.2.48（2026-10-05）
 

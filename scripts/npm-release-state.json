@@ -245,8 +245,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.67",
-      "contentHash": "1e259e7edb047bd0b6087b542e5674a17106d3df799734ce77530bf7bca3d0f2",
+      "version": "0.1.68",
+      "contentHash": "9fce3ec81c2fc5f36f823392eacec23ac59b930bc2414509f3d1e78c3ac53bdc",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "aedaf30bbdcec6d7",
@@ -262,7 +262,7 @@
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "2a36f9cb9f4f3ba2",
         "packages/plugin-docs/docs/11-authoring-themes.md": "537fd25311d316d2",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f7cb640e07d9dbd3",
-        "packages/plugin-docs/docs/13-development-guide.md": "9d5bfc94e2cc8621",
+        "packages/plugin-docs/docs/13-development-guide.md": "ee373e7029977b0e",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
         "packages/plugin-docs/docs/15-multi-repo-and-local-workspace.md": "e5d0b55556faf451",
         "packages/plugin-docs/docs/16-naming-conventions.md": "0d7e3c693e2da179",
@@ -287,7 +287,7 @@
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "914ded641389b1f6",
         "packages/plugin-docs/docs/zh/11-主题制作.md": "57a869b1b4443846",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "612f7993c107bf42",
-        "packages/plugin-docs/docs/zh/13-插件开发指南.md": "dc0c9e701c61455f",
+        "packages/plugin-docs/docs/zh/13-插件开发指南.md": "506d9bcffb5da737",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",
         "packages/plugin-docs/docs/zh/15-多仓开发与本地工作区.md": "5f0ac997193aae41",
         "packages/plugin-docs/docs/zh/16-命名规范.md": "dfcf008860f24cbb",
