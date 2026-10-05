@@ -152,8 +152,17 @@ export function linkTargetsInLine(line, inFence = false) {
   );
 }
 
-function scanFile(file) {
-  const found = [];
+/**
+ * **纯扫描：文件 → 该文件的候选链接目标**（`{line, target}`；围栏 / 行内代码 / 外链 / 锚点 /
+ * 绝对路径已按同一套滤网滤掉）。
+ *
+ * 抽出来的理由 = **让别的工具复用同一把尺子**：`scripts/archive-case.mjs`（归档搬件）要按**同一判据**
+ * 找出「本文件里哪些链接指向旧路径」再双解析——⛔ 各自复制一份必然漂移（memory
+ * `two-rulers-one-caliber`：一边在场一边缺席，而没有任何灯会亮）。
+ * ⚠️ 本函数**不判存在性**（那是调用方的活，见 `scanFile`）。
+ */
+export function fileLinkTargets(file) {
+  const out = [];
   const lines = readFileSync(file, "utf8").split(/\r?\n/);
   let fence = null; // 当前围栏标记（``` 或 ~~~），null = 不在代码块内
 
@@ -165,22 +174,27 @@ function scanFile(file) {
       else if (fence === marker) fence = null;
       return; // 围栏行本身不含链接
     }
-
-    // 候选目标（外链/锚点/绝对路径/行内代码/围栏内已滤）→ 逐个解存在性
-    for (const raw of linkTargetsInLine(rawLine, fence !== null)) {
-      const hash = raw.indexOf("#");
-      const pathPart = hash >= 0 ? raw.slice(0, hash) : raw;
-      if (!pathPart) continue; // `foo.md#L1` 剥完剩空 = 本来就是纯锚点
-      let abs;
-      try {
-        abs = resolve(dirname(file), decodeURIComponent(pathPart));
-      } catch {
-        continue; // 非法百分号转义——不是引用，别炸
-      }
-      if (existsSync(abs)) continue;
-      found.push({ file: relPosix(file), line: i + 1, target: raw, resolved: relPosix(abs) });
-    }
+    for (const raw of linkTargetsInLine(rawLine, fence !== null)) out.push({ line: i + 1, target: raw });
   });
+  return out;
+}
+
+function scanFile(file) {
+  const found = [];
+  // 候选目标（外链/锚点/绝对路径/行内代码/围栏内已滤）→ 逐个解存在性
+  for (const { line, target: raw } of fileLinkTargets(file)) {
+    const hash = raw.indexOf("#");
+    const pathPart = hash >= 0 ? raw.slice(0, hash) : raw;
+    if (!pathPart) continue; // `foo.md#L1` 剥完剩空 = 本来就是纯锚点
+    let abs;
+    try {
+      abs = resolve(dirname(file), decodeURIComponent(pathPart));
+    } catch {
+      continue; // 非法百分号转义——不是引用，别炸
+    }
+    if (existsSync(abs)) continue;
+    found.push({ file: relPosix(file), line, target: raw, resolved: relPosix(abs) });
+  }
   return found;
 }
 
@@ -342,4 +356,8 @@ function main() {
   console.log(`✅ 无断链——${head}${excusedNote}${excludeNote}。`);
 }
 
-main();
+// ⚠️ **只在直接运行时执行**——本模块的判据（`linkTargetsInLine` / `fileLinkTargets`）被
+// `scripts/archive-case.mjs` import 复用；不守的话 import 会连带跑一遍全树扫描（还可能
+// `process.exit`），把调用方带沟里。行为与直接运行完全一致（判据本身没动）。
+const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirectRun) main();

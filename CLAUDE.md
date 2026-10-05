@@ -119,6 +119,7 @@ npm run audit:plugin-prefix / audit:plugin-scope / audit:plugin-dead-css / audit
                             # 六条只读尺（E6#113 死 CSS · #153 测试覆盖 · #111 非样式命名空间 …）——只报不拦、⛔ 不接 check 链、
                             #   需插件容器在场、依赖 SDK dist；壳仓命令/设置面改了要走 audit:plugin-scope:regen（读 scripts/host-reserved.json）
 npm run dev:driver          # dev 验收 driver（D0 系列外；⛔ 故意不接 check 链——要活实例）——隔离实例 / LINKDESK_CDP / --selftest / --handshake 全在 scripts/dev/README.md
+node scripts/archive-case.mjs <案名>  # 归档搬件器（干跑 / --apply）：git mv ＋ 夹内外双解析回填 ＋ 清空目录 ＋ 复验 ＋ 台账行草稿；⛔ 不接 check 链——**写盘前自跑 15 例自测**，判据坏即拒跑；规矩见 已落地/00-README.md §归档规矩 7
 npm run check:lockfile-sync # lockfile 同源门禁；升 packages/* 版本后必须重跑 npm install 同笔提交 lock
 npm run ui:build            # 🔴 改了壳共享组件（src/components/shared/**）后必跑——ui 的 dist 是构建产物、dev 轨道解析的就是它，不重建则 dev 里看不到任何变化（机制见 L9 00-整理档案）；打包轨道不用手跑（build-pool-vendor 有保鲜）
 npm run lint / dev / electron:dev / npx tsc --noEmit / npx vitest run
