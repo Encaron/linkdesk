@@ -18,6 +18,7 @@ import { runPluginDev } from "./dev-server.js";
 import { runPluginDevReal } from "./dev-real.js";
 import { runPluginPublish } from "./publish.js";
 import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
+import { importIconTheme, renderImportReport } from "./import-icon-theme.js";
 
 const VITE_CONFIG_FILES = [
   "vite.config.ts",
@@ -47,6 +48,15 @@ const USAGE = `linkdesk-plugin-sdk <command>
               publish 复用 dist 现成分发件，资产版本/新鲜度源头断言拦 stale，重 build 即过）。
               token：env LINKDESK_GITHUB_TOKEN，或首跑交互输入存入本机
   validate    校验 plugin.json（参数 = 路径，默认 ./plugin.json）
+  import-icon-theme
+              把一个上游图标主题包（VS Code iconTheme 格式：material-icon-theme / vscode-icons /
+              任何同格式）转成 contributes.iconThemes 的映射文件，并**只拷贝被引用的** SVG 资产。
+              用法：import-icon-theme <源 iconTheme.json> [--name <主题名>] [--out <文件>]
+                                       [--assets <目录>] [--list <清单.json>] [--icons-dir <上游 SVG 目录>]
+              缺省输出 icons/<主题名>.json、资产 icons/<主题名>/；**不传 --list = 导入上游声明的全部映射**
+              （从零起步的默认路径），传 --list = 按作者清单筛（extensions/fileNames/folders/
+              overrides/localIcons）。清单住作者本仓——**编辑决定住作者仓，转换机制住 SDK**。
+              ⚠️ 上游图标包的 LICENSE 要一并放进插件目录（多为 MIT，署名是作者的事）。
   lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
               eslint-disable 注释）。参数 = 工程根，默认 process.cwd()
 `;
@@ -69,8 +79,44 @@ async function cmdBuild(): Promise<number> {
   return 0;
 }
 
-function cmdValidate(target: string): number {
-  const res = validatePluginJson(target);
+/**
+ * `import-icon-theme <源.json> [--name x] [--out f] [--assets d] [--list f] [--icons-dir d]`
+ * flag 走白名单（与 pack 同律：多给一个参数就报用法，防拼错静默）。
+ */
+function cmdImportIconTheme(rest: string[]): number {
+  const valueFlags = new Set(["--name", "--out", "--assets", "--list", "--icons-dir"]);
+  const opts: Record<string, string> = {};
+  const positional: string[] = [];
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i];
+    if (!arg.startsWith("-")) {
+      positional.push(arg);
+      continue;
+    }
+    if (!valueFlags.has(arg) || rest[i + 1] === undefined) {
+      console.error(USAGE);
+      return 1;
+    }
+    opts[arg] = rest[++i];
+  }
+  if (positional.length !== 1) {
+    console.error(USAGE);
+    return 1;
+  }
+  const result = importIconTheme({
+    root: process.cwd(),
+    source: positional[0],
+    name: opts["--name"],
+    out: opts["--out"],
+    assets: opts["--assets"],
+    list: opts["--list"],
+    iconsDir: opts["--icons-dir"],
+  });
+  console.log(renderImportReport(result, process.cwd()));
+  return 0;
+}
+
+function cmdValidate(target: string): number {  const res = validatePluginJson(target);
   if (!res.valid) {
     console.error("❌ plugin.json 验证失败：");
     for (const e of res.errors) console.error(`   ${e}`);
@@ -154,6 +200,9 @@ async function main(): Promise<void> {
     }
     case "validate":
       code = cmdValidate(rest[0] ?? "plugin.json");
+      break;
+    case "import-icon-theme":
+      code = cmdImportIconTheme(rest);
       break;
     case "lint":
       code = await cmdLint(rest[0] ?? process.cwd());

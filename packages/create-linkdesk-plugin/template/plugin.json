@@ -53,6 +53,8 @@
     // titleBar —— 标题栏按钮：right[] / left[]，icon ＋ command（＋ when）
     // viewsContainers / views —— 侧栏 / 底部面板的容器与视图（下面注释里有现成示例；容器 API 详见 08 号）
     // themes / languages —— 主题包 / 语言包（数据型插件的载荷）
+    // iconThemes —— 图标主题（文件 / 文件夹图标集）：一份映射 JSON ＋ 一堆 SVG 的图像资产形态。
+    //   从上游 VS Code iconTheme 批量导入的命令见下面那段注释（⛔ 手写几百条不现实）
     // floatingPanel —— 把你已有的某个视图声明成「可在悬浮面板打开」
     // ⚠️ statusBar 不是 contributes 的键——它是 plugin.json **顶层**的 statusBar[] 数组（写进 contributes 无效，见 17 号 ⑦ 状态栏）
     // 自带翻译：key=语言码, value=相对插件根的 JSON 文件。UI 文案用 t() 读这里；无需 zh.json——中文 key 原文自带兜底。
@@ -95,5 +97,26 @@
     //     }
     //   }
     // }
+
+    // ── 图标主题（iconThemes）——「文件图标集」这一类数据型载荷（完整规范见作者面 03 号 §3.7）──
+    //   产物两部分：① 映射 JSON（四张表 files / extensions / folders / foldersExpanded ＋ 五枚顶层默认图标）
+    //   ② 被映射引用的 SVG 资产。映射格式契约 = node_modules/@linkdesk/plugin-sdk/schemas/icon-theme.schema.json
+    //   （首行写 "$schema" 指它，编辑器就有补全与校验）。
+    //   🔴 **手写几百条映射不现实** —— 从上游 VS Code iconTheme 批量导入（material-icon-theme / vscode-icons 等）：
+    //     npm pack material-icon-theme && tar xzf material-icon-theme-*.tgz
+    //     npx @linkdesk/plugin-sdk import-icon-theme package/dist/material-icons.json \
+    //       --name material --out icons/material.json --assets icons/material --list icon-import.json
+    //   命令只拷「被映射引用」的 SVG（上游整包上千个），跑完会打印一段可粘贴的 contributions 片段。
+    //   🔴 **选哪些图标是你的编辑决定** ⇒ 写进本仓 `icon-import.json`（随仓评审 / 回溯 / 重跑），别塞进命令行；
+    //      不传 --list 就是导入上游声明的全部映射（从零起步的默认路径）。
+    //   ⚠️ 装完记得把**上游的 LICENSE** 一并放进本仓（图标包多为 MIT——署名是你的事，命令不代做）。
+    //   ⚠️ id 是**注册键**：用户把选中的 id 存进设置（app.iconTheme），发布后改名 = 让老用户的选择失效
+    //      ⇒ 一次定好；加本插件前缀防撞（`<pluginId>.<本地名>`）。⛔ **不许叫 `default`**——那是壳的兜底 id，
+    //      占用它 = 卸载后主题失效（判红，见作者面 03 号 §3.7 id 命名规则）。
+    //   ⚠️ label 是**可渲染串**：设置下拉里显示的就是它 ⇒ 中文字面量写在这里，英译进本仓 i18n/en.json
+    //      （漏译由 SDK lint / ci-verify 判红）。样例（取消注释即用）：
+    // "iconThemes": [
+    //   { "id": "{{pluginName}}.icons-material", "label": "Material 图标", "path": "icons/material.json" }
+    // ]
   },
 }

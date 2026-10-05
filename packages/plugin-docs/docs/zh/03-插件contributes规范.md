@@ -458,6 +458,35 @@ node_modules/@linkdesk/plugin-sdk/schemas/host-reserved.json
 
 > **🔥 mappings JSON 契约（立——icon-theme.schema.json 重写对齐引擎 normalizeIconThemeMappings）**：`path` 指向的 mappings 文件按 `icon-theme.schema.json` 校验——repo 内 = `public/schemas/icon-theme.schema.json`（`npm run check` 链 `check-theme-schema.mjs` 兼扫 `contributes.iconThemes`）；npm 作者 = 随 `@linkdesk/plugin-sdk` 分发的 `schemas/icon-theme.schema.json` + SDK `validateIconThemeJson`（同一 schema 文件，规则永不漂移）。运行时解析失败 warn/toast 是第二道防线。文件建议首行 `"$schema"` 引 schema 拿编辑器 IntelliSense。
 
+**从一个现成的图标包起步（批量导入）**：几百条映射不是手写的活。若你手里是一个 VS Code `iconTheme`（Material Icon Theme / vscode-icons …），SDK 负责转换，并且**只拷映射真引用到的资产**：
+
+```bash
+npm pack material-icon-theme                 # 任何「dist/<x>-icons.json ＋ icons/*.svg」形态的包
+tar xzf material-icon-theme-*.tgz
+npx @linkdesk/plugin-sdk import-icon-theme package/dist/material-icons.json \
+  --name material --out icons/material.json --assets icons/material --list icon-import.json
+```
+
+它干的事：`iconDefinitions[k].iconPath` → `imagePath` 形态；上游 `fileExtensions` 的键补上前导点（`ts` → `.ts`）；上面那五枚顶层默认图标原样带过来；**只拷被引用的 SVG**（上游整包上千个）。旗标：`--name`（主题名，缺省 = 源文件主名）、`--out`（缺省 `icons/<名>.json`）、`--assets`（缺省 `icons/<名>/`）、`--icons-dir`（上游 SVG 住哪，缺省 `<源文件目录>/../icons`）。跑完会打印一段**可粘贴的 `contributes.iconThemes` 片段**，并提醒你把上游 LICENSE 一并带上。
+
+**选哪些图标——这是你的编辑决定，留在你自己的仓里**：`--list` 指向一份与你源码并排保管的清单 ⇒ 产物日后可**逐字节重跑**：
+
+```json
+{
+  "extensions": ["ts", "tsx", "rs"],
+  "fileNames": ["package.json", "readme.md"],
+  "folders": ["src", "docs"],
+  "overrides": { "o": "lib" },
+  "localIcons": { "uvprojx": "uvprojx" }
+}
+```
+
+- `extensions` / `fileNames` / `folders`——你要的上游键（**省略某一项 = 全要**；上游没有的键会被跳过**并如实报出**，所以写错是看得见的，不是静默的）；
+- `overrides`——把某个扩展名改指上游另一枚定义（上游自己的归类不合你的语境时用）；
+- `localIcons`——你自己的图，放在 `<资产目录>/<名>.svg`：只写进映射、**绝不从上游拷**，缺文件直接判错（那条映射运行时会 404）。
+
+**完全不传 `--list`** = 导入上游声明的全部映射——你还没拿定主意时的零配置路径。
+
 **id 命名规则：** 图标主题 id 只判**一条**——**不得**用宿主兜底 id `default`（判红：该 id 注册不上 ＋ 一条 `console.error`）。**不判**"带不带本仓前缀"：图标主题 id 是**注册键**（用户选中的值存在 `app.iconTheme` 里），改名 = 要迁移盘上旧值，收益只落在 id 本身 ⇒ 本轮不动。⚠️ **2026-10-01 更正**：下拉**已改为渲染 `label`**（显示面打通，见下文豁免段）——想让它在下拉里好看，改的是 `label` 的**译名**（本仓字典），⛔ 不是改 id。
 
 ```

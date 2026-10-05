@@ -3,9 +3,12 @@ import { defineConfig } from "vitest/config";
 /**
  * 插件工程测试环境。
  *
- * 🔴 这份配置**逐项对齐壳仓 `vitest.config.ts`**：`globals` / `environment: "jsdom"` /
- * `setupFiles` 三条是**静默生效**的配置——缺了会报错（那还算好），配错了则是「本地绿、CI 红」，
- * 是这类迁移最典型的坑。改这里前先看壳仓那份，别让两边环境分叉。
+ * 🔴 三条**静默生效**的配置——`globals` / `environment: "jsdom"` / `setupFiles`：缺了会报错
+ * （那还算好），配错了则是「本地绿、CI 红」，是这类迁移最典型的坑。口径与壳仓 `vitest.config.ts` 对齐。
+ *
+ * 🔴 **本文件是模板原件**：官方各仓这份由壳仓 `npm run sync:plugin-ci` 从
+ * `packages/create-linkdesk-plugin/template/` **机械铺设**——⛔ 手改仓内那份会被下次同步覆盖
+ * （要改先改模板）；第三方工程是自建工程，按需自改即可。
  *
  * 两条**刻意不抄**壳仓的地方（写了就是错）：
  *   - **不设 `@src` / `@` 别名**：壳仓别名是给「与壳同仓的插件」用的；插件源码已外移，

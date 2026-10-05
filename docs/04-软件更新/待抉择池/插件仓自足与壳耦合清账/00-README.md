@@ -6,7 +6,7 @@
 > ③「其他插件有没有类似情况？我不想让这一堆已有的插件（未来可能兼职当作官方示例的插件）都做的不清不楚的。」
 > 本档 = ①③ 的**全仓普查结论** ＋ ② 的**作者面自足性核查** ＋ 待拍板的清账项。
 > **归属**：涉多仓（壳仓 / SDK 与脚手架 / 多只插件仓）＋ 软件主体交织 ⇒ 按 [00-README §二 归属规则](../../00-README.md) **进本池立整夹**（不拆 05；05 只放单只插件自身的更新）。
-> **现状**：✅ **已拍板（2026-10-06），⛔ 未动工**——2026-10-05 用户点单立案（原话「在 04 的待决策区建个任务，专门处理咱们说的任务，**你先建任务即可**」）⇒ 当时只建案；2026-10-06 用户要求「以选择题形式问我，我选择后你落入文档」⇒ **D1–D5 与排期全部落定**（见 §二／§六），**仍未动工**。
+> **现状**：✅ **已落地（2026-10-06）**——2026-10-05 用户点单立案（原话「在 04 的待决策区建个任务，专门处理咱们说的任务，**你先建任务即可**」）⇒ 当时只建案；2026-10-06 用户要求「以选择题形式问我，我选择后你落入文档」⇒ **D1–D5 与排期全部落定**（见 §二／§六）；同日用户「**你直接开始做**」⇒ **D1–D5 全部执行完毕**，逐项实录与**三处偏差**见 **§七**。
 
 ## 一、普查结论（17 只官方插件，2026-10-05 实测）
 
@@ -142,6 +142,76 @@
 > 🔵 **D5 的执行口径**：⛔ 不为它单独跑一次壳仓发版链；下次任何 `npm run sync:bundled -- --latest` 时自然平账（若届时仍为 1.0.6，同笔带上即可）。
 
 ---
+
+## 七、执行实录（2026-10-06 落地）
+
+> 开工口径：用户「**你直接开始做**」⇒ 按 §六 拍板逐项落地，⛔ 不再另立交接档。**D1–D5 全部执行完毕**，另记**三处与拍板原文的偏差**（§7.3 形态／§7.5 前提／§7.6 棒次）——三处都请维护者复核。
+
+### 7.1 D1（B：随 SDK 发）✅
+
+- 新命令 **`linkdesk-plugin-sdk import-icon-theme`**（`packages/plugin-sdk/src/import-icon-theme.ts` ＋ `import-icon-theme.test.ts` 10 例）随 **`@linkdesk/plugin-sdk` 0.1.84** 发公开 npm。
+- 🔴 **壳仓那只一次性脚本已删**（`scripts/convert-material-icons.mjs`，249 行）＋ `icons:convert` npm 入口撤销；`sync-plugin-agents.mjs` 的输出模板同笔改指新机制（各插件仓 `AGENTS.md` 那两句由它生成，受 `--check` 管辖）。
+- pastel 仓新增 **`icon-import.json`**——**这张清单就是「编辑决定」**（收哪些扩展名／文件名／文件夹名、两条改指 `overrides`、自绘资产白名单 `localIcons`）；转换器退化成**纯机制**（`--list` 读清单）。⇒ §一.2 那句「图纸住壳仓」消失。
+- **✅ §四.2 验收（逐字节，实测）**：在 pastel 仓内就地重跑 `npm run icons:import -- <上游 dist/material-icons.json>` ⇒ 生成 **303 条**映射（extensions 185 ／ files 68 ／ folders 25 ／ foldersExpanded 25）＋ 拷 **179** 个 SVG（＋自绘 `uvprojx.svg` = 仓内 180）⇒ **`git status icons/` 空、`git diff --stat icons/` 空**——用 git 当逐字节比较器，**产物与现发货件一致**。
+- pastel **1.1.1 已发**：Release `v1.1.1` ＋ asset ＋ 仓根 `marketplace.json`（远端独立提交已 pull 回）；README／CHANGELOG／AGENTS.md／`icon-import.json` 同笔入仓（提交 `ae96f8c`）。
+
+### 7.2 D2（A＋B 都做）✅
+
+- **A**：`packages/create-linkdesk-plugin/template/plugin.json` 加 `contributes.iconThemes` 骨架（作者起手就有得抄）。
+- **B**：作者文档 §3.7 加**最小可跑示例**——`docs/03-plugin-authoring/03-contributes-spec.md` ＋ 其 zh 孪生 ＋ `packages/plugin-docs/docs/` 同源两份（⛔ 单一真相源，靠 `generate-plugin-docs` 对账）。
+- 两处随 **`create-linkdesk-plugin` 0.1.24** ／ **`plugin-docs` 0.1.69** 发 npm。
+
+### 7.3 D3（判据 ＋ 门禁腿）✅ —— 🔴 **偏差一：没有与 R6 并成一条腿**
+
+- 新腿 **`scripts/check-plugin-repo-self-sufficiency.mjs`（R7「插件仓自足」）**，三条判据：
+  ① **依赖声明只许公开来源**（`file:` / `link:` / `workspace:` / `portal:` / 相对 / 绝对 ⇒ 判红；registry 版本号 / `git+https` / `npm:` 别名 / tarball 直链 ⇒ 放行）；
+  ② **仓内任何 JSON 里「可解析的」越界路径**判红 —— ⚠️ **解不开的不判**（干净检出不得假红，这条是负控 C 钉住的）；
+  ③ **`scripts` 点到的文件必须在仓内且真的存在**，且分两档：**被执行的那个**（runner 之后第一个非 flag 的脚本路径 / 开头 `./x.mjs`）要「在内 ＋ 存在」；**其余路径状参数**只查越界（`--out reports/junit.json` 这种产物名本来就不存在 ⇒ 不许假红）。
+- **自测 27 例**（含 3 条负控真红 ＋ 2 类**假红守门**），与 R1–R6 **并存**挂在 `npm run check` **同一行**（不是替换）＋ 同笔进 `check-gate-health` 认账（真跑，非 EXEMPT）。
+- **实跑读数**（`E:/linkdesk-plugins`，17 只）：官方 **16 只零命中** ✅ ｜ 第 17 只（**第三方作者仓**）**只报告不判红**（硬约束 10：按现场数据发现、⛔ 不写名单、⛔ 不替人立账）。
+- 🔴 **偏差说明（请复核）**：§六 拍板原话是「与 R6 同族 ⇒ **并成一条腿**，不造两把量同一件事的尺」。**实际做成独立一腿**，理由：**R6 扫的是壳仓源码**（`src/` 的共享件 barrel，纯仓内、CI 可跑）；**R7 扫的是仓库外的插件容器**（`E:/linkdesk-plugins`，`resolveContainer` 可覆盖）——并进 R6 会让 **R6 在拿不到该容器的机器 / CI 上不可运行**（等于用一条扫外部的腿去绑死一条本该纯仓内的腿）。
+  ⇒ 取「**同一把尺、各自射程**」：两腿共用同一套口径库 **`scripts/lib/gate-scan.mjs`**（容器解析 / 例外台账 `applyExceptions` / 只报告不判红 / 第三方按数据认），**容器缺席时大声跳过**（⛔ 不静默放行）、并进 `check-gate-health` 的认账口径也同一套。**若维护者坚持并腿**，代价就是上面那条：R6 失去 CI 可跑性。
+
+### 7.4 D4（两处都改）✅ —— ② 走的是**根治**，不是改一行字
+
+- ① `marketplace/src/services/installJobs.ts` 那条**失效 markdown 跨仓链接** → 纯文本指路（与该仓既有散文先例同形）。已提交推送。
+- ② `editor/vitest.config.ts` 那句「逐项对齐壳仓那份 / 改前先看壳仓那份」——**改在模板源头**：`packages/create-linkdesk-plugin/template/vitest.config.ts` 改为「🔴 **本文件是模板原件**：官方各仓这份由 `npm run sync:plugin-ci` 从模板**机械铺设**，⛔ 手改仓内那份会被下次同步覆盖（要改先改模板）；第三方是自建工程，按需自改」。
+  ⤷ 随后 `sync:plugin-ci` 铺回 **5 只**（editor / file-tree / marketplace / serial-monitor / settings），`--check` 复验 **0 处**。
+  ⤷ **为什么不在 editor 仓改一行**：该文件按 `sync-plugin-ci` 射程就是**模板产物**，只改仓内那份 ⇒ 下次同步被打回（这正是「模板是真相源」的直接推论）。
+  ⤷ 五仓改动**已提交并推送**（serial-monitor 仓里那份 `package-lock.json` 脏是**别人的**，未动）。
+
+### 7.5 D5（顺手账）⚠️ **偏差二：前提已过时，且本轮「无需写」**
+
+- §二／§六 记的前提是「pastel 在账里仍是 `1.0.6`」——**实测账里已是 `1.1.0`**（登记早被后来某次 `--latest` 带上；`seed:false`、门禁本就不看它）。
+- 本轮 `npm run sync:bundled -- --latest --dry-run`：**17 条全部「已是最新，指纹已核对」**，唯一一句提示 = `⚠ theme-iconset-pastel：插件仓已发 v1.1.1，官方目录还停在 1.1.0（收录是第二步）⇒ 箱子跟**目录**走（用户能装到的就是目录那版）`。
+- ⇒ **D5 落到「口径已兑现」**：账本天然**跟官方目录走**，1.1.1 的平账**时点 = 收录之后的第一次 `--latest`**；⛔ 不为此专门跑壳仓发版链（照 §六 口径）。
+- ✅ **净室验收（§四.1）**：pastel 仓 `rm -rf node_modules` ⇒ `npm install --registry=https://registry.npmjs.org` ⇒ `npm run verify`（九段，其中 lint / 跨插件 import / 测试覆盖三段**无对象**——纯数据插件）⇒ `npm run build`（110.6 KB / 189 条目）**全绿 exit 0** ⇒ 「只靠本仓 ＋ 公开 npm」**实测成立**（另一只带 `src/` 的仓归下一棒或门禁案，避免动别人正在用的仓）。
+
+### 7.6 没做的一步：官方目录收录 ⛔（**偏差三：有意不做**）
+
+- pastel 1.1.1 已在 GitHub Release 上可装（「添加市场源」填该仓 URL 即见），但**官方目录 `Encaron/linkdesk-marketplace` 仍是 1.1.0**。
+- 候选**已生成**：`npm run catalog:official` ⇒ `scratch/official-catalog.next.json`。合并读数 = **新增 0 ／ 更新 1（`theme-iconset-pastel` 1.1.0→1.1.1）／ 同版改元数据 4（file-tree · lang-defaults · marketplace · serial-monitor）／ 别人的行原样保留 0**。
+  ⤷ 那 4 条「同版改元数据」＝**另一棒（发版收录线）的落地差**（官方目录里这四条的元数据与各仓现状已不一致）。
+- **不写它的两条理由**：
+  1. 🔴 **§五／§六 自己写着**「**官方目录收录与 `sync:bundled` 是全局串行资源——一次只许一棒在写**」，而此刻该资源上**正有另一棒在飞**（上面那 4 条即是证据）；
+  2. `sync-official-catalog.mjs` 的**设计就是「只生成、不推」**（脚本头：「写它要用户点头」）——它把「看一眼 diff」当成交接物。
+- ⇒ **交接**：`scratch/official-catalog.next.json` 就是那份候选；它落进官方目录后跑一次 `npm run sync:bundled -- --latest`，pastel 的账自动平到 **1.1.1**（＝ D5 剩下的那半）。
+
+### 7.7 §四 验收总表（逐条对着 §四 报）
+
+| # | §四 判据 | 结果 |
+|:--:|:--|:--|
+| 1 | 官方插件仓**清空 `node_modules` 后仅凭本仓 ＋ 公开 npm** 能跑 `validate` / `verify` / `build` | ✅ **pastel 实测全绿**（净室：install → verify → build，exit 0，读数见 §7.5）；⚠️ pastel 是纯数据插件（三段无对象）⇒ 带 `src/` 的仓请下一棒补一只；**16 只全部**由 R7 **静态腿**覆盖（依赖声明／清单路径／脚本引用三条） |
+| 2 | 303 条清单**能在本仓（或 SDK 命令）重新生成**且与现产物一致 | ✅ **逐字节一致**（就地重跑后 `git diff icons/` 为空——303 映射 ＋ 180 SVG） |
+| 3 | D3 门禁腿**负控实测能红** | ✅ **自测 27 例**（负控真红：`file:` 依赖／越界可解析路径／脚本指出仓外／脚本指仓内不存在的文件；另两条**假红守门**：解不开的越界路径、`node -e "…"` 载荷）＋ 真跑官方 16 只零命中 |
+| 4 | 两处失效引用订正后**仓内引用无不可解析项** | ✅ 两处都改（② 在模板根治并回铺 5 仓）；壳仓侧 `check-doc-links` 绿、pastel 侧 `npm run verify` 九段绿 |
+
+### 7.8 收尾读数与**遗留**
+
+- **npm 轴**：`@linkdesk/plugin-sdk` **0.1.84** ／ `create-linkdesk-plugin` **0.1.24** ／ `plugin-docs` **0.1.69** ／ `@linkdesk/ui` **0.2.47**（ui 进这批的唯一原因＝一处**注释里的路径漂移**（`待抉择池`→`已落地`），零运行期改动）——四包**已 publish 到公开 npm**；⛔ **`release:mark` 未落**（原子写，卡在「货架 `latest` 尚未复现新版本」的 3 分钟复制延迟上；等货架跟上再补跑一次即可，**不影响已发布的包**）。
+- **插件轴**：pastel **1.1.1** 已 Release ＋ 推送；五仓 `vitest.config.ts` 注释口径已推送。
+- **壳仓**：⛔ **未发版**（本案零运行期改动，照 2026-10-03 口径——壳攒批）；`R7` 已进 `npm run check`。
+- **遗留（下一棒）**：① 官方目录收录 pastel 1.1.1（候选在 `scratch/`）→ ② 收录后 `npm run sync:bundled -- --latest` 平账 → ③ 补跑 `npm run release:mark`；④ D3 并腿与否请复核（§7.3）。
 
 > **相关记忆**：`icon-theme-upgrade-pipeline`（图标主题升级流水线与坑，含本条耦合的来历与画法）。
 > **相关档案**：`docs/02-Electron架构/插件生态与发布/插件源码外移层/03-逐个迁移.md`（`convert-material-icons` 当初被判定「保留」的那轮复核）。
