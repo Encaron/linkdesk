@@ -34,7 +34,7 @@
 |:--|:--|:--|
 | **00** | 本章——判据、目录、任务导航、软件自述 | 先读这一页 |
 | [01-操作路径总览](01-操作路径总览.md) | 三层门（命令／API／CLI+MCP）· 读状态→调命令→读结果 · 谁在哪（池／壳） | 第一次上手，或想知道「有没有 API 能做 X」 |
-| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：90 条宿主命令 + 46 个命名空间 / 252 个方法 | 找具体命令 id / 方法名 / 参数 |
+| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：97 条宿主命令 + 47 个命名空间 / 259 个方法 | 找具体命令 id / 方法名 / 参数 |
 | [03-按任务操作](03-按任务操作.md) | 配方：标签页 · 分屏与嵌套 · 通知 · 面板与侧栏 · 设置与主题 · 串口 · 布局问答 | 「我要做某件事」时 |
 | [04-手势隐藏规则](04-手势隐藏规则.md) | 屏幕上那些动作的**隐藏门控**（拖拽相位等）＋ 为什么别走手势 | 你的操作「调了没反应」时 |
 | [05-够不着清单与安装版路径](05-够不着清单与安装版路径.md) | A 类够不着 · 安装版启动／静默装／userData 文件面／更新后重连 | 在**安装版**上干活时 |
@@ -69,6 +69,7 @@
 | 执行任意命令 | `await linkdesk.commands.executeCommand("<id>", undefined, ...参数)`（🔴 开头的 `undefined` 不能省，见 [02 章 §一](02-命令与API索引.md)） |
 | 知道**有哪些**命令（含插件命令） | `await linkdesk.commands.getCommands()` |
 | 开／聚焦／关标签页 | `linkdesk.tabs.create(pluginId)` / `openOrFocus` / `close(tabId)` / `focus(tabId)` |
+| 挑「这个文件／这类文件用**哪只插件**打开」 | 命令 `workbench.action.openWith`（实参一个对象 `{ uri?, ext?, name?, anchor? }`——`uri`/`ext` 至少给一个；`anchor` 给了就近弹、不给居中。见 [03 章 §7](03-按任务操作.md)） |
 | 看**现在开着什么** | `linkdesk.tabs.list()`（全窗，含每组活跃位）· `linkdesk.pool.getLayout()`（本窗树） |
 | 读**通知**（含「为什么弹」「按了会跑哪条命令」） | `linkdesk.notifications.list()`（`wake` / `ttl` / `actions[].command+args`） |
 | 点通知上的**按钮** | 读 `actions[i].command` + `args`，照它 `executeCommand`——与手点同一条路径 |

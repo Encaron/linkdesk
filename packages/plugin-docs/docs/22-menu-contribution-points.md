@@ -108,6 +108,33 @@ or your own `<pluginId>.*` flags.
 }
 ```
 
+### Payload: `commandArgs` vs `context`
+
+`MenuItemDescriptor` has one more field that matters as soon as a menu is built by shared code rather
+than by you:
+
+| Field | Meaning |
+|:--|:--|
+| `commandArgs` | **This item's own arguments.** The only place per-item identity belongs |
+| `context` | **Shared by the whole menu.** When the menu is opened by a shared component, that component supplies it (it is not yours to set) |
+
+**The menu payload law.** `context` is **shared by the whole menu**; each item's identity must travel in
+`MenuItemDescriptor.commandArgs`. The host handler receives `args = [...commandArgs, context]`. A shared
+component (for example `PluginCard`) always sends **its own** `context` (`PluginCard` = `{pluginId}`) ⇒
+when you consume a shared component's context menu, your handler must tolerate **both** its own payload in
+`args[0]` **and** the shared component's context **at the end** — ⛔ never assume `args[0]` is your data
+(unless that slot has no shared context at all).
+
+```ts
+// Consuming PluginCard's gear menu: args = [{ pluginId }, context]
+// Your own payload (from commandArgs) first, the shared component's context last.
+linkdesk.commands.registerCommand("my-plugin.onCardGear", (args) => {
+  const mine = args?.[0] as { pluginId?: string } | undefined;
+  if (!mine?.pluginId) return;              // no target ⇒ do nothing (never "act on an empty one")
+  /* … */
+});
+```
+
 ---
 
 ## 4. `group` and ordering (what the menu ends up looking like)

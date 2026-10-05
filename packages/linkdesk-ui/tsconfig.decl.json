@@ -67,7 +67,9 @@
     "../../src/components/shared/segment-preview/**/*.ts",
     "../../src/components/shared/segment-preview/**/*.tsx",
     "../../src/components/shared/plugin-card/**/*.ts",
-    "../../src/components/shared/plugin-card/**/*.tsx"
+    "../../src/components/shared/plugin-card/**/*.tsx",
+    "../../src/components/shared/open-with-picker/**/*.ts",
+    "../../src/components/shared/open-with-picker/**/*.tsx"
   ],
   "exclude": [
     "../../src/components/shared/**/*.test.ts",

@@ -25,6 +25,7 @@ import { shellEvents, type StatusBarEntry } from "../../core/react/events/ShellE
 import { subscribeToasts, subscribeNotifPanelOpen, dismissToast, getToasts, isPending, isNotifPanelOpen, setNotifPanelOpen } from "../../core/services/ui/toast";
 import { cancelInstallJob, onDidChangeInstallJobs, updateInstallJobProgress } from "../../pluginLoader/lifecycle/install-queue"; // E6#73d：安装 job 表变化重推 + 取消 + 主进程进度回填
 import { _seenIds, markAllSeen, pruneSeen } from "./notif"; // 通知未读追踪——事件回传共享序列化侧同一实例
+import { handleOpenWithAction } from "../../core/services/ui/OpenWithService"; // 案 10/01：打开方式面板动作回执（池→壳）
 
 /**
  * M1 `AI#1`：通知面变更**信号**（池 `notifications.subscribe` 的源）。
@@ -374,4 +375,14 @@ export function useSyncSubscriptions({
     });
     return () => { unsub?.(); };
   }, [setLayoutVersion]);
+
+  // 案 10/01（纠正案 4.5）：打开方式面板**动作回执**——池 `OpenWithPickerHost` emit，壳侧执行。
+  // 与 `openWith:show`（壳→池，OpenWithService.emit）成对：面板是哑渲染器，唯一的执行端在这里
+  // （开标签 / 写覆盖表 / 去市场 / 关）。载荷形状守卫在 handleOpenWithAction 内（非法即静默返回）。
+  useEffect(() => {
+    const unsub = window.linkdesk?.events?.on("openWith:action", (payload) => {
+      void handleOpenWithAction(payload);
+    });
+    return () => { unsub?.(); };
+  }, []);
 }

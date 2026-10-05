@@ -162,12 +162,25 @@ describe("listHandlersFor（T2 只读面 · 选择器数据源）", () => {
     registerFileAssociation({ extension: "zzz", pluginId: HOLDER_A, displayName: "阅读器 A" });
     registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B }); // 无 displayName
     expect(listHandlersFor(".zzz")).toEqual([
-      { pluginId: HOLDER_A, displayName: "阅读器 A", isCurrent: true },
-      { pluginId: HOLDER_B, displayName: HOLDER_B, isCurrent: false },
+      { pluginId: HOLDER_A, title: HOLDER_A, displayName: "阅读器 A", isCurrent: true },
+      { pluginId: HOLDER_B, title: HOLDER_B, displayName: HOLDER_B, isCurrent: false },
     ]);
     expect(listHandlersFor("zzz", { ".zzz": HOLDER_B })).toEqual([
-      { pluginId: HOLDER_A, displayName: "阅读器 A", isCurrent: false },
-      { pluginId: HOLDER_B, displayName: HOLDER_B, isCurrent: true },
+      { pluginId: HOLDER_A, title: HOLDER_A, displayName: "阅读器 A", isCurrent: false },
+      { pluginId: HOLDER_B, title: HOLDER_B, displayName: HOLDER_B, isCurrent: true },
+    ]);
+  });
+
+  it("①b C1.8：`title`（**插件名**）与 `displayName`（**文件类型名**）各走各的来源，⛔ 不互换", () => {
+    // 插件名 = 注册时从头带下来的 manifest.name；类型名 = 声明里的 displayName——两者可以毫无关系
+    registerFileAssociation({
+      extension: "rs",
+      pluginId: HOLDER_A,
+      pluginName: "Rust 语言支持",
+      displayName: "Rust",
+    });
+    expect(listHandlersFor(".rs")).toEqual([
+      { pluginId: HOLDER_A, title: "Rust 语言支持", displayName: "Rust", isCurrent: true },
     ]);
   });
 

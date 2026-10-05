@@ -219,15 +219,18 @@ const FACTS = {
     ],
   },
   "theme-iconset-pastel": {
-    what: "粉彩图标集——139 条文件 / 文件夹图标映射，从 Material Icon Theme 精选（MIT）。",
+    what: "粉彩图标集——303 条文件 / 文件夹图标映射，从 Material Icon Theme 精选（MIT）。",
     where: "外观主题：在设置 → 外观里切换（**文件图标**那一档，不是配色主题）。",
     layout:
-      "映射表在 `icons/pastel.json`，99 个 SVG 在 `icons/material/`（**图片资产形态**，走 `imagePath`）。\n" +
+      "映射表在 `icons/pastel.json`，180 个 SVG 在 `icons/material/`（**图片资产形态**，走 `imagePath`）。\n" +
       "这是**全仓唯一走 `contributes.iconThemes`** 的插件。",
     notes: [
       "README 的「来源与许可」写着一个转换脚本 `scripts/convert-material-icons.mjs` —— **它不在本仓**（在壳仓 `scripts/`）。",
-      "本仓有 `LICENSE.md`（全仓唯一带许可证文件的）——与上游 MIT 对齐，别删。",
-      "本仓**没有 `resources/`**、`plugin.json` 里**没有 `icon`**。",
+      "本仓有 `LICENSE`（MIT © Encaron）——与上游 MIT 对齐，别删。",
+      "**`icons/material/uvprojx.svg` 是全仓唯一非上游资产**（Keil μVision 单片机组图标，本仓自绘）——\n" +
+        "  ⛔ 别当「上游没引用的残留」清掉；它由映射 `.uvprojx`/`.uvproj`/`.uvopt`/`.uvoptx` 引用，\n" +
+        "  转换脚本的 `LOCAL_EXTENSIONS` 认得它（重跑脚本既不会拷它、也不会报它缺失）。",
+      "有 `resources/icon.svg`（市场身份图，`plugin.json` 的 `icon` 字段指向它）。",
     ],
   },
 };

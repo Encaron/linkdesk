@@ -65,7 +65,7 @@ The version of `@linkdesk/ui` **moves on its own** (patch +1 per publish) and is
 
 | Component | What it does | When to use it |
 |:--|:--|:--|
-| `Button` | Button | Any "click and it happens" action; variants/sizes follow the theme |
+| `Button` | Button | Any "click and it happens" action; variants/sizes follow the theme. **`variant` is the action tier**: default = solid primary, `success` = positive primary (install/enable), `danger` = destructive secondary, `ghost` = secondary transparent; `size="sm"` = a 22px button for a 30px toolbar |
 | `Toggle` | Toggle switch | Two-state settings (on/off) |
 | `Slider` | Slider | Adjusting a numeric range (pair with `inferSliderStep` for the step) |
 | `NumberInput` | Numeric input box | Numbers that need precise entry (often sits next to a slider) |
@@ -89,6 +89,7 @@ The version of `@linkdesk/ui` **moves on its own** (patch +1 per publish) and is
 | `HintCard` | Anchored hover hint card (non-interactive) | For "hover a small badge, see a short explanation card": give `lines` (1–3 sentences) and the anchor element; triggering/positioning/glass are all handled by the shell; ⛔ no links or buttons inside the card |
 | `ReadOnlyText` | Read-only text (single-line or multi-line, not editable) | Showing a **read-only value**: paths, addresses, live status lines (this is what the settings page's read-only status rows use — declare `renderHint: "readonly"` + `statusCommand`, see [20-adding-a-setting](20-adding-a-setting.md)) |
 | `SectionSubtitle` | Section subtitle (one small line under a heading) | A one-line note under a group/section — the settings page renders `subtitle` / `groupDescriptions` with it, and you can use it directly when assembling your own explanatory block |
+| `OpenWithPicker` | The "Open with…" picker panel (rows = handlers, each labelled with the plugin's name and its icon) | Letting the user choose **which plugin opens a file / a type**. 🔴 **Call the host command, don't build your own panel**: `openWith({ uri })` / `openWith({ ext })` from `@linkdesk/plugin-sdk` rises the centered panel; the shell assembles the handler list (names, icons, current default) and sends the action back. The component is exported so the panel is one implementation, ⛔ not so every plugin draws its own |
 
 > The list follows the package's actual export surface (`packages/linkdesk-ui/src/index.ts` is the single source of truth) — if this page disagrees with the package, **the package wins**.
 

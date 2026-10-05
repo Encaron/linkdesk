@@ -112,6 +112,11 @@
         "src/components/shared/source-badge/SourceBadge.tsx",
         "src/components/shared/image-picker/BackgroundImagePicker.tsx",
         "src/components/shared/segment-preview/SegmentPreview.tsx",
+        // 2026-10-05「文件打开方式与贡献点」纠正案 4.5：OpenWithPicker 类型面（types.ts）的两条 re-export
+        //   （`OpenWithHandler` / `OpenWithRequest`）壳内零消费方——唯一消费方 = `@linkdesk/ui` barrel
+        //   第 61 行转给插件消费者（packages/ 域，knip 不覆盖）＋ 池侧宿主按 wire 契约手抄同形。
+        //   ⇒ 壳 scope 断边误报「导出类型未用」。⛔ 不是死代码：它们就是共享件对外承诺的 props 面。
+        "src/components/shared/open-with-picker/types.ts",
         // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
         //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
         //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler

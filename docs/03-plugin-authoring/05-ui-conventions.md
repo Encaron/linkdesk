@@ -59,6 +59,25 @@ window.linkdesk.menu.registerItems("editorContext", "myPlugin", [
 
 New context-menu scenarios → just declare a new open-string MenuId (e.g. `"myMenu"`): declare `contributes.menus.myMenu` + consume it with `<ContextMenu menuId="myMenu" />`—**zero shell changes** (the plugin-independence iron rule). The shell only needs to add a MENU_SLOTS entry if it wants to provide a unified render point for that scenario.
 
+### Consuming a **shared component's** menu—the payload arrives in two parts
+
+Some shared components open their own menu and hand you a line: a card's gear, a list row's gear. When you
+do, the shared component **fixes the shape of what your handler receives**—and it also adds its own
+`context`. The rule (full statement in
+[22-menu-contribution-points](22-menu-contribution-points.md) §3 "Payload"):
+
+> `args = [...commandArgs, context]` — your own identity first (from `commandArgs`), the shared component's
+> `context` **at the end**. ⛔ Never assume `args[0]` is your data when the slot has a shared context.
+
+| Shared component | What it sends as `context` | What your handler must do |
+|:--|:--|:--|
+| `PluginCard` (card gear) | `{ pluginId }` | read `args[0]`, keep reading the trailing `context` if you add your own `commandArgs` |
+
+So a handler written for "my own menu" and a handler written for "a shared component's menu" are **not**
+interchangeable: read the shared component's document for the exact `context` shape before you write the
+handler, and always keep the "no target ⇒ do nothing" guard (⛔ an item that does nothing is worse than an
+item that is not there).
+
 ---
 
 ## 2. Overlays / Dialogs → `createPortal`

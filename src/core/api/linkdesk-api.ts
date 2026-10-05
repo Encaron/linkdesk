@@ -78,6 +78,9 @@ export type {
   MenuItemDescriptor,
   NotificationHandle,
   PluginToastAction,
+  // 「打开方式」命令面类型（壳命令 workbench.action.openWith）——壳与插件双方可达，故住契约
+  OpenWithRequest,
+  OpenWithHandler,
 } from "./linkdesk-api/types";
 
 export type { DialogOpenOptions } from "../types/ipc/dialogs"; // E5.7#97：归口 src/core/types/ipc/dialogs.ts——此 re-export 保持既有插件 import 路径

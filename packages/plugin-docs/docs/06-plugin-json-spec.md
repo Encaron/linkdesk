@@ -651,12 +651,14 @@ Declares "which extensions' files are opened by me". When the user double-clicks
 
 | Field | Required | Notes |
 |:--|:--:|:--|
-| `extension` | ✅ | Extension — **without the dot** (`dxf` / `ts`); case-insensitive (the shell lower-cases it) |
+| `extension` | ✅ | Extension — **without the dot** (`dxf` / `ts`). **Normalized by the shell**: whitespace trimmed, lower-cased, a leading dot dropped; an entry containing whitespace or `/` `\` is **illegal and discarded** |
 | `command` | — | Which of your commands to run on open; omit to use the framework's default open action |
-| `displayName` | — | The name shown in the "Open with…" picker |
+| `displayName` | — | The **file-type** display name (e.g. `.rs` → `"Rust"`). 🔴 **This is NOT the plugin/handler name**: the "Open with…" picker labels each row with your plugin's **top-level `name`**, and `displayName` only appears in non-naming positions such as the panel title. If you want to name *yourself*, use the manifest's top-level `name` — ⛔ do not put it here (that is exactly how a picker row ends up reading "Rust") |
 | `role` | — | **Role declaration** (see below). The first version defines only `"text-fallback"` |
 
 **Several plugins may declare the same extension** (your `ts` coexists with someone else's `ts`) — the shell does not pick a winner for you; the user picks from "Open with…", and the default is **whichever plugin activated first**. So declaring is **not** a takeover; it means "I can open it too".
+
+> **Why normalization matters to you**: entries are de-duplicated and grouped **by the normalized extension string** — `MX`, `mx` and `.mx` are one and the same kind. A type counts as **contested** only when **two or more enabled plugins** declare it (one handler is never contested — the shell decides alone and does not bother the user). ⇒ **Not declaring means you never meet the competition**: if your plugin can open a kind but does not declare it, the shell will never offer it to you.
 
 ##### `role` — how to become the default text editor
 

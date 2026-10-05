@@ -410,6 +410,10 @@ export interface MenuItemDescriptor {
    * ContextMenu 的 context 是整菜单共享的（非 per-item），per-item 身份（如 containerId+viewId）
    * 必须走命令载荷：executeCommand(id, undefined, ...commandArgs, context) → 壳 handler 收 args
    * = [...commandArgs, context]。池哑渲染原文透传，不解释内容。
+   *
+   * 🔴 菜单载荷律：`context` 是**整菜单共享**的，每一项的身份**只能**走本字段。共享件（如 `PluginCard`）
+   * 会固定送**它自己的** `context` ⇒ 消费共享件菜单的 handler 必须容忍「`args[0]` 是自己的载荷、
+   * **末尾**是共享件的 context」，⛔ 不要假设 `args[0]` 一定是你的数据（除非该槽位无共享 context）。
    */
   commandArgs?: unknown[];
   children?: Array<string | MenuItemDescriptor>;
@@ -471,4 +475,41 @@ export interface PluginCompatibilityReading {
   shellBuiltAt: string | null;
   /** 哪些输入缺失（诊断面；state = "unknown" 时非空） */
   unknown: string[];
+}
+
+// ── 「打开方式」命令面（壳命令 workbench.action.openWith——类型为壳与插件双方可达，故住契约）──
+
+/**
+ * 「打开方式」请求——壳命令 `SHELL_COMMANDS.openWith` 的唯一入参形状。
+ * `uri` 与 `ext` 至少给一个：右键/编辑器入口给 `uri`（壳侧算 `ext`）；设置页「按类型打开」入口只给 `ext`。
+ */
+export interface OpenWithRequest {
+  /** 文件路径（右键/编辑器入口给） */
+  uri?: string;
+  /** 显示名（面板标题用） */
+  name?: string;
+  /** 归一化扩展名（无点、小写——由壳侧 normalizeExt 统一计算，调用方不必预处理） */
+  ext?: string;
+  /** 可选锚点（右键入口给 = 就近弹出）；缺省 ⇒ 面板居中弹出 */
+  anchor?: { x: number; y: number };
+}
+
+/**
+ * 处理器条目（面板一行的数据形状）——**由壳侧组装，⛔ 插件不自行构造**。
+ * `title` = **处理器名**（插件显示名，取 `pluginManager.list()` 行的 `manifest.name ?? pluginId`）；
+ * `typeLabel` = **类型名**（声明里的 `displayName`，如「Rust」）。⛔ 两者不可互换：
+ * `contributes.fileAssociations[].displayName` 的语义是**文件类型显示名**，不是插件/处理器名。
+ */
+export interface OpenWithHandler {
+  pluginId: string;
+  /** 处理器名（插件显示名） */
+  title: string;
+  /** 类型名（声明 displayName——想给插件起名请用 manifest 顶层 name） */
+  typeLabel?: string;
+  /** 图标 manifest 子集——壳侧用共享 helper `pickIdentityArt()` 产出（与设置页/标签栏同源） */
+  manifest?: { icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" };
+  /** 该处理器是否为当前默认 */
+  isDefault: boolean;
+  /** 该处理器是否由自动裁决选中（无显式覆盖时） */
+  isAuto: boolean;
 }

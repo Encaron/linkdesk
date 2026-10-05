@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 96 条 / 7 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 97 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -99,6 +99,12 @@
 | `workbench.action.resetSplitSizes` | 重置分屏比例 | 把所有分屏分支的比例恢复成均分（50/50）；未分屏时无效果 | —— | —— |
 | `workbench.action.setSplitSizes` | 设置分屏比例 | 把某条分屏分支的比例设成指定值（如 [70, 30]）；未分屏或分支找不到时回 noop 与 reason | `anchorGroupId`: string 可选 — 定位分支：该分支下任一叶子组 id（与 branchIndex 二选一；同给则 branchIndex 优先）<br>`sizes`: object 必填 — [number, number]——两侧比例，两个正数（如 [70, 30]）；是二元数组，不是对象<br>`branchIndex`: number 可选 — 精确定位分支：1 起、先序计数（鼠标拖拽同款；一般用 anchorGroupId 即可） | —— |
 | `workbench.action.toggleSplit` | 切换分屏 | 在当前分组上切换分屏（分屏 ↔ 合并） | —— | —— |
+
+### 编辑器（1）
+
+| 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
+|:--|:--|:--|:--|:--|
+| `workbench.action.openWith` | 打开方式… | 为指定文件（uri）或文件类型（ext）选择打开方式——面板居中弹出；右键入口传 anchor 则就近弹出 | `request`: object 必填 — OpenWithRequest——{ uri?; name?; ext?; anchor? }，uri 与 ext 至少给一个（类型见 @linkdesk/contracts） | —— |
 
 ### 视图（30）
 

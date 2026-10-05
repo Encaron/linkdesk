@@ -24,9 +24,12 @@ export interface FileAssociation {
   extension: string;
   /** 处理此文件类型的插件 ID */
   pluginId: string;
+  /** 插件显示名（manifest.name；注册时由主进程从头带下来）——「打开方式…」行主标签的来源。
+   *  🔴 与 `displayName` 是**两个不同的东西**：这里是**插件名**，那里是**文件类型名**。 */
+  pluginName?: string;
   /** 可选——打开时执行的命令（默认 "workbench.action.openFile"） */
   command?: string;
-  /** 可选——"打开方式…"列表中显示的名字 */
+  /** 可选——**文件类型**显示名（声明里的 displayName，如 .rs → "Rust"）；⛔ 不是插件名 */
   displayName?: string;
   /**
    * 可选——角色挂牌，依附于**本条具体条目**（E23：条目必须带扩展名；孤儿 role 由 schema 校验拦）。
@@ -305,10 +308,12 @@ export function resolveOpenTarget(
   return resolveFallbackTabType();
 }
 
-/** `listHandlersFor` 行——「打开方式…」选择器的每行数据（01 §T2.1） */
+/** `listHandlersFor` 行——「打开方式…」选择器/设置页下拉的每行数据（01 §T2.1） */
 export interface FileAssociationHandlerEntry {
   pluginId: string;
-  /** 声明缺 displayName 时回退 pluginId（E4：识别只看声明，与插件名无关） */
+  /** **插件**显示名（manifest.name，缺则回退 pluginId）——行主标签/下拉选项文案用这个（C1.8） */
+  title: string;
+  /** **文件类型**显示名（声明里的 displayName，如 "Rust"；缺则回退 pluginId）——⛔ 不是插件名（C1.8） */
   displayName: string;
   /** 是否当前默认（解析序现算，随覆盖表走） */
   isCurrent: boolean;
@@ -329,6 +334,7 @@ export function listHandlersFor(
   const current = resolveOpenTarget(ext, override);
   return list.map((a) => ({
     pluginId: a.pluginId,
+    title: a.pluginName ?? a.pluginId,
     displayName: a.displayName ?? a.pluginId,
     isCurrent: a.pluginId === current,
   }));
@@ -351,8 +357,9 @@ export function resolveFallbackTabType(): string {
 
 /* ── 工具 ── */
 
-/** 归一化扩展名：去点、去空白、转小写 */
-function normalizeExtension(ext: string): string {
+/** 归一化扩展名：去点、去空白、转小写。🔴 唯一实现——「打开方式」命令面（壳侧 normalizeExt）
+ *  与覆盖表键、声明注册同用这一份；⛔ 插件里不许再抄一份（判据：纯函数工具一处定义）。 */
+export function normalizeExtension(ext: string): string {
   if (!ext) return "";
   let s = ext.trim().toLowerCase();
   if (s.startsWith(".")) s = s.slice(1);

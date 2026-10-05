@@ -13,10 +13,12 @@ export function buildFileAssociationFace(ipcRenderer: IpcRenderer) {
   return {
     getPluginFor: (ext: string): Promise<string | undefined> =>
       ipcRenderer.invoke(IPC.fileAssociation.getPluginFor, ext),
+    // C1.8：`title`（**插件**名，行/下拉主标签）与 `displayName`（**文件类型**名）是两个字段。
     listHandlersFor: (
       ext: string,
-    ): Promise<Array<{ pluginId: string; displayName: string; isCurrent: boolean }>> =>
-      ipcRenderer.invoke(IPC.fileAssociation.listHandlersFor, ext),
+    ): Promise<
+      Array<{ pluginId: string; title: string; displayName: string; isCurrent: boolean }>
+    > => ipcRenderer.invoke(IPC.fileAssociation.listHandlersFor, ext),
     setDefault: (ext: string, pluginId: string | null): Promise<void> =>
       ipcRenderer.invoke(IPC.fileAssociation.setDefault, ext, pluginId),
     /** E32/E34：一次写 N 类（`pluginId: null` = 逐类恢复自动）——聚合格下拉/齿轮的批量口径 */

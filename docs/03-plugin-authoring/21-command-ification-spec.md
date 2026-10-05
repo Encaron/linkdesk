@@ -62,8 +62,35 @@ useEffect(() => {
 }, []);
 ```
 
-> ⚠️ **Declaring without registering a handler** = the palette shows it, clicking does nothing (no-op + a diagnostic warning).
+> ⚠️ **Declaring without registering a handler** = the palette shows it, nothing happens when clicked (no-op + a diagnostic warning).
 > The declaration side contributes **metadata** (a placeholder); the handler is what actually runs.
+
+### 2.1 Calling a **host** command—never hard-code its id
+
+The host also exposes commands of its own (`workbench.action.*`): opening a file, opening the "Open With"
+picker, and so on. Your plugin may call them; the contract for doing so is deliberately narrow:
+
+```ts
+import { SHELL_COMMANDS, openWith } from "@linkdesk/plugin-sdk";
+
+// ✅ preferred: the helper takes the request object and returns nothing to remember
+openWith({ uri: "/path/to/file.pdf" });   // or { ext: "pdf" } when you only know the type
+
+// ✅ equivalent, if you need the raw command face
+window.linkdesk.commands.executeCommand(SHELL_COMMANDS.openWith, { uri });
+```
+
+| Rule | Why |
+|:--|:--|
+| ⛔ **Never write the host command id as a string literal** in your plugin | The id is owned by the host and can be unified/renamed; use `SHELL_COMMANDS.*` (the two literal sites—host constant + SDK constant—are reconciled by a gate, your plugin is not a third one) |
+| ✅ **Probe before you show an affordance** | Feature-detect with `commands.getCommands()`; if the command is not registered, **hide the entry** — ⛔ no dead buttons (an item that is visible but does nothing is worse than one that is absent) |
+| ⛔ **Do not use `placeholder` as an existence test** | Every command a plugin declares carries `placeholder: true` (that is the "metadata registered, execution routed to the pool" marker, not an implementation check)—it cannot tell you whether the host command really works |
+
+```ts
+// Feature-detect a host command before rendering the entry that calls it
+const list = await window.linkdesk.commands?.getCommands?.();
+setCanOpenWith(!!list?.some((c) => c?.id === SHELL_COMMANDS.openWith));
+```
 
 ---
 

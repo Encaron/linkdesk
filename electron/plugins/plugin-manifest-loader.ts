@@ -97,6 +97,9 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest, plug
       registerFileAssociation({
         extension: fa.extension,
         pluginId,
+        // C1.8：插件显示名随注册一起带上（渲染方要「插件名」，声明里给的却是「类型名」——
+        // 主进程此刻 manifest 在手，不带下来渲染方就永久拿不到插件名）
+        pluginName: manifest.name ?? pluginId,
         command: fa.command,
         displayName: fa.displayName,
         role: fa.role === "text-fallback" ? fa.role : undefined,

@@ -7,13 +7,14 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 31 组件（26 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
+ *   - 32 组件（27 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 11 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
  *       isSettingsUiHint / formatEffectiveValue / splitStringList）
- *   - 12 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
- *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps）
+ *   - 15 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
+ *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
@@ -52,6 +53,12 @@ export { PluginIcon } from "@shared/plugin-icon/PluginIcon";
 // 2026-10-05「文件打开方式与贡献点」案 4A：按插件浏览插件卡（卡头/受控展开/齿轮菜单/停用态；
 //   行清单⛔不在共享包——那是设置插件本地的管理器词汇）。图标消费现成 PluginIcon，零新造图标链。
 export { default as PluginCard } from "@shared/plugin-card/PluginCard";
+// 2026-10-05「文件打开方式与贡献点」**纠正案 4.5**：打开方式选择器**转正归壳**——
+//   本件消费的全是宿主声明（插件清单／文件关联声明／覆盖表），按判据 A 必须住共享层：
+//   原住 file-tree ⇒ 卸载 file-tree 后设置页入口与编辑器按钮一并消失（本纠正案命门 C1.5）。
+//   纯 props in / events out：数据由壳命令 `SHELL_COMMANDS.openWith` 组装后喂入（面板 ⛔ 不查 registry）。
+export { default as OpenWithPicker } from "@shared/open-with-picker/OpenWithPicker";
+export type { OpenWithHandler, OpenWithRequest, OpenWithPickerProps } from "@shared/open-with-picker/types";
 // E6#69f：插件身份彩色图裁决（marketIcon ?? icon ?? 默认彩色块）——壳 windowLayout 标签 + 市场 list/detail 同消费（单一实现防漂移）
 export { pickIdentityArt } from "@shared/plugin-icon/iconUtils";
 export { DEFAULT_PLUGIN_IDENTITY_URI } from "@shared/plugin-icon/defaultIdentityArt";

@@ -8,7 +8,7 @@
  *
  * DOM 拓扑（#ld-float-layer 固定 inset:0 z:2000 pointer-events:none，唯一权威）：
  *   ├── #ld-scrim-plane（pointer-events:auto）  ← 全部遮罩归位，无磨砂
- *   ├── #context-menu-root / #quick-pick-root / #dialog-root / #floating-panel-root（auto）
+ *   ├── #context-menu-root / #quick-pick-root / #dialog-root / #floating-panel-root / #open-with-root（auto）
  *   └── #overlay-root（auto，通用 surface 根；OverlayPortal 默认目标）
  *
  * 隔离地板（index.css）：#ld-float-layer > *:not(#ld-scrim-plane) > * 深度2 / > * > * 深度3
@@ -41,6 +41,7 @@ import { Z_INDEX } from "../../../constants";
 import QuickPickHost from "../../floating/quick-pick/QuickPickHost";
 import DialogHost from "../../floating/dialog/DialogHost";
 import FloatingPanelHost from "../../floating/floating-panel/FloatingPanelHost"; // E5.8#37（Phase 8 类型 B）：壳内悬浮面板哑渲染
+import OpenWithPickerHost from "../../floating/open-with/OpenWithPickerHost"; // 案 10/01：打开方式选择器转正归壳（共享件 + 池侧哑宿主）
 
 function FloatingLayerHost() {
   return (
@@ -70,6 +71,15 @@ function FloatingLayerHost() {
       {/* Dialog / Modal portal——#17 接入：壳 DialogService 桥推 DTO，DialogHost 哑渲染 */}
       <div id="dialog-root" style={{ pointerEvents: "auto" }}>
         <DialogHost />
+      </div>
+
+      {/* 「打开方式…」面板 portal——案 10/01（纠正案 4.5）接入：壳 OpenWithService 装配 DTO 广播，
+          OpenWithPickerHost 哑渲染。独立 root（⛔ 不借 #context-menu-root）——与 #quick-pick-root 同款：
+          本 root 是**静态 div 不建 stacking context**，面板包装盒（OverlayPortal z 4000）与遮罩
+          （portal 进 #ld-scrim-plane，z 3999）才能在同一层上下文里自分层。
+          ⛔ 别挪进 #overlay-root：那里 z 2000 建 stacking context，面板会被自己的遮罩盖住。 */}
+      <div id="open-with-root" style={{ pointerEvents: "auto" }}>
+        <OpenWithPickerHost />
       </div>
 
       {/* Tooltip portal（如需要） */}

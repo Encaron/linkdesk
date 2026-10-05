@@ -1,0 +1,226 @@
+/* 「打开方式…」选择器面板（共享件 `@linkdesk/ui`）——全 token 跟随主题，⛔ 零写死色值/裸字号。
+   类名一律 `ldk-openwith-` 前缀（硬约束 23）：共享件自成一族，门禁 check-css-namespace 判据⑦ 守之。
+   像素权威 = `mockups/05`（行布局，⛔ 只迁移不重画）＋ 本纠正案 `08` 图（居中/锚定两态的容器规则）。 */
+
+/* ── 遮罩：满屏平面，色走壳**既有**模态遮罩 token `--scrim-dialog`
+   （用户 2026-10-05 拍板：直接用「关闭窗口弹窗」那层黑）——⛔ 不另写 rgba、⛔ 不加磨砂。
+   portal 目标 = `#ld-scrim-plane`（FloatingLayerHost 的遮罩平面，QuickPick/Dialog 同款）。 ── */
+.ldk-openwith-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim-dialog);
+}
+
+/* 锚定态（文件树右键）：要能「点外面关掉」，但⛔ 不压暗——否则连续右键会闪（08 图注明）。
+   透明点击层 = 本修饰；面板自身层级高于它（内联 z，见组件 OPEN_WITH_Z_INDEX），面板内点击不受影响。 */
+.ldk-openwith-scrim--clear {
+  background: transparent;
+}
+
+.ldk-openwith {
+  position: fixed;
+  width: 432px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+}
+
+/* 居中态（编辑器/设置页入口——无锚点）——inset:0 + margin:auto 居中；高度随内容，上限留 60px 呼吸。
+   锚定态的 left/top 由组件按锚点内联钳制（top ≥ 30 = 硬约束 18 标题栏拖拽区），故此处无规则。 */
+.ldk-openwith--centered {
+  inset: 0;
+  margin: auto;
+  height: max-content;
+  max-height: calc(100vh - 60px);
+}
+
+.ldk-openwith-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.ldk-openwith-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.ldk-openwith-file {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.ldk-openwith-x {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md);
+}
+
+.ldk-openwith-x:hover {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+
+/* 「当前默认」行——仅当存在**显式**用户覆盖时出现（05 图） */
+.ldk-openwith-cur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--separator);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.ldk-openwith-curtext {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-openwith-auto {
+  margin-left: auto;
+  flex: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+}
+
+.ldk-openwith-auto:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.ldk-openwith-list {
+  max-height: 300px;
+  overflow: auto;
+  padding: 4px;
+}
+
+/* 行——E13：handler 多时列表滚动、行高紧凑，不分组不折叠 */
+.ldk-openwith-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--radius-xs);
+}
+
+.ldk-openwith-row:hover {
+  background: var(--hover-overlay);
+}
+
+.ldk-openwith-ic {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.ldk-openwith-names {
+  min-width: 0;
+}
+
+.ldk-openwith-nm {
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ldk-openwith-pid {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-openwith-acts {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.ldk-openwith-act {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.ldk-openwith-act:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.ldk-openwith-act.ldk-openwith-def {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.ldk-openwith-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.ldk-openwith-market {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.ldk-openwith-market:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* 焦点环可见（ui-ux-pro-max 硬判据）——面板内全部真 button 各挂自己的类，天然可达。
+   ⛔ 不用 `.ldk-openwith button` 这类后代元素选择器：共享件域一律类选择器（域内既有先例）。 */
+.ldk-openwith-x:focus-visible,
+.ldk-openwith-auto:focus-visible,
+.ldk-openwith-act:focus-visible,
+.ldk-openwith-market:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldk-openwith {
+    transition: none;
+  }
+}

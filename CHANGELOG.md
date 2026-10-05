@@ -4,18 +4,24 @@
 
 ## v0.2.48（2026-10-05）
 
-**插件更新撞上「目录被占用」不再是死路：替换不了的更新改成暂存，下次启动自动换上——dev 轨道更新插件从此不用借安装版验证；「默认打开方式」也在设置页里长出了自己的管理器（住设置插件仓，随其仓发版）。**
+**插件更新撞上「目录被占用」不再是死路：替换不了的更新改成暂存，下次启动自动换上——dev 轨道更新插件从此不用借安装版验证；「默认打开方式」也在设置页里长出了自己的管理器（住设置插件仓，随其仓发版）；「打开方式」选择器同时转正归壳（共享件 ＋ 壳命令），卸载 file-tree 后入口不再跟着消失。**
 
 ### feat
 
 - **「默认打开方式」补上批量写口**：`fileAssociation.setDefaultBulk(exts, pluginId|null)` 与单类写口同一实现——一次读改写、一次 `config:changed` 广播（⛔ 不是 N 次写，E31 双向同步靠这条），`pluginId: null` = 逐类恢复自动；归一化/去重/非法跳过与单类写口共用纯函数 `applyDefaultBulkOverride`（单测 4 例钉住）。契约 `fileAssociation` 面 3 方法扩为 4（`@linkdesk/contracts` 0.1.38 已发 npm）。
 - **设置页导航多出「默认打开方式」组**：壳侧在自有 pseudo pluginId `file-associations` 下声明一个配置组（导航项由此出现），组内唯一键＝既有覆盖表键 `workbench.fileAssociations`，带新控件提示 `uiHint: "fileAssociationsManager"`——该**整组**的渲染交给设置插件做自定义视图。🔴 **D1「该键不注册进设置页」的原意保住**：键带自定义提示 ⇒ 泛型对象编辑器永不渲染它，管理器仍是唯一 UI、覆盖表仍是同一处真相源（第三方设置插件不认识该提示时按既有降级契约只读展示）。控件提示词表收第 14 枚，三处同笔（contracts 类型 ∪ `@linkdesk/ui` 数组 ∪ 四份 `plugin.schema` 描述），轻门禁守同步。
+- **「打开方式」选择器转正归壳（纠正案 4.5）**：面板从 file-tree 插件搬进壳共享件 `@linkdesk/ui` 的 `OpenWithPicker`，唯一调用面 = **壳命令** `workbench.action.openWith`（`SHELL_COMMANDS.openWith`，SDK 出 `openWith()` helper）。原 id `file-tree.openWith` 属「住错层」——它消费的全是宿主声明（插件清单／文件关联声明／覆盖表），按判据 A 必须住在声明方与渲染方都够得着的地方。🔴 **命门**：卸载或停用 file-tree 后，设置页「打开方式…（.ext）」入口与编辑器二进制提示条那颗按钮**照样在**（旧行为是一并消失）。面板口径照设计图：居中弹出 + 复用壳既有模态遮罩（`#ld-scrim-plane` ＋ 令牌 `--scrim-dialog`，⛔ 零新 rgba／零毛玻璃）；右键入口传 `anchor` 则就近弹出、**无遮罩**但有透明点击层（点击外部收起）。单实例语义 = 后到者替换。
+- **`@linkdesk/contracts` 新公开面** `OpenWithRequest` / `OpenWithHandler`（`openWith` 命令的入参/出参形状）——数据形状只此一份，共享件与 SDK 都只再导出，⛔ 不另立副本。
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货；管理器 UI 住设置插件仓，随其仓发版（发版链见下方「作者轴」）。
 
 ### fix
 
 - **dev 轨道更新插件的必死局根治**：开发模式（Vite）从插件目录**现场服务**代码，常驻视图（文件树这类 keep-alive 侧栏）把目录句柄一直捏着——`plugins:commit-update` 的原子替换（`target→.bak→staged→target`）在第一次 rename 那步稳定失败，此前的重试退避（0/250/700/1500/2500ms）救不了（占用是持续的，不是瞬时的），用户只能杀掉占用进程重试或改走安装版打包验证。现在：rename 仍 busy ⇒ 主进程**不报错**，暂存目录原样保留，返回 `deferred: true`；壳如实提示「{{name}} 的更新（{{to}}）已就绪——当前版本目录被占用，重启 LinkDesk 后自动替换」并给「立即重启」按钮。**下次启动**时 `commitPendingStagedUpdates()` 在「中断恢复复原 .bak」之后、「过期暂存清理」之前补完替换（三关校验：清单可读且 pluginId 一致、目标在场、版本方向正确），文件换好后照常走账本更新与三表重扫。
-- **磁盘全程安全**：defer 发生时旧版目录**未动**、暂存原样（不是半个插件）；启动补提交失败才落回既有清理，旧版在位不影响使用。契约 `plugins.packageCommitUpdate` 返回体新增可选 `deferred` 字段（`@linkdesk/contracts` 0.1.37 已发 npm；旧调用方零影响），`@linkdesk/plugin-sdk` 0.1.76 同链重发（速查表随契约重生）；新提示串走 lang-defaults 外仓链（1.0.55 已发）。单测 8 例钉住（含 `process.chdir` 造真 EBUSY 的慢例、boot 三关校验、`.bak` 预复原）。
+- **磁盘全程安全**：defer 发生时旧版目录**未动**、暂存原样（不是半个插件）；启动补提交失败才落回既有清理，旧版在位不影响使用。契约 `plugins.packageCommitUpdate` 返回体新增可选 `deferred` 字段（`@linkdesk/contracts` 0.1.37 已发 npm；旧调用方零影响），`@linkdesk/plugin-sdk` 0.1.76 同链重发（速查表随契约重生）；新提示串走 lang-defaults 外仓链（1.0.55 已发）。单测 8 例钉住（含 `process.chdir` 造真 EBUSY 的慢例、boot 三关校验、`.bak` 预复原）。- **面板行名的语义正名（C1.8）**：行/下拉主标签取**插件名**（`manifest.name ?? pluginId`），文件类型名（声明里的 `displayName`，如 `.rs → "Rust"`）另存 `typeLabel` 字段——此前两者混用，`.rs` 那一行显示成 "Rust"（像文件名不像插件名）。只读面 `fileAssociation.listHandlersFor` 的行因此多一个 `title` 字段（`@linkdesk/contracts` 0.1.39）；设置页下拉与搜索过滤一并改吃 `title`。
+- **面板行图标不再是清一色白纸（C1.9）**：旧面板在插件侧读 `plugins.listAll`——那是**只有壳 preload 有**的只读面，可选链 `?.()` 静默失败 ⇒ 每行都渲染成空白纸。改由壳侧装配，图标走共享 helper `pickIdentityArt()`（与设置页／标签栏同源），并顺手删掉 file-tree 里那份私有图标兜底。
+- **「打开方式…（.ext）」入口不再硬编码宿主命令 id**：设置插件改走 `SHELL_COMMANDS.openWith` 常量（门禁 R1 红线），齿轮项文案按用户拍板**方案 A**：`打开方式…（.{{ext}}）`，载荷走 `commandArgs: [{ ext }]`（右键菜单的载荷律：`args = [...commandArgs, context]`）。
+- **齿轮「复制插件 ID」补上失败态**：剪贴板面缺失 ⇒ 警示 toast；写入抛错 ⇒ 错误 toast 带原因（原来两处都静默）。
+
 ### 作者轴
 
 - `@linkdesk/ui` **0.2.41**（2026-10-05，独立发版——共享 UI 包，软件本体不动）：新增共享件 `PluginCard`——「按插件浏览」的插件卡（卡头身份行／受控展开／齿轮菜单／停用态；图标消费现成 `PluginIcon`，零新造图标链）。卡只到「卡」为止，扩展名行清单不进共享包（那是文件关联管理器的本地词汇）。首消费方 = 设置插件管理器（下一阶段接线）；导出面只增不改。
@@ -24,6 +30,10 @@
 - `@linkdesk/ui` **0.2.42**（2026-10-05，同链独立发版）：控件提示词表 `SETTINGS_UI_HINTS` 收第 14 枚 `fileAssociationsManager`（词表三处同笔的另一半）；文件头注明它与 `SettingsUiHint` 一一对应。**0.2.43** 紧随：词表单测的条数断言 13→14（`0.2.42` 漏改，作者面哈希把它算作漂移）。
 - `@linkdesk/plugin-sdk` **0.1.78**（2026-10-05，同链独立发版）：dev-host mock 随契约重生（278 桩）＋随包 `schemas/host-reserved.json` 收第 4 枚 pseudo pluginId `file-associations`（宿主保留账本三份同笔）。纯派生面重生成；**0.1.79** 紧随补正随包速查表——`README.md` 的计数行（47 命名空间 / **259** 方法）与 `fileAssociation` 行，`0.1.78` 只手工改了行、漏了计数（重生成器抓出来的）。
 - `@linkdesk/plugin-docs` **0.1.63**（2026-10-05，同链独立发版）：`docs/zh/plugin.schema.json` 的「Known hints」描述同步到 14 枚；**0.1.64** 紧随补正 `16-命名规范` 两棵树（宿主伪 pluginId 表加 `file-associations`——新增分组会以宿主身份出现在设置页导航里，作者必须读得到）。
+- `@linkdesk/contracts` **0.1.39**（2026-10-05，纠正案 4.5 同链）：新增 `OpenWithRequest` / `OpenWithHandler`（「打开方式」命令的入参/出参形状）；`fileAssociation.listHandlersFor` 行加 `title` 字段（**插件名**，与 `displayName`＝**文件类型名**分开）。类型面只增不改。
+- `@linkdesk/plugin-sdk` **0.1.80**（2026-10-05，同链独立发版）：新增 `SHELL_COMMANDS` 常量表（宿主命令 id 的正典，首枚 `openWith`）＋ `openWith()` helper——插件从此不必硬编码宿主命令 id；随包 `schemas/host-css-names.json` 收录共享件 `OpenWithPicker` 的类名。
+- `@linkdesk/ui` **0.2.45**（2026-10-05，同链独立发版）：新增共享件 `OpenWithPicker`（＋ `OpenWithPickerProps` 与类型再导出）——纯 props in / events out，数据由壳命令装配后喂入。
+- `@linkdesk/plugin-docs` **0.1.65**（2026-10-05，同链独立发版）：六组作者文档同笔更新（菜单贡献点「载荷：commandArgs vs context」、共享件菜单载荷分两段、命令化规范「⛔ 不硬编码宿主命令 id」、`plugin.json` 的 `extension`/`displayName` 语义、组件速查 `OpenWithPicker` 行）。
 
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货。
 

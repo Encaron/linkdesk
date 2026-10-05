@@ -329,6 +329,13 @@ export class IpcBridge {
       this.broadcast(channel, payload, sourceId, false, target);
       return;
     }
+    // 「打开方式」面板请求/回执（壳→池 openWith:show、池→壳 openWith:action）——同为**命令式**请求
+    // 而非幂等状态快照：新池创建不得重放过期请求（否则开新窗平白弹出/收起一个没人动过的面板）。
+    // 同 commands:executeRequest 的做法与理由（对标 #6.5 流数据不复播）。
+    if (channel === "openWith:show" || channel === "openWith:action") {
+      this.broadcast(channel, payload, sourceId, false);
+      return;
+    }
     // E5.8#6.5：broadcast 已归一化为发壳+发池——壳侧补发行随 #6.5 删除（原 234 行手动 plugin:push）
     // 广播到唯一 Pool WebView + 壳（含自己——对标 CoreEvents 模式）
     this.broadcast(channel, payload, sourceId);

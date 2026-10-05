@@ -58,6 +58,7 @@ export const UI_SURFACE = [
   "src/components/shared/number-input/**",
   "src/components/shared/readonly-text/**", // M4 AI#38.12：只读文本展示件（P-2 拍板 A）
   "src/components/shared/overlay-portal/**",
+  "src/components/shared/open-with-picker/**", // 2026-10-05「文件打开方式」**纠正案 4.5**：打开方式选择器转正归壳（共享件）
   "src/components/shared/plugin-card/**", // 2026-10-05「文件打开方式」案 4A：按插件浏览插件卡（共享件）
   "src/components/shared/plugin-icon/**",
   "src/components/shared/segmented-radio/**",

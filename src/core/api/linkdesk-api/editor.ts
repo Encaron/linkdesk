@@ -25,8 +25,17 @@ export interface EditorAPI {
    */
   fileAssociation: {
     getPluginFor(ext: string): Promise<string | undefined>;
-    /** 列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器数据源，01 §T2.1）；无声明者 ⇒ [] */
-    listHandlersFor(ext: string): Promise<Array<{ pluginId: string; displayName: string; isCurrent: boolean }>>;
+    /**
+     * 列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器与设置页下拉的数据源，01 §T2.1）；无声明者 ⇒ []。
+     * `title` = **插件**显示名（manifest.name ?? pluginId）；`displayName` = **文件类型**显示名
+     * （声明里的 displayName，如 .rs → "Rust"）——两者语义不同，命名位用 `title`。
+     */
+    listHandlersFor(ext: string): Promise<Array<{
+      pluginId: string;
+      title: string;
+      displayName: string;
+      isCurrent: boolean;
+    }>>;
     /** 覆盖表唯一写口——`pluginId: null` = 恢复自动（删覆盖键）；写后 config:changed 即时广播（E31） */
     setDefault(ext: string, pluginId: string | null): Promise<void>;
     /** 同上，**一次写 N 类**（E32/E34 聚合：`pluginId: null` = 逐类删）——非法/重复扩展名在写面内跳过 */
