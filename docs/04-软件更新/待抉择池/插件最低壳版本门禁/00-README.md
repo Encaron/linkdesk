@@ -87,7 +87,7 @@
 | **E6#121** `check-ui-surface-additive`（[壳仓](../../../../scripts/check-ui-surface-additive.mjs)） | **同源**：它读的 `ui-surface.json` 就是 G1 要升级的那份。基线降级链（tag → HEAD → 工作区）就是 `since` 的推导手段 |
 | **E6#166**「ui 对货不对号」（`a8b42bbe9`） | **本件的前提**：同号锁步已退役 ⇒ **不能靠版本号大小推**，必须走**显式账本** |
 | **E6#117** 兼容读数（[compatibility.ts](../../../../src/core/compat/compatibility.ts)） | G4 在它上面加一条腿（实际地板），⛔ 不改它已有的五态映射与日期口径 |
-| **[文件打开方式与贡献点](../文件打开方式与贡献点/00-README.md)** | 本次事故的**场景来源**：settings 1.0.35 的管理器组（`PluginCard` / `uiHint: fileAssociationsManager`）正是在那条链上发的 |
+| **[文件打开方式与贡献点](../../已落地/文件打开方式与贡献点/00-README.md)** | 本次事故的**场景来源**：settings 1.0.35 的管理器组（`PluginCard` / `uiHint: fileAssociationsManager`）正是在那条链上发的 |
 
 ## 八、给接手 AI 的话
 

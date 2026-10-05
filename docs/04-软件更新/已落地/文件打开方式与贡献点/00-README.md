@@ -50,7 +50,7 @@
 | T2 | **打开方式选择器＋用户覆盖表＋设置页管理器** | 实现 `file-tree.openWith`：**选择器=每次右键时的临时列表**（列该扩展名全部 handler），每行「打开（仅此一次）」「设为默认（写覆盖表）」；有覆盖时顶部「当前默认」行＋「恢复自动」。**＋设置页「默认打开方式」管理器**（对标 Windows 默认应用：检索＋竞争类型下拉＋按插件浏览；设置插件升级，用户已授权）。**没有点击计数、没有自动学习**——两个入口同写一个真相源，双向同步 | file-tree（选择器）＋设置插件（管理器，升级）＋壳 `FileAssociationService`（覆盖表＋`listHandlersFor`/`setDefault` 面） | D1/D3/D7 |
 | T3 | **公共 context key** | 文件属性升为宿主公共旗子 `resourceExtname`，第三方菜单 `when` 才能按扩展名显隐 | 壳 context key 账＋file-tree 注入点 | D2 |
 | T4 | **受控 openExternal 通道** | 插件面开 `shell.openExternal`（scheme 白名单）；「以 VS Code 打开」的地基 | `electron/preload-pool/namespaces-plugin.ts`＋主进程 handler＋host-reserved 账 | D5 |
-| T5 | **菜单贡献点收口**（自[菜单补全](../菜单补全.md)剥入） | 槽位命名拍板＋作者面文档「菜单贡献点」新篇＋SDK 门禁腿 | schema 四份拷贝＋`docs/03-插件制造`＋SDK check | D2 |
+| T5 | **菜单贡献点收口**（自[菜单补全](../../待抉择池/菜单补全.md)剥入） | 槽位命名拍板＋作者面文档「菜单贡献点」新篇＋SDK 门禁腿 | schema 四份拷贝＋`docs/03-插件制造`＋SDK check | D2 |
 | T6 | **OS 关联与插件状态同步（解薛定谔态）** | 静态清单**构建期从随包插件声明机械收割**（消灭第二真相源——45↔13 已漂移）＋**运行期同步**：装/卸声明新扩展名的插件 → 壳按**壳自己的**设置开关增/撤 OS 登记（HKCU）；**exe 永不登记** | `syswrite.cpp:60-64`＋主进程同步模块＋设置页「系统集成」组 | D6 |
 | T7 | **DEFAULT_TAB_TYPE 去硬编码（角色挂牌）** | 壳不写死 `"editor"`：fileAssociations 条目加 `role:"text-fallback"`，壳解析「当前激活的挂牌者」当兜底；**牌=提名不是夺权**——两只同时挂牌不静默漂移（D7 同一套仲裁＋提示）；第三方编辑器挂牌即可参选、用户挑中才接管 | `tabs.ts:14`＋schema＋editor plugin.json | D7/D9 |
 

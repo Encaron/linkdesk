@@ -9,7 +9,7 @@
 
 ## 二、机制（为什么可行）
 
-VS Code 安装时向 OS 注册了 `vscode://` 协议：`vscode://file/<绝对路径>`（文件、**目录**都认，路径需 URI 编码）即拉起并定位。LinkDesk 侧唯一缺口 = 插件面没有 `openExternal`（取证：`electron/windows/external-links.ts:29` 仅主进程内部用）⇒ 依赖壳案 [T4 受控通道](../../04-软件更新/待抉择池/文件打开方式与贡献点/01-方案与落点契约.md)（scheme 白名单，`vscode:` 属"OS 已注册协议"）。**T4 是本插件唯一的硬依赖。**
+VS Code 安装时向 OS 注册了 `vscode://` 协议：`vscode://file/<绝对路径>`（文件、**目录**都认，路径需 URI 编码）即拉起并定位。LinkDesk 侧唯一缺口 = 插件面没有 `openExternal`（取证：`electron/windows/external-links.ts:29` 仅主进程内部用）⇒ 依赖壳案 [T4 受控通道](../../04-软件更新/已落地/文件打开方式与贡献点/01-方案与落点契约.md)（scheme 白名单，`vscode:` 属"OS 已注册协议"）。**T4 是本插件唯一的硬依赖。**
 
 ## 三、贡献什么
 
