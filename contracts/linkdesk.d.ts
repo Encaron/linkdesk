@@ -1931,9 +1931,22 @@ export interface EditorAPI {
         getDecoration(uri: string): Promise<FileDecoration | null>;
         onDidChange(cb: (uris: string[]) => void): () => void;
     };
-    /** 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） */
+    /**
+     * 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。
+     * T2（第 3 波）：`getPluginFor` 升级为覆盖表感知的完整解析（覆盖 → 声明 → 角色，01 §T2.2）——
+     * 三入口（FoldersView/SearchView/intake）同吃 ⇒ F3「一处真相」；`listHandlersFor` = 选择器只读面；
+     * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步）。
+     */
     fileAssociation: {
         getPluginFor(ext: string): Promise<string | undefined>;
+        /** 列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器数据源，01 §T2.1）；无声明者 ⇒ [] */
+        listHandlersFor(ext: string): Promise<Array<{
+            pluginId: string;
+            displayName: string;
+            isCurrent: boolean;
+        }>>;
+        /** 覆盖表唯一写口——`pluginId: null` = 恢复自动（删覆盖键）；写后 config:changed 即时广播 */
+        setDefault(ext: string, pluginId: string | null): Promise<void>;
     };
     /** langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */
     langDef: {

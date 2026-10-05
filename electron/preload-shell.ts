@@ -14,6 +14,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './ipc/event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
+import { buildFileAssociationFace } from './ipc/file-association-face';
 import { IpcRelay } from './ipc/ipc-relay';
 // E5.8#20：壳暴露面契约——expose 对象 satisfies ShellExposed（tsc 即门禁，漂移编译期死）
 import type { ShellExposed } from '../src/core/api/linkdesk-api/surfaces';
@@ -148,6 +149,19 @@ const events = createEventSystem(ipcRenderer, {
 // E6#57.2b：壳侧产品身份面——函数构造（非内联字面量）。satisfies 的 excess-property 检查达对象字面量
 // 每一层——getProductInfo 超额暴露若内联进 app 字面量会编译红（上下文类型 = 契约 app 面只有 getVersion）；
 // 工厂返回的对象走结构兼容（目标需的都有 + 多余的容忍），超额暴露才成立。
+/**
+ * 文件关联壳面工厂——契约三方法（实现单源 = 共享工厂，与池 preload 同形）＋ `onSecondContender`
+ * **壳内私有扩展**（第四例，同 getProductInfo/getReleaseNotes/onOpenPath 形）：E1/E2 第二竞争者
+ * 广播（update.stateChanged 同款 events.on），startup 装配的提示组装订阅。
+ * 工厂构造 = 超额暴露过 satisfies 的唯一通道（上方 E6#57.2b 注）。
+ */
+function buildShellFileAssociation() {
+  return {
+    ...buildFileAssociationFace(ipcRenderer),
+    onSecondContender: (cb: (event: { ext: string; pluginId: string; displayName: string }) => void) =>
+      events.on(IPC.fileAssociation.secondContender, cb),
+  };
+}
 function buildShellApp() {
   return {
     // getVersion = 契约必选面（壳/池双端同步暴露——第三方插件读宿主版本号，市场 minAppVersion E6#30.8c）
@@ -349,10 +363,7 @@ try {
 
     // ── 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）──
     // E5.8#0d.5：壳侧补上——preload-pool 同款；设置页"以 JSON 打开"需查关联，不写死编辑器插件 ID
-    fileAssociation: {
-      getPluginFor: (ext: string): Promise<string | undefined> =>
-        ipcRenderer.invoke(IPC.fileAssociation.getPluginFor, ext),
-    },
+    fileAssociation: buildShellFileAssociation(),
 
     // ── E3a #31：插件管理（桥接——走 IpcBridge → IpcBridgeHandler → loader 函数）──
     pluginManager: {

@@ -7,6 +7,7 @@
 
 import { ipcRenderer } from 'electron';
 import { IPC, filesystemChanged } from '../ipc/channels';
+import { buildFileAssociationFace } from '../ipc/file-association-face';
 import type { EventSystemApi } from '../ipc/event-system';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../../src/core/types/ipc/serial';
 import type { FileChangeEvent } from '../../src/core/services/files/FileService';
@@ -129,10 +130,10 @@ export function buildSearch() {
   };
 }
 
-/** fileAssociation 命名空间——扩展名→插件ID（主进程 FileAssociationService，Registry 主进程化后直答） */
+/** fileAssociation 命名空间——扩展名→插件ID（主进程 FileAssociationService，Registry 主进程化后直答）。
+ * T2（第 3 波）：listHandlersFor = 选择器只读面（主进程直答）；setDefault = 覆盖表唯一写口
+ * （PROXY_CHANNELS 代理到壳 ConfigurationService 单写者——settings.json 写路径归壳，D1/E31）。
+ * 方法实现单源 = 共享工厂（jscpd 抓过双 preload 各写一份的克隆）。 */
 export function buildFileAssociation() {
-  return {
-    getPluginFor: (ext: string): Promise<string | undefined> =>
-      ipcRenderer.invoke(IPC.fileAssociation.getPluginFor, ext),
-  };
+  return buildFileAssociationFace(ipcRenderer);
 }

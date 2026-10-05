@@ -83,6 +83,12 @@ export const IPC = {
   env: { get: 'env:get' },
   fileAssociation: {
     getPluginFor: 'fileAssociation:getPluginFor',
+    // T2 只读面：列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器数据源，01 §T2.1）
+    listHandlersFor: 'fileAssociation:listHandlersFor',
+    // T2 写面：覆盖表唯一写口（代理到壳 ConfigurationService 单写者，D1/E31）
+    setDefault: 'fileAssociation:setDefault',
+    // E1/E2 推送：第二竞争者出现（主进程检测 → 壳弹提示，D7「不静默漂移」）——广播通道非 invoke
+    secondContender: 'fileAssociation:secondContender',
   },
   filesystem: {
     readTextFile: 'filesystem:readTextFile',

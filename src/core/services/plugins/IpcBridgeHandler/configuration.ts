@@ -9,6 +9,10 @@ import {
   getConfigurationValue, setConfigurationValue, onDidChangeConfiguration,
   inspectConfiguration, getUserSettings,
 } from "../../configuration/ConfigurationService";
+import {
+  normalizeAssociationOverrideKey,
+  WORKBENCH_FILE_ASSOCIATIONS_KEY,
+} from "../../files/FileAssociationService";
 import { getMergedSchema, getConfigurationContributions } from "../../../registry/ConfigurationRegistry";
 import type { ShellAPI } from "../../../api/linkdesk-api/shell";
 
@@ -34,6 +38,23 @@ export async function handleConfigChannel(channel: string, args: unknown[]): Pro
     case "config:set": {
       const [key, value] = args;
       await setConfigurationValue(key as string, value, "user");
+      break;
+    }
+    // T2 写面（第 3 波，D1/E31）：覆盖表唯一写口——「设为默认」写键、「恢复自动」（pluginId=null）删键。
+    // 读改写同进程完成（ConfigurationService 内存值现改 → 去抖落 settings.json），emitChange 自动
+    // 广播 config:changed ⇒ 文件树选择器/设置页管理器（config.onChange）即时互见 = E31 双向同步。
+    // ⚠️ 存储键形 = 带点小写（D1 示例 {".pdf":…}）；`normalizeAssociationOverrideKey` 归一；
+    //    非法扩展名（空串）= no-op（E25 精确匹配口径下没有「模糊纠正」可言）。
+    case "fileAssociation:setDefault": {
+      const [ext, pluginId] = args as [string, string | null];
+      const key = normalizeAssociationOverrideKey(ext);
+      if (!key) break;
+      const table = {
+        ...((getConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY) as Record<string, string> | undefined) ?? {}),
+      };
+      if (pluginId) table[key] = pluginId;
+      else delete table[key];
+      await setConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY, table, "user");
       break;
     }
     default:

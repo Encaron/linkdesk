@@ -19,6 +19,11 @@ import {
   getPluginsFor,
   getRoleHolders,
   resolveFallbackTabType,
+  resolveOpenTarget,
+  listHandlersFor,
+  onSecondContender,
+  normalizeAssociationOverrideKey,
+  WORKBENCH_FILE_ASSOCIATIONS_KEY,
   clearFileAssociations,
   TEXT_FALLBACK_ROLE,
 } from "./FileAssociationService";
@@ -102,5 +107,113 @@ describe("resolveFallbackTabType（T7 角色挂牌兜底）", () => {
     registerFileAssociation({ extension: ".ZZZ", pluginId: HOLDER_A, role: TEXT_FALLBACK_ROLE });
     expect(getPluginFor("zzz")).toBe(HOLDER_A);
     expect(getRoleHolders()).toEqual([HOLDER_A]);
+  });
+});
+
+describe("resolveOpenTarget（T2 解析纯函数 · 一处真相源）", () => {
+  /** 两家声明 .zzz：A 先激活（=激活序优先），B 后来 */
+  function twoContenders(): void {
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_A, displayName: "阅读器 A" });
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B, displayName: "阅读器 B" });
+    registerHolder(HOLDER_A, ["qqq"]); // 角色兜底由 A 承担
+  }
+
+  it("① 无覆盖 ⇒ 声明表激活序优先（E1：第二只装上不漂移）", () => {
+    twoContenders();
+    expect(resolveOpenTarget(".zzz")).toBe(HOLDER_A);
+    expect(resolveOpenTarget("zzz")).toBe(HOLDER_A);
+  });
+
+  it("② 覆盖表命中且指向者在册 ⇒ 用户说了算（E2）", () => {
+    twoContenders();
+    expect(resolveOpenTarget("zzz", { ".zzz": HOLDER_B })).toBe(HOLDER_B);
+  });
+
+  it("③ E6/E7：覆盖指向已卸载/未声明者 ⇒ 视同未覆盖回声明序（键惰性语义由调用方持有）", () => {
+    twoContenders();
+    expect(resolveOpenTarget("zzz", { ".zzz": "demo-gone" })).toBe(HOLDER_A);
+  });
+
+  it("④ E25：覆盖键归一后精确匹配——`.ZZZ`/`zzz` 同键，不符者不生效", () => {
+    twoContenders();
+    expect(resolveOpenTarget("zzz", { ".ZZZ": HOLDER_B })).toBe(HOLDER_B);
+    expect(resolveOpenTarget(".ZZZ", { zzz: HOLDER_B })).toBe(HOLDER_B);
+  });
+
+  it("⑤ 无声明者 ⇒ 角色兜底（T7 同档）；连挂牌者都没有 ⇒ welcome（E22）", () => {
+    registerHolder(HOLDER_A, ["qqq"]);
+    expect(resolveOpenTarget("pdf")).toBe(HOLDER_A); // 二进制类无声明者 → 挂牌者（editor 语义）
+    expect(resolveOpenTarget("pdf", { ".pdf": HOLDER_B })).toBe(HOLDER_A); // 指向者未声明 ⇒ 覆盖失效
+    expect(resolveOpenTarget("pdf", { ".pdf": FALLBACK_PLUGIN_ID })).toBe(HOLDER_A);
+    rollback(HOLDER_A);
+    expect(resolveOpenTarget("pdf")).toBe(FALLBACK_PLUGIN_ID);
+  });
+
+  it("⑥ 空扩展名（无扩展名文件/点开头文件，E8/E33）⇒ 不查声明表、直落角色兜底", () => {
+    registerHolder(HOLDER_A, ["qqq"]);
+    expect(resolveOpenTarget("")).toBe(HOLDER_A);
+    expect(resolveOpenTarget("", { "": HOLDER_B })).toBe(HOLDER_A);
+  });
+});
+
+describe("listHandlersFor（T2 只读面 · 选择器数据源）", () => {
+  it("① 列全部声明者＋当前默认标记随覆盖表走；displayName 缺省回退 pluginId", () => {
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_A, displayName: "阅读器 A" });
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B }); // 无 displayName
+    expect(listHandlersFor(".zzz")).toEqual([
+      { pluginId: HOLDER_A, displayName: "阅读器 A", isCurrent: true },
+      { pluginId: HOLDER_B, displayName: HOLDER_B, isCurrent: false },
+    ]);
+    expect(listHandlersFor("zzz", { ".zzz": HOLDER_B })).toEqual([
+      { pluginId: HOLDER_A, displayName: "阅读器 A", isCurrent: false },
+      { pluginId: HOLDER_B, displayName: HOLDER_B, isCurrent: true },
+    ]);
+  });
+
+  it("② 无声明者 ⇒ 空数组（选择器不可达：右键项 when 收敛，E13）", () => {
+    expect(listHandlersFor("nobody")).toEqual([]);
+    expect(listHandlersFor("")).toEqual([]);
+  });
+});
+
+describe("第二竞争者事件（E1/E2 · D7 会话内一次）", () => {
+  it("① 首个声明者不触发；第二家触发一次；同家再注册/重放不再触发", () => {
+    const seen: string[] = [];
+    onSecondContender((e) => seen.push(`${e.ext}:${e.pluginId}`));
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_A, displayName: "阅读器 A" });
+    expect(seen).toEqual([]);
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B, displayName: "阅读器 B" });
+    expect(seen).toEqual([`zzz:${HOLDER_B}`]);
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B }); // 同插件重复注册被忽略
+    expect(seen).toEqual([`zzz:${HOLDER_B}`]);
+  });
+
+  it("② 退订后不再收；第三家（新 pluginId）仍会触发", () => {
+    const seen: string[] = [];
+    const unsub = onSecondContender((e) => seen.push(e.pluginId));
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_A });
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B });
+    unsub();
+    const HOLDER_C = "demo-reader-c";
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_C });
+    expect(seen).toEqual([HOLDER_B]);
+  });
+});
+
+describe("覆盖表键形（D1）", () => {
+  it("存储键 = 带点小写；键名常量归主进程/壳写读两侧共用", () => {
+    expect(WORKBENCH_FILE_ASSOCIATIONS_KEY).toBe("workbench.fileAssociations");
+    expect(normalizeAssociationOverrideKey(".PDF")).toBe(".pdf");
+    expect(normalizeAssociationOverrideKey("zzz")).toBe(".zzz");
+    expect(normalizeAssociationOverrideKey("  ")).toBe("");
+  });
+
+  it("onSecondContender 返回退订函数（幂等，二次调用不抛）", () => {
+    const unsub = onSecondContender(() => {});
+    expect(typeof unsub).toBe("function");
+    expect(() => {
+      unsub();
+      unsub();
+    }).not.toThrow();
   });
 });

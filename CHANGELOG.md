@@ -2,6 +2,17 @@
 
 > 📦 **0.1.x 版本线的完整说明已归档**：[`docs/04-软件更新/CHANGELOG-归档-v0.1.md`](docs/04-软件更新/CHANGELOG-归档-v0.1.md)（54 段；2026-10-01 首次执行「主文件 > 50 版 或 > 300 KB 即归档」的体积纪律）。**本文件只留当前版本线**（0.2.x）。归档只治仓库体积——`CHANGELOG.md` 不进安装包 / npm 包 / 插件 zip，三个分发面本来就不带它。
 
+## v0.2.47（2026-10-05）
+
+**「打开方式」从占位变成真选择器：装了多只阅读器，谁打开、默认归谁，第一次有了用户说了算的入口。**
+
+### feat
+
+- **解析一处真相源（T2.2）**：`getPluginFor` 升级为覆盖表感知的完整解析（用户覆盖表 → 声明表激活序优先 → 角色兜底）——文件树单击、搜索双击、OS 关联 intake 三入口同吃一条主进程通道，此前「树里查不到落编辑器、搜索查不到静默不打开」的行为分叉就地消灭。新增只读面 `fileAssociation.listHandlersFor(ext)`（列全部声明者＋当前默认标记）与写面 `fileAssociation.setDefault(ext, pluginId|null)`（覆盖表唯一写口，null = 恢复自动；代理到壳 ConfigurationService 单写者，写后 config:changed 全端广播）。
+- **用户覆盖表（D1）**：settings.json 平键 `workbench.fileAssociations`（`{".pdf":"pdf-reader-x"}`）——不注册进设置页（管理器/选择器才是它的 UI）；点击计数与自动学习没有做（默认只来自用户显式动作）。
+- **第二只装上不静默漂移（E1/E2/D7）**：主进程在注册关联时检测「同一扩展名的第二竞争者」，经新推送 `fileAssociation:secondContender` 广播，壳在启动完成后弹一次提示（会话内一次，启动期已并存的多家不打扰）。新增壳侧通知串两条（中英腿走 lang-defaults 外仓链）。
+- 契约 `fileAssociation` 面由 1 方法扩为 3（`@linkdesk/contracts` 0.1.36 / `@linkdesk/plugin-sdk` 0.1.75 已随链发 npm）；命名空间矩阵 177→180 通道；AI 手册命令索引随笔重生；`FileAssociationService` 单测扩至 19 例（覆盖 E6/E7/E22/E25 与选择器只读面）。⛔ **软件本体未发版**——照规矩攒批；选择器 UI 在 file-tree 插件侧（随其仓发版）。
+
 ## v0.2.46（2026-10-05）
 
 **快捷键多了第三种状态：清空——这条命令干脆不要键。此前只有「改绑」与「恢复为默认」，而后者对作者声明过键的命令只是回退，清不掉。**

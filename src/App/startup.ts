@@ -38,6 +38,7 @@ import { registerAiBridgeConfiguration } from "./config/aiBridge";
 import { registerStorageConfiguration } from "./config/storage";
 import { initReleaseNotesOnLaunch } from "./releaseNotesOnLaunch";
 import { initVersionDowngradeNotice } from "./versionDowngradeNotice";
+import { initSecondContenderHint } from "../core/services/files/secondContenderHint";
 
 export interface AppStartupDeps {
   setTheme: (v: string) => void;
@@ -377,6 +378,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // **不 await**——里面的取数要出网，`setReady` 不能等它；最坏也只是标签页晚一帧出现。
       // 本函数返回的 Promise 永不 reject（内部已收），但仍显式 void，写明「故意不接」。
       void initReleaseNotesOnLaunch();
+
+      // E1/E2（第 3 波）：第二竞争者提示装配——必须在 initAll **之后**：订阅晚于插件加载批次，
+      // 启动期已并存的第二家声明天然落在订阅前被丢弃（「启动不打扰、装机才提醒」，D7 会话内一次）。
+      initSecondContenderHint();
 
       // E6#42d 判据子项：应用层降级提示——与上一句同处、同款理由（配置/布局都已到位，且**不 await**：
       // 账本读的是本地存储、不出网，但仍不许它挡 `setReady`）。它报的是「这台机器被换回旧版了」，

@@ -116,7 +116,9 @@
       "setActive"
     ],
     "fileAssociation": [
-      "getPluginFor"
+      "getPluginFor",
+      "listHandlersFor",
+      "setDefault"
     ],
     "filesystem": [
       "copy",
@@ -481,7 +483,9 @@
       "setActive"
     ],
     "fileAssociation": [
-      "getPluginFor"
+      "getPluginFor",
+      "listHandlersFor",
+      "setDefault"
     ],
     "filesystem": [
       "copy",

@@ -189,7 +189,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**16 个域接口 → 47 个命名空间 / 256 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**16 个域接口 → 47 个命名空间 / 258 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -208,7 +208,7 @@
 | `env` | WorkspaceAPI | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
 | `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 |
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
-| `fileAssociation` | EditorAPI | 1 | `getPluginFor` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
+| `fileAssociation` | EditorAPI | 3 | `getPluginFor` `listHandlersFor` `setDefault` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。 |
 | `filesystem` | WorkspaceAPI | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | 文件系统——插件读写（路径校验由主进程执行） |
 | `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
 | `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |

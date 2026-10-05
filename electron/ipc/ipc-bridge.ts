@@ -121,6 +121,9 @@ export class IpcBridge {
     // E5.6#11.5-A：扩展 workspace——池插件完整工作区操作
     // （fileAssociation:getPluginFor 已随 E5.7#50 移 registry-handlers 主进程直答——不再代理到壳；
     //  decorations:getDecoration 已随 E5.7#60 整删——注册表池内化，池内直答零 IPC）
+    // T2 写面（第 3 波）：覆盖表唯一写口——代理到壳 ConfigurationService 单写者（D1/E31；
+    //  ⚠️ setDefault 必须走壳：settings.json 的写路径归 ConfigurationService，主进程自写 = 第二写者）
+    IPC.fileAssociation.setDefault,
     IPC.workspace.setActive,
     IPC.workspace.openFolder,
     IPC.workspace.addFolder,
