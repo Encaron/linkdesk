@@ -208,10 +208,10 @@
 
 ### 7.8 收尾读数与**遗留**
 
-- **npm 轴**：`@linkdesk/plugin-sdk` **0.1.84** ／ `create-linkdesk-plugin` **0.1.24** ／ `plugin-docs` **0.1.69** ／ `@linkdesk/ui` **0.2.47**（ui 进这批的唯一原因＝一处**注释里的路径漂移**（`待抉择池`→`已落地`），零运行期改动）——四包**已 publish 到公开 npm**；⛔ **`release:mark` 未落**（原子写，卡在「货架 `latest` 尚未复现新版本」的 3 分钟复制延迟上；等货架跟上再补跑一次即可，**不影响已发布的包**）。
+- **npm 轴**：`@linkdesk/plugin-sdk` **0.1.84** ／ `create-linkdesk-plugin` **0.1.24** ／ `plugin-docs` **0.1.69** ／ `@linkdesk/ui` **0.2.47**（ui 进这批的唯一原因＝一处**注释里的路径漂移**（`待抉择池`→`已落地`），零运行期改动）——四包**已 publish 到公开 npm**；✅ **`release:mark` 已落**（首次跑撞「货架 `latest` 尚未复现新版本」的 ~3 分钟复制延迟被原子写拦下，同日货架跟上后补跑成功：`contracts@0.1.41`／`plugin-sdk@0.1.84`／`create-linkdesk-plugin@0.1.24`／`@linkdesk/ui@0.2.47`／`plugin-docs@0.1.69` 五包**一次记基线**，落 `scripts/npm-release-state.json`）。
 - **插件轴**：pastel **1.1.1** 已 Release ＋ 推送；五仓 `vitest.config.ts` 注释口径已推送。
 - **壳仓**：⛔ **未发版**（本案零运行期改动，照 2026-10-03 口径——壳攒批）；`R7` 已进 `npm run check`。
-- **遗留（下一棒）**：① 官方目录收录 pastel 1.1.1（候选在 `scratch/`）→ ② 收录后 `npm run sync:bundled -- --latest` 平账 → ③ 补跑 `npm run release:mark`；④ D3 并腿与否请复核（§7.3）。
+- **遗留（下一棒）**：① 官方目录收录 pastel 1.1.1（候选在 `scratch/`）→ ② 收录后 `npm run sync:bundled -- --latest` 平账；③ D3 并腿与否请复核（§7.3）。
 
 > **相关记忆**：`icon-theme-upgrade-pipeline`（图标主题升级流水线与坑，含本条耦合的来历与画法）。
 > **相关档案**：`docs/02-Electron架构/插件生态与发布/插件源码外移层/03-逐个迁移.md`（`convert-material-icons` 当初被判定「保留」的那轮复核）。
