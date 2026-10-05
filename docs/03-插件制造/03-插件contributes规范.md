@@ -724,6 +724,9 @@ useEffect(() => {
 }, []);
 ```
 > **`when: "false"` = 纯程序化命令不进命令面板**——titleActions 专属命令都这样声明，防止在 Ctrl+Shift+P 里刷屏。壳统一渲染器 `ViewTitleActions.tsx` 两处消费：面板标签栏（活动视图）+ 侧栏 section 折叠头。真实示例见 `08 §三`。
+> ⚠️ 这里的单参 `(args)` 能吃下，是因为 titleActions 送的就是**一个对象**（`args` 字段即该对象）。
+> ⛔ **别把这个写法搬到 `ContextMenu` 的菜单项上**：那条路壳是**展开**传参（`handler(...args)`），
+> 数组型载荷会被剥掉一层 ⇒ 菜单项静默空转。菜单项一律写 **rest 形式** `(...args)`，见 [22 篇「菜单载荷律」](22-菜单贡献点.md)。
 
 ### 3.12 `contributes.langDefs`——编程语言声明（主进程）
 

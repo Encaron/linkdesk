@@ -119,17 +119,25 @@ than by you:
 | `context` | **Shared by the whole menu.** When the menu is opened by a shared component, that component supplies it (it is not yours to set) |
 
 **The menu payload law.** `context` is **shared by the whole menu**; each item's identity must travel in
-`MenuItemDescriptor.commandArgs`. The host handler receives `args = [...commandArgs, context]`. A shared
-component (for example `PluginCard`) always sends **its own** `context` (`PluginCard` = `{pluginId}`) ⇒
-when you consume a shared component's context menu, your handler must tolerate **both** its own payload in
-`args[0]` **and** the shared component's context **at the end** — ⛔ never assume `args[0]` is your data
-(unless that slot has no shared context at all).
+`MenuItemDescriptor.commandArgs`. The host **spreads** the payload into your handler (`handler(...args)`), so the
+handler receives `args = [...commandArgs, context]`. A shared component (for example `PluginCard`) always sends
+**its own** `context` (`PluginCard` = `{pluginId}`) ⇒ when you consume a shared component's context menu, your
+handler must tolerate **both** its own payload in `args[0]` **and** the shared component's context **at the end**
+— ⛔ never assume `args[0]` is your data (unless that slot has no shared context at all).
+
+> 🔴 **Write the handler in rest form `(...args)`** — ⛔ not a single parameter `(args)`. A single parameter
+> receives **only the first** argument (`commandArgs[0]`): an array payload gets **one layer stripped**, the parser
+> finds no target, and the menu item **silently does nothing** — with no error anywhere.
+> This is not hypothetical: on 2026-10-06 both gear menus of the settings file-associations manager turned out to be
+> dead exactly this way, while the unit tests stayed **green** — they handed the whole array in as one argument,
+> which happens to match the parser's expectation. Two mechanical guards pin it: the "spread arguments" cases in
+> `electron/preload-pool/commands.test.ts` (host side) and the "single-parameter shape is always rejected" section in
+> `fileAssociationsGearTarget.test.ts` (plugin side).
 
 ```ts
-// Consuming PluginCard's gear menu: args = [{ pluginId }, context]
-// Your own payload (from commandArgs) first, the shared component's context last.
-linkdesk.commands.registerCommand("my-plugin.onCardGear", (args) => {
-  const mine = args?.[0] as { pluginId?: string } | undefined;
+// Consuming PluginCard's gear menu: the handler receives the SPREAD arguments args = [your payload, shared context]
+linkdesk.commands.registerCommand("my-plugin.onCardGear", (...args) => {   // 🔴 rest form, ⛔ not (args)
+  const mine = args[0] as { pluginId?: string } | undefined;
   if (!mine?.pluginId) return;              // no target ⇒ do nothing (never "act on an empty one")
   /* … */
 });

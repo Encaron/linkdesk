@@ -35,8 +35,13 @@
  *   前三是 E5.5#7-p5 的**有意设计**（注释原文：「零 @src/core import——走 window.linkdesk.* IPC」），
  *   后两件是 E5.8 起就走桥的主题控件。⇒ **不软化判据、也不假装它们是零依赖**：照本项目
  *   「例外挂账」惯例逐条登记（文件 ＋ 理由 ＋ 到期条件），**新件一律照红**；反向核对会揪出腐烂条目。
- *   🔴 到期条件 = 本纠正案收口前给出结论（迁成能力注入，或把判据②从 R6 里划掉）——本波（第 5.5 波）
- *   **只登记、不改这五件**（改它们＝动公共导出件的行为，超本波射程）。
+ *   🔴 到期条件（**2026-10-06 已结案**）= 本纠正案收口前给出结论（迁成能力注入，或把判据②从 R6 里划掉）——
+ *   结案口径：**两条都不走**。① ⛔ 不迁注入：这 5 件是**已发布的公共导出件**（`@linkdesk/ui` 0.2.x），
+ *   把 `window.linkdesk.*` 改成 props 注入是 **breaking 的公共 API 变更**，会静默打断第三方调用方；
+ *   ② ⛔ 不划掉判据②：射程本体是「新件一律零桥」，这条今天仍在生效、且是判据 A 的前提。
+ *   ⇒ **维持例外**（5 条），`until` 改挂**真实触发条件**（见各条）＝「下次动这 5 件中任一件的公共 API 时同笔迁注入」。
+ *   ⚠️ 边界如实写在这里：例外按 **(文件, 判据 id)** 放行 ⇒ 这 5 件里**日后新加**的桥调用也一并放行
+ *   （本波不收紧——按行放行会随行号漂移，得不偿失）。判断「该不该新加一处桥」靠人，⛔ 别指望本腿。
  *   `id` 逐条写 `direct-host-bridge`（⛔ 不写 `"*"`）：同文件日后多一条 `shell-internal-import` 照红。
  *
  * ── 第三条判据（中文硬编码）照旧**不在本腿重复扫** ──
@@ -70,34 +75,34 @@ export const EXCEPTIONS = [
     id: "direct-host-bridge",
     why: "存量：E5.5#7-p5 有意走桥（`function lk() { return window.linkdesk; }`，菜单项动作走 executeCommand）。"
       + "第三方插件同样拿得到 `window.linkdesk` ⇒ 今天不破可用性；新件照红。",
-    until: "本纠正案（10-纠正案-共享件转正与归一）收口前：迁成能力注入，或把判据②划掉——两条路都要拍板",
+    until: "2026-10-06 结案＝维持例外（⛔ 不迁注入：breaking 公共 API；⛔ 不划掉判据②：新件仍照红）；触发条件＝下次改本件公共 API（或本件宿主能力注入化被立为独立案）时同笔迁注入",
   },
   {
     file: `${SHARED_DIR}/file-path-input/FilePathInput.tsx`,
     id: "direct-host-bridge",
     why: "存量：E5.5#7-p5 有意走桥（`window.linkdesk?.dialog` 开系统选文件框，无 dialog 时静默 no-op）。"
       + "「选路径」是宿主能力，注入化要调用方多传一个 handler——本波只登记、不改。",
-    until: "本纠正案收口前：同上（迁注入 或 划掉判据②）",
+    until: "2026-10-06 结案＝维持例外；触发条件＝下次改本件公共 API 时同笔迁注入（同 ContextMenu 口径）",
   },
   {
     file: `${SHARED_DIR}/inline-input/InlineInput.tsx`,
     id: "direct-host-bridge",
     why: "存量：E5.5#7-p5 有意走桥（`function lk() { return window.linkdesk; }`，键位捕获/上下文键经桥）。本波只登记、不改。",
-    until: "本纠正案收口前：同上（迁注入 或 划掉判据②）",
+    until: "2026-10-06 结案＝维持例外；触发条件＝下次改本件公共 API 时同笔迁注入（同 ContextMenu 口径）",
   },
   {
     file: `${SHARED_DIR}/select-box/DynamicSelect.tsx`,
     id: "direct-host-bridge",
     why: "存量：`window.linkdesk?.configuration` 订阅 `app.appearanceMode`（双语义下拉的配色域）。"
       + "已全程 `?.` 守卫 ⇒ 桥缺席时静默降级，但仍是直接依赖。本波只登记、不改。",
-    until: "本纠正案收口前：同上（迁注入 或 划掉判据②）",
+    until: "2026-10-06 结案＝维持例外；触发条件＝下次改本件公共 API 时同笔迁注入（同 ContextMenu 口径）",
   },
   {
     file: `${SHARED_DIR}/theme-picker/ThemePicker.tsx`,
     id: "direct-host-bridge",
     why: "存量：`window.linkdesk?.theme?.listRecipes` ＋ 插件生命周期订阅（E5.8#60 F1.3）。"
       + "同款 `?.` 降级；本波只登记、不改。",
-    until: "本纠正案收口前：同上（迁注入 或 划掉判据②）",
+    until: "2026-10-06 结案＝维持例外；触发条件＝下次改本件公共 API 时同笔迁注入（同 ContextMenu 口径）",
   },
 ];
 
@@ -204,7 +209,7 @@ function main() {
   }
   console.log(
     `✅ R6 导出共享件零壳依赖（例外放行 ${passed.length} 处：${[...new Set(passed.map((p) => path.basename(p.rel)))].join(" / ")}`
-      + `——五条存量挂在 EXCEPTIONS，到期条件逼一个拍板）。`,
+      + `——五条存量挂在 EXCEPTIONS，2026-10-06 结案＝维持例外、触发条件见各条）。`,
   );
   process.exit(0);
 }

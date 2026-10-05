@@ -736,6 +736,10 @@ useEffect(() => {
 }, []);
 ```
 > **`when: "false"` = a purely programmatic command that stays out of the command palette** — titleActions-only commands are declared this way, which keeps them from cluttering Ctrl+Shift+P. The shell's unified renderer `ViewTitleActions.tsx` has two consumers: the panel tab bar (the active view) + the sidebar section collapse header. For a real example see `08 §3`.
+> ⚠️ The single-parameter `(args)` works here because titleActions hands over **one object** (the `args` field is
+> that object). ⛔ **Do not carry this form over to `ContextMenu` items**: that path **spreads** the payload
+> (`handler(...args)`), so an array payload loses one layer and the menu item silently does nothing. Menu items are
+> always written in **rest form** `(...args)` — see [22, "The menu payload law"](22-menu-contribution-points.md).
 
 ### 3.12 `contributes.langDefs` — programming language declarations (main process)
 

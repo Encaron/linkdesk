@@ -117,4 +117,38 @@ describe('池侧 on-command 激活（E6#62e）', () => {
     const executeCall = ipcMock.invoke.mock.calls.find((c) => c[0] === IPC.commands.execute);
     expect(executeCall?.[1]).toBe('demo-plugin.nope');
   });
+
+  // ── 🔴 载荷形状（2026-10-06 加：纠正案 V3 的机械判据）──────────────────────────────
+  // 「事件里点一下菜单项」与「AI 直调」两条路的 handler 拿到的是**展开后的实参**，⛔ 不是整包数组。
+  // 这两条钉死该语义：条数一变，所有按 `args[0]` 读载荷的插件（settings 管理器齿轮）立刻有据可查。
+  it('池内命中的 handler 收**展开**实参——多枚各就各位，⛔ 不是整包数组', async () => {
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    const got: unknown[] = [];
+    commands.registerCommand('demo-plugin.echo', (...args: unknown[]) => {
+      got.push(...args);
+      return 'ok';
+    });
+
+    // ContextMenu 形：executeCommand(id, undefined, ...commandArgs, context)
+    await commands.executeCommand('demo-plugin.echo', undefined, ['md', 'pdf'], { pluginId: 'demo-plugin' });
+
+    expect(got).toEqual([['md', 'pdf'], { pluginId: 'demo-plugin' }]);
+  });
+
+  it('🔴 单参 handler 只收**第一枚**实参（丢 context）⇒ 数组型载荷必须写 rest 形式', async () => {
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    let single: unknown = 'unset';
+    commands.registerCommand('demo-plugin.single', (arg: unknown) => {
+      single = arg;
+      return 'ok';
+    });
+
+    await commands.executeCommand('demo-plugin.single', undefined, ['md', 'pdf'], { pluginId: 'demo-plugin' });
+
+    // 只拿到 `commandArgs[0]`——settings 管理器齿轮的老写法正是此形：解析器要求「数组」，
+    // 于是拿到 `['md','pdf']` 后读 `args[0]` 得到 `'md'`（字符串）⇒ 判空 ⇒ 菜单项静默空转。
+    expect(single).toEqual(['md', 'pdf']);
+  });
 });
