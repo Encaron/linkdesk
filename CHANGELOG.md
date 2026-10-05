@@ -17,7 +17,8 @@
 ### fix
 
 - **dev 轨道更新插件的必死局根治**：开发模式（Vite）从插件目录**现场服务**代码，常驻视图（文件树这类 keep-alive 侧栏）把目录句柄一直捏着——`plugins:commit-update` 的原子替换（`target→.bak→staged→target`）在第一次 rename 那步稳定失败，此前的重试退避（0/250/700/1500/2500ms）救不了（占用是持续的，不是瞬时的），用户只能杀掉占用进程重试或改走安装版打包验证。现在：rename 仍 busy ⇒ 主进程**不报错**，暂存目录原样保留，返回 `deferred: true`；壳如实提示「{{name}} 的更新（{{to}}）已就绪——当前版本目录被占用，重启 LinkDesk 后自动替换」并给「立即重启」按钮。**下次启动**时 `commitPendingStagedUpdates()` 在「中断恢复复原 .bak」之后、「过期暂存清理」之前补完替换（三关校验：清单可读且 pluginId 一致、目标在场、版本方向正确），文件换好后照常走账本更新与三表重扫。
-- **磁盘全程安全**：defer 发生时旧版目录**未动**、暂存原样（不是半个插件）；启动补提交失败才落回既有清理，旧版在位不影响使用。契约 `plugins.packageCommitUpdate` 返回体新增可选 `deferred` 字段（`@linkdesk/contracts` 0.1.37 已发 npm；旧调用方零影响），`@linkdesk/plugin-sdk` 0.1.76 同链重发（速查表随契约重生）；新提示串走 lang-defaults 外仓链（1.0.55 已发）。单测 8 例钉住（含 `process.chdir` 造真 EBUSY 的慢例、boot 三关校验、`.bak` 预复原）。- **面板行名的语义正名（C1.8）**：行/下拉主标签取**插件名**（`manifest.name ?? pluginId`），文件类型名（声明里的 `displayName`，如 `.rs → "Rust"`）另存 `typeLabel` 字段——此前两者混用，`.rs` 那一行显示成 "Rust"（像文件名不像插件名）。只读面 `fileAssociation.listHandlersFor` 的行因此多一个 `title` 字段（`@linkdesk/contracts` 0.1.39）；设置页下拉与搜索过滤一并改吃 `title`。
+- **磁盘全程安全**：defer 发生时旧版目录**未动**、暂存原样（不是半个插件）；启动补提交失败才落回既有清理，旧版在位不影响使用。契约 `plugins.packageCommitUpdate` 返回体新增可选 `deferred` 字段（`@linkdesk/contracts` 0.1.37 已发 npm；旧调用方零影响），`@linkdesk/plugin-sdk` 0.1.76 同链重发（速查表随契约重生）；新提示串走 lang-defaults 外仓链（1.0.55 已发）。单测 8 例钉住（含 `process.chdir` 造真 EBUSY 的慢例、boot 三关校验、`.bak` 预复原）。
+- **面板行名的语义正名（C1.8）**：行/下拉主标签取**插件名**（`manifest.name ?? pluginId`），文件类型名（声明里的 `displayName`，如 `.rs → "Rust"`）另存 `typeLabel` 字段——此前两者混用，`.rs` 那一行显示成 "Rust"（像文件名不像插件名）。只读面 `fileAssociation.listHandlersFor` 的行因此多一个 `title` 字段（`@linkdesk/contracts` 0.1.39）；设置页下拉与搜索过滤一并改吃 `title`。
 - **面板行图标不再是清一色白纸（C1.9）**：旧面板在插件侧读 `plugins.listAll`——那是**只有壳 preload 有**的只读面，可选链 `?.()` 静默失败 ⇒ 每行都渲染成空白纸。改由壳侧装配，图标走共享 helper `pickIdentityArt()`（与设置页／标签栏同源），并顺手删掉 file-tree 里那份私有图标兜底。
 - **「打开方式…（.ext）」入口不再硬编码宿主命令 id**：设置插件改走 `SHELL_COMMANDS.openWith` 常量（门禁 R1 红线），齿轮项文案按用户拍板**方案 A**：`打开方式…（.{{ext}}）`，载荷走 `commandArgs: [{ ext }]`（右键菜单的载荷律：`args = [...commandArgs, context]`）。
 - **齿轮「复制插件 ID」补上失败态**：剪贴板面缺失 ⇒ 警示 toast；写入抛错 ⇒ 错误 toast 带原因（原来两处都静默）。
@@ -34,6 +35,8 @@
 - `@linkdesk/plugin-sdk` **0.1.80**（2026-10-05，同链独立发版）：新增 `SHELL_COMMANDS` 常量表（宿主命令 id 的正典，首枚 `openWith`）＋ `openWith()` helper——插件从此不必硬编码宿主命令 id；随包 `schemas/host-css-names.json` 收录共享件 `OpenWithPicker` 的类名。
 - `@linkdesk/ui` **0.2.45**（2026-10-05，同链独立发版）：新增共享件 `OpenWithPicker`（＋ `OpenWithPickerProps` 与类型再导出）——纯 props in / events out，数据由壳命令装配后喂入。
 - `@linkdesk/plugin-docs` **0.1.65**（2026-10-05，同链独立发版）：六组作者文档同笔更新（菜单贡献点「载荷：commandArgs vs context」、共享件菜单载荷分两段、命令化规范「⛔ 不硬编码宿主命令 id」、`plugin.json` 的 `extension`/`displayName` 语义、组件速查 `OpenWithPicker` 行）。
+- `@linkdesk/plugin-sdk` **0.1.81**（2026-10-05，同链独立发版）：宿主命令面改走**子路径** `@linkdesk/plugin-sdk/shell-commands`（新增 exports 项），`SHELL_COMMANDS` / `openWith()` **不再从根 barrel 出**。为什么：根 barrel re-export `vite-config.js`（静态 import `vite` / `@vitejs/plugin-react`），插件源码一旦从根 barrel 取值，**整条构建链会被打进插件 zip**——实测 Windows 上直接红（rollup 的 node-entry 要解析仅 macOS 有的 `fsevents`）。子路径只出「一个常量对象 ＋ 一个 helper」，零重依赖。**本版是 0.1.80 的更正**：照 0.1.80 的文档从根 barrel 取值的插件 build 不过。
+- `@linkdesk/plugin-docs` **0.1.66**（2026-10-05，同链独立发版）：`21-命令化规范` 中英同笔改 `import { SHELL_COMMANDS, openWith } from "@linkdesk/plugin-sdk/shell-commands"`（上一条的文档面——照根 barrel 写法会让插件 build 红）。
 
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货。
 

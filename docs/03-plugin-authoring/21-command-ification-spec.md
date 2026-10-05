@@ -71,7 +71,8 @@ The host also exposes commands of its own (`workbench.action.*`): opening a file
 picker, and so on. Your plugin may call them; the contract for doing so is deliberately narrow:
 
 ```ts
-import { SHELL_COMMANDS, openWith } from "@linkdesk/plugin-sdk";
+import { SHELL_COMMANDS, openWith } from "@linkdesk/plugin-sdk/shell-commands";
+//                            ↑ the subpath, not the root entry — see the red note below
 
 // ✅ preferred: the helper takes the request object and returns nothing to remember
 openWith({ uri: "/path/to/file.pdf" });   // or { ext: "pdf" } when you only know the type
@@ -79,6 +80,12 @@ openWith({ uri: "/path/to/file.pdf" });   // or { ext: "pdf" } when you only kno
 // ✅ equivalent, if you need the raw command face
 window.linkdesk.commands.executeCommand(SHELL_COMMANDS.openWith, { uri });
 ```
+
+> 🔴 **Runtime code must use the `/shell-commands` subpath**: the SDK's root entry also re-exports its build
+> tooling (`vite.config.ts` → `vite`), so pulling these two values from the **root entry** drags the whole build
+> chain into your plugin bundle — and **fails outright on Windows** (rollup tries to resolve `fsevents`, which
+> only exists on macOS). Types (`OpenWithRequest` etc.) are unaffected: those are `import type`, erased at compile
+> time, so the root entry or the subpath is equally fine.
 
 | Rule | Why |
 |:--|:--|
