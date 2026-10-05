@@ -1,0 +1,198 @@
+/* PluginCard——「按插件浏览」插件卡（共享件；`@linkdesk/ui` 单实例供给）。
+   像素依据 = 案档 mockups/09（像素稿用 .pcard / .phead 等示意类名）；本件按门禁换成
+   `ldk-plugin-card-*` 族段——硬约束 23 ＋ check-css-namespace 判据①/⑦：共享组件的独立类名一律 `ldk-` 开头
+   且同目录共一族根。⛔ 不是 03 §1 字面写的 `plugin-card-`（那种裸前缀过不了门禁，口径以门禁为准）。
+
+   全主题 token 消费、零写死色值（硬约束 1）；字号只走 `--font-size-*`（check-font-scale-audit）；
+   padding/margin/gap 落 4px 节奏（check-spacing-grid —— 故像素稿的 gap:10px 收成 8px）。
+   ⛔ 行清单（扩展名行的 .crow/.pill/行尾下拉）**不在这里**：那是设置插件本地组装的管理器词汇（03 §1）。 */
+
+.ldk-plugin-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  background: var(--bg-card);
+  /* 卡是圆角容器 ⇒ 头悬停底色与体滚动条都被裁进圆角（同 SelectBox 面板 overflow:hidden 先例——
+     ⛔ 直角实心块溢出圆角是历史真 bug 的形状）。行内下拉/齿轮菜单走 OverlayPortal，⛔ 不受此裁。 */
+  overflow: hidden;
+}
+
+.ldk-plugin-card--expanded {
+  border-color: var(--separator);
+}
+
+/* 停用态＝整卡降不透明度（03 §2）；行与动作的惰性由管理器组装的 children 承担 */
+.ldk-plugin-card--disabled {
+  opacity: 0.55;
+}
+
+/* ── 卡头 ── */
+
+.ldk-plugin-card-head {
+  position: relative;
+}
+
+.ldk-plugin-card-head:hover {
+  background: var(--hover-overlay);
+}
+
+.ldk-plugin-card--expanded .ldk-plugin-card-head {
+  border-bottom: 1px solid var(--separator);
+}
+
+/* 铺满整头的真按钮（嵌套按钮禁令的正解：齿轮是它的兄弟，不是孩子） */
+.ldk-plugin-card-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  /* 右内缩 32 ＝ 齿轮 24 ＋ 右缘 8（03 §3）：折角让位齿轮，⛔ 不与齿轮叠字 */
+  padding: 0 32px 0 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 卡容器 overflow:hidden ⇒ 全局 `*:focus-visible` 那圈 +2px 外扩环会被裁半；
+   焦点环内缩 2px 画在盒内 ⇒ 恒可见（键盘焦点三站全可见，03 §3/§4） */
+.ldk-plugin-card-toggle:focus-visible,
+.ldk-plugin-card-gear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* 图标磁贴：24×24 圆角 6（03 §3，与 08 pdot 同尺寸定稿）；展开不放大（身份图全卡只出现一次） */
+.ldk-plugin-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ldk-plugin-card-icon-glyph {
+  flex: none;
+}
+
+/* img 型身份图（含默认彩色块）铺满磁贴 */
+img.ldk-plugin-card-icon-glyph {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* codicon / emoji 形：字形尺寸走 token（随全局字号比例），lucide 为 24×24 默认尺寸恰好满格 */
+span.ldk-plugin-card-icon-glyph {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.ldk-plugin-card-ident {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.ldk-plugin-card-titleline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ldk-plugin-card-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-plugin-card-sub {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-plugin-card-summary {
+  flex: none;
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ldk-plugin-card-chevron {
+  flex: none;
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  transition: transform 150ms ease;
+}
+
+.ldk-plugin-card-chevron--open {
+  transform: rotate(90deg);
+}
+
+/* ── 卡齿轮（03 §3：头 hover 显现；键盘焦点到达即恒显；绝对定位叠在 toggle 之上 ⇒ 点击不冒泡） ── */
+
+.ldk-plugin-card-gear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+
+.ldk-plugin-card-head:hover .ldk-plugin-card-gear,
+.ldk-plugin-card-head:focus-within .ldk-plugin-card-gear,
+.ldk-plugin-card-gear:focus-visible {
+  opacity: 1;
+}
+
+.ldk-plugin-card-gear:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.ldk-plugin-card-gear-icon {
+  font-size: var(--font-size-md);
+}
+
+/* ── 展开体（行清单由调用方组装；本件只管容器：限高滚动，03 §4） ── */
+
+.ldk-plugin-card-body {
+  max-height: 280px;
+  overflow: auto;
+}
+
+/* 折角旋转与齿轮淡入都走过渡；减动偏好下零过渡（03 §4） */
+@media (prefers-reduced-motion: reduce) {
+  .ldk-plugin-card-chevron,
+  .ldk-plugin-card-gear {
+    transition: none;
+  }
+}

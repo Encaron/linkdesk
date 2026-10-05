@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T15:47:04.881Z",
+  "generatedAt": "2026-10-05T05:03:37.831Z",
   "components": [
     "BackgroundImagePicker",
     "Badge",
@@ -19,6 +19,7 @@
     "MarkdownView",
     "NumberInput",
     "OverlayPortal",
+    "PluginCard",
     "PluginIcon",
     "ReadOnlyText",
     "SectionSubtitle",
@@ -65,5 +66,5 @@
     "SourceBadgeProps",
     "SourceBadgeSource"
   ],
-  "count": 57
+  "count": 58
 }

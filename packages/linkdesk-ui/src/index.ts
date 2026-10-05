@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 30 组件（25 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
+ *   - 31 组件（26 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 11 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
@@ -49,6 +49,9 @@ export { default as ThemePicker } from "@shared/theme-picker/ThemePicker";
 export { default as Toggle } from "@shared/toggle/Toggle";
 export { InlineInput } from "@shared/inline-input/InlineInput";
 export { PluginIcon } from "@shared/plugin-icon/PluginIcon";
+// 2026-10-05「文件打开方式与贡献点」案 4A：按插件浏览插件卡（卡头/受控展开/齿轮菜单/停用态；
+//   行清单⛔不在共享包——那是设置插件本地的管理器词汇）。图标消费现成 PluginIcon，零新造图标链。
+export { default as PluginCard } from "@shared/plugin-card/PluginCard";
 // E6#69f：插件身份彩色图裁决（marketIcon ?? icon ?? 默认彩色块）——壳 windowLayout 标签 + 市场 list/detail 同消费（单一实现防漂移）
 export { pickIdentityArt } from "@shared/plugin-icon/iconUtils";
 export { DEFAULT_PLUGIN_IDENTITY_URI } from "@shared/plugin-icon/defaultIdentityArt";
