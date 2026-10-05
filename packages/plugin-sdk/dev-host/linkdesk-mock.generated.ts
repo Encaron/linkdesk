@@ -242,6 +242,7 @@ export const linkdeskMock: Record<string, unknown> = {
     getPluginFor: async (..._args: unknown[]) => { console.info("[linkdesk-mock] fileAssociation.getPluginFor", ..._args); },
     listHandlersFor: async (..._args: unknown[]) => { console.info("[linkdesk-mock] fileAssociation.listHandlersFor", ..._args); return []; },
     setDefault: async (..._args: unknown[]) => { console.info("[linkdesk-mock] fileAssociation.setDefault", ..._args); },
+    setDefaultBulk: async (..._args: unknown[]) => { console.info("[linkdesk-mock] fileAssociation.setDefaultBulk", ..._args); },
   },
   langDef: {
     get: async (..._args: unknown[]) => { console.info("[linkdesk-mock] langDef.get", ..._args); },

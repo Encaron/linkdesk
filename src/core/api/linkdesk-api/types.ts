@@ -80,7 +80,10 @@ export interface RecipeMeta {
 /**
  * 🔥 设置控件词表**正典**（`uiHint`）——宿主声明与渲染层之间的唯一词表（判据 B）。
  *
- * 13 个值 = 设置页分发器能渲染的控件形态全集（与设置插件 `renderControl.tsx` 的 switch 逐 case 同源）。
+ * 14 个值 = 设置页分发器能渲染的控件形态全集（与设置插件 `renderControl.tsx` 的 switch 逐 case 同源）。
+ * ⚠️ `fileAssociationsManager`（第 4 波追加）**不是一只控件**——它是「**整组自定义视图**」的挂载位：
+ *   声明它的键所在的组由设置插件渲染成「默认打开方式」管理器（竞争类型/按插件浏览两区块），
+ *   与其余 hint 的「行内控件」形态不同（见设置仓 `file-associations-manager/`）。
  * 消费方：① 宿主 `ConfigurationRegistry.ConfigProperty`（编译期收窄 ⇒ 声明写错当场红）
  * ② 设置插件分发表 ③ 作者面 `plugin.schema.json` 的 description（给第三方作者看的正典表）。
  * ⚠️ **声明字段本身保持开放 `string`**（本文件 `LinkDeskConfigProperty.uiHint` 与作者面 schema 都是）
@@ -102,7 +105,8 @@ export type SettingsUiHint =
   | "directory"
   | "fontSize"
   | "segmented"
-  | "stringList";
+  | "stringList"
+  | "fileAssociationsManager";
 
 /**
  * 设置行渲染提示正典（`renderHint`）——三值。

@@ -52,7 +52,8 @@
   "pseudoPluginIds": [
     "ai-bridge",
     "app",
-    "appearance"
+    "appearance",
+    "file-associations"
   ],
   "contextKeysHostOnly": [
     "activeEditor",

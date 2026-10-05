@@ -20,7 +20,8 @@ export interface EditorAPI {
    * E5.7#50：文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。
    * T2（第 3 波）：`getPluginFor` 升级为覆盖表感知的完整解析（覆盖 → 声明 → 角色，01 §T2.2）——
    * 三入口（FoldersView/SearchView/intake）同吃 ⇒ F3「一处真相」；`listHandlersFor` = 选择器只读面；
-   * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步 E31）。
+   * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步 E31）；
+   * `setDefaultBulk` = 同口的**批量**形态（E32/E34 聚合格——一次写 N 类，聚合逻辑在管理器侧）。
    */
   fileAssociation: {
     getPluginFor(ext: string): Promise<string | undefined>;
@@ -28,6 +29,8 @@ export interface EditorAPI {
     listHandlersFor(ext: string): Promise<Array<{ pluginId: string; displayName: string; isCurrent: boolean }>>;
     /** 覆盖表唯一写口——`pluginId: null` = 恢复自动（删覆盖键）；写后 config:changed 即时广播（E31） */
     setDefault(ext: string, pluginId: string | null): Promise<void>;
+    /** 同上，**一次写 N 类**（E32/E34 聚合：`pluginId: null` = 逐类删）——非法/重复扩展名在写面内跳过 */
+    setDefaultBulk(exts: string[], pluginId: string | null): Promise<void>;
   };
 
   /** E5.7#49：langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */

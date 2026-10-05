@@ -28,10 +28,13 @@ export const CONFIG_NONE_SENTINEL = "__none__";
  *  `CONFIG_NONE_SENTINEL` 一处一个正典（⛔ 不新开第二个「哨兵件」）。 */
 export const MIX_FOLLOW_THEME_SENTINEL = "followTheme";
 
-/** 声明式控件词表——13 枚，与 `SettingsUiHint` 联合类型一一对应（正典表本体见
+/** 声明式控件词表——14 枚，与 `SettingsUiHint` 联合类型一一对应（正典表本体见
  *  「设置控件-词表正典与共享化」01 §0.2）。
  *  ⚠️ 加值/改值必须**同笔**动三处：`SettingsUiHint`（contracts）· 本数组 · 作者面 schema description
- *  （轻门禁守同步）；漏一处 = 门禁红。 */
+ *  （轻门禁守同步）；漏一处 = 门禁红。
+ *  ⚠️ `fileAssociationsManager`（第 4 波追加，13→14）**不是行内控件**：它声明在「默认打开方式」组的键上，
+ *  表示该**整组**由设置插件渲染成「文件关联管理器」自定义视图（组内行无配置键）——渲染方是设置插件。
+ */
 export const SETTINGS_UI_HINTS: readonly SettingsUiHint[] = [
   "themePicker",
   "select",
@@ -46,6 +49,7 @@ export const SETTINGS_UI_HINTS: readonly SettingsUiHint[] = [
   "fontSize",
   "segmented",
   "stringList",
+  "fileAssociationsManager",
 ];
 
 /** 渲染提示词表——3 枚（`renderHint` 的已知值）。

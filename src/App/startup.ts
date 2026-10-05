@@ -36,6 +36,7 @@ import { registerAppearanceConfiguration } from "./config/appearance";
 import { registerUpdateConfiguration } from "./config/update";
 import { registerAiBridgeConfiguration } from "./config/aiBridge";
 import { registerStorageConfiguration } from "./config/storage";
+import { registerFileAssociationConfiguration } from "./config/fileAssociations";
 import { initReleaseNotesOnLaunch } from "./releaseNotesOnLaunch";
 import { initVersionDowngradeNotice } from "./versionDowngradeNotice";
 import { initSecondContenderHint } from "../core/services/files/secondContenderHint";
@@ -213,6 +214,11 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // 「存储」两键归并进「通用」（同 pluginId 二次注册 merge，对标 config/update.ts；
       // 04-软件更新/已落地/设置页-打开缓存目录 阶段 3，2026-10-03）——按钮行在上、只读路径行在下。
       registerStorageConfiguration(t);
+
+      // 「默认打开方式」配置组声明（文件打开方式案 第 4 波 T2.6：独立 pluginId "file-associations"
+      // ——挂 app 会并进「通用」，导航项永不出现）——本组一个键＝覆盖表本身，带
+      // uiHint "fileAssociationsManager" ⇒ 设置插件把整组渲染成管理器（见 config/fileAssociations.ts 头注）。
+      registerFileAssociationConfiguration(t);
 
       // Phase 5：初始化 context key 核心状态
       ContextKeyService.initCoreKeys();

@@ -23,6 +23,7 @@ import {
   listHandlersFor,
   onSecondContender,
   normalizeAssociationOverrideKey,
+  applyDefaultBulkOverride,
   WORKBENCH_FILE_ASSOCIATIONS_KEY,
   clearFileAssociations,
   TEXT_FALLBACK_ROLE,
@@ -215,5 +216,29 @@ describe("覆盖表键形（D1）", () => {
       unsub();
       unsub();
     }).not.toThrow();
+  });
+});
+
+describe("E32/E34 批量写面纯函数（applyDefaultBulkOverride）", () => {
+  it("写：整格成员逐键落同一 pluginId；键形归一带点小写（E10/E34 怪串照抄）", () => {
+    const next = applyDefaultBulkOverride({ ".pdf": "demo-reader-x" }, [".docx", "XLSX", ".MX"], "demo-suite");
+    expect(next).toEqual({ ".pdf": "demo-reader-x", ".docx": "demo-suite", ".xlsx": "demo-suite", ".mx": "demo-suite" });
+  });
+
+  it("恢复自动：pluginId=null 逐键删；未涉及的键一个不动（本格 N 类 ≠ 全表清空）", () => {
+    const table = { ".pdf": "demo-reader-x", ".docx": "demo-suite", ".xlsx": "demo-suite" };
+    const next = applyDefaultBulkOverride(table, [".docx", "xlsx"], null);
+    expect(next).toEqual({ ".pdf": "demo-reader-x" });
+    expect(table).toEqual({ ".pdf": "demo-reader-x", ".docx": "demo-suite", ".xlsx": "demo-suite" }); // 不改入参
+  });
+
+  it("非法/重复扩展名跳过（E25：空串没有模糊纠正；重复只写一次）", () => {
+    const next = applyDefaultBulkOverride(undefined, ["  ", ".PDF", "pdf", ""], "demo-suite");
+    expect(next).toEqual({ ".pdf": "demo-suite" });
+  });
+
+  it("空表/未声明键起步 = 只带本格结果（undefined 入参不炸）", () => {
+    expect(applyDefaultBulkOverride(undefined, [], "demo-suite")).toEqual({});
+    expect(applyDefaultBulkOverride(undefined, ["zzz"], null)).toEqual({});
   });
 });

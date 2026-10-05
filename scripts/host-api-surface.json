@@ -118,7 +118,8 @@
     "fileAssociation": [
       "getPluginFor",
       "listHandlersFor",
-      "setDefault"
+      "setDefault",
+      "setDefaultBulk"
     ],
     "filesystem": [
       "copy",
@@ -485,7 +486,8 @@
     "fileAssociation": [
       "getPluginFor",
       "listHandlersFor",
-      "setDefault"
+      "setDefault",
+      "setDefaultBulk"
     ],
     "filesystem": [
       "copy",
@@ -1475,7 +1477,8 @@
     "pseudoPluginIds": [
       "ai-bridge",
       "app",
-      "appearance"
+      "appearance",
+      "file-associations"
     ]
   }
 }

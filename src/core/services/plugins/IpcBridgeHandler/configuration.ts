@@ -11,6 +11,7 @@ import {
 } from "../../configuration/ConfigurationService";
 import {
   normalizeAssociationOverrideKey,
+  applyDefaultBulkOverride,
   WORKBENCH_FILE_ASSOCIATIONS_KEY,
 } from "../../files/FileAssociationService";
 import { getMergedSchema, getConfigurationContributions } from "../../../registry/ConfigurationRegistry";
@@ -55,6 +56,21 @@ export async function handleConfigChannel(channel: string, args: unknown[]): Pro
       if (pluginId) table[key] = pluginId;
       else delete table[key];
       await setConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY, table, "user");
+      break;
+    }
+    // 第 4 波写面（E32/E34）：聚合格批量——「恢复自动（本格 N 类）」/「整格下拉」一次落 N 个键。
+    // 与单数面**同一条链、同一个单写者**（读改写体抽成 `applyDefaultBulkOverride` 纯函数，两处共用
+    // 归一与「非法即跳过」口径）；一次 `setConfigurationValue` = 一次 config:changed 广播（E31 即时互见）
+    // ——⛔ 不逐类写 N 次（那会广播 N 次，管理器与文件树选择器被拽着重渲染 N 遍）。
+    case "fileAssociation:setDefaultBulk": {
+      const [exts, pluginId] = args as [string[], string | null];
+      if (!Array.isArray(exts) || exts.length === 0) break;
+      const next = applyDefaultBulkOverride(
+        getConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY) as Record<string, string> | undefined,
+        exts,
+        pluginId ?? null
+      );
+      await setConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY, next, "user");
       break;
     }
     default:

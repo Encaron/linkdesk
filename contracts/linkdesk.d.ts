@@ -1935,7 +1935,8 @@ export interface EditorAPI {
      * 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。
      * T2（第 3 波）：`getPluginFor` 升级为覆盖表感知的完整解析（覆盖 → 声明 → 角色，01 §T2.2）——
      * 三入口（FoldersView/SearchView/intake）同吃 ⇒ F3「一处真相」；`listHandlersFor` = 选择器只读面；
-     * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步）。
+     * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步）；
+     * `setDefaultBulk` = 同口的**批量**形态（2/聚合格——一次写 N 类，聚合逻辑在管理器侧）。
      */
     fileAssociation: {
         getPluginFor(ext: string): Promise<string | undefined>;
@@ -1947,6 +1948,8 @@ export interface EditorAPI {
         }>>;
         /** 覆盖表唯一写口——`pluginId: null` = 恢复自动（删覆盖键）；写后 config:changed 即时广播 */
         setDefault(ext: string, pluginId: string | null): Promise<void>;
+        /** 同上，**一次写 N 类**（2/聚合：`pluginId: null` = 逐类删）——非法/重复扩展名在写面内跳过 */
+        setDefaultBulk(exts: string[], pluginId: string | null): Promise<void>;
     };
     /** langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */
     langDef: {
@@ -3037,7 +3040,10 @@ export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & K
 /**
  * 🔥 设置控件词表**正典**（`uiHint`）——宿主声明与渲染层之间的唯一词表（判据 B）。
  *
- * 13 个值 = 设置页分发器能渲染的控件形态全集（与设置插件 `renderControl.tsx` 的 switch 逐 case 同源）。
+ * 14 个值 = 设置页分发器能渲染的控件形态全集（与设置插件 `renderControl.tsx` 的 switch 逐 case 同源）。
+ * ⚠️ `fileAssociationsManager`（第 4 波追加）**不是一只控件**——它是「**整组自定义视图**」的挂载位：
+ *   声明它的键所在的组由设置插件渲染成「默认打开方式」管理器（竞争类型/按插件浏览两区块），
+ *   与其余 hint 的「行内控件」形态不同（见设置仓 `file-associations-manager/`）。
  * 消费方：① 宿主 `ConfigurationRegistry.ConfigProperty`（编译期收窄 ⇒ 声明写错当场红）
  * ② 设置插件分发表 ③ 作者面 `plugin.schema.json` 的 description（给第三方作者看的正典表）。
  * ⚠️ **声明字段本身保持开放 `string`**（本文件 `LinkDeskConfigProperty.uiHint` 与作者面 schema 都是）
@@ -3046,7 +3052,7 @@ export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & K
  * 运行时名单与类型守卫在 `@linkdesk/ui`（`SETTINGS_UI_HINTS` / `isSettingsUiHint`）——
  * 本契约包是**纯类型生成产物、零运行时**，只能带类型。
  */
-export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider" | "image" | "fontTone" | "fontFamily" | "color" | "file" | "directory" | "fontSize" | "segmented" | "stringList";
+export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider" | "image" | "fontTone" | "fontFamily" | "color" | "file" | "directory" | "fontSize" | "segmented" | "stringList" | "fileAssociationsManager";
 /**
  * 设置行渲染提示正典（`renderHint`）——三值。
  * `readonly` 只读状态行（值来自 `statusCommand` 运行时数据源，不来自配置存储）；

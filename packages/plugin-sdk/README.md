@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
 > `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
 
-**16 个域接口 → 47 个命名空间 / 258 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
+**16 个域接口 → 47 个命名空间 / 259 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -51,7 +51,7 @@ npm install -D @linkdesk/plugin-sdk
 | `search` | 1 | `searchFiles` | 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
 | `encoding` | 4 | `detect` `decode` `encode` `isBinary` | 编码检测/转换（主进程 EncodingService） |
 | `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC） |
-| `fileAssociation` | 3 | `getPluginFor` `listHandlersFor` `setDefault` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
+| `fileAssociation` | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
 | `langDef` | 1 | `get` | langDef——语言定义注册表（主进程直答） |
 | `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP 桥——自动补全/F12/诊断/重命名 |
 | `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol——协议注册表（主进程直答） |

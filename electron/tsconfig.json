@@ -10,7 +10,15 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "sourceMap": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    // 契约类型同源（2026-10-05，第 4 波）：本工程只经 3 个 src 文件间接带进共享层代码
+    // （`dangling-scan.worker.ts` → ThemeEngine/constants → settings-hints），但那一路要读
+    // `@linkdesk/contracts`——没有本映射时它落到 `node_modules/@linkdesk/contracts`（**货架快照**，
+    // 实测停在 0.1.32），词表加值时壳内先红、货架那份要不要更新与本仓无关。照根 tsconfig 同一条口径
+    // （E5.8#20-c「直指仓库契约产物」）钉成本仓生成物，快照落后不再影响本仓自检。
+    "paths": {
+      "@linkdesk/contracts": ["../contracts/linkdesk.d.ts"]
+    }
   },
   "include": ["./**/*.ts", "../contracts/runtime-shapes.ts", "../src/types/global.d.ts", "../src/core/compat/dangling-scan.worker.ts"],
   "exclude": ["**/*.test.ts"]

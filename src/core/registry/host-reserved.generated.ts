@@ -70,6 +70,7 @@ export const HOST_PSEUDO_PLUGIN_IDS: readonly string[] = [
   "ai-bridge",
   "app",
   "appearance",
+  "file-associations",
 ];
 
 export const HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY: readonly string[] = [

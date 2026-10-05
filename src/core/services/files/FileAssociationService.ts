@@ -42,8 +42,10 @@ import { FALLBACK_PLUGIN_ID } from "../../utils/plugin/fallbackPluginId";
 
 /**
  * D1 用户覆盖表的宿主配置键（settings.json 平键）。
- * 🔴 **不注册进设置页 ConfigurationRegistry**（D1：「设置页 v1 不展示」——管理器/选择器才是它的 UI，
- * 泛型设置行再画一份 = 第二处真相源）。写入唯一入口 = `fileAssociation.setDefault` 写面
+ * 🔴 **注册进设置页 ConfigurationRegistry 只为一件事：挂「默认打开方式」管理器**（第 4 波口径更新）——
+ * 那一组的键声明 `uiHint: "fileAssociationsManager"`，设置插件据此把**整组**渲染成自定义视图
+ * （竞争类型/按插件浏览）；⛔ 不走泛型设置行（`ObjectEditor` 再也画不到它 ⇒ 不存在第二处真相源，
+ * D1 原意保住）。写入唯一入口 = `fileAssociation.setDefault` / `.setDefaultBulk` 写面
  * （壳 IpcBridgeHandler → ConfigurationService 单写者）；读 = 主进程 registry-handlers 平键直读
  * （storage-handlers `resolveEffectiveCacheDir` 同款先例）。
  */
@@ -56,6 +58,35 @@ export const WORKBENCH_FILE_ASSOCIATIONS_KEY = "workbench.fileAssociations";
 export function normalizeAssociationOverrideKey(ext: string): string {
   const normalized = normalizeExtension(ext);
   return normalized ? `.${normalized}` : "";
+}
+
+/**
+ * E32/E34 批量写面纯函数——「恢复自动（本格 N 类）」/「整格批量下拉」的**读改写**体。
+ *
+ * 入参 `exts` = **整格成员**（同一批声明者 × 同一生效值聚合出的那一格，聚合逻辑在管理器侧，
+ * 本函数不知道也不该知道「为什么这几类在一起」）；`pluginId: null` = 逐键删（恢复自动）；
+ * 非 null = 逐键写该值（覆盖聚合格内每家 ⇒ 自然并成一格）。
+ *
+ * ⚠️ 零语义（E34）：扩展名只做键形归一，**不校验**它是否真有人声明——.MX/.uvprojx 这类怪串
+ * 照抄即写（与声明表无关的键，解析侧自然落在「指向者不在册 ⇒ 视同未覆盖」一支）。
+ * 非法（空）扩展名 = 跳过该条（E25 精确匹配口径下没有模糊纠正可言）。
+ * 纯函数：不改入参，返回新表——调用方拿去做单次 `setConfigurationValue`（一次广播 = E31 即时互见）。
+ */
+export function applyDefaultBulkOverride(
+  table: Readonly<Record<string, string>> | undefined,
+  exts: readonly string[],
+  pluginId: string | null
+): Record<string, string> {
+  const next: Record<string, string> = { ...(table ?? {}) };
+  const seen = new Set<string>();
+  for (const ext of exts) {
+    const key = normalizeAssociationOverrideKey(ext);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (pluginId) next[key] = pluginId;
+    else delete next[key];
+  }
+  return next;
 }
 
 /** extension（小写，不带点） → FileAssociation[] */

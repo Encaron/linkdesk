@@ -124,6 +124,7 @@ export class IpcBridge {
     // T2 写面（第 3 波）：覆盖表唯一写口——代理到壳 ConfigurationService 单写者（D1/E31；
     //  ⚠️ setDefault 必须走壳：settings.json 的写路径归 ConfigurationService，主进程自写 = 第二写者）
     IPC.fileAssociation.setDefault,
+    IPC.fileAssociation.setDefaultBulk,
     IPC.workspace.setActive,
     IPC.workspace.openFolder,
     IPC.workspace.addFolder,

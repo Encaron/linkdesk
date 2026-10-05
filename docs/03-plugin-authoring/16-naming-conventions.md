@@ -99,7 +99,7 @@ The table below is **reconciled name by name** against it (gate `scripts/check-r
 |:--|:--|:--|
 | Host command prefix | `app.`、`core.`、`theme.`、`update.`、`view.`、`workbench.` | Your command id lands in the host's own segment — in the command palette and the keybindings page it looks like a host feature |
 | Host protocol id | `bracket` | Same name as the host's bracket-matching protocol handler ⇒ one of the two never runs, with no error |
-| Host pseudo plugin id | `app`、`appearance`、`ai-bridge` | The host registers as a "plugin" too (shell core / appearance / AI integration section; the former "update" group merged into General on 2026-09-26 — `update` is retired & logged) ⇒ these ids read as the host itself; its config keys (`ai.*`) are under the same protected-zone rules |
+| Host pseudo plugin id | `app`、`appearance`、`ai-bridge`、`file-associations` | The host registers as a "plugin" too (shell core / appearance / AI integration / default-open-with section; the former "update" group merged into General on 2026-09-26 — `update` is retired & logged) ⇒ these ids read as the host itself; its config keys (`ai.*`) are under the same protected-zone rules |
 | Host config key | `app.schemaVersion` | The config **internal version marker** (invisible in the settings UI, never registered) — taking it derails migration bookkeeping and the user's data looks lost |
 | Host config key | `app.theme`、`app.themeColor`、`app.themeColorMode`、`app.iconTheme` | Theme and colours — taking it overwrites the theme the user is currently using |
 | Host config key | `app.appearanceMode`、`app.accentColor`、`app.accentMode`、`app.accentSource`、`app.menuStyle`、`app.hint.enabled` | Light/dark mode, accent colour, menu style, hover hints |

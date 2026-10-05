@@ -19,5 +19,8 @@ export function buildFileAssociationFace(ipcRenderer: IpcRenderer) {
       ipcRenderer.invoke(IPC.fileAssociation.listHandlersFor, ext),
     setDefault: (ext: string, pluginId: string | null): Promise<void> =>
       ipcRenderer.invoke(IPC.fileAssociation.setDefault, ext, pluginId),
+    /** E32/E34：一次写 N 类（`pluginId: null` = 逐类恢复自动）——聚合格下拉/齿轮的批量口径 */
+    setDefaultBulk: (exts: string[], pluginId: string | null): Promise<void> =>
+      ipcRenderer.invoke(IPC.fileAssociation.setDefaultBulk, exts, pluginId),
   };
 }

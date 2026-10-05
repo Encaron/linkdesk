@@ -4,7 +4,13 @@
 
 ## v0.2.48（2026-10-05）
 
-**插件更新撞上「目录被占用」不再是死路：替换不了的更新改成暂存，下次启动自动换上——dev 轨道更新插件从此不用借安装版验证。**
+**插件更新撞上「目录被占用」不再是死路：替换不了的更新改成暂存，下次启动自动换上——dev 轨道更新插件从此不用借安装版验证；「默认打开方式」也在设置页里长出了自己的管理器（住设置插件仓，随其仓发版）。**
+
+### feat
+
+- **「默认打开方式」补上批量写口**：`fileAssociation.setDefaultBulk(exts, pluginId|null)` 与单类写口同一实现——一次读改写、一次 `config:changed` 广播（⛔ 不是 N 次写，E31 双向同步靠这条），`pluginId: null` = 逐类恢复自动；归一化/去重/非法跳过与单类写口共用纯函数 `applyDefaultBulkOverride`（单测 4 例钉住）。契约 `fileAssociation` 面 3 方法扩为 4（`@linkdesk/contracts` 0.1.38 已发 npm）。
+- **设置页导航多出「默认打开方式」组**：壳侧在自有 pseudo pluginId `file-associations` 下声明一个配置组（导航项由此出现），组内唯一键＝既有覆盖表键 `workbench.fileAssociations`，带新控件提示 `uiHint: "fileAssociationsManager"`——该**整组**的渲染交给设置插件做自定义视图。🔴 **D1「该键不注册进设置页」的原意保住**：键带自定义提示 ⇒ 泛型对象编辑器永不渲染它，管理器仍是唯一 UI、覆盖表仍是同一处真相源（第三方设置插件不认识该提示时按既有降级契约只读展示）。控件提示词表收第 14 枚，三处同笔（contracts 类型 ∪ `@linkdesk/ui` 数组 ∪ 四份 `plugin.schema` 描述），轻门禁守同步。
+- ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货；管理器 UI 住设置插件仓，随其仓发版（发版链见下方「作者轴」）。
 
 ### fix
 
@@ -14,6 +20,10 @@
 
 - `@linkdesk/ui` **0.2.41**（2026-10-05，独立发版——共享 UI 包，软件本体不动）：新增共享件 `PluginCard`——「按插件浏览」的插件卡（卡头身份行／受控展开／齿轮菜单／停用态；图标消费现成 `PluginIcon`，零新造图标链）。卡只到「卡」为止，扩展名行清单不进共享包（那是文件关联管理器的本地词汇）。首消费方 = 设置插件管理器（下一阶段接线）；导出面只增不改。
 - `@linkdesk/plugin-sdk` **0.1.77**（2026-10-05，同链独立发版）：随包 `schemas/host-css-names.json`（宿主 CSS 定义集）收录 `PluginCard` 新增的 17 个 `ldk-plugin-card-*` 类名——作者按类名清单写样式时不会漏判「这名字宿主认不认」。纯清单追加。
+- `@linkdesk/contracts` **0.1.38**（2026-10-05，同链独立发版）：`fileAssociation` 面加第 4 个方法 `setDefaultBulk`（批量写口，同 `setDefault` 的单写者语义）；`SettingsUiHint` 联合加第 14 枚 `fileAssociationsManager`。
+- `@linkdesk/ui` **0.2.42**（2026-10-05，同链独立发版）：控件提示词表 `SETTINGS_UI_HINTS` 收第 14 枚 `fileAssociationsManager`（词表三处同笔的另一半）；文件头注明它与 `SettingsUiHint` 一一对应。**0.2.43** 紧随：词表单测的条数断言 13→14（`0.2.42` 漏改，作者面哈希把它算作漂移）。
+- `@linkdesk/plugin-sdk` **0.1.78**（2026-10-05，同链独立发版）：dev-host mock 随契约重生（278 桩）＋随包 `schemas/host-reserved.json` 收第 4 枚 pseudo pluginId `file-associations`（宿主保留账本三份同笔）。纯派生面重生成；**0.1.79** 紧随补正随包速查表——`README.md` 的计数行（47 命名空间 / **259** 方法）与 `fileAssociation` 行，`0.1.78` 只手工改了行、漏了计数（重生成器抓出来的）。
+- `@linkdesk/plugin-docs` **0.1.63**（2026-10-05，同链独立发版）：`docs/zh/plugin.schema.json` 的「Known hints」描述同步到 14 枚；**0.1.64** 紧随补正 `16-命名规范` 两棵树（宿主伪 pluginId 表加 `file-associations`——新增分组会以宿主身份出现在设置页导航里，作者必须读得到）。
 
 - ⛔ **软件本体未发版**——照规矩攒批，随下一次软件本体发版出货。
 

@@ -87,6 +87,8 @@ export const IPC = {
     listHandlersFor: 'fileAssociation:listHandlersFor',
     // T2 写面：覆盖表唯一写口（代理到壳 ConfigurationService 单写者，D1/E31）
     setDefault: 'fileAssociation:setDefault',
+    // 第 4 波写面：E32/E34 聚合格批量写——同一次读改写覆盖 N 个扩展名（「恢复自动（本格 N 类）」）
+    setDefaultBulk: 'fileAssociation:setDefaultBulk',
     // E1/E2 推送：第二竞争者出现（主进程检测 → 壳弹提示，D7「不静默漂移」）——广播通道非 invoke
     secondContender: 'fileAssociation:secondContender',
   },
