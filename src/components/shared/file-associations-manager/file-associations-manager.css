@@ -14,6 +14,47 @@
  * 硬约束 16 设计复核结论见文件末「设计复核」小节。
  */
 
+/* ══ 整组骨架：两区（多候选类型 / 按插件浏览）＋ 空态说明行 ═════════════════════════════ */
+
+.ldk-famgr {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 空态说明行（四处共用同一形态）：两区各自一句、搜索无匹配整组一句、卡内过滤 0 命中一句
+   （D2 定案：只补文案，⛔ 不带清空入口——清空靠删字或 Esc） */
+.ldk-famgr-empty {
+  padding: 12px 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.ldk-famgr-subsection {
+  margin-bottom: 6px;
+}
+
+/* 组内二级标题（3px 竖杠 ::before，accent 55%）：量纲同设置页子节标题——
+   ⚠️ 图给 `margin: 22px 0 10px 0`，此处按 4px 节奏收成 24px / 8px（`check-spacing-grid`） */
+.ldk-famgr-subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin: 24px 0 8px 0;
+  color: var(--text-secondary);
+}
+
+.ldk-famgr-subsection-title::before {
+  content: "";
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  flex: none;
+}
+
 /* ══ 竞争行（「多候选类型」区）：信息区（行标签＋描述）＋ 控制区（徽标／下拉／齿轮）════════ */
 
 .ldk-famgr-contested {
