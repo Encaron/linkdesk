@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 图标＝真 codicon 字体（同产品：src/main.tsx import @vscode/codicons/dist/codicon.css） -->
+<link rel="stylesheet" href="../../../../../node_modules/@vscode/codicons/dist/codicon.css">
+<title>02 · 未知渲染器降级态——「默认打开方式」组（C2b 预览 · 可交互）</title>
+<!-- 设计门：硬约束 16（ui-ux-pro-max 已走）。样式逐条照抄真源（同 01：SettingsView(.css/-rows.css)＋SectionSubtitle＋plugin-card.css 量纲）。
+     本图 = 「默认打开方式管理器共享化」案 C2b 实证预览：
+     一台**未实现 fileAssociationsManager hint** 的最小第三方设置渲染器（通用引擎＋按 type 渲染）看到什么——
+     · OS 键（C3c：摘 hint＋group 子节）⇒ 通用布尔行，**可操作**（判据铁证）；
+     · 挂载键 workbench.fileAssociations ⇒ 按 C2b 建议形态**隐藏**（🔵 待拍；备选＝只读展示）；
+     · overrides 键（维持管理器 hint）⇒ UnknownHintControl 只读降级；
+      · 齿轮菜单 = 壳槽 SettingItemGear 真实条目（恒显三条；overrides 有 title ⇒ settingHasTitle 成立）。
+     · 🔴 **共享件/图标一律照真件实例画**（2026-10-06 用户判据，先例＝滑杆搬迁）：齿轮＝真 codicon 字形；开关＝
+       div.ldk-toggle ＋ ::after 旋钮；只读降级＝真 UnknownHintControl（span[data-hint] ＞ .ldk-readonly-text），
+       ⛔ 不是自造的描边胶囊。
+     · 🔴 **尺寸/字号/文字逐值照真源**（同 01）：字号 token 直取 src/index.css:72-77、圆角 4/6/8、hover-overlay .06；
+       左树/设置行照插件 SettingsView.css ＋ SettingsView-rows.css。 -->
+<style>
+:root{
+  /* 🔴 配色 = src/index.css :root 兜底暗色逐值（同 01：主题一换全跟着换，本图只锚这一套） */
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C; --bg-titlebar:#252526;
+  --bg-side-panel:#1E1E22; --tab-active-bg:#353535;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0078D4; --accent-hover:#1A8CE8; --text-on-accent:#FFFFFF;
+  --border:#3C3C3C; --separator:#474747; --hover-overlay:rgba(255,255,255,.06);
+  /* 🔴 字号/圆角 = src/index.css:71-86 逐值（2xs11 / xs12 / sm13 / md14 / lg16 / xl18；radius 4/6/8） */
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --font-size-2xs:11px; --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px; --font-size-lg:16px; --font-size-xl:18px;
+  --radius-sm:4px; --radius-md:6px; --radius-lg:8px;
+  --font-mono:"JetBrains Mono",Consolas,monospace; --ui-scale:1;
+  --toggle-knob:#ffffff; --toggle-knob-on:var(--text-on-accent); /* toggle.css 逐值 */
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d0d;color:var(--text-primary);font:var(--font-size-sm)/1.6 var(--font-ui);padding:18px;} /* 页面外框＝预览脚手架 */
+.page-head{max-width:1180px;margin:0 auto 14px;}
+.page-head h2{font-size:18px;font-weight:600;}
+.page-head .sub{color:var(--text-secondary);margin-top:4px;}
+.stage{max-width:1180px;margin:0 auto;display:flex;gap:14px;align-items:flex-start;}
+.window{width:min(980px, calc(100vw - 400px));min-width:760px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-window);box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.titlebar{height:30px;background:var(--bg-titlebar);display:flex;align-items:center;padding:0 10px;gap:10px;border-bottom:1px solid var(--separator);}
+.titlebar .logo{width:14px;height:14px;border-radius:4px;background:var(--accent);}
+.titlebar .app{font-size:12px;color:var(--text-secondary);}
+.titlebar .drag{flex:1;}
+.titlebar .winbtns{display:flex;gap:14px;color:var(--text-muted);font-size:11px;}
+.body-row{display:flex;height:460px;min-height:0;}
+.setnav{width:200px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:8px 0;}
+.setnav .nv{display:flex;align-items:center;justify-content:space-between;width:100%;padding:6px 20px;font-size:var(--font-size-md);color:var(--text-primary);background:transparent;border:none;border-left:2px solid transparent;cursor:pointer;text-align:left;}
+.setnav .nv:hover{background:var(--hover-overlay);}
+.setnav .nv.active{background:var(--hover-overlay);color:var(--text-primary);font-weight:500;border-left-color:var(--accent);}
+.setnav .nv .cnt{font-size:var(--font-size-xs);color:var(--text-muted);background:var(--hover-overlay);padding:0 6px;border-radius:10px;}
+.setcontent{flex:1;overflow:auto;padding:20px 28px;min-width:0;}
+.settings-group-title{font-size:var(--font-size-xl);font-weight:600;margin:0 0 20px 0;padding-bottom:12px;border-bottom:1px solid var(--border);color:var(--text-primary);}
+.ldk-section-subtitle{font-size:var(--font-size-2xs);color:var(--text-muted);line-height:1.6;margin-bottom:8px;}
+.settings-subsection{margin-bottom:6px;}
+.settings-subsection-title{display:flex;align-items:center;gap:8px;font-size:var(--font-size-sm);font-weight:600;letter-spacing:0.05em;margin:22px 0 10px 0;color:var(--text-secondary);}
+.settings-subsection-title::before{content:"";width:3px;height:12px;border-radius:2px;background:color-mix(in srgb, var(--accent) 55%, transparent);flex:none;}
+.settings-row{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:20px;}
+.settings-row-info{flex:1;min-width:0;}
+.settings-row-label{display:block;font-size:var(--font-size-md);font-weight:500;color:var(--text-primary);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.settings-row-desc{display:block;font-size:var(--font-size-sm);color:var(--text-muted);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.settings-row-control{flex-shrink:0;display:flex;align-items:center;min-width:100px;justify-content:flex-end;}
+.settings-row-gear{flex-shrink:0;width:calc(24px * var(--ui-scale));height:calc(24px * var(--ui-scale));display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:3px;color:var(--text-muted);cursor:pointer;opacity:0;transition:opacity 120ms ease,background 120ms ease;margin-left:4px;font-size:var(--font-size-lg);}
+.settings-row:hover .settings-row-gear{opacity:1;}
+.settings-row-gear:hover{background:var(--hover-overlay);color:var(--text-primary);}
+/* 齿轮＝真 codicon-gear（字形随 button 的 font-size:lg），⛔ 手绘 SVG 已删 */
+/* Toggle（共享件 toggle.css 逐值）：36×20 轨道（--border）＋ ::after 16px 旋钮（⛔ 真件无子元素 span） */
+.ldk-toggle{width:36px;height:20px;border-radius:var(--radius-pill);background:var(--border);transition:background 150ms;cursor:pointer;position:relative;flex-shrink:0;}
+.ldk-toggle.on{background:var(--accent);}
+.ldk-toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:var(--radius-pill);background:var(--toggle-knob);transition:transform 150ms;}
+.ldk-toggle.on::after{transform:translateX(16px);background:var(--toggle-knob-on,var(--text-on-accent));}
+.ldk-toggle.disabled{opacity:.4;cursor:not-allowed;}
+/* ReadOnlyText（共享件 readonly-text.css 逐值）：就是文字，无描边无底色——UnknownHintControl 的叶 */
+.ldk-readonly-text{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ldk-readonly-text.multiline{font-family:inherit;white-space:pre-wrap;overflow:visible;text-overflow:unset;line-height:1.6;}
+.ctx{position:fixed;width:max-content;min-width:170px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:4px;z-index:90;box-shadow:0 0 1px rgba(0,0,0,.2),0 4px 12px rgba(0,0,0,.3);/* 真件 .ldk-ctx-menu＝--shadow-hairline ＋ --context-menu-shadow（src/index.css:88/45） */display:none;}
+.ctx .it{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:5px;font-size:12.5px;cursor:pointer;white-space:nowrap;}
+.ctx .it:hover{background:var(--hover-overlay);}
+.side{width:360px;flex:none;display:flex;flex-direction:column;gap:12px;}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);}
+.panel h3{font-size:12.5px;color:var(--text-secondary);font-weight:600;margin-bottom:6px;}
+.panel b{color:var(--text-primary);}
+.panel .tag{display:inline-block;font-size:var(--font-size-2xs);border-radius:4px;padding:0 6px;border:1px solid var(--border);color:var(--accent-hover);margin-right:4px;}
+button:focus-visible,input:focus-visible,.settings-row-gear:focus-visible{outline:2px solid var(--accent-hover);outline-offset:2px;}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h2>02 · 未知渲染器降级态——「默认打开方式」组 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（C2b 实证预览 · 可交互：OS 开关可操作／hover 齿轮＝真实条目）</span></h2>
+  <div class="sub">视角＝一台**未实现** fileAssociationsManager hint 的最小第三方设置渲染器（通用引擎＋按 type 渲染）。共享化做完后它看到：OS 行可操作、挂载键隐藏（C2b 建议）、overrides 只读降级——没有残缺误导。</div>
+</div>
+
+<div class="stage">
+  <div class="window">
+    <div class="titlebar">
+      <div class="logo"></div><div class="app">LinkDesk（第三方设置渲染器「MyUI」激活中）</div>
+      <div class="drag"></div>
+      <div class="winbtns"><span>—</span><span>▢</span><span>✕</span></div>
+    </div>
+    <div class="body-row">
+      <nav class="setnav">
+        <button class="nv"><span>通用</span><span class="cnt">8</span></button>
+        <button class="nv"><span>外观</span><span class="cnt">6</span></button>
+        <button class="nv active"><span>默认打开方式</span><span class="cnt">2</span></button>
+      </nav>
+      <div class="setcontent">
+        <div class="settings-group-title">默认打开方式</div>
+        <div class="ldk-section-subtitle">单击文件时由哪个插件打开——与文件右键菜单的「打开方式」同写一处，即时互见（副标题是壳声明——任何渲染器都照出）</div>
+
+        <div class="settings-subsection">
+          <h3 class="settings-subsection-title">系统「打开方式」登记</h3>
+          <div class="ldk-section-subtitle">prop.group 子节（壳声明）；通用布尔行，可操作</div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <span class="settings-row-label">跟随插件登记</span>
+              <span class="settings-row-desc">app.osAssociations.followPlugins —— 插件装/卸时类型自动进出系统「打开方式」候选；安装包自带类不动；与本页默认无关</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="ldk-toggle on" role="switch" aria-checked="true" aria-label="跟随插件登记" onclick="this.setAttribute('aria-checked',String(!this.classList.contains('on')));this.classList.toggle('on');document.getElementById('proof').textContent=this.classList.contains('on')?'✅ 判据铁证：OS 开关在第三方渲染器里可操作（刚刚点过——I5.3 的实机面）':'（再点一下开关试试）'"></div>
+              <button class="settings-row-gear" aria-label="更多操作" title="更多操作——壳槽 SettingItemGear 真实条目（按 when 收窄）" onclick="gearMenu(event,[{label:'复制设置 ID',fn:()=>{}},{label:'复制设置名称',fn:()=>{}},{label:'复制为 JSON',fn:()=>{}}])"><span class="codicon codicon-gear" aria-hidden="true"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-subsection">
+          <h3 class="settings-subsection-title">高级</h3>
+          <div class="ldk-section-subtitle">未知 hint 的只读降级（UnknownHintControl：防裸字符串写穿值域）</div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <span class="settings-row-label">跟随例外</span>
+              <span class="settings-row-desc">app.osAssociations.overrides —— 按类型单独关掉跟随，写法如 {".pdf": false}——无界面项，改配置文件使用</span>
+            </div>
+            <div class="settings-row-control">
+              <!-- 真件 UnknownHintControl：span[data-hint] ＞ ReadOnlyText（此处并挂 title 作浏览器可见的提示示意） -->
+              <span data-hint="此控件类型尚未支持——只读展示当前值，不可编辑： fileAssociationsManager" title="此控件类型尚未支持——只读展示当前值，不可编辑： fileAssociationsManager"><span class="ldk-readonly-text">{ }</span></span>
+              <button class="settings-row-gear" aria-label="更多操作" title="更多操作——壳槽真实条目（overrides 有 title ⇒ settingHasTitle 成立）" onclick="gearMenu(event,[{label:'复制设置 ID',fn:()=>{}},{label:'复制设置名称',fn:()=>{}},{label:'复制为 JSON',fn:()=>{}}])"><span class="codicon codicon-gear" aria-hidden="true"></span></button>
+            </div>
+          </div>
+        </div>
+        <!-- C2b 建议形态：挂载键 workbench.fileAssociations 在此渲染器中隐藏（不渲染只读垃圾行） -->
+      </div>
+    </div>
+  </div>
+  <div class="side">
+    <div class="panel"><h3 id="proof">（点左边那颗 OS 开关试试）</h3>
+      <p style="margin-top:4px;">判据铁证（照母案纠正案 01 §七 8/9 条同款）：**停用官方设置插件后**，壳声明的 OS 跟随开关在第三方渲染器里<b>显示且可操作</b>——能力不随渲染方走。</p>
+    </div>
+    <div class="panel"><h3>三条键的去向（本渲染器视角）</h3>
+      <p style="margin-top:4px;"><span class="tag">可操作</span><b>app.osAssociations.followPlugins</b> —— C3c：摘 hint＋group 子节 ⇒ 通用布尔行（type 就够画）。</p>
+      <p style="margin-top:8px;"><span class="tag">隐藏</span><b>workbench.fileAssociations</b> —— C2b 建议形态（🔵 待拍）：管理器挂载键对未知渲染器隐藏，不出只读 `{}` 垃圾行。备选＝只读展示。</p>
+      <p style="margin-top:8px;"><span class="tag">只读降级</span><b>app.osAssociations.overrides</b> —— 维持管理器 hint ⇒ 未知渲染器按降级契约只读（v1 无界面是刻意决定，不落 ObjectEditor 可编辑兜底）。</p>
+      <p style="margin-top:8px;"><span class="tag">渲染管理器</span>实现了这个 hint 的渲染器（官方或第三方）⇒ 分发到共享**组装视图**（@linkdesk/ui），喂数据即得完整管理器——与 themePicker 分发同形状。</p>
+    </div>
+    <div class="panel"><h3>为什么这是「最低保证」</h3>
+      <p style="margin-top:4px;">壳保证：最简单的设置插件，凭契约＋通用引擎，把壳声明的每条配置**显示出来且可操作**（未雨绸缪——第三方作者永远够得着）。管理器的完整呈现是**加分项**（共享组装视图，自愿用），不是最低线的组成部分。</p>
+    </div>
+  </div>
+</div>
+
+<div class="ctx" id="ctx"></div>
+<script>
+"use strict";
+function gearMenu(ev, items){
+  ev.stopPropagation(); /* 同 01：开菜单的点击不冒泡到 document 关闭器 */
+  const r = ev.currentTarget.getBoundingClientRect();
+  const ctx=document.getElementById("ctx"); ctx.innerHTML = items.map(i=>`<div class="it">${i.label}</div>`).join("");
+  ctx.style.display="block"; ctx.style.left=Math.min(r.left, innerWidth-240)+"px"; ctx.style.top=Math.min(r.bottom+4, innerHeight-140)+"px";
+  ctx.onclick = () => { ctx.style.display="none"; };
+}
+document.addEventListener("click", e => { if(!e.target.closest(".ctx")) document.getElementById("ctx").style.display="none"; });
+document.addEventListener("keydown", e => { if(e.key==="Escape") document.getElementById("ctx").style.display="none"; });
+</script>
+</body>
+</html>

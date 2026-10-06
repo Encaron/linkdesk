@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · 共享化落地态——「默认打开方式」组（可交互 · C1=B ＋ C3 改判后预览）</title>
+<!-- 图标字形＝**真 codicon 字体**（与产品同一支：壳 main.tsx `import "@vscode/codicons/dist/codicon.css"`）——
+     ⛔ 不再手绘 SVG 齿轮、也不用「⌕/▼」字符代替。缺 node_modules 时字形退化为空框，跑 npm i 即可。 -->
+<link rel="stylesheet" href="../../../../../node_modules/@vscode/codicons/dist/codicon.css">
+<!-- 设计门：硬约束 16（ui-ux-pro-max 已走）。视觉 = **真源 CSS 逐条照抄**（非示意近似）：
+     · 行骨架/齿轮/子节：settings 插件 SettingsView.css＋SettingsView-rows.css（.settings-subsection-title
+       3px 竖杠 ::before、.settings-row 平铺 border-bottom、.settings-row-gear 24px hover 现）
+     · 子节副标题在标题**下方**：共享件 SectionSubtitle（.ldk-section-subtitle，2xs/muted/mb 8）
+     · 卡：共享件 PluginCard（plugin-card.css 逐值——head 铺满 toggle＋齿轮 absolute top8/right8、
+       summary 2xs、body max-height 280）
+     · 管理器行/胶囊/下拉：file-associations-manager.css 逐值（assoc-row min-height 30 padding 4px 12px、
+       ext 92px mono accent-hover、pill 四态、select 190px）
+     · 卡体工具条（C5 定案）：过滤框＝共享件 InlineInput（inline-input.css 逐值：normal 32px、--bg-input、
+       聚焦 border-color --accent ＋ 1px 环）＋排序＝共享件 SelectBox（select-box.css 逐值：trigger padding 3px 6px /
+       radius-xs / 箭头 sm；面板 bg-window ＋ shadow-pop ＋ z-dropdown）——⛔ 零新造控件
+     · 🔴 **共享件/图标一律照真件实例画**（2026-10-06 用户判据，先例＝滑杆搬迁）：已有组件「长什么样就是什么样」，
+       不许手绘近似——SelectBox＝真件 DOM（div.ldk-selectbox ＞ button.trigger ＞ span.ldk-selectbox-label ＋
+       span.codicon.codicon-chevron-down.ldk-selectbox-arrow）＋真件焦点机制（**onMouseEnter 改 focusIdx**，真件
+       **没有** .ldk-selectbox-item:hover 规则）＋ OverlayPortal 量测定位面板；InlineInput＝真件 input.ldk-inline-input
+       （顶部「搜索设置」与卡内过滤**同一支**）；Toggle＝div.ldk-toggle ＋ ::after 旋钮（⛔ 无子元素 span）；
+       Badge＝.ldk-badge；齿轮/箭头/搜索图标＝**真 codicon 字体**（@vscode/codicons）。行内下拉＝**共享件 SelectBox**
+       （插件真件就写 `className="settings-assoc-select"`），⛔ 不是原生 <select>。
+     · 🔴 **尺寸/字号/文字逐值照真源**（2026-10-06 用户判据「html 展示基本就是实机效果：比例、大小、尺寸、显示文字」）：
+       字号 token 直取 src/index.css:72-77（2xs11 / xs12 / sm13 / md14 / lg16 / xl18）、圆角 4/6/8、hover-overlay .06；
+       页面骨架（页签栏 / 搜索栏 / 左树 / 表单 padding 20px 28px）与设置行逐条照 settings 插件
+       `SettingsView.css` ＋ `SettingsView-rows.css`；配色锚 `src/index.css` :root 兜底暗色。
+       ⛔ 不许「看着差不多」手填 px——凡有真 token / 真规则的，一律引真值。
+     · 图标栏齿轮菜单 = ExtensionGear 槽真实条目；配置行齿轮 = SettingItemGear 槽真实条目（when 收窄）；
+       竞争行/卡头/卡体行齿轮 = settings 插件真实条目。
+     本图 = 「默认打开方式管理器共享化」案定案后落地态预览（C1=B ＋ C3 ＋ C4 建议形态），接替母案 mockups/08。 -->
+<style>
+:root{
+  /* 🔴 配色 = src/index.css :root **兜底暗色逐值**（= 历史 dark.json 调色板；主题一换全跟着换，本图只锚这一套） */
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C; --bg-titlebar:#252526;
+  --bg-icon-bar:#18181B; --bg-side-panel:#1E1E22; --tab-active-bg:#353535;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0078D4; --accent-hover:#1A8CE8; --text-on-accent:#FFFFFF;
+  --border:#3C3C3C; --separator:#474747; --error:#E06C75; --status-connected:#4EC9B0; --warning:#CCA700;
+  --hover-overlay:rgba(255,255,255,.06);
+  /* 🔴 字号/圆角 token = src/index.css:71-86 逐值（**比例真值**：2xs11 / xs12 / sm13 / md14 / lg16 / xl18；radius 4/6/8） */
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --font-size-2xs:11px; --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px;
+  --font-size-lg:16px; --font-size-xl:18px;
+  --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-pill:999px; --radius-xs:2px;
+  --shadow-pop:0 4px 12px rgba(0,0,0,.4); --bg-selection:color-mix(in srgb, var(--accent) 20%, transparent); --z-dropdown:650;
+  --badge-background:var(--accent); --badge-foreground:var(--text-on-accent); /* index.css：badge-background=accent / badge-foreground=badge-text */
+  --toggle-knob:#ffffff; --toggle-knob-on:var(--text-on-accent); /* toggle.css：旋钮底色 ＋ ON 态（accent 轨道上的可读色） */
+  --font-mono:"JetBrains Mono",Consolas,monospace; /* index.css:63 逐值 */ --ui-scale:1; /* 全局基准 font-size = sm 13px（index.css:213 html,body,#root 逐值） */
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0d0d;color:var(--text-primary);font:var(--font-size-sm)/1.6 var(--font-ui);padding:18px;} /* 页面外框＝预览脚手架，非产品 UI */
+.page-head{max-width:1320px;margin:0 auto 14px;}
+.page-head h2{font-size:18px;font-weight:600;}
+.page-head .sub{color:var(--text-secondary);margin-top:4px;}
+.stage{max-width:1320px;margin:0 auto;display:flex;gap:14px;align-items:flex-start;}
+.window{width:min(1280px, calc(100vw - 380px));min-width:880px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-window);box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.titlebar{height:30px;background:var(--bg-titlebar);display:flex;align-items:center;padding:0 10px;gap:10px;border-bottom:1px solid var(--separator);}
+.titlebar .logo{width:14px;height:14px;border-radius:4px;background:var(--accent);}
+.titlebar .app{font-size:12px;color:var(--text-secondary);}
+.titlebar .menus{display:flex;gap:2px;margin-left:6px;}
+.titlebar .menus span{padding:2px 8px;border-radius:4px;color:var(--text-secondary);font-size:12px;}
+.titlebar .drag{flex:1;}
+.titlebar .winbtns{display:flex;gap:14px;color:var(--text-muted);font-size:11px;}
+.body-row{display:flex;height:640px;}
+.icon-bar{width:42px;background:var(--bg-icon-bar);border-right:1px solid var(--separator);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;position:relative;}
+.icon-bar .ic{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#8a8a8a;cursor:pointer;position:relative;}
+.icon-bar .ic svg{width:16px;height:16px;}
+.icon-bar .ic.active{color:var(--text-primary);background:var(--hover-overlay);}
+.icon-bar .ic.active::before{content:"";position:absolute;left:-5px;top:7px;width:3px;height:18px;border-radius:2px;background:var(--accent);}
+.icon-bar .gear-slot{margin-top:auto;}
+.icon-bar .ic:hover{background:var(--hover-overlay);color:var(--text-primary);}
+/* ── 设置页真结构：双页签 → 搜索栏 → settings-body(nav 200px + settings-form 20px 28px) ── */
+.setcol{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;}
+.settings-tab-bar{display:flex;padding:0 16px;border-bottom:1px solid var(--border);}
+.settings-tab{padding:8px 16px;font-size:var(--font-size-md);background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;margin-bottom:-1px;}
+.settings-tab:hover{color:var(--text-primary);}
+.settings-tab.active{color:var(--text-primary);border-bottom-color:var(--accent);}
+/* 搜索栏（SettingsView.css 逐值）：padding 8px 16px / border-bottom --border / gap 8 */
+.settings-search-bar{display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);gap:8px;}
+.settings-search-icon{font-size:var(--font-size-lg);color:var(--text-muted);flex-shrink:0;} /* 真件＝span.codicon.codicon-search */
+/* 输入框＝共享件 InlineInput（inline-input.css 逐值见下方块），⛔ 不另写 .s-search */
+.settings-json-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;background:transparent;border:1px solid var(--border);color:var(--text-primary);font-size:var(--font-size-sm);cursor:pointer;border-radius:2px;}
+.settings-json-btn:hover{background:var(--hover-overlay);}
+.setpage{flex:1;display:flex;min-width:0;min-height:0;}
+.setnav{width:200px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:8px 0;}
+.setnav .nv{display:flex;align-items:center;justify-content:space-between;width:100%;padding:6px 20px;font-size:var(--font-size-md);color:var(--text-primary);background:transparent;border:none;border-left:2px solid transparent;cursor:pointer;text-align:left;}
+.setnav .nv:hover{background:var(--hover-overlay);}
+.setnav .nv.active{background:var(--hover-overlay);color:var(--text-primary);font-weight:500;border-left-color:var(--accent);}
+.setnav .nv .cnt{font-size:var(--font-size-xs);color:var(--text-muted);background:var(--hover-overlay);padding:0 6px;border-radius:10px;}
+/* ── settings-form 真骨架（SettingsView.css：padding 20px 28px；组标题带底部分隔线） ── */
+.setcontent{flex:1;overflow:auto;padding:20px 28px;min-width:0;}
+.settings-group-title{font-size:var(--font-size-xl);font-weight:600;margin:0 0 20px 0;padding-bottom:12px;border-bottom:1px solid var(--border);color:var(--text-primary);}
+/* 子节副标题 = 共享件 SectionSubtitle（在标题下方，非破折号尾注） */
+.ldk-section-subtitle{font-size:var(--font-size-2xs);color:var(--text-muted);line-height:1.6;margin-bottom:8px;}
+/* ── 组内二级标题真骨架：3px 竖杠 ::before（accent 55%，随 token 变）＋ sm/600/加宽字距 ── */
+.settings-subsection{margin-bottom:6px;}
+.settings-subsection-title{display:flex;align-items:center;gap:8px;font-size:var(--font-size-sm);font-weight:600;letter-spacing:0.05em;margin:22px 0 10px 0;color:var(--text-secondary);}
+.settings-subsection-title::before{content:"";width:3px;height:12px;border-radius:2px;background:color-mix(in srgb, var(--accent) 55%, transparent);flex:none;}
+/* ── 设置行真骨架：平铺 border-bottom（无圆角盒）、info flex1、控制区右聚、齿轮 24px hover 现 ── */
+.settings-row{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:20px;position:relative;}
+.settings-row-info{flex:1;min-width:0;}
+.settings-row-label{display:block;font-size:var(--font-size-md);font-weight:500;color:var(--text-primary);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.settings-row-desc{display:block;font-size:var(--font-size-sm);color:var(--text-muted);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.settings-row-desc b{color:var(--text-secondary);font-weight:600;}
+.settings-row-control{flex-shrink:0;display:flex;align-items:center;min-width:100px;justify-content:flex-end;}
+.settings-row-gear{flex-shrink:0;width:calc(24px * var(--ui-scale));height:calc(24px * var(--ui-scale));display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:3px;color:var(--text-muted);font-size:var(--font-size-lg);cursor:pointer;opacity:0;transition:opacity 120ms ease,background 120ms ease;margin-left:4px;}
+.settings-row:hover .settings-row-gear,.crow:hover .settings-row-gear,.settings-assoc-row:hover .settings-row-gear{opacity:1;}
+.settings-row-gear:hover{background:var(--hover-overlay);color:var(--text-primary);}
+/* 齿轮＝真 codicon-gear（字形随 button 的 font-size: var(--font-size-lg)），⛔ 手绘 SVG 已删 */
+.settings-assoc-empty{padding:12px 0;font-size:var(--font-size-sm);color:var(--text-muted);}
+/* Badge（共享件 badge.css 逐值）：--badge-background/--badge-foreground ＋ radius-sm ＋ 2xs/500 */
+.ldk-badge{display:inline-flex;align-items:center;background:var(--badge-background);color:var(--badge-foreground);border-radius:var(--radius-sm);padding:1px 6px;font-size:var(--font-size-2xs);font-weight:500;line-height:1.4;white-space:nowrap;flex-shrink:0;}
+/* ── 管理器竞争行（file-associations-manager.css 逐值）：row 骨架 + assoc-row-label + 件序[徽标][下拉][齿轮] ── */
+.settings-assoc-row-label{display:block;margin-bottom:3px;font-size:var(--font-size-md);font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* ⚠️ 真件（FileAssociationsManagerView.tsx）：.settings-assoc-select 是**传给共享件 SelectBox 的 className**
+   ⇒ 元素＝.ldk-selectbox.settings-assoc-select，**只有宽度/间距规则**；背景/边框/内距全属 SelectBox 的 trigger */
+.settings-assoc-select{min-width:180px;} /* 08 §尺寸纪律：下拉 180px；卡内行另有 190px（见 .settings-assoc-row 那条） */
+.settings-assoc-contested .settings-assoc-select{margin-left:8px;}
+/* ── PluginCard（plugin-card.css 逐值）── */
+.ldk-plugin-card{border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:8px;background:var(--bg-card);overflow:hidden;}
+.ldk-plugin-card--expanded{border-color:var(--separator);}
+.ldk-plugin-card-head{position:relative;}
+.ldk-plugin-card-head:hover{background:var(--hover-overlay);}
+.ldk-plugin-card--expanded .ldk-plugin-card-head{border-bottom:1px solid var(--separator);}
+.ldk-plugin-card-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;box-sizing:border-box;padding:0 32px 0 12px;background:none;border:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.ldk-plugin-card-icon{display:flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;border-radius:var(--radius-md);overflow:hidden;}
+/* 身份图两形态＝plugin-card.css 逐值：img 形铺满磁贴（object-fit:cover）；span 形（codicon/emoji）走 lg 字形 */
+img.ldk-plugin-card-icon-glyph{display:block;width:100%;height:100%;object-fit:cover;}
+span.ldk-plugin-card-icon-glyph{font-size:var(--font-size-lg);line-height:1;}
+.ldk-plugin-card-ident{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;line-height:1.3;}
+.ldk-plugin-card-titleline{display:flex;align-items:center;gap:6px;min-width:0;}
+.ldk-plugin-card-title{font-size:var(--font-size-sm);font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ldk-plugin-card-sub{font-size:var(--font-size-2xs);color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ldk-plugin-card-summary{flex:none;font-size:var(--font-size-2xs);color:var(--text-muted);white-space:nowrap;}
+.ldk-plugin-card-summary b{color:var(--text-secondary);font-weight:600;}
+.ldk-plugin-card-chevron{flex:none;font-size:var(--font-size-2xs);color:var(--text-muted);transition:transform 150ms ease;}
+.ldk-plugin-card-chevron--open{transform:rotate(90deg);}
+.ldk-plugin-card-gear{position:absolute;top:8px;right:8px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;background:transparent;border:none;border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;opacity:0;transition:opacity 120ms ease,background 120ms ease;}
+.ldk-plugin-card-head:hover .ldk-plugin-card-gear,.ldk-plugin-card-head:focus-within .ldk-plugin-card-gear{opacity:1;}
+.ldk-plugin-card-gear:hover{background:var(--hover-overlay);color:var(--text-primary);}
+.ldk-plugin-card-gear-icon{font-size:var(--font-size-md);} /* plugin-card.css 逐值：齿轮字形 md */
+.ldk-plugin-card-body{max-height:280px;overflow:auto;padding:4px 12px 6px;}
+/* ── 卡体工具条（C5 增项）：PluginCard 加**通用 toolbar 槽**（零业务语义，与 summary 同为 ReactNode——本件不认识槽里装了什么）。
+      槽内两件**全是已有共享件、零新造**：过滤框＝InlineInput（与左上「搜索设置」同一支，normal 32px）＋排序＝SelectBox；
+      图标前置＝插件仓 settings-search-bar 同款（图标 ＋ InlineInput）。 */
+.ldk-plugin-card-toolbar{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--separator);}
+.famgr-filter{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;}
+.famgr-filter-icon{flex:none;font-size:var(--font-size-lg);color:var(--text-muted);} /* ＝.settings-search-icon 同值（真 codicon-search） */
+.famgr-hit{flex:none;font-size:var(--font-size-2xs);color:var(--text-muted);white-space:nowrap;}
+/* InlineInput（inline-input.css 逐值） */
+.ldk-inline-input{border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-family:inherit;outline:none;box-sizing:border-box;width:100%;transition:border-color 150ms ease-out,box-shadow 150ms ease-out;}
+.ldk-inline-input:focus{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.ldk-inline-input--normal{height:calc(32px * var(--ui-scale));font-size:var(--font-size-md);padding:0 8px;}
+/* ── 共享件 SelectBox ＝ select-box.css **逐条照抄**（⛔ 不许手绘近似）──
+   真件 DOM：div.ldk-selectbox[.ldk-selectbox-open] ＞ button.ldk-selectbox-trigger ＞ (span.ldk-selectbox-label ＋
+   span.codicon.codicon-chevron-down.ldk-selectbox-arrow)；面板＝SelectBoxDropdown（OverlayPortal→body）：
+   div.ldk-selectbox-dropdown（inline position:fixed ＋ left/top/minWidth/maxWidth 由触发器 rect 量测，E5.8#69）
+   ＞ ul.ldk-selectbox-list[tabindex=-1] ＞ li.ldk-selectbox-item[.ldk-selectbox-item-focus][.ldk-selectbox-item-selected] */
+.ldk-selectbox{position:relative;display:inline-block;min-width:100px;user-select:none;}
+.ldk-selectbox-trigger{display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;padding:3px 6px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-xs);font-size:var(--font-size-md);line-height:1.6;cursor:pointer;font-family:inherit;text-align:left;}
+.ldk-selectbox-trigger:hover:not(:disabled){border-color:var(--accent);}
+.ldk-selectbox-trigger:disabled{opacity:.5;cursor:default;}
+.ldk-selectbox-open .ldk-selectbox-trigger{border-color:var(--accent);}
+.ldk-selectbox-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ldk-selectbox-arrow{flex-shrink:0;font-size:var(--font-size-sm);transition:transform .15s ease;}
+.ldk-selectbox-arrow-up{transform:rotate(180deg);}
+.ldk-selectbox-dropdown{position:absolute;top:100%;left:0;margin-top:2px;background:var(--bg-window);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-pop);overflow:hidden;z-index:var(--z-dropdown);max-height:260px;max-width:calc(100vw - 24px);display:flex;flex-direction:column;animation:ldk-selectbox-in .1s ease-out;}
+@keyframes ldk-selectbox-in{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.ldk-selectbox-list{list-style:none;margin:0;padding:2px 0;overflow-y:auto;outline:none;}
+.ldk-selectbox-item{padding:3px 8px;font-size:var(--font-size-md);line-height:1.6;color:var(--text-primary);cursor:pointer;}
+/* ⚠️ 真件**没有** .ldk-selectbox-item:hover —— 悬停由 onMouseEnter 改 focusIdx 打 focus 类（见 I12） */
+.ldk-selectbox-item-focus{background:var(--accent);color:var(--text-on-accent);}
+.ldk-selectbox-item-selected:not(.ldk-selectbox-item-focus){background:var(--bg-selection);}
+.ldk-selectbox-swatch{display:inline-block;width:10px;height:10px;margin-right:5px;border-radius:50%;border:1px solid color-mix(in srgb, var(--text-primary) 35%, transparent);vertical-align:middle;flex-shrink:0;}
+/* 卡体滚动容器会裁面板（E37 历史真 bug 的形状）——真件经 OverlayPortal 挂 body，本图挂页面级 #ldkPortal 等价 */
+#ldkPortal{display:none;}
+@keyframes ldk-selectbox-in{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+/* ── 标注块（⛔ 非产品 UI）：只把「阈值」这件事在图上写明，免被读成「漏画」 ── */
+.famgr-anno{margin:6px 0 4px;padding:6px 8px;border:1px dashed var(--border);border-radius:var(--radius-xs,2px);color:var(--text-muted);font-size:var(--font-size-2xs,11px);line-height:1.7;}
+.famgr-anno b{color:var(--text-primary);}
+/* ── 卡体行（assoc-row 逐值）：ext 92px mono accent-hover ＋ pill 四态 ＋ 下拉 190px 右聚 ── */
+.settings-assoc-row{display:flex;align-items:center;gap:8px;min-height:30px;padding:4px 12px;border-bottom:1px solid var(--separator);font-size:var(--font-size-sm);position:relative;}
+.settings-assoc-row:last-child{border-bottom:none;}
+.settings-assoc-row:hover{background:var(--hover-overlay);}
+.settings-assoc-row .settings-assoc-select{margin-left:auto;min-width:190px;}
+.settings-assoc-ext{flex:0 0 92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:var(--font-size-sm);color:var(--accent-hover);}
+.settings-assoc-pill{display:inline-block;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;padding:1px 8px;border-radius:var(--radius-pill);background:var(--bg-input);color:var(--text-secondary);font-size:var(--font-size-xs);line-height:1.6;white-space:nowrap;}
+.settings-assoc-pill--user{color:var(--accent-hover);border:1px solid var(--accent);}
+.settings-assoc-pill--auto{color:var(--status-connected);}
+.settings-assoc-pill--cand{color:var(--warning);}
+.settings-assoc-pill--dang{color:var(--error);}
+/* Toggle（共享件 toggle.css 逐值）：36×20 轨道（--border）＋ ::after 16px 旋钮（⛔ 真件无子元素 span） */
+.ldk-toggle{width:36px;height:20px;border-radius:var(--radius-pill);background:var(--border);transition:background 150ms;cursor:pointer;position:relative;flex-shrink:0;}
+.ldk-toggle.on{background:var(--accent);}
+.ldk-toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:var(--radius-pill);background:var(--toggle-knob);transition:transform 150ms;}
+.ldk-toggle.on::after{transform:translateX(16px);background:var(--toggle-knob-on,var(--text-on-accent));}
+.ldk-toggle.disabled{opacity:.4;cursor:not-allowed;}
+/* 齿轮的非模态轻菜单（真实机制：锚齿轮下方、不吞首击） */
+.ctx{position:fixed;width:max-content;min-width:170px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:4px;z-index:90;box-shadow:0 0 1px rgba(0,0,0,.2),0 4px 12px rgba(0,0,0,.3);/* 真件 .ldk-ctx-menu＝--shadow-hairline ＋ --context-menu-shadow（src/index.css:88/45） */display:none;}
+.ctx .it{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:5px;font-size:12.5px;cursor:pointer;white-space:nowrap;}
+.ctx .it:hover{background:var(--hover-overlay);}
+.ctx .sep{height:1px;background:var(--separator);margin:3px 6px;}
+.toasts{position:fixed;right:20px;bottom:20px;z-index:99;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:9px 14px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:380px;animation:tin .18s ease-out;}
+.toast.warn{border-left-color:var(--warn, #c88a2d);} .toast.ok{border-left-color:var(--status-connected);}
+@keyframes tin{from{transform:translateY(8px);opacity:0;}to{transform:none;opacity:1;}}
+@media (prefers-reduced-motion: reduce){.toast{animation:none;}*{transition:none!important;}}
+button:focus-visible,select:focus-visible,input:focus-visible,.settings-row-gear:focus-visible,.nv:focus-visible,.ldk-plugin-card-toggle:focus-visible{outline:2px solid var(--accent-hover);outline-offset:2px;}
+.ldk-plugin-card-toggle:focus-visible,.ldk-plugin-card-gear:focus-visible{outline-offset:-2px;}
+.side{width:330px;flex:none;display:flex;flex-direction:column;gap:12px;}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.panel h3{font-size:12.5px;color:var(--text-secondary);font-weight:600;margin-bottom:6px;}
+.panel .log{font:11.5px/1.7 Consolas,monospace;color:var(--text-muted);white-space:pre-wrap;height:210px;overflow:auto;}
+.panel .log .hit{color:var(--status-connected);}
+.panel .kv{font:12px/1.8 Consolas,monospace;color:var(--text-secondary);white-space:pre-wrap;}
+.panel .acts{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.mini{background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:11.5px;text-align:left;}
+.mini:hover{color:var(--text-primary);border-color:var(--text-muted);}
+.mini.on{background:var(--accent);border-color:var(--accent);color:var(--text-on-accent);}
+.frame-note{max-width:1320px;margin:14px auto 40px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:12.5px;color:var(--text-secondary);}
+.frame-note b{color:var(--text-primary);}
+.frame-note ol{margin:6px 0 0 18px;}
+.frame-note .cols{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h2>01 · 共享化落地态——「默认打开方式」组 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（可交互预览 · 真 CSS 逐值 ＋ 真 token 尺寸 ＋ 真 codicon 字形 ＋ 真件控件；I1–I13 见页尾）</span></h2>
+  <div class="sub">「默认打开方式管理器共享化」案定案后预览。样式逐条照抄真源：settings 插件 SettingsView(.css/-rows.css)＋共享件 PluginCard/SectionSubtitle＋file-associations-manager.css；齿轮 hover 现身、**点击打开非模态菜单，条目＝壳槽/插件真实注册**。</div>
+</div>
+
+<div class="stage">
+  <div class="window">
+    <div class="titlebar">
+      <div class="logo"></div><div class="app">LinkDesk</div>
+      <div class="menus"><span>文件</span><span>查看</span><span>帮助</span></div>
+      <div class="drag"></div>
+      <div class="winbtns"><span>—</span><span>▢</span><span>✕</span></div>
+    </div>
+    <div class="body-row">
+      <div class="icon-bar">
+        <div class="ic" role="img" aria-label="资源管理器" title="资源管理器"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 5.5h4.6l1.4 1.8h7v6.2a.8.8 0 0 1-.8.8H2.3a.8.8 0 0 1-.8-.8z"/><path d="M1.5 5.5V3.3a.8.8 0 0 1 .8-.8h3.2l1.2 1.4"/></svg></div>
+        <div class="ic" role="img" aria-label="搜索" title="搜索"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></div>
+        <div class="ic gear-slot" id="gearBtn" role="button" aria-label="设置齿轮" title="设置" tabindex="0"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4"/></svg></div>
+      </div>
+      <div class="setcol">
+        <div class="settings-tab-bar">
+          <button class="settings-tab active">设置</button>
+          <button class="settings-tab" onclick="toast('（示意）快捷键页签——本图只演示设置页','')">快捷键</button>
+        </div>
+        <!-- 真件 SettingsView.tsx：span.codicon.codicon-search.settings-search-icon ＋ 共享件 InlineInput size="normal" -->
+        <div class="settings-search-bar">
+          <span class="codicon codicon-search settings-search-icon" aria-hidden="true"></span>
+          <input class="ldk-inline-input ldk-inline-input--normal" id="sSearch" placeholder="搜索设置" aria-label="搜索设置" oninput="state.search=this.value;renderGroup()">
+          <button class="settings-json-btn" onclick="toast('（示意）打开 settings.json——壳既有链','ok')">JSON</button>
+        </div>
+        <div class="setpage">
+          <nav class="setnav" id="nav"></nav>
+          <div class="setcontent" id="setContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="side">
+    <div class="panel"><h3>覆盖表 workbench.fileAssociations</h3><div class="kv" id="kvOverride">{ }</div></div>
+    <div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;">解析日志（同一真源）<button class="mini" style="padding:2px 8px;" onclick="document.getElementById('log').innerHTML='（已清空）'">清空</button></h3><div class="log" id="log">（等待操作…）</div></div>
+    <div class="panel"><h3>边界演示（状态化：高亮＝已生效，再次点击＝还原）</h3>
+      <div class="acts" id="demoActs"></div>
+    </div>
+  </div>
+</div>
+
+<div class="frame-note">
+  <b>交互逻辑 I1–I13（每条都能在本图点出来）</b>
+  <div class="cols">
+    <ol>
+      <li><b>I1 逐 hint 分发（C1=B 落地形态）</b>：管理器 hint 键 → 共享<b>组装视图</b>（两区默认皮）；OS 键摘 hint 后走<b>通用 SettingRow</b>——同一组里「自定义视图＋普通行」并存。</li>
+      <li><b>I2 下拉＝写覆盖表</b>：多候选行（整格生效）/卡体行（单类）改下拉 → `fileAssociation.setDefault` 写 `workbench.fileAssociations` → toast＋右侧覆盖表/日志联动。</li>
+      <li><b>I3 行齿轮（hover 显现；**点击打开非模态菜单——条目全是真实注册面**，五种齿轮逐一点开即可对照）</b>：① 多候选行＝「恢复自动（本格 N 类）」＋「打开方式…（.ext）」（settings 插件真实条目＋壳命令）；② <b>卡体行＝「打开方式…（.ext）」（C4 建议形态）</b>；③ 卡头＝「清除相关默认覆盖（N 类）」＋「复制插件 ID」（真实条目）；④ 配置行（OS 行/通用行）＝壳槽 SettingItemGear **真实条目**：恒显「复制设置 ID／复制设置名称／复制为 JSON」，「重置此设置」when=改动过才显（**把 OS 开关切一下再开齿轮即可见**），「跟随主题」「打开存储位置」按 when 本页不显，copySettingAsUrl/toggleSettingSync 两条 when:false 永隐（母案台账 P8）；⑤ 图标栏底部齿轮＝ExtensionGear 槽真实条目（命令面板/打开设置/主题/语言/快捷键/DevTools ── 检查更新/关于；「回退内置设置页」when=第三方套激活才显）。菜单锚齿轮下方非模态、不吞首击（真实机制）。</li>
+      <li><b>I4 插件卡展开＋卡体限高滚动</b>：点卡头原地展开；卡头摘要＝<b>声明 N · 竞争 N · 默认持有 N</b>（数字加粗，照 PluginCard 真骨架）。**编辑器 45 类 ⇒ 展开体 `max-height:280px` 卡内滚动**（plugin-card.css 真值——滚轮在卡体内滚，页面不跟着跑）；搜索命中**自动展开**（C6：清空不收回，用户自己收）。</li>
+      <li><b>I5 状态胶囊（真值四态点显）＋单家行下拉（E35 真形态）</b>：user＝唯一带描边（蓝）／auto＝绿／cand＝warning 黄／dang 失效＝error 红。**每行都有下拉**（自动＋全部候选）——单家类型下拉只有「自动/自己」两项，**选自己＝锁定**（胶囊变「用户锁定」）；编辑器卡 45 行全是这个形态。</li>
+      <li><b>I6 模拟装卸</b>：装「图像大师 B」→ 多候选区出现 .jpg/.png 行＋默认不漂移；卸载被覆盖表指向的插件 → 失效胶囊；重装 → 用户原选择复活。</li>
+      <li><b>I7 搜索</b>：顶部搜索输入 `.p`/`阅读`/`登记` → 过滤行与卡；OS 行标题/说明现在**也被搜得到**（升通用行后自然接入索引域）。</li>
+      <li><b>I8 空态</b>：多候选区空 → `.settings-assoc-empty` 说明行；搜索无匹配 → 「没有匹配的类型或插件」（组恒保留豁免不变）。</li>
+      <li><b>I9 OS 通用行（C3c）</b>：子节标题「系统「打开方式」登记」＝`prop.group` 声明（竖杠子节真骨架）；开关＝通用 Toggle，副标题/描述走壳声明与 SectionSubtitle 下方小字——OsFollowBlock 退役。</li>
+      <li><b>I10 聚合防爆炸（E32/E34 不变）</b>：候选集合相同 × 生效值相同 ⇒ 一行一格；单类单独设置 ⇒ 拆行；恢复自动 ⇒ 并回。聚合零语义。</li>
+      <li><b>I11 卡内过滤＋排序（C5 定案：做）</b>：<b>声明 ≥8 类</b>的卡展开后自带工具条——① <b>过滤框</b>（打字即滤本卡，⛔ 不碰左上全局搜索）：匹配<b>扩展名＋显示名</b>（输 python 命中 .py）、忽略大小写与前导点、命中数实时显示「命中 N / 45」、Esc 清空、卡一折叠即复位；② <b>排序 SelectBox</b>＝「按字母序」（默认）／「按默认排序」（＝<b>插件声明原始次序</b>，清单数组序透传，编辑器 45 类现在那种分区顺序）。两件都是<b>已有共享件</b>（InlineInput／SelectBox），<b>零新造</b>；行序与过滤＝共享聚合层的<b>纯函数</b>（一处实现，第三方渲染器同一口径）。点工具条右侧排序钮看真实 SelectBox 面板。<b>阈值实证</b>：本图 5 张卡仅编辑器（45 类）达标，其余 1/1/1/2 类均 &lt;8 ⇒ 无工具条（<b>是阈值，不是漏画</b>）；阈值＝组装方一处常量（`ManagerView` 里），⛔ 不进 `PluginCard`。</li>
+    </ol>
+  </div>
+  <b>组件账（共享层交付 · C1=B）</b>
+  <div class="cols">
+    <ol>
+      <li><b>共享组装视图（默认皮）</b>：聚合纯函数＋竞争行/卡体行＋本视图——最小第三方渲染器分发 hint → 渲染它 → 喂数据（与 themePicker 分发同形状）。</li>
+      <li><b>件另可拆用</b>：竞争行/卡体行/聚合纯函数独立导出——第三方作者自组布局用（皮开放）；或只接数据全画。</li>
+      <li><b>OsFollowBlock 退役</b>（C3c）：OS 键摘 hint＋`group` 子节 ⇒ 通用行；CSS/配置管道全删。</li>
+      <li><b>C4（✅ 已拍 2026-10-06：留卡内齿轮 ＋ 归一到统一行齿轮机制）</b>：卡体行 hover 齿轮＝「打开方式…（.ext）」；恢复自动留在下拉（不留双入口）；⛔ 禁 bespoke——P7 台账里 6 颗手绘齿轮由共享行齿轮 hook 统一吸收。</li>
+      <li><b>C5（✅ 已拍 2026-10-06：做）</b>：槽＝<b>PluginCard 加通用 `toolbar` 槽</b>（ReactNode，零业务语义、加性 API——不改既有调用方）；槽内＝<b>已有共享件</b> InlineInput（过滤）＋SelectBox（排序），<b>零新造组件</b>；主题 token 自动合规（共享件全 `var(--*)`，硬约束 1 ＋ check-css-hardcode／token 审计／命名空间／R6 罩着）。行序（字母序／声明序）与过滤＝共享聚合层纯函数；排序选择本轮＝视图本地状态（不持久化）。</li>
+      <li><b>不变式</b>：共享件零 `window.linkdesk`（R6）——数据由渲染方喂（右面板即「渲染方取数」示意位）。</li>
+      <li><b>I12 共享件/图标一律照真件实例画（2026-10-06 用户判据，先例＝滑杆搬迁）</b>：已有组件「长什么样就是什么样」，图上不许手绘近似——<b>SelectBox</b>＝真件 DOM（trigger＞label ＋ <b>真 codicon chevron</b>）＋真件焦点机制（<b>onMouseEnter → focus 类；真件没有 :hover 规则</b>，焦点项 accent 实心、选中项 accent 20% 底；⚠️ 悬停<b>只挪焦点类、⛔ 不重建面板</b>——在悬停处理里重建 DOM 会被浏览器重发的 mouseenter 自我维持成死循环，实机现象正是「鼠标一动、下拉自己收回」，jsdom 无鼠标事件故断言抓不到）＋ <b>OverlayPortal 面板</b>（量测定位、不被卡 overflow 裁）；<b>InlineInput</b>＝真件 <code>input.ldk-inline-input.l--normal</code>（顶部「搜索设置」与卡内过滤<b>同一支</b>）；<b>Toggle</b>＝div ＋ <code>::after</code> 旋钮；<b>Badge</b>＝<code>.ldk-badge</code>；<b>齿轮/箭头/搜索</b>＝<b>真 codicon 字体</b>（@vscode/codicons，与产品同支）。行内下拉＝<b>共享件 SelectBox</b>（插件真件即 <code>className="settings-assoc-select"</code>），⛔ 不是原生 <code>&lt;select&gt;</code>。卡头<b>身份图</b>亦同规：＝真件 <code>PluginIcon</code> 的两形态——editor 走 <b>img 形</b>（喂 <code>icon.svg</code> <b>原字节</b>，真机由 <code>manifest.icon</code> 解出）、无真资产的夹具走 <b>emoji 兜底形</b>，尺寸由 plugin-card.css 的 glyph 规则给（img 铺满 cover ／ span 走 lg）。⚠️ 仍是示意位的只有左<b>图标栏</b>图标（不属本案范围）。</li>
+      <li><b>I13 尺寸/字号/文字逐值照真源（2026-10-06 用户判据「html 展示基本就是实机效果：比例、大小、尺寸、显示文字」）</b>：字号档位直取 <code>src/index.css:72-77</code>（<b>2xs 11 ／ xs 12 ／ sm 13 ／ md 14 ／ lg 16 ／ xl 18</b>，全局基准＝<code>sm</code>）、圆角 <code>4/6/8</code>、<code>--hover-overlay .06</code>；页面骨架（页签栏 <code>padding 0 16px</code> ＋ 真 <code>2px</code> 下划线页签、搜索栏 <code>8px 16px</code>、左树 <code>200px</code>／项 <code>6px 20px</code>／计数实底胶囊、表单 <code>20px 28px</code>、组标题／子节标题／设置行的行距与档位）逐条照 settings 插件 <code>SettingsView.css</code> ＋ <code>SettingsView-rows.css</code>；配色锚 <code>src/index.css</code> <b>:root 兜底暗色</b>（＝历史 dark.json 调色板）。⛔ 产品区零手填 px 字号——凡有真 token／真规则的一律引真值。</li>
+    </ol>
+  </div>
+</div>
+
+<div class="ctx" id="ctx"></div>
+<!-- 下拉面板的 OverlayPortal 等价物：真件 Portal 到 body（不被卡 overflow:hidden 裁——E37），
+     本图挂页面级 #ldkPortal，面板坐标按触发器 rect 量测（SelectBoxDropdown 同法），DOM 结构逐值同真件 -->
+<div id="ldkPortal"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+const PLUGINS = {
+  /* 编辑器 = 真仓真实数据（/e/linkdesk-plugins/official/editor/plugin.json：name/45 条声明/text-fallback 挂牌）；
+     阅读器三只为 mock 夹具（虚构名——竞争场景需要，母案 08 同款惯例） */
+  editor:{name:"编辑器", version:"1.0.24", role:"text-fallback", activated:1,
+    assoc:["ts","tsx","js","jsx","mjs","cjs","json","jsonc","html","htm","css","scss","less","md","mdx","py","rs","c","h","cpp","hpp","go","java","xml","svg","yaml","yml","toml","sh","bash","sql","lua","php","rb","swift","kt","dart","diff","patch","bat","cmd","ini","cfg","txt","log"]},
+  pdfpro:{name:"PDF Reader Pro", assoc:["pdf"], activated:2},
+  adobe:{name:"Adobe PDF 阅读器", assoc:["pdf"], activated:3},
+  simplepdf:{name:"简易 PDF", assoc:["pdf"], activated:4},
+  imga:{name:"图片查看器 A", assoc:["jpg","png"], activated:2},
+  imgb:{name:"图像大师 B", assoc:["jpg","png","webp"], activated:3},
+};
+/* 卡头图标＝共享件 PluginIcon 的真输出形态（⛔ 不再是自造字母磁贴）：
+   editor 走 **img 形**，src = 该插件自己的 icon.svg **原字节**（/e/linkdesk-plugins/official/editor/resources/icon.svg，
+   真机由 resolvePluginIcon 解出 manifest.icon "resources/icon.svg"）；其余 5 只＝mock 夹具、无真资产
+   ⇒ 走真件的 **emoji 形**（PluginIcon 无 manifest 时的兜底分支），两形的尺寸都由上面对应 CSS 给。 */
+const ICON_SVG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDQ4IDQ4Ij4NCiAgPCEtLSBlZGl0b3Ig5b2p6Imy5Zu+5qCH44CM57yW6L6R5Zmo55qE5Z2X44CN77ya6Z2b6JOd5riQ5Y+Y5Z2XICsg55m96Imy5Luj56CB5bCW5ous5Y+3IDwgPg0KICAgICAgIOaEj+ixoSA9IE1vbmFjbyDku6PnoIHnvJbovpHlmajvvJtUeXBlLTIg6Lqr5Lu95Zu+77yI5biC5Zy65YiX6KGoL+ivpuaDhS/nvJbovpHlmajmj5Lku7bkvY3lkIznlKjov5nlvKDvvIzmlofku7bmoIfnrb7nsbvlnovlm77otbDlj6bkuIDlpZfvvIkNCiAgICAgICDnlYzpnaIgaW1nIOaYvuekuueUqCDihpIg5YWo5a6e6Imy6Ieq5ZCrIC0tPg0KICA8ZGVmcz4NCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImVkQmciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4NCiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzYzNjZGMSIvPg0KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMzEyRTgxIi8+DQogICAgPC9saW5lYXJHcmFkaWVudD4NCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImVkR2xhc3MiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj4NCiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI0ZGRkZGRiIgc3RvcC1vcGFjaXR5PSIwLjIwIi8+DQogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNGRkZGRkYiIHN0b3Atb3BhY2l0eT0iMC4wMyIvPg0KICAgIDwvbGluZWFyR3JhZGllbnQ+DQogIDwvZGVmcz4NCiAgPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiByeD0iMTAiIGZpbGw9InVybCgjZWRCZykiLz4NCiAgPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiByeD0iMTAiIGZpbGw9InVybCgjZWRHbGFzcykiLz4NCiAgPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiByeD0iMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0UwRTdGRiIgc3Ryb2tlLW9wYWNpdHk9IjAuMzAiIHN0cm9rZS13aWR0aD0iMSIvPg0KICA8IS0tIOS7o+eggeWwluaLrOWPtyA8ID7vvIhhcGV4IOacneWkluOAgeS4remXtOeVmee8ne+8jOivu+S9nCBjb2RlIGJyYWNrZXTvvIkgLS0+DQogIDxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0VFRjJGRiIgc3Ryb2tlLXdpZHRoPSIzLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+DQogICAgPHBhdGggZD0iTTIyIDE2LjUgTDE2IDI0IEwyMiAzMS41Ii8+DQogICAgPHBhdGggZD0iTTI2IDE2LjUgTDMyIDI0IEwyNiAzMS41Ii8+DQogIDwvZz4NCjwvc3ZnPg0K";
+const ICONS = {
+  editor: `<img class="plugin-icon plugin-icon--img ldk-plugin-card-icon-glyph" src="${ICON_SVG}" alt="" draggable="false">`,
+  pdfpro:    `<span class="plugin-icon plugin-icon--emoji ldk-plugin-card-icon-glyph">📕</span>`,
+  adobe:     `<span class="plugin-icon plugin-icon--emoji ldk-plugin-card-icon-glyph">📗</span>`,
+  simplepdf: `<span class="plugin-icon plugin-icon--emoji ldk-plugin-card-icon-glyph">📘</span>`,
+  imga:      `<span class="plugin-icon plugin-icon--emoji ldk-plugin-card-icon-glyph">🖼️</span>`,
+  imgb:      `<span class="plugin-icon plugin-icon--emoji ldk-plugin-card-icon-glyph">🎨</span>`,
+};
+/* 声明详情里的显示名 = plugin.json contributes.fileAssociations[].displayName 真值（过滤匹配「扩展名＋显示名」：输 python 命中 .py） */
+const DISPLAY = {ts:"TypeScript",tsx:"TypeScript React",js:"JavaScript",jsx:"JavaScript React",mjs:"JavaScript ES Module",cjs:"JavaScript CommonJS",json:"JSON",jsonc:"JSON with Comments",html:"HTML",htm:"HTML",css:"CSS",scss:"SCSS",less:"Less",md:"Markdown",mdx:"MDX",py:"Python",rs:"Rust",c:"C",h:"C Header",cpp:"C++",hpp:"C++ Header",go:"Go",java:"Java",xml:"XML",svg:"SVG",yaml:"YAML",yml:"YAML",toml:"TOML",sh:"Shell",bash:"Bash",sql:"SQL",lua:"Lua",php:"PHP",rb:"Ruby",swift:"Swift",kt:"Kotlin",dart:"Dart",diff:"Diff",patch:"Patch",bat:"Batch",cmd:"Batch",ini:"INI",cfg:"Config",txt:"Text",log:"Log"};
+const GROUPS = ["通用","外观","默认打开方式"];
+let state = { group:"默认打开方式", override:{}, installed:["editor","pdfpro","adobe","imga","simplepdf"], expanded:{editor:1}, search:"", osOn:true, osModified:false, filter:{}, sortMode:{} }; /* C5：filter=卡内过滤词／sortMode=行序（alpha 默认·declared＝插件声明原始次序）；下拉开合状态在 SEL（真件＝组件内部 state） */
+const $ = id => document.getElementById(id);
+function addLog(s, hit){ const el=$("log"); el.innerHTML += `<div${hit?' class="hit"':''}>› ${s}</div>`; el.scrollTop = el.scrollHeight; }
+function toast(msg, kind){ const t=document.createElement("div"); t.className="toast "+(kind||""); t.textContent=msg;
+  $("toasts").appendChild(t); setTimeout(()=>t.remove(), 4200); }
+function handlers(ext){ return state.installed.filter(id => (PLUGINS[id].assoc||[]).includes(ext))
+  .sort((a,b)=>(PLUGINS[a].activated||99)-(PLUGINS[b].activated||99)||a.localeCompare(b)); }
+function curDefault(ext){ const ov=state.override[ext];
+  if (ov) return {id:ov, fromUser:true, installed:state.installed.includes(ov)};
+  const hs=handlers(ext); if (hs.length) return {id:hs[0], fromUser:false, installed:true};
+  const r=state.installed.filter(id=>PLUGINS[id].role).sort((a,b)=>(PLUGINS[a].activated||99)-(PLUGINS[b].activated||99))[0];
+  return r?{id:r, fromUser:false, installed:true}:null; }
+function setDefault(ext, id){ state.override[ext]=id; renderSide();
+  addLog(`覆盖表写入 .${ext}: ${id}（下拉/选择器同写一个真源，I2）`, true);
+  toast(`.${ext} 默认已改为 ${PLUGINS[id].name}`, "ok"); renderGroup(); }
+function clearDefault(ext){ delete state.override[ext]; renderSide();
+  addLog(`恢复自动 → 删除覆盖表 .${ext}`, false); toast(`.${ext} 已恢复自动（回声明序）`, "ok"); renderGroup(); }
+function setBulk(bid, id){ const exts=BULKREG[bid]||[]; exts.forEach(x=>state.override[x]=id); renderSide();
+  addLog(`覆盖表批量写入 ${exts.length} 类 → ${PLUGINS[id].name}（聚合格整格生效，E32）`, true);
+  toast(`${exts.length} 类默认已改为 ${PLUGINS[id].name}（整格）`, "ok"); renderGroup(); }
+function clearBulk(bid){ const exts=BULKREG[bid]||[]; exts.forEach(x=>delete state.override[x]); renderSide();
+  addLog(`恢复自动：${exts.length} 类`, false); toast(`${exts.length} 类已恢复自动（格并回自动行）`, "ok"); renderGroup(); }
+const GEAR_MENUS = {}; let gearSeq = 0; const BULKREG = {}; let bulkSeq = 0;
+function gearMenu(ev, src){
+  ev.stopPropagation(); /* 开菜单的这次点击不许冒泡到 document 的「点空白关闭」——否则开完即关（真实非模态菜单同款语义） */
+  const items = Array.isArray(src) ? src : (GEAR_MENUS[src]||[]);
+  const r = ev.currentTarget.getBoundingClientRect();
+  const ctx=$("ctx"); ctx.innerHTML = items.map(i=>i.sep?`<div class="sep"></div>`:`<div class="it" data-i="${i.label}">${i.label}</div>`).join("");
+  ctx.style.display="block"; ctx.style.left=Math.min(r.left, innerWidth-240)+"px"; ctx.style.top=Math.min(r.bottom+4, innerHeight-170)+"px";
+  ctx.onclick = e => { const k=e.target.dataset&&e.target.dataset.i; ctx.style.display="none"; const it=items.find(x=>x.label===k); if(it&&it.fn) it.fn(); };
+}
+document.addEventListener("click", e => {
+  if(!e.target.closest(".ctx")) $("ctx").style.display="none";
+  /* 下拉面板：OverlayPortal 外部点击关闭的同款（点在触发器/面板内不算「点空白」） */
+  if(SEL.open && !e.target.closest(".ldk-selectbox") && !e.target.closest("#ldkPortal")) closeSel();
+});
+document.addEventListener("keydown", e => { if(e.key==="Escape"){ $("ctx").style.display="none"; closeSel(); } });
+/* 真件 SelectBoxDropdown：resize/scroll（捕获阶段，收任意滚动容器）重算 ⇒ 面板跟随触发器（E5.8#69） */
+function remeasureSel(){ if(SEL.open) redrawSelects(); }   /* 真件监听随面板挂载存在，等价于只在开时生效 */
+window.addEventListener("resize", remeasureSel);
+window.addEventListener("scroll", remeasureSel, true);
+/* ⛔ 手绘齿轮已退役：真件齿轮＝<span class="codicon codicon-gear">（真件全仓同款，见各调用点） */
+/* 配置行齿轮 = 壳槽 SettingItemGear 真实条目（when 收窄，见 I3④） */
+function settingGearItems(key, name, modified){
+  const its=[];
+  if(modified) its.push({label:"重置此设置", fn:()=>toast("（示意）resetConfigurationValue → 回声明默认","ok")});
+  its.push({label:"复制设置 ID", fn:()=>toast("已复制："+key,"ok")});
+  its.push({label:"复制设置名称", fn:()=>toast("已复制："+name,"ok")});
+  its.push({label:"复制为 JSON", fn:()=>toast("已复制为 JSON","ok")});
+  return its;
+}
+/* 通用配置行（真实 .settings-row 骨架）——齿轮点击打开非模态菜单，条目＝壳槽真实注册 */
+function rowHTML(label, desc, ctrl, gearItems){
+  const gid = "g"+(++gearSeq); GEAR_MENUS[gid]=gearItems;
+  return `<div class="settings-row"><div class="settings-row-info"><span class="settings-row-label">${label}</span><span class="settings-row-desc" title="${desc.replace(/<[^>]*>/g,"")}">${desc}</span></div>
+  <div class="settings-row-control">${ctrl}
+  <button class="settings-row-gear" aria-label="更多操作" title="更多操作" onclick="gearMenu(event,'${gid}')"><span class="codicon codicon-gear" aria-hidden="true"></span></button></div></div>`;
+}
+function renderNav(counts){
+  $("nav").innerHTML = GROUPS.map(g => `<button class="nv${state.group===g?" active":""}" tabindex="0" onclick="state.group='${g}';renderGroup()"><span>${g}</span><span class="cnt">${counts[g]??0}</span></button>`).join("");
+}
+/* ── C5：卡体工具条（过滤＋排序）。两件控件都是**已有共享件**；行序与过滤＝**纯函数**（落共享聚合层，一处实现） ── */
+const FILTER_MIN = 8;   /* 声明 <8 类的卡不摆工具条（3 类的卡摆过滤框＝纯噪音）；阈值属组装方策略，⛔ 不进 PluginCard */
+const SORTS = [{value:"alpha", label:"按字母序"}, {value:"declared", label:"按默认排序"}];  /* declared＝插件声明原始次序（清单数组序，模型透传不重排） */
+function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function orderRows(id){ const a=(PLUGINS[id].assoc||[]).slice();
+  return state.sortMode[id]==="declared" ? a : a.sort((x,y)=>x.localeCompare(y)); }   /* alpha 默认；declared 原样＝声明序 */
+function filterRows(id){
+  const q=(state.filter[id]||"").trim().toLowerCase().replace(/^\./,"");
+  const rows=orderRows(id);
+  return q ? rows.filter(x => x.includes(q) || String(DISPLAY[x]||"").toLowerCase().includes(q)) : rows; }
+function hitText(id){ return (state.filter[id]||"").trim()
+  ? `命中 ${filterRows(id).length} / ${(PLUGINS[id].assoc||[]).length}` : ""; }
+function sortLabel(id){ return (SORTS.find(s=>s.value===(state.sortMode[id]||"alpha"))||SORTS[0]).label; }
+/* ── 共享件 SelectBox 真件仿真（SelectBox.tsx ＋ SelectBoxDropdown.tsx 逐值）─────────────────────────
+   触发器：div.ldk-selectbox[.ldk-selectbox-open] ＞ button.ldk-selectbox-trigger ＞ (label ＋ codicon-chevron-down)
+   面板：OverlayPortal → body：div.ldk-selectbox-dropdown（position:fixed ＋ 量测出的 left/top/minWidth/maxWidth）
+        ＞ ul.ldk-selectbox-list ＞ li.ldk-selectbox-item[.ldk-selectbox-item-focus][.ldk-selectbox-item-selected]
+   焦点：真件 onMouseEnter → focusIdx ＝ **只挪焦点类**（⛔ 无 :hover 规则；⛔ 绝不在悬停里重建面板——
+        重建会在浏览器重发的 mouseenter 上自我维持成死循环，实机现象＝「鼠标一动，下拉自己收回」）
+   定位：resize/scroll 重算（真件挂载期监听）＝面板跟随触发器；关闭：OverlayPortal（外部点击 / Escape） */
+const SELECTS = {};                 /* key → {value, label, options, onPick, className}（每次渲染重建＝真件 props 等价） */
+const SEL = { open:null, focus:0 }; /* 真件里这两个是 SelectBox 自己的 useState */
+function selectBoxHTML(key, sel){
+  SELECTS[key] = sel;
+  const open = SEL.open === key;
+  return `<div class="ldk-selectbox${sel.className?" "+sel.className:""}${open?" ldk-selectbox-open":""}" data-sel="${key}">
+    <button type="button" class="ldk-selectbox-trigger" title="${esc(sel.title||"")}" onclick="toggleSel('${key}',event)">
+      <span class="ldk-selectbox-label">${esc(sel.label)}</span>
+      <span class="codicon codicon-chevron-down ldk-selectbox-arrow${open?" ldk-selectbox-arrow-up":""}" aria-hidden="true"></span>
+    </button></div>`;
+}
+function toggleSel(key, ev){        /* 真件 onClick={() => setOpen(v => !v)}；开的那一击 stopPropagation 防「开完即关」 */
+  if(ev) ev.stopPropagation();
+  SEL.open = SEL.open===key ? null : key;
+  const sel = SELECTS[key];
+  SEL.focus = sel ? Math.max(0, sel.options.findIndex(o=>o.value===sel.value)) : 0;   /* 真件：开时 focusIdx 落在当前值 */
+  redrawSelects();
+}
+function pickSel(key, v){ SEL.open=null; redrawSelects(); const sel=SELECTS[key]; if(sel) sel.onPick(v); }  /* 真件 select()＝onChange＋setOpen(false) */
+function closeSel(){ if(SEL.open){ SEL.open=null; redrawSelects(); } }
+function focusSelItem(key, i){      /* 真件 onMouseEnter={() => setFocusIdx(i)}——⛔ 只挪焦点类，绝不重建面板 */
+  if(SEL.open!==key || SEL.focus===i) return;
+  SEL.focus = i;                    /* 在悬停里重建 DOM，浏览器会在新节点上重发 mouseenter ⇒ 自我维持的死循环
+                                       （实机现象＝「鼠标一动，下拉自己收回」；jsdom 无真鼠标事件，断言抓不到） */
+  $("ldkPortal").querySelectorAll(".ldk-selectbox-item").forEach((el,j)=>el.classList.toggle("ldk-selectbox-item-focus", j===i));
+}
+function redrawSelects(){           /* 触发器状态 ＋ 面板（量测定位；面板结构逐值同真件） */
+  Object.keys(SELECTS).forEach(key => {
+    const box = document.querySelector('[data-sel="'+key+'"]'); if(!box) return;
+    const open = SEL.open===key;
+    box.classList.toggle("ldk-selectbox-open", open);
+    const arrow = box.querySelector(".ldk-selectbox-arrow");
+    if(arrow) arrow.classList.toggle("ldk-selectbox-arrow-up", open);
+  });
+  const p = $("ldkPortal"); const key = SEL.open; const sel = key ? SELECTS[key] : null;
+  const anchor = key ? document.querySelector('[data-sel="'+key+'"]') : null;
+  if(!sel || !anchor){ SEL.open=null; p.innerHTML=""; p.style.display="none"; return; }
+  const r = anchor.getBoundingClientRect();
+  p.innerHTML = `<div class="ldk-selectbox-dropdown" style="position:fixed;left:${Math.round(r.left)}px;top:${Math.round(r.bottom)+2}px;min-width:${Math.round(r.width)}px;max-width:${Math.round(innerWidth-r.left-24)}px">
+    <ul class="ldk-selectbox-list" tabindex="-1">${sel.options.map((o,i)=>`<li class="ldk-selectbox-item${i===SEL.focus?" ldk-selectbox-item-focus":""}${o.value===sel.value?" ldk-selectbox-item-selected":""}" onclick="pickSel('${key}','${o.value}')" onmouseenter="focusSelItem('${key}',${i})">${esc(o.label)}</li>`).join("")}</ul></div>`;
+  p.style.display="block";
+}
+/* 输入只重画卡体（整组重渲染会夺走输入焦点/光标——真实现是受控 input，不吃这一套，这里是等价效果） */
+function onFilter(id, v){ state.filter[id]=v; applyFilter(id); }
+function applyFilter(id){
+  const b=document.getElementById("body_"+id); if(b) b.innerHTML=cardBodyHTML(id);
+  const h=document.getElementById("hit_"+id); if(h) h.textContent=hitText(id); }
+/* 排序：真件 SelectBox（value/mode ∈ SORTS；选后进共享纯函数口径，仅视图本地态不持久化） */
+function sortSel(){ return { value: state.sortMode.editor||"alpha", options: SORTS }; }
+/* 卡体行清单（共享件 CardRow 形态）：行序/过滤走上面两条纯函数；行尾齿轮＝C4 定案（菜单注册键稳定 ⇒ 重复渲染不涨表） */
+function cardBodyHTML(id){
+  const rows = filterRows(id);
+  if(!rows.length) return `<div class="settings-assoc-empty">（无匹配「${esc((state.filter[id]||"").trim())}」）</div>`;
+  return rows.map(x => {
+    const hs=handlers(x); const cur=curDefault(x);
+    /* 真实 CardRow 形态：**每行都有下拉**（自动＋全部候选；单家类型 = 自动/自己，选自己＝锁定 E35） */
+    const isUser = !!(state.override[x] && cur && state.override[x]===cur.id && cur.installed);
+    let pill;
+    if (cur && !cur.installed) pill=`<span class="settings-assoc-pill settings-assoc-pill--dang">失效（重装即复活）</span>`;
+    else if (isUser) pill=`<span class="settings-assoc-pill settings-assoc-pill--user">当前默认（${hs.length<2?"用户锁定":"用户指定"}）</span>`;
+    else pill=`<span class="settings-assoc-pill settings-assoc-pill--auto">${hs.length<2?"唯一处理者（自动）":"默认（自动）"}</span>`;
+    const val = isUser ? (state.override[x]||"") : "";
+    /* 真件（FileAssociationsManagerView.tsx）＝共享件 SelectBox：options = 自动 ＋ 全部候选，label 取当前值标签 */
+    const ctrlSel=selectBoxHTML("row_"+x, { className:"settings-assoc-select", title:`.${x} 默认打开方式`,
+      value:val, label: val ? (PLUGINS[val]?PLUGINS[val].name:val) : "自动",
+      options:[{value:"",label:"自动"}, ...hs.map(pid=>({value:pid, label:PLUGINS[pid].name}))],
+      onPick:v => v==="" ? clearDefault(x) : setDefault(x, v) });
+    const rgid="row_"+x; GEAR_MENUS[rgid]=[{label:"打开方式…（."+x+"）〔壳命令〕", fn:()=>toast("（示意）workbench.action.openWith {ext:'"+x+"'} → 居中弹出选择器","ok")}];
+    return `<div class="settings-assoc-row"><span class="settings-assoc-ext">.${x}</span>${pill}${ctrlSel}
+      <button class="settings-row-gear" aria-label=".${x} 的更多操作" title="更多操作（C4 定案：统一行齿轮机制）" onclick="gearMenu(event,'${rgid}')"><span class="codicon codicon-gear" aria-hidden="true"></span></button></div>`;
+  }).join(""); }
+function renderGroup(){
+  renderSide();
+  SEL.open = null;   /* 重渲染＝真件重新挂载；面板随后由 redrawSelects() 按新触发器重建（开合状态同真件存组件内） */
+  const q = state.search.trim().toLowerCase();
+  const hit = s => !q || s.toLowerCase().includes(q);
+  const extCount = {};
+  state.installed.forEach(id => (PLUGINS[id].assoc||[]).forEach(x => { (extCount[x]=extCount[x]||[]).push(id); }));
+  const contested = Object.keys(extCount).filter(x => extCount[x].length>=2).sort()
+    .filter(x => hit("."+x) || extCount[x].some(id=>PLUGINS[id].name.toLowerCase().includes(q)));
+  const browsable = state.installed.filter(id => (PLUGINS[id].assoc||[]).length
+    && (hit(PLUGINS[id].name) || (PLUGINS[id].assoc||[]).some(x=>hit("."+x))));
+  if (q) browsable.forEach(id => { state.expanded[id]=1; }); /* C6 搜索命中自动展开；清空不收回（用户自己收） */
+  const osHit = hit("跟随插件登记") || hit("系统「打开方式」登记");
+  renderNav({ "通用":3, "外观":1, "默认打开方式": contested.length + browsable.length });
+  if (state.group==="通用"){
+    $("setContent").innerHTML = `<div class="settings-group-title">通用</div>
+    <div class="ldk-section-subtitle">界面 / 系统集成 / 更新（壳既有分组——真实行骨架与齿轮，鼠标移到行上看）</div>
+    ${rowHTML("编辑器字体族","editor.fontFamily",selectBoxHTML("row_font",{ label:"Consolas", value:"Consolas",
+      options:[{value:"Consolas",label:"Consolas"},{value:"Cascadia Code",label:"Cascadia Code"}],
+      title:"编辑器字体族（真件＝共享件 FontFamilySelect，内层即 SelectBox）",
+      onPick:v=>toast("（示意）editor.fontFamily → "+v,"ok") }),settingGearItems("editor.fontFamily","编辑器字体族",false))}
+    ${rowHTML("点 ✕ 收进托盘","window.closeToTray",`<div class="ldk-toggle on" role="switch" aria-checked="true" aria-label="点 ✕ 收进托盘" onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>`,settingGearItems("window.closeToTray","点 ✕ 收进托盘",false))}`;
+    return;
+  }
+  if (state.group==="外观"){
+    $("setContent").innerHTML = `<div class="settings-group-title">外观</div>
+    <div class="ldk-section-subtitle">（示意一行，证组切换 I1）</div>
+    ${rowHTML("自定义外观","app.appearanceMode（玻璃态／背景图）",selectBoxHTML("row_appearance",{ label:"跟随主题", value:"follow",
+      options:[{value:"follow",label:"跟随主题"},{value:"custom",label:"自定义"}],
+      title:"app.appearanceMode（真件＝枚举走共享件 SelectBox）",
+      onPick:v=>toast("（示意）app.appearanceMode → "+v,"ok") }),settingGearItems("app.appearanceMode","自定义外观",false))}`;
+    return;
+  }
+  /* ── 默认打开方式（C1=B 共享组装视图 ＋ C3 改判形态）── */
+  const sigGroups = {};
+  contested.forEach(x => { const sig = handlers(x).join("|"); (sigGroups[sig] = sigGroups[sig] || []).push(x); });
+  const groupRows = [];
+  Object.entries(sigGroups).forEach(([sig, exts]) => {
+    const hs = sig.split("|");
+    const byVal = {};
+    exts.forEach(x => { const cur = curDefault(x); const vid = cur&&cur.installed?cur.id:"__none__"; (byVal[vid] = byVal[vid]||[]).push(x); });
+    Object.entries(byVal).forEach(([vid, cell]) => {
+      const bid = "b"+(++bulkSeq); BULKREG[bid] = cell;
+      const fromUser = cell.some(x=>state.override[x]===vid);
+      const label = cell.length>3 ? `${cell.slice(0,3).map(x=>"."+x).join(" / ")} 等 ${cell.length} 类` : cell.map(x=>"."+x).join(" / ");
+      const desc = `当前单击打开：<b>${vid!=="__none__"?PLUGINS[vid].name:"—"}</b>${fromUser?(cell.every(x=>state.override[x]===vid)?"（用户指定）":"（含用户指定）"):"（自动）"} · 候选 ${hs.length} 个${cell.length<exts.length?` · <b>整组 ${exts.length} 类中 ${cell.length} 类单独设置</b>`:" · 下拉＝整格生效"}`;
+      const allUser = cell.every(x=>state.override[x]===vid);
+      /* 真件：件序＝[Badge「N 个候选」][共享件 SelectBox][齿轮]；下拉＝整格生效（options 同真件） */
+      const ctrl = `<span class="ldk-badge">${hs.length} 个候选</span>` + selectBoxHTML("bulk_"+bid, {
+        className:"settings-assoc-select", title:"默认打开方式", value: allUser?vid:"",
+        label: allUser ? PLUGINS[vid].name : "自动",
+        options:[{value:"",label:"自动"}, ...hs.map(id=>({value:id,label:PLUGINS[id].name}))],
+        onPick:v => v==="" ? clearBulk(bid) : setBulk(bid, v) });
+      const gid = "g"+(++gearSeq); GEAR_MENUS[gid]=[
+        {label:"恢复自动（本格 "+cell.length+" 类）", fn:()=>clearBulk(bid)},
+        {label:"打开方式…（."+cell[0]+"）〔壳命令〕", fn:()=>toast("（示意）workbench.action.openWith {ext:'"+cell[0]+"'} → 居中弹出选择器","ok")}
+      ];
+      groupRows.push(`<div class="settings-row settings-assoc-contested"><div class="settings-row-info"><span class="settings-assoc-row-label">${label}</span><span class="settings-row-desc" title="${desc.replace(/<[^>]*>/g,"")}">${desc}</span></div>
+      <div class="settings-row-control">${ctrl}
+      <button class="settings-row-gear" aria-label="更多操作" title="更多操作" onclick="gearMenu(event,'${gid}')"><span class="codicon codicon-gear" aria-hidden="true"></span></button></div></div>`);
+    });
+  });
+  const cards = browsable.map(id => {
+    const P=PLUGINS[id]; const open=!!state.expanded[id];
+    const decl=(P.assoc||[]);   /* 声明全表（清单数组序）——计数/阈值/卡头摘要用它，⛔ 不受卡内过滤影响 */
+    const myOv=decl.filter(x=>state.override[x]&&state.installed.includes(state.override[x])).length;
+    const contestedN=decl.filter(x=>handlers(x).length>=2).length;
+    const gid = "card_"+id; GEAR_MENUS[gid]=[
+      {label:"清除相关默认覆盖（"+myOv+" 类）", fn:()=>{ decl.forEach(x=>{ if(state.override[x]) delete state.override[x]; }); renderSide(); renderGroup(); toast("已清除 "+myOv+" 类覆盖，全部恢复自动","ok"); }},
+      {label:"复制插件 ID", fn:()=>toast("已复制 "+id,"ok")},
+    ];
+    /* 工具条（C5）：只在「展开 ＋ 声明 ≥8 类」时出现；槽内两件都是已有共享件 */
+    /* 工具条：两件全是**已有共享件**——图标＋InlineInput 照设置页搜索栏同款结构；排序＝真件 SelectBox */
+    const toolbar = (open && decl.length>=FILTER_MIN) ? `<div class="ldk-plugin-card-toolbar">
+      <span class="famgr-filter"><span class="codicon codicon-search famgr-filter-icon" aria-hidden="true"></span>
+        <input class="ldk-inline-input ldk-inline-input--normal" value="${esc(state.filter[id]||"")}" placeholder="过滤 ${decl.length} 类…" aria-label="过滤文件类型（匹配扩展名与显示名）"
+          oninput="onFilter('${id}',this.value)" onkeydown="if(event.key==='Escape'){this.value='';onFilter('${id}','');}"></span>
+      <span class="famgr-hit" id="hit_${id}">${hitText(id)}</span>
+      ${selectBoxHTML("sort_"+id, { value: state.sortMode[id]||"alpha", label: sortLabel(id), options: SORTS,
+        title: "行序：按字母序 ／ 按默认排序（插件声明原始次序）",
+        onPick: v => { state.sortMode[id]=v; renderGroup();
+          addLog(`卡体行序 → ${v==="declared"?"按默认排序（插件声明原始次序）":"按字母序"}（行序＝共享纯函数，一处实现）`, false); } })}
+    </div>` : "";
+    const body = open ? `<div class="ldk-plugin-card-body" id="body_${id}">${cardBodyHTML(id)}</div>` : "";
+    return `<div class="ldk-plugin-card${open?" ldk-plugin-card--expanded":""}"><div class="ldk-plugin-card-head">
+      <button class="ldk-plugin-card-toggle" tabindex="0" aria-expanded="${open}" onclick="state.expanded['${id}']=!state.expanded['${id}'];if(!state.expanded['${id}'])state.filter['${id}']='';renderGroup()">
+        <span class="ldk-plugin-card-icon">${ICONS[id]}</span>
+        <span class="ldk-plugin-card-ident">
+          <span class="ldk-plugin-card-titleline"><span class="ldk-plugin-card-title">${P.name}</span>${P.role?'<span class="ldk-badge">text-fallback</span>':""}</span>
+          <span class="ldk-plugin-card-sub">${id} · v${P.version||"1.0.0"}</span>
+        </span>
+        <span class="ldk-plugin-card-summary">声明 <b>${decl.length}</b> · 竞争 <b>${contestedN}</b> · 默认持有 <b>${myOv}</b></span>
+        <span class="codicon codicon-chevron-right ldk-plugin-card-chevron${open?" ldk-plugin-card-chevron--open":""}" aria-hidden="true"></span>
+      </button>
+      <button class="ldk-plugin-card-gear" aria-label="此插件的更多操作" title="更多操作" onclick="event.stopPropagation();gearMenu(event,'${gid}')"><span class="codicon codicon-gear ldk-plugin-card-gear-icon" aria-hidden="true"></span></button>
+    </div>${toolbar}${body}</div>`;
+  }).join("");
+  const osRow = rowHTML("跟随插件登记","app.osAssociations.followPlugins —— 插件装/卸时类型自动进出系统「打开方式」候选；安装包自带类不动；与本页默认无关（通用 SettingRow——切开关后齿轮里会多出「重置此设置」）",
+    `<div class="ldk-toggle${state.osOn?" on":""}" role="switch" aria-checked="${state.osOn?"true":"false"}" aria-label="跟随插件登记" onclick="osToggle()"></div>`,
+    settingGearItems("app.osAssociations.followPlugins","跟随插件登记",state.osModified));
+  const managerHTML = `<div class="settings-group-title">默认打开方式</div>
+    <div class="ldk-section-subtitle">单击文件时由哪个插件打开——与文件右键菜单的「打开方式」同写一处，即时互见（C3d 泛称版：零插件名）。检索复用左上「搜索设置」。</div>
+    <div class="settings-subsection">
+      <h3 class="settings-subsection-title">多候选类型</h3>
+      <div class="ldk-section-subtitle">聚合零语义（E32/E34）：两条键全是查表——「哪几家插件声明了它」×「当前默认是谁」；一格一行、下拉整格生效；单类单独设置 ⇒ 拆行，恢复自动 ⇒ 并回（I10）</div>
+      ${groupRows.join("")}${groupRows.length ? "" : `<div class="settings-assoc-empty">（当前没有多候选的类型）</div>`}
+    </div>
+    <div class="settings-subsection">
+      <h3 class="settings-subsection-title">按插件浏览</h3>
+      <div class="ldk-section-subtitle">每只声明过文件类型的插件一张卡（共享件 PluginCard）；卡体行 = 共享件 CardRow（I3②：行尾 hover 齿轮——C4 定案）；<b>声明 ≥8 类</b>的卡自带过滤框与排序（C5）</div>
+      <div class="famgr-anno"><b>标注·非产品 UI（C5 阈值验视）</b>：工具条只在<b>「展开 ＋ 声明 ≥8 类」</b>时才出现，所以本图<b>只有编辑器（45 类）</b>有——PDF Reader Pro <b>1</b>／Adobe PDF 阅读器 <b>1</b>／简易 PDF <b>1</b>／图片查看器 A <b>2</b> 类全部未达阈值 ⇒ 无工具条（<b>是阈值，不是漏画</b>；1–3 行的卡摆过滤框＝纯噪音）。本图共 5 张卡（第 6 只「图像大师 B」声明 3 类但<b>未安装</b>，只在「多候选类型」区当<b>失效</b>处理者，不出卡）。<b>真实数据同理</b>：官方插件仓今天只有编辑器声明了文件类型，其余插件 <b>0</b> 类 ⇒ 产品里这一区实际只有编辑器这一张卡。</div>
+      ${cards || `<div class="settings-assoc-empty">（没有声明了文件类型的插件）</div>`}
+    </div>
+    <div class="settings-subsection">
+      <h3 class="settings-subsection-title">系统「打开方式」登记</h3>
+      <div class="ldk-section-subtitle">prop.group 子节（C3c：通用引擎渲染，非管理器件；与「通用 → 系统集成」的安装器静态半不合并）</div>
+      ${osHit?osRow:""}
+      ${(!osHit && q) ? `<div class="settings-assoc-empty">（无匹配）</div>` : ""}
+    </div>`;
+  $("setContent").innerHTML = managerHTML;
+  redrawSelects(); /* 下拉触发器状态 ＋ 面板（OverlayPortal 同效果：挂页面级，量测定位） */
+}
+function renderSide(){
+  $("kvOverride").textContent = Object.keys(state.override).length ? JSON.stringify(state.override, null, 1) : "{ }  （空 —— 一切按声明序）";
+  const imgb = state.installed.includes("imgb"), pdfpro = state.installed.includes("pdfpro"), adobe = state.override.pdf==="adobe";
+  $("demoActs").innerHTML =
+    `<button class="mini${imgb?" on":""}" onclick="togglePlugin('imgb')">${imgb?"🟢 图像大师 B 已安装（再次点击＝卸载）":"安装「图像大师 B」——.jpg/.png 转为多候选（I6）"}</button>
+     <button class="mini${pdfpro?" on":""}" onclick="togglePlugin('pdfpro')">${pdfpro?"🟢 PDF Reader Pro — 已安装（再次点击＝卸载；若 .pdf 覆盖指向它 ⇒ 卡体行变「失效」红胶囊）":"⚡ 模拟安装「PDF Reader Pro」（恢复候选）"}</button>
+     <button class="mini${adobe?" on":""}" onclick="togglePdfAdobe()">${adobe?"🟢 .pdf 默认 = Adobe（再次点击＝恢复自动）":"将 .pdf 默认设为 Adobe（写入覆盖表）"}</button>`;
+}
+function togglePlugin(id){ if (state.installed.includes(id)) uninstallPlugin(id); else installPlugin(id); }
+function osToggle(){ state.osOn=!state.osOn; state.osModified=true; renderGroup();
+  toast(state.osOn?"跟随登记：开（装卸插件时自动进出）":"跟随登记：关（撤回运行期登记）","ok"); }
+function togglePdfAdobe(){ if (state.override.pdf==="adobe") clearDefault("pdf"); else setDefault("pdf","adobe"); }
+function installPlugin(id){
+  if (state.installed.includes(id)) { toast(`${PLUGINS[id].name} 已在场`, ""); return; }
+  state.installed.push(id); renderSide(); addLog(`安装激活 ${PLUGINS[id].name}…（声明 ${(PLUGINS[id].assoc||[]).join("/")}）`, false);
+  toast(`已安装 ${PLUGINS[id].name} —— 若形成竞争，「多候选类型」出现新行；默认不静默漂移（I6）`, "ok"); renderGroup();
+}
+function uninstallPlugin(id){
+  if (!state.installed.includes(id)) return;
+  state.installed = state.installed.filter(x => x!==id); renderSide();
+  addLog(`卸载 ${PLUGINS[id].name}`, false);
+  const dangling = Object.keys(state.override).find(ext => state.override[ext]===id);
+  if (dangling) { addLog(`覆盖表 .${dangling} 指向已卸载插件 → 卡体行「失效」胶囊（重装即复活，I5）`, false);
+    toast(`.${dangling} 的默认已失效，恢复自动`, "warn"); }
+  else toast(`已卸载 ${PLUGINS[id].name}`, "ok");
+  renderGroup();
+}
+$("gearBtn").addEventListener("click", e => gearMenu(e, [
+  /* 图标栏底部齿轮 = 壳 ExtensionGear 槽真实条目（「回退内置设置页」when=第三方套激活才显——内置套激活时不显） */
+  {label:"命令面板", fn:()=>toast("（示意）workbench.action.showCommands","ok")},
+  {label:"打开设置", fn:()=>{ state.group="默认打开方式"; renderGroup(); toast("（示意）core.openSettings —— 已在本页","ok"); }},
+  {label:"主题：选择主题…", fn:()=>toast("（示意）theme.pick","ok")},
+  {label:"选择语言", fn:()=>toast("（示意）workbench.action.selectLanguage","ok")},
+  {label:"打开键盘快捷方式", fn:()=>toast("（示意）workbench.action.openKeybindingsSettings","ok")},
+  {label:"切换插件 DevTools", fn:()=>toast("（示意）workbench.action.togglePluginDevTools","ok")},
+  {sep:true},
+  {label:"检查更新…", fn:()=>toast("（示意）update.checkForUpdates","ok")},
+  {label:"关于 LinkDesk", fn:()=>toast("（示意）app.about","ok")},
+]));
+$("gearBtn").addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); $("gearBtn").click(); }});
+renderGroup();
+</script>
+</body>
+</html>
