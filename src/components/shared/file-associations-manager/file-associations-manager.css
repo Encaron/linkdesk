@@ -228,7 +228,9 @@
 }
 
 /* ══ C5：仅显示名命中的**理由标注**（「类型名 TypeScript」）════════════════════════════════
-   理由不可见时，单字母查询在用户眼里就是乱排——标注可压缩（`min-width:0` ＋ 省略号）兜最挤的行宽。 */
+   理由不可见时，单字母查询在用户眼里就是乱排——标注可压缩（`min-width:0` ＋ 省略号）兜最挤的行宽。
+   墨色两级（secondary → primary）而**非图的 muted**：卡体底色 `--bg-card` 上 muted 掉到 4:1 以下，
+   见文件末「设计复核」①。 */
 
 .ldk-famgr-why {
   flex: 0 1 auto;
@@ -238,10 +240,49 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--font-size-2xs);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .ldk-famgr-why b {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-weight: 600;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   设计复核（硬约束 16）· 2026-10-06
+   ──────────────────────────────────────────────────────────────────────────────────────────
+   `impeccable`：`context` 定向本件 ＋ 机械检测器 `detect --json` 对 ManagerView.tsx ／
+   pieces/ContestedRow.tsx ／ pieces/CardRow.tsx ／ 本件 ⇒ **`[]`（零发现）**；无检测器项按
+   craft-floor 逐条人工过（对比度／间距节奏／字号与圆角阶梯／动效／可点盒／键盘可见性／
+   浏览器原生面／文案）。
+   改判面 = C3 新文案 ＋ C5 理由标注；两区其余数值逐条对过 `mockups/01`（`.settings-row` 骨架、
+   `.settings-subsection-title`、`.settings-row-gear` 三条规则逐值同源）⇒ **零视觉变化成立**。
+
+   ▸ 一处修正（属 C5 拍板面，不在「零视觉变化」边界内）
+     ① `.ldk-famgr-why` 墨色下移一档：`--text-muted` → `--text-secondary`，`<b>` → `--text-primary`。
+        图注（`mockups/01` 行 193）取 muted 并注「同类 muted 小字先例＝`.settings-row-desc`」——
+        但那条先例住 `--bg-window`（暗 #1E1E1E，4.7:1 ✓），本标注住卡体 `--bg-card`（暗 #2D2D2D）：
+        #8A8A8A 在其上 **3.99:1**（亮色 #767676 对 #F5F5F5＝4.17:1）——**双主题都掉到 4.5:1 地板下**。
+        本行 11px，且 C5 的全部意义就是「命中理由必须可见」（I11 口径）；改后 5.07:1／6.33:1，
+        `<b>` 两步阶梯保住（9.3:1／12.6:1）。⛔ **图不改**（它描述的是搬前现状，拟真度门也不得为
+        迁就实现改动）⇒ 与齿轮 `:focus-within` 同理，列为**有意偏差**。
+
+   ▸ 保留未改（既有值，属「零视觉变化」边界 ⇒ 要动得另案）
+     ② `.ldk-famgr-ext` 的 `--accent-hover`：暗色 3.91:1（13px）。此值＝插件仓原值 ＋ 图
+        §尺寸纪律「ext 92px mono accent-hover」硬指定；动它＝动整个设置面的强调色口径。
+     ③ 胶囊四态点显色（`--accent-hover`／`--status-connected`／`--warning`／`--error`）：同为
+        插件仓原值，且插件仓那轮复核（2026-10-05 同 skill ⇒ `[]`）已过；状态色按 token 层级
+        消费，不逐色改。
+     ④ `.ldk-famgr-gear` 的 `120ms ease`、圆角 3px、可点盒 `calc(24px * var(--ui-scale))`：
+        C4 定案要求「与统一行齿轮**同款**」⇒ 逐值照抄 `SettingsView-rows.css:188-213`
+        （含 `ease` 而非本 skill 偏好的 expo——同款优先于偏好）。
+
+   ▸ 显式通过（逐条给证据）
+     · 键盘可见性＝齿轮⛔ 不设 `outline:none`（UA `:focus-visible` 环保留），且 `:focus-within`
+       使它在键盘到达那一刻可见（`:hover` 之外的**加性**一条，静息像素零变化）；
+     · 标题「上 24px ＞ 下 8px」；竖杠 3px 属**标题件**（craft-floor 禁项列的是卡／列表项／
+       提示框的 `border-left`），且＝设置面子节标题既有器件；
+     · `--font-mono` 只给文件扩展名（真数据 token），非「技术感」cosplay；
+     · 零渐变字／零装饰性玻璃／零 emoji 代图标（齿轮是真 `codicon-gear` 字形）／零硬阴影；
+     · 空态四处文案与图逐字一致（区级带全角括号、行级陈述句＝D2 定案原样）。
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
