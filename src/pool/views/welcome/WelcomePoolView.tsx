@@ -325,7 +325,7 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
               ))}
             </div>
           ) : (
-            <p className="ldk-welcome-empty">{t("暂无可用视图")}</p>
+            <p className="ldk-welcome-empty">{t("暂无视图")}</p>
           )}
         </section>
 

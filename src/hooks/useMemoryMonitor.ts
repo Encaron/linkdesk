@@ -10,6 +10,8 @@
 
 import { useEffect, useRef } from "react";
 import { pushToast } from "../core/services/ui/NotificationService";
+import i18n from "../i18n"; // 归一化夹 02 批②：告警文案走 t()（原为裸中文模板串——英文界面照样吐中文）
+import { formatMb } from "../core/utils/formatMb"; // MB 取整成形共享口（两处内存告警唯一一处）
 
 /** JS heap 使用率超过此阈值时告警 */
 const HEAP_WARNING_RATIO = 0.8;
@@ -42,10 +44,11 @@ export function useMemoryMonitor(): void {
       const ratio = mem.usedJSHeapSize / mem.jsHeapSizeLimit;
       if (ratio > HEAP_WARNING_RATIO && !lastWarnedRef.current) {
         lastWarnedRef.current = true;
-        const usedMB = (mem.usedJSHeapSize / 1024 / 1024).toFixed(0);
-        const limitMB = (mem.jsHeapSizeLimit / 1024 / 1024).toFixed(0);
+        // 归一化夹 02 批②：取整成形收共享口 formatMb；除数留在原地——本条是 bytes 口径
+        const usedMB = formatMb(mem.usedJSHeapSize / 1024 / 1024);
+        const limitMB = formatMb(mem.jsHeapSizeLimit / 1024 / 1024);
         pushToast({
-          message: `内存使用率偏高（${usedMB}MB / ${limitMB}MB），建议关闭不活跃的插件`,
+          message: i18n.t("内存使用率偏高（{{used}} MB / {{limit}} MB），建议关闭不活跃的插件", { used: usedMB, limit: limitMB }),
           severity: "warning",
         });
       }

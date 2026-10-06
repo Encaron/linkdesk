@@ -64,11 +64,11 @@
 | `update.openReleaseNotes` | 显示发行说明 | 打开（或聚焦）发行说明标签页，查看历史版本的更新内容 | —— | —— |
 | `update.openUpdateFlow` | 处理更新 | 按当前更新状态处理更新：有新版本则开始下载，已下载则重启并安装 | —— | —— |
 
-### 开发者（1）
+### 开发人员（1）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
-| `workbench.action.togglePluginDevTools` | 切换插件 DevTools | 打开开发者工具（先选壳窗口还是池窗口） | —— | —— |
+| `workbench.action.togglePluginDevTools` | 切换开发人员工具 | 打开开发者工具（先选壳窗口还是池窗口） | —— | —— |
 
 ### 文件（2）
 
@@ -141,7 +141,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（29）
+### 首选项（32）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -161,6 +161,9 @@
 | `core.resetSettingsToBuiltin` | 回退内置设置页 | 把设置槽的激活套回退到内置设置页（= 声明 factoryRole:"settings" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次 | —— | —— |
 | `storage.cacheDirStatus` | 缓存目录 | 当前生效的缓存目录路径（只读数据源，供设置页状态行取用） | —— | —— |
 | `storage.openCacheDir` | 打开缓存目录 | 在系统资源管理器中打开当前生效的缓存目录（目录不存在时先建再开） | —— | —— |
+| `theme.pick` | 选择主题 | 打开主题选择器切换当前主题 | `ctx`: object 可选 — { pluginId: string }——只列该插件提供的主题，省略 = 列全部主题 | —— |
+| `theme.resetAppearance` | 复位外观覆盖… | 把外观模式复位为跟随主题，并清掉全部外观覆盖 | —— | —— |
+| `theme.resetMix` | 复位为整体配方… | 把混搭（分区外观）的各来源复位为跟随主题，保持自定义模式 | —— | —— |
 | `workbench.action.clearConfiguration` | 清除配置项覆盖 | 删掉一个配置键的用户覆盖（user scope）——回到该键的默认值，是 workbench.action.setConfiguration 的反动作；同样按声明面校验（未声明／ai.* 禁写／显示槽一律拒），回执带清掉前后的值与本次顺带… | `key`: string 必填 — 配置键，如 app.glassBlur（键名清单：workbench.action.listConfigurations） | —— |
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
@@ -175,15 +178,12 @@
 | `workbench.action.selectLanguage` | 选择语言 | 打开语言选择器切换界面语言 | —— | —— |
 | `workbench.action.setConfiguration` | 写入配置项 | 写一个配置键的用户值（user scope）——先按声明面校验（键是否声明／类型／枚举／上下界／是否显示槽／是否 ai.* 禁写），写完当场回读，回执带写入前后值。⛔ 它不替你想「该写什么值」：键名与默认值看 workbench.acti… | `ctx`: object 必填 — { key: string; value: unknown }——value 按该键声明类型给（字符串/数字/布尔/数组/对象直接给，⛔ 不必包成对象）；也可逐位写成 ("键名", 值) | —— |
 
-### （未分类）（9）
+### （未分类）（6）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
 | `app.aboutCopy` | About: Copy | 把关于页的全部字段以 key: value 多行文本复制到剪贴板 | —— | `false` |
 | `quickpick.show` | QuickPick | 弹出选择列表让用户选一项，并把选中项返回给调用方（取消返回 undefined） | `options`: object 必填 — { title?: string; items: { label: string; description?: string }[] }——候选列表与浮层标题 | `false` |
-| `theme.pick` | 主题：选择主题… | 打开主题选择器切换当前主题 | `ctx`: object 可选 — { pluginId: string }——只列该插件提供的主题，省略 = 列全部主题 | —— |
-| `theme.resetAppearance` | 外观：复位外观覆盖… | 把外观模式复位为跟随主题，并清掉全部外观覆盖 | —— | —— |
-| `theme.resetMix` | 混搭：复位为整体配方… | 把混搭（分区外观）的各来源复位为跟随主题，保持自定义模式 | —— | —— |
 | `update.releaseNotesDismissBanner` | Release Notes: Dismiss Banner | 收掉发行说明横幅（只关横幅，不记已读版本） | —— | `false` |
 | `update.releaseNotesRefresh` | Release Notes: Refresh | 绕过 24 小时缓存重新拉取发行说明列表（保持当前所选版本） | —— | `false` |
 | `update.releaseNotesRetry` | Release Notes: Retry | 重新加载当前所选版本的发行说明 | —— | `false` |

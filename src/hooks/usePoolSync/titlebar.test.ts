@@ -25,6 +25,7 @@ import { registerReleaseNotesCommands } from "../../core/commands/shell/releaseN
 import { registerAboutCommands } from "../../core/commands/shell/aboutCommands"; // E6#57.14g：帮助/齿轮菜单末项的命令
 import { registerManualCommands } from "../../core/commands/shell/manualCommands"; // M3 AI#16：帮助菜单「AI 操作手册」项
 import { registerWelcomeCommands } from "../../core/commands/shell/welcomeCommands"; // W4b：帮助菜单「欢迎页」项
+import { registerDeveloperCommands } from "../../core/commands/shell/developerCommands"; // 归一化夹 02 批⑧：DevTools 项 label 覆写已删——显示词改由命令 title 承载
 import { buildTitleBarMenuGroups, buildHamburgerMenuGroups, buildTitleBarSlots } from "./titlebar";
 
 const SHELL = "linkdesk.shell";
@@ -236,6 +237,9 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
     registerManualCommands();
     // W4b：帮助菜单的「欢迎页」项引用的命令——同批注册（coreCommands.ts 里紧随 registerManualCommands）。
     registerWelcomeCommands();
+    // 归一化夹 02 批⑧：DevTools 命令的 title 就是菜单显示词（label 覆写已删）——不注册就会把
+    // 命令 id 原样画出来（同 #57.14g 那条注释的理由），遂必须照生产注册。
+    registerDeveloperCommands();
     registerShellMenus();
   }
 
@@ -264,8 +268,11 @@ describe("E6#57.10 菜单内二级分组透传——帮助组正控 / 既有菜�
       // 🔴 E6#57.10e：查看许可证是**新的末项**（用户 2026-09-13 拍板 MIT，许可全文在 GitHub 承载）。
       "app.viewLicense",
     ]);
-    // label 覆盖：commands 自报的 title 是「打开键盘快捷方式」/「切换插件 DevTools」，
-    // 菜单里用更短/更贴切的说法——同一命令在不同菜单不同措辞是 label 的本职。
+    // label 覆盖：本轮起**只剩「快捷键列表」一处**——命令 title 是「打开键盘快捷方式」，2026-10-06
+    // 用户裁决该名不动（UI 上它就是「打开设置页里的快捷键配置界面」），故菜单另起更短的名字是 label 的本职。
+    // 🔴 归一化夹 02 批⑧：DevTools 项原本也有 label 覆写（同文「切换开发人员工具」），命令 title 改同文后
+    //    **覆写已删**——覆写与 title 逐字相同即冗余（档 §四 N4-4）。它现在与首项同款：靠命令 title 显示。
+    //    这条断言因此兼作「删覆写后显示项没变」的锁。
     // 🔴 首项**没有** label 覆盖 ⇒ 显示命令自己的 title（「显示发行说明」），两处措辞一致是刻意的。
     expect(help.items.map((i) => i.label)).toEqual([
       "显示发行说明", "欢迎页", "快捷键列表", "AI 操作手册", "切换开发人员工具", "检查更新…", "关于 LinkDesk", "查看许可证",

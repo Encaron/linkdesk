@@ -13,8 +13,8 @@ export function registerDeveloperCommands(): void {
   const commands = [
     {
       id: "workbench.action.togglePluginDevTools",
-      title: "切换插件 DevTools",
-      category: "开发者",
+      title: "切换开发人员工具", // 归一化夹 02 批⑧（用户改判）：就 VS Code 中文惯例
+      category: "开发人员", // 归一化夹 02 批 N3：与取色器命令（startup.ts:232）同词——同族两词收口
       description: "打开开发者工具（先选壳窗口还是池窗口）",
       handler: async () => {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_DEVTOOLS_PICKER
@@ -33,7 +33,7 @@ export function registerDeveloperCommands(): void {
         // E5.8#6.6：显示文本铁律全覆盖——label/category/detail 全部 i18n.t() 解析后推池（池原样渲染）
         const searchOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('shell 壳窗口') : i18n.t('pool 池窗口');
         const keyOf = (t: DevToolsTarget) => t.kind === 'shell' ? '__shell__' : '__pool__';
-        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('shell 壳窗口') : i18n.t('Pool 池窗口');
+        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('shell 壳窗口') : i18n.t('pool 池窗口');
         const detailOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('壳窗口 DevTools') : i18n.t('池窗口 DevTools');
 
         QuickPickService.show<DevToolsTarget>({
@@ -55,7 +55,9 @@ export function registerDeveloperCommands(): void {
             key: keyOf(t),
             searchText: searchOf(t),
             label: labelOf(t),
-            category: i18n.t("切换 DevTools"),
+            // 归一化夹 02 批 N2/N3：分类格放**归属**——原「切换 DevTools」是动作词（与「当前」「已隐藏」
+            // 借 category 同款挪用）；动作信息 detail 已有（壳窗口/池窗口 DevTools）
+            category: i18n.t("开发人员"),
             detail: detailOf(t),
           }),
           onClose: () => QuickPickService.hide(),

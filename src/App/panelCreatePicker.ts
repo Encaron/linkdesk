@@ -56,14 +56,15 @@ export function showPanelCreatePicker(
       setPanelActiveViewId(it.viewId);
     },
     onClose: () => QuickPickService.hide(),
-    // 显示文本铁律——label/category 壳侧 t() 解析后推送（category = 插件 · 容器 / 已隐藏标注）
+    // 显示文本铁律——label/category/detail 壳侧 t() 解析后推送（category = 插件 · 容器，**恒为归属**）
     serialize: (it) => ({
       key: it.viewId,
       searchText: `${it.title} ${it.pluginId}`,
       label: i18n.t(it.title),
-      category: it.visible
-        ? `${it.pluginId} · ${i18n.t(it.containerTitle)}`
-        : i18n.t("已隐藏"),
+      // 归一化夹 02 批 N2：category 是**归属/分类/附注**格——状态不许借它。原来隐藏项把归属整条挤成
+      // 「已隐藏」，用户再也看不到这视图属于哪个插件；状态改走 detail（第二行）
+      category: `${it.pluginId} · ${i18n.t(it.containerTitle)}`,
+      detail: it.visible ? undefined : i18n.t("已隐藏"),
       // 已激活项勾选标记——activeViewId 经 ref 读活值（QuickPick modal 打开期间激活视图不变，show 时快照即准）
       checked: it.viewId === activeViewIdRef.current,
     }),

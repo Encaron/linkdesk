@@ -362,7 +362,7 @@ export default function QuickPickHost() {
           {/* E3.5 #CP08: 空态提示 */}
           {filtered.length === 0 ? (
             <div className="ldk-quick-pick-empty">
-              {isPlugin ? t("未找到匹配项") : debouncedQuery ? t("未找到匹配命令") : t("输入命令名称搜索…")}
+              {isPlugin ? t("未找到匹配项") : debouncedQuery ? t("未找到匹配命令") : t("输入命令…")}
             </div>
           ) : (
             filtered.map((item, i) => {

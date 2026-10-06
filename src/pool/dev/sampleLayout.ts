@@ -162,7 +162,7 @@ export function buildSampleLayout(): PoolLayout {
       items: [
         { id: "shell.git", pluginId: "git", icon: "git-branch", label: "main", align: "left", title: "main" },
         { id: "shell.lang", pluginId: "shell", icon: "globe", label: "中文(简体)", align: "right", title: "选择语言模式" },
-        { id: "shell.theme", pluginId: "shell", label: "深色主题", align: "right", dividerBefore: true, title: "切换主题" },
+        { id: "shell.theme", pluginId: "shell", label: "深色主题", align: "right", dividerBefore: true, title: "选择主题" },
       ],
       notif: {
         unread: 2,
@@ -220,7 +220,7 @@ export function buildSampleQuickPick(): PoolQuickPickData {
     prefix: ">",
     items: [
       { key: "mock-qp-1", searchText: "显示命令面板", label: "显示命令面板", keybinding: "ctrl+shift+p" },
-      { key: "mock-qp-2", searchText: "打开设置", label: "打开设置", category: "偏好设置" },
+      { key: "mock-qp-2", searchText: "打开设置", label: "打开设置", category: "首选项" },
       { key: "mock-qp-3", searchText: "切换侧栏", label: "切换侧栏", keybinding: "ctrl+b" },
       { key: "mock-qp-4", searchText: "新建文件", label: "新建文件", detail: "创建未命名文件" },
     ],

@@ -92,11 +92,13 @@ export function registerShellMenus(): void {
         // 它与 `../发行后-帮助菜单待补项.md` 的「打开帮助」**不是同一件事**：那条要等一份独立
         // 设计档（五问）才动菜单项；本条是**已发货的手册**的入口，今天就有内容可看，不放空壳。
         { command: "app.openAiManual", group: "helpLearn" },
-        // 复用现有命令 workbench.action.togglePluginDevTools（title「切换插件 DevTools」）——
-        // 不新注册第二条第 5 条命令：同一条命令换个菜单词。**无 when 门控**——
+        // 复用现有命令 workbench.action.togglePluginDevTools（title「切换开发人员工具」——
+        // 归一化夹 02 批⑧ 用户改判：就 VS Code 中文惯例，菜单**不再另起一个名字**）。
+        // 不新注册第二条第 5 条命令。**无 when 门控**——
         // 用户 2026-09-12 裁决「开启这个功能」（发行版里也要真能打开 devtool，
         // 对应同批去掉的两道 isPackaged 闸门，见 plugin-view-handlers.ts / electron/main.ts）。
-        { command: "workbench.action.togglePluginDevTools", label: "切换开发人员工具", group: "helpDev" },
+        // 归一化夹 02 批⑧：label 覆写**删**——覆写与命令 title 逐字相同即冗余（同族纪律见档 §四 N4-4）
+        { command: "workbench.action.togglePluginDevTools", group: "helpDev" },
         // 恒显入口——见 updateCommands.ts 文件头（入口存在 ≠ 能力承诺，manual 档不禁手动检查）
         { command: "update.checkForUpdates", group: "helpUpdate" },
         // ── E6#57.14g：关于入口——**末项**，与「检查更新…」**同组 `helpUpdate`**（判据①）：

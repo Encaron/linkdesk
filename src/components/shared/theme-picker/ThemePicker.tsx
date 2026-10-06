@@ -89,7 +89,7 @@ function ThemePicker({ value, onChange }: ThemePickerProps) {
   };
 
   if (recipes.length === 0) {
-    return <span className="ldk-theme-picker-empty">{t("无可用主题配方")}</span>;
+    return <span className="ldk-theme-picker-empty">{t("暂无主题配方")}</span>;
   }
 
   return (

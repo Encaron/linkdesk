@@ -310,7 +310,10 @@ export function registerSettingsCommands(): void {
     {
       // E5.8#50.24：升级两段式（配方→配色）——命令 id 归一化为 theme.* 族（09 §1 命令清单）
       id: "theme.pick",
-      title: "主题：选择主题…",
+      // 归一化夹 02 批 N1：分类走 category 字段（全壳词表：首选项/视图/标签页/帮助/文件/编辑器/开发人员），
+      // ⛔ 不再手写「主题：」前缀进 title——同排的「选择语言」「打开键盘快捷方式」都走字段
+      title: "选择主题",
+      category: "首选项",
       description: "打开主题选择器切换当前主题",
       params: [{ name: "ctx", type: "object", required: false, description: "{ pluginId: string }——只列该插件提供的主题，省略 = 列全部主题" }],
       handler: async (...args: unknown[]) => {
@@ -323,7 +326,8 @@ export function registerSettingsCommands(): void {
     {
       // E5.8#50.24：复位外观——app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回配方，08 §7.3.5 单一写入点）
       id: "theme.resetAppearance",
-      title: "外观：复位外观覆盖…",
+      title: "复位外观覆盖…",
+      category: "首选项", // 归一化夹 02 批 N1
       description: "把外观模式复位为跟随主题，并清掉全部外观覆盖",
       handler: async () => {
         await setConfigurationValue("app.appearanceMode", "followTheme", "user");
@@ -332,7 +336,8 @@ export function registerSettingsCommands(): void {
     {
       // E5.8#90：复位混搭——批复位 3 来源键回跟随主题（保持自定义模式；域来源 onApply 重合并回主题基线，startup.ts 单一写入点；E5.8#132 surface 域删来源 4→3）
       id: "theme.resetMix",
-      title: "混搭：复位为整体配方…",
+      title: "复位为整体配方…",
+      category: "首选项", // 归一化夹 02 批 N1
       description: "把混搭（分区外观）的各来源复位为跟随主题，保持自定义模式",
       handler: async () => {
         await resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
@@ -566,7 +571,7 @@ export function registerSettingsCommands(): void {
           // ——与本命令（删覆盖 = 回落到默认值／主题）**终点不同**，如实说出来，⛔ 不假装是一回事
           ...(prop.resetsToDefault && prop.type !== "number"
             ? {
-                notice: "该键在设置页还有一枚「重置为默认项」（效果 = 不跟随主题）——本命令删的是用户覆盖（回落到默认值／主题），两者终点不同",
+                notice: "该键在设置页还有一枚「重置此设置」（效果 = 不跟随主题）——本命令删的是用户覆盖（回落到默认值／主题），两者终点不同",
               }
             : {}),
         };

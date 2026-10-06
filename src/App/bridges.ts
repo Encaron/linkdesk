@@ -18,6 +18,7 @@ import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { ViewContainerService } from "../core/services/layout/ViewContainerService"; // E5.8#34：面板切换器勾选显隐
 import type { ViewDescriptor } from "../core/services/layout/ViewContainerService"; // E6#71c：_pluginId/_renderPath 窄接口读型
 import i18n from "../i18n";
+import { formatMb } from "../core/utils/formatMb"; // 归一化夹 02 批②：MB 取整成形共享口
 import { showPanelCreatePicker } from "./panelCreatePicker"; // E5.8#32：面板 [+] 视图选择器
 
 /** E6#71c 富内容确认声明寻址结果——壳构造 PoolDialogData.content 所需字段 */
@@ -235,7 +236,9 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
     const poolApi = window.linkdesk?.pool;
     if (!poolApi?.onMemoryPressure) return;
     const unsub = poolApi.onMemoryPressure((data: { totalRSS: number; threshold: number }) => {
-      const mb = Math.round(data.totalRSS / 1024);
+      // 归一化夹 02 批②：取整成形走共享口；除数留在原地——本条是主进程 KB 口径
+      // （⛔ 不与 useMemoryMonitor 的 bytes 口径硬并成一个除数）
+      const mb = formatMb(data.totalRSS / 1024);
       pushToast({
         message: i18n.t("内存压力：界面进程内存占用过高（{{mb}} MB）", { mb }),
         severity: "warning",

@@ -20,7 +20,7 @@ export interface UiSurfaceLedger {
 }
 
 export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
-  shellVersion: "0.2.51",
+  shellVersion: "0.2.52",
   components: {
     "BackgroundImagePicker": { since: "0.2.40" },
     "Badge": { since: "0.2.13" },

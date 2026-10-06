@@ -41,7 +41,7 @@ describe("showPanelCreatePicker（E5.8#32）", () => {
     expect(st.prefix).toBe(">");
   });
 
-  it("serialize——已激活项 checked:true，其余 false；隐藏视图 category 标「已隐藏」", () => {
+  it("serialize——已激活项 checked:true，其余 false；隐藏视图归属仍显示、状态走 detail", () => {
     showPanelCreatePicker(vi.fn(), { current: "demo-view-a" });
     const st = captureShow();
     const items = st.items as Array<Record<string, unknown>>;
@@ -54,7 +54,9 @@ describe("showPanelCreatePicker（E5.8#32）", () => {
 
     const output = serialize(items[1]);
     expect(output.checked).toBe(false);
-    expect(output.category).toBe("已隐藏");
+    // 归一化夹 02 批 N2：category 恒为**归属**；状态走 detail（负控：category 不得命中状态词）
+    expect(output.detail).toBe("已隐藏");
+    expect(output.category).not.toBe("已隐藏");
   });
 
   it("onSelect——激活视图切换；隐藏视图选中自动恢复可见", () => {

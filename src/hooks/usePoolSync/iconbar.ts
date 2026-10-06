@@ -82,6 +82,8 @@ export function buildIconBar(t: (key: string) => string, sidebarView: string | n
   // （PoolPluginIcon img 分支 + 图标栏单色滤镜）⇒ 肉眼零差。
   // label 走 t()：i18n key = 中文原文（硬约束 2）；zh 词条缺失时 parseMissingKeyHandler 回退返回
   // key 本身 ⇒ 无需新增词条即正确显示（en 词条随 lang-defaults 同批补）。
+  // 🔴 归一化夹 02 批⑥（2026-10-06 拍板）：这颗齿轮**维持自绘资产**、不做归一——它是**品牌主图标位**
+  // （有意与插件自带的齿轮图标不同）；拍板过程与反面清单见 docs/04-软件更新/待抉择池/归一化文案与称呼批.md §〇 ⑥。
   const owned: IconBarOwnedButton[] = [
     {
       id: "gear",
