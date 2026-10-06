@@ -18,6 +18,7 @@ import { ContextKeyService } from "../../../registry/commands/ContextKeyService"
 import { HOST_RESERVED_CONTEXT_KEYS_HOST_ONLY } from "../../../registry/host-reserved.generated"; // E6#111h（1.38）：宿主专用旗子·运行时第二道网
 import { getCommands, executeCommand } from "../../../registry/commands/CommandRegistry";
 import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
+import { formatKeyLabel } from "../../../utils/formatKeyLabel"; // 归一化夹 01 案：menu:getItems 的 shortcut 改出显示串（与布局快照路同源）
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { ViewContainerService } from "../../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单数据源（壳布局真相，Path B 池只读）
 import { getFloatingPanelViewId } from "../../../../pluginLoader/contributions/viewRegistry"; // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」声明读取（tabIdentity 同源 core→pluginLoader）
@@ -128,7 +129,9 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
             ...item,
             label: item.label ? i18n.t(item.label) : item.label,
             title: cmd?.title ? i18n.t(cmd.title) : cmd?.title,
-            shortcut: kb?.key,
+            // 归一化夹 01 案：shortcut = 显示串（formatKeyLabel 后），⛔ 注册表小写串原样透传——
+            // 齿轮菜单/各类右键菜单/插件自造槽全吃这条路，必须与布局快照路（titlebar.ts）逐字同源
+            shortcut: kb?.key ? formatKeyLabel(kb.key) : undefined,
             // 子项：字符串 = 命令引用原样透传；对象 = 翻译 label（+ #37.7 checked 解析透传）。
             // （用 instanceof 而非 typeof——ESLint no-restricted-syntax 对"小写字面量比较"
             //  一律报 pluginId 硬编码误报，typeof x === "string" 是已知误报模式）

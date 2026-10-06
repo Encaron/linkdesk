@@ -1325,7 +1325,7 @@ export interface MenuItemDescriptor {
     when?: string;
     /** 壳侧解析后的命令标题（显示文本铁律） */
     title?: string;
-    /** 已解析快捷键 "ctrl+shift+p" 形式 */
+    /** 显示串——formatKeyLabel 后的形态（如 "Ctrl+K Ctrl+T"）；⛔ 非注册表原串（归一化夹 01 案，显示文本铁律） */
     shortcut?: string;
     /** 当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
      * 位置/对齐子菜单（当前 edge/align 命中项）+ .1 视图显隐列表（visible 视图项）共用。 */
@@ -1415,7 +1415,7 @@ export interface PoolQuickPickItem {
     category?: string;
     /** 第二行左——已 t() 解析 */
     detail?: string;
-    /** 快捷键 "ctrl+shift+p" 形式——池渲染 keycap pill（哑） */
+    /** 显示串——壳侧 formatKeyLabel 后（如 "Ctrl+K Ctrl+T"），⛔ 非注册表原串——池渲染 keycap pill（哑拆分） */
     keybinding?: string;
     /** 行内操作按钮 */
     buttons?: PoolQuickPickButton[];

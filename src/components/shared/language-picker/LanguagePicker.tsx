@@ -35,7 +35,9 @@ export function showLanguagePicker(): void {
       key: l.id,
       searchText: `${l.label} ${l.id}`,
       label: l.label,
-      category: l.id === currentLang ? i18n.t("当前") : undefined,
+      // 归一化夹 02 案（D1 已拍）：「当前生效项」状态走 checked（对勾，与主题/面板选择器同形），
+      // ⛔ 不再借 category（注释字段）写「当前」二字
+      checked: l.id === currentLang,
       detail: l.id,
     }),
     onClose: () => QuickPickService.hide(),

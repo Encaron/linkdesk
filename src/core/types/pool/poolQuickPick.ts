@@ -28,7 +28,7 @@ export interface PoolQuickPickItem {
   category?: string;
   /** 第二行左——已 t() 解析 */
   detail?: string;
-  /** 快捷键 "ctrl+shift+p" 形式——池渲染 keycap pill（哑） */
+  /** 显示串——壳侧 formatKeyLabel 后（如 "Ctrl+K Ctrl+T"），⛔ 非注册表原串——池渲染 keycap pill（哑拆分） */
   keybinding?: string;
   /** 行内操作按钮 */
   buttons?: PoolQuickPickButton[];

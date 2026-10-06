@@ -12,6 +12,7 @@ import { getCommands, executeCommand, type Command } from "../../registry/comman
 import { ContextKeyService } from "../../registry/commands/ContextKeyService";
 import { openKeybindingsSettings, findKeybindingForCommand } from "../../registry/commands/KeybindingRegistry";
 import { QuickPickService } from "../../services/ui/QuickPickService";
+import { formatKeyLabel } from "../../utils/formatKeyLabel"; // 归一化夹 01 案：键位文案单权威
 
 export function showCommandPalette(): void {
   const cmds = getCommands().filter((cmd) => ContextKeyService.matches(cmd.when));
@@ -24,18 +25,19 @@ export function showCommandPalette(): void {
     getKey: (cmd) => cmd.id,
     onSelect: (cmd) => { executeCommand(cmd.id); },
     // E5.7#15：聪慧→哑——池 DTO 序列化（显示文本铁律：壳侧 t() 解析后推送，池原样渲染）
-    serialize: (cmd) => ({
-      key: cmd.id,
-      searchText: `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`,
-      label: i18n.t(cmd.title),
-      category: cmd.category ? i18n.t(cmd.category) : undefined,
-      detail: cmd.id,
-      keybinding: findKeybindingForCommand(cmd.id)?.key
-        .split("+")
-        .map((k) => k.charAt(0).toUpperCase() + k.slice(1))
-        .join("+"),
-      buttons: [{ actionId: "configureKeybinding", icon: "gear", tooltip: i18n.t("配置快捷键") }],
-    }),
+    serialize: (cmd) => {
+      // 归一化夹 01 案：键位文案接 formatKeyLabel 单权威（⛔ 自造 capital 化——chord 必错成 Ctrl+K ctrl+T）
+      const kbKey = findKeybindingForCommand(cmd.id)?.key;
+      return {
+        key: cmd.id,
+        searchText: `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`,
+        label: i18n.t(cmd.title),
+        category: cmd.category ? i18n.t(cmd.category) : undefined,
+        detail: cmd.id,
+        keybinding: kbKey ? formatKeyLabel(kbKey) : undefined,
+        buttons: [{ actionId: "configureKeybinding", icon: "gear", tooltip: i18n.t("配置快捷键") }],
+      };
+    },
     // E5.7#15：行内按钮动作——当前唯一按钮 = 齿轮 → 快捷键设置（壳按 key 重解析后执行。
     // 按钮只此一个，无需 actionId 分支；将来加新按钮时再查表分发）
     onItemAction: (cmd, _actionId) => {

@@ -22,6 +22,11 @@ import { notifSnapshot } from "../readSnapshots"; // M1 AI#1：读取面的提�
 import { confirm, registerDialogRenderers } from "../../ui/DialogService"; // M1 AI#5
 import type { NotifLayout } from "../../../types/pool/poolLayout";
 import type { PoolPendingDialog } from "../../../types/pool/poolDialog";
+import { registerMenuItems } from "../../../registry/commands/MenuRegistry"; // 归一化夹 01 案·D3 锁
+import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry"; // 归一化夹 01 案·D3 锁
+import { ensureCoreKeybindings } from "../../../commands/input-bindings/shellKeybindings"; // 归一化夹 01 案·D3 锁
+import { formatKeyLabel } from "../../../utils/formatKeyLabel"; // 归一化夹 01 案·D3 锁
+import type { MenuItemDescriptor } from "../../../api/linkdesk-api"; // 归一化夹 01 案·D3 锁
 
 const PLUGIN = "demo-plugin";
 
@@ -348,5 +353,51 @@ describe("M1 读取面：getPendingDialogs（AI#5）", () => {
     } finally {
       off();
     }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   归一化夹 01 案·D3 机械锁（三条路同源锁之一）——menu:getItems 的 shortcut
+   ═══════════════════════════════════════════════════════════════════════════
+   ② IPC 实时查询路曾原样透传注册表小写串 ⇒ 齿轮菜单/标签页右键/面板标签右键/侧栏标题右键
+   ＋插件自造槽整列小写（该路径此前零测试，错位因此活了一个多月）。
+   锁「同源」而非字面值：返回值 == formatKeyLabel(注册表原串)；负控 = 原串不得原样出现。 */
+
+describe("menu:getItems shortcut 显示串同源锁（归一化夹 01 案·D3）", () => {
+  const SLOT = "demo.test.shortcut-slot";
+
+  beforeEach(() => {
+    // 幂等——CORE_KEYBINDINGS：theme.pick = "ctrl+k ctrl+t"（chord 病灶）/ core.openSettings = "ctrl+,"（单键）
+    ensureCoreKeybindings();
+    registerCommand(PLUGIN, { id: "theme.pick", title: "Demo Theme Pick", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "core.openSettings", title: "Demo Open Settings", handler: async () => {} });
+    registerCommand(PLUGIN, { id: "demo-plugin.noBinding", title: "Demo No Binding", handler: async () => {} });
+    registerMenuItems(SLOT, PLUGIN, [
+      { command: "theme.pick" },
+      { command: "core.openSettings" },
+      { command: "demo-plugin.noBinding" },
+    ]);
+  });
+
+  it("chord：shortcut == formatKeyLabel(原串)，逐字 Ctrl+K Ctrl+T；⛔ 原串不得原样出现", async () => {
+    const items = (await handleSettingsChannel("menu:getItems", [SLOT, {}])) as MenuItemDescriptor[];
+    const raw = findKeybindingForCommand("theme.pick")!.key; // "ctrl+k ctrl+t"
+    const pick = items.find((i) => i.command === "theme.pick")!;
+    expect(pick.shortcut).toBe(formatKeyLabel(raw));
+    expect(pick.shortcut).toBe("Ctrl+K Ctrl+T"); // 可证伪的逐字读数
+    expect(pick.shortcut).not.toBe(raw);
+  });
+
+  it("单键：ctrl+, → Ctrl+,（同一把同源尺）", async () => {
+    const items = (await handleSettingsChannel("menu:getItems", [SLOT, {}])) as MenuItemDescriptor[];
+    const settings = items.find((i) => i.command === "core.openSettings")!;
+    expect(settings.shortcut).toBe(formatKeyLabel(findKeybindingForCommand("core.openSettings")!.key));
+    expect(settings.shortcut).toBe("Ctrl+,");
+  });
+
+  it("负控：无绑定命令不长 shortcut（undefined，不是空串/占位）", async () => {
+    const items = (await handleSettingsChannel("menu:getItems", [SLOT, {}])) as MenuItemDescriptor[];
+    const bare = items.find((i) => i.command === "demo-plugin.noBinding")!;
+    expect(bare.shortcut).toBeUndefined();
   });
 });

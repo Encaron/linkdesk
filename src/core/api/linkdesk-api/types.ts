@@ -400,7 +400,7 @@ export interface MenuItemDescriptor {
   when?: string;
   /** 壳侧解析后的命令标题（E5.7#14 显示文本铁律） */
   title?: string;
-  /** 已解析快捷键 "ctrl+shift+p" 形式 */
+  /** 显示串——formatKeyLabel 后的形态（如 "Ctrl+K Ctrl+T"）；⛔ 非注册表原串（归一化夹 01 案，显示文本铁律） */
   shortcut?: string;
   /** E5.8#37.7：当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
    *  位置/对齐子菜单（当前 edge/align 命中项）+ #37.7.1 视图显隐列表（visible 视图项）共用。 */
