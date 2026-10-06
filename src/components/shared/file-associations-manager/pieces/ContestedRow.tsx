@@ -45,10 +45,14 @@ export default function ContestedRow({ row, onPick, gearItems = [] }: ContestedR
   const sourceWord =
     row.source === "user" ? t("（用户指定）") : row.source === "partial" ? t("（含用户指定）") : t("（自动）");
   // 「拆格提示」：本格是签名组的一部分时才说（单类被单独设置 ⇒ 按生效值分出新格）
+  // 🔴 「整格」那支的前导空格**落在模板里、不在 `t()` 字面量里**（渲染逐字节不变：` · 下拉＝整格生效`）。
+  //    原因＝`audit-i18n` 对源码字面量先 `.trim()` 再比词典键：字面量带前导空格 ⇒ 永远匹配不上
+  //    那条键（带 `{{ }}` 的键会被 isSub 规则顺手兜住，「整格」这句没有插值，兜不住）⇒ 空格留在
+  //    键里＝永红。翻译侧照**无空格**形态入库即可对上。
   const splitHint =
     row.exts.length < row.groupExtsCount
       ? t(" · 整组 {{total}} 类中 {{count}} 类单独设置", { total: row.groupExtsCount, count: row.exts.length })
-      : t(" · 下拉＝整格生效");
+      : ` ${t("· 下拉＝整格生效")}`;
 
   const openGear = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
