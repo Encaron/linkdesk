@@ -15,10 +15,10 @@
  *       且实况台按真件百分比几何跑（`HANDLE_PCT = 0.4%` 与「先扣缝再分」`(W - HP) / 2` 两态都在——症状 S5）
  *   I7  零手填 px：`ldk-*` 规则里 `border-radius` 一律 `var(--…)` ／ `inherit` ／ `%`（圆点用 `50%`）
  *   I8  真铁律尺寸：标签栏 `calc(35px * var(--ui-scale))` ＋ 图标栏 42 ／ 顶栏 30 ／ 状态栏 22
- *   I9  帧完备：11 个 `figure.frame`，每个都有 `frame-caption` ＋ `frame-note`
+ *   I9  帧完备：12 个 `figure.frame`，每个都有 `frame-caption` ＋ `frame-note`
  *   I10 帧号唯一 ＋ 每个帧 id 都在 `04-任务清单.md` 里被引用
  *   I11 图 → 档案：图上出现的每个 `T#／D#／E#` 在 `01/02/04` 里存在
- *   I12 档案 → 图：`04` 里的每个 `T1–T6` / `D1–D5` 都在图上出现
+ *   I12 档案 → 图：`04` 里的每个 `T1–T7` / `D1–D5` 都在图上出现
  *   I13 窗口宽度 `min(1280px, calc(100vw - 30px))`（不越视口）
  *   I14 硬约束 16 声明 ＋「mockup 仅示意」注释在位
  *   I15 交互齐全：6 个开关 ＋ 圆角滑杆 ＋ 读数
@@ -50,7 +50,7 @@ const REL = {
 /** 提案类名：真源里**还没有**、由本案提出并已登记的类名（I3 的正控，防「图里自己发明类名」） */
 const PROPOSED = ["ldk-group-pane", "ldk-group-pane-split"];
 /** 本案的任务号与决策号（I12 用；须与 04 一致） */
-const TASKS = ["T1", "T2", "T3", "T4", "T5", "T6"];
+const TASKS = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"];
 const DECISIONS = ["D1", "D2", "D3", "D4", "D5"];
 
 /* ────────────────────────────── 解析小工具 ────────────────────────────── */
@@ -244,8 +244,8 @@ function audit(htmlText) {
   const caps = (htmlText.match(/class="frame-caption"/g) || []).length;
   const notes = (htmlText.match(/class="frame-note"/g) || []).length;
   info.push(`帧：${figs.length} 个（caption ${caps} ／ note ${notes}）`);
-  ok("I9", figs.length === 11 && caps === 11 && notes === 11,
-    `帧不完备：figure ${figs.length} ／ caption ${caps} ／ note ${notes}（应各 11）`);
+  ok("I9", figs.length === 12 && caps === 12 && notes === 12,
+    `帧不完备：figure ${figs.length} ／ caption ${caps} ／ note ${notes}（应各 12）`);
 
   /* ── I10 帧号唯一 ＋ 在 04 里被引用 ── */
   const dup = figs.filter((f, i) => figs.indexOf(f) !== i);

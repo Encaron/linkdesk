@@ -151,6 +151,12 @@ code { font-family: Consolas, monospace; font-size: 12px; background: var(--bg-c
   transform: translateX(-50%); background: var(--accent); border-radius: var(--surface-radius, 0px);
   opacity: 0; pointer-events: none; }
 .ldk-split-handle:hover::after { opacity: 1; }
+/* ── D3-丁（2026-10-07 拍板）· 缝上**常显** 1px 分隔线 ──
+   线色 = 今天三点用的同一个 token（`--text-muted`）⇒ 零新 token；⛔ 不用 `--separator`（亮主题下与缝底仅 1.23:1，等于没画）。
+   真件里的落法是「把这几条**追加在 index.css 把手节源序之后**覆盖 .ldk-split-handle::after」（同特异度、后写胜）⇒ 零复制、不拆散与 .ldk-zone-resize-handle 的共享规则。 */
+.demo-seam-line .ldk-split-handle::before { opacity: 0; }                                  /* 三点退役（分屏把手） */
+.demo-seam-line .ldk-split-handle::after { width: 1px; background: var(--text-muted); opacity: 1; }
+.demo-seam-line .ldk-split-handle:hover::after { width: 1px; background: var(--accent); }   /* hover 只换色（守 #143「零重排」） */
 
 /* ── 实况台分屏几何（S5 只能在**绝对定位 ＋ 百分比 rect** 下再现；flex 均分看不出越界）——
    真源 `computeLayout(root, 0, 0, 100, 100)`（MainZone.tsx:165）：现状 = 右栏落位 `w0 + HANDLE_PCT`、宽度仍 `w1`
@@ -219,9 +225,9 @@ th { background: var(--bg-card); color: var(--text-secondary); }
 </p>
 
 <div class="notice">
-  <b>🔴 未拍板不动一行代码</b>：本图是<em>诊断图</em>（现状／方案对照），<b>不是</b>已定稿设计。
+  <b>🔴 板已拍齐，但仍未动一行产品代码</b>：本图是<em>诊断图</em>（现状／方案对照），<b>不是</b>已定稿设计——**拍板 ≠ 可写码**，写码前还须过设计硬门（硬约束 16：`/impeccable` ＋ `/ui ux pro max`）。
   实现阶段任何 CSS 改动前必须过设计硬门 <code>/impeccable</code> ＋ <code>/ui ux pro max</code>（硬约束 16）。
-  <b>D1–D5 待你拍板</b>（<a href="../04-任务清单.md">04 §二</a>）。
+  <b>D1–D6 已拍板（2026-10-07）</b>（<a href="../04-任务清单.md">04 §二</a>）。
 </div>
 
 <!-- ══════════════════════════════════════ §0 实况台 ══════════════════════════════════════ -->
@@ -428,7 +434,7 @@ th { background: var(--bg-card); color: var(--text-secondary); }
 </div>
 
 <!-- ══════════════════════════════════════ §B 方案五帧 ══════════════════════════════════════ -->
-<h2>§B 方案 · 五帧（T1–T5 的目标呈现，仍是**待拍板**的候选）</h2>
+<h2>§B 方案 · 六帧（T1–T5 ＋ T7 的目标呈现；**D1–D5 已拍板 2026-10-07**——B6 是 D3-丁 相对甲 的增量）</h2>
 <div class="grid">
 
   <!-- f-solution-1 -->
@@ -554,10 +560,38 @@ th { background: var(--bg-card); color: var(--text-secondary); }
     </div>
   </figure>
 
+  <figure class="frame" id="f-solution-6">
+    <figcaption class="frame-caption">B6 · 方案 缝上**常显** 1px 分隔线<span class="tag">｜D3-丁（你 2026-10-07 拍板）｜线色 = 今天三点同一个 token；⛔ 不用 --separator</span></figcaption>
+    <div class="frame-body demo-fix demo-seam-line" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 150px;">
+        <div class="ldk-group-pane ldk-group-pane-split" style="position: absolute; top: 0; left: 0; width: 49.8%; height: 100%;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">面板甲 · 49.8%</div>
+        </div>
+        <div class="ldk-split-handle" style="position: absolute; top: 0; left: 49.8%; width: 0.4%; height: 100%;"></div>
+        <div class="ldk-group-pane ldk-group-pane-split ldk-group-pane-focused" style="position: absolute; top: 0; left: 50.2%; width: 49.8%; height: 100%;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">对话</div></div>
+          <div class="demo-pane-content content-opaque">面板乙（聚焦）</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno-ok">✅ 缝里**常显**一条 1px `--text-muted` 线（＝今天三点用的色，<b>零新 token</b>）——甲只在**暗**主题够看（1.21:1），亮主题 1.09:1 ⇒ 丁 补的就是这一格</span>
+      <span class="anno-ok">✅ 线色对比：与主区底（缝露出 `--bg-window`）<b>暗 ≈4.83:1 ／ 亮 ≈4.54:1</b> ⇒ 两种内置主题都一眼可见（[02 E23](02-边缘情况清单.md)）</span>
+      <span class="anno">⚠️ ⛔ 不用 `--separator`（暗 1.79:1 ／ 亮 <b>1.23:1</b>）——它是给「同面细分隔」设计的 hairline ⇒ 亮主题下等于没画，丁 就白选了</span>
+      <span class="anno">⚠️ 只作用于分屏把手（`.ldk-split-handle`）：⛔ 不动 zone 分界线（仍 3 点常态 ＋ hover 线）；三点退役；hover **只把线色换成 `--accent`**（仍 1px，⛔ 不加宽 ⇒ 守 #143「零重排」）</span>
+      <span class="anno">⚠️ 命中区宽度**仍是 `HANDLE_PCT`（4px）**；横缝方向（`.ldk-split-handle.row`）同理换成高 1px 版；线端圆帽仍读 `--surface-radius` ⇒ 与成面圆角同形</span>
+    </div>
+    <div class="frame-note">
+      <b>改法（1 处 CSS 覆盖）</b>：把 `.ldk-split-handle::after` 由「hover 才亮」改为「**常显** `--text-muted`、宽 1px」，`.ldk-split-handle::before` 三点 `opacity: 0`，hover 只换色为 `--accent`——规则**追加在 [index.css](../../../../src/index.css) 把手节源序之后**（与共享声明同特异度、后写胜）⇒ 零复制，且**不拆散** `.ldk-zone-resize-handle` 与 `.ldk-split-handle` 的共享规则（⛔ 不动 zone 分界线）。<br>
+      <b>任务号</b>：T7 ｜ <b>决策</b>：D3-丁 ｜ <b>边缘项</b>：E23 E24 ｜ <b>症状</b>：S3（两栏连着）。
+    </div>
+  </figure>
+
 </div>
 
 <!-- ══════════════════════════════════════ §C 决策项图 ══════════════════════════════════════ -->
-<h2>§C 决策项图 · D1「光圈是否只在分屏时显示」（你的原话⑤：先记为决策项）</h2>
+<h2>§C 决策项图 · D1「光圈是否只在分屏时显示」（你的原话⑤，**已拍板 = 甲 维持常显**）</h2>
 <div class="grid">
   <!-- f-decision-1 -->
   <figure class="frame" id="f-decision-1">
@@ -608,6 +642,7 @@ th { background: var(--bg-card); color: var(--text-secondary); }
     <tr><td>f-solution-3</td><td>B3 方案 单面板＝零变化（基线）</td><td>T3</td><td>D3</td><td>E5 E15</td></tr>
     <tr><td>f-solution-4</td><td>B4 方案 环与内容同形（8×）</td><td>T5</td><td>D4-乙</td><td>E6</td></tr>
     <tr><td>f-solution-5</td><td>B5 方案 缝先扣再分，两栏都在容器内</td><td>T3 / T4</td><td>D5-甲</td><td>E13 E21 E22</td></tr>
+    <tr><td>f-solution-6</td><td>B6 方案 缝上常显 1px 分隔线（丁 的增量）</td><td>T7</td><td>D3-丁</td><td>E23 E24</td></tr>
     <tr><td>f-decision-1</td><td>C1 决策 D1 两案并排</td><td>T6</td><td>D1</td><td>E9</td></tr>
   </tbody>
 </table>
@@ -623,8 +658,8 @@ th { background: var(--bg-card); color: var(--text-secondary); }
   <li><b>I6</b> 缝法则同源：本图滑杆的 <code>--surface-inset</code> 派生口径 = <code>tokens.ts:308-313</code>（0 → 0px；否则 2px）；<b>且实况台按真几何真源跑</b>——<code>HANDLE_PCT = 0.4%</code> 与 <code>(W - HP) / 2</code>（S5 修正态）两态都在</li>
   <li><b>I7</b> 零手填 px：产品区（<code>ldk-*</code>）规则里 <code>border-radius</code> 一律走 token ／ <code>inherit</code> ／ <code>%</code>（把手圆点＝真源的 <code>50%</code>），⛔ 不写死 px</li>
   <li><b>I8</b> 真铁律尺寸：标签栏 <code>calc(35px * var(--ui-scale))</code> ＋ 图标栏 42 ／ 顶栏 30 ／ 状态栏 22 在位</li>
-  <li><b>I9</b> 帧完备：11 个 <code>figure.frame</code> 各有 <code>frame-caption</code> ＋ <code>frame-note</code></li>
-  <li><b>I10</b> 帧号唯一：11 个帧 id 互不重复，且全部在 04 里被引用</li>
+  <li><b>I9</b> 帧完备：12 个 <code>figure.frame</code> 各有 <code>frame-caption</code> ＋ <code>frame-note</code></li>
+  <li><b>I10</b> 帧号唯一：12 个帧 id 互不重复，且全部在 04 里被引用</li>
   <li><b>I11</b> 图 → 档案：图上出现的每个 <code>T#／D#／E#</code> 号在 01/02/04 里存在</li>
   <li><b>I12</b> 档案 → 图：04 里的每个 <code>T#</code>（T1–T6）与 <code>D#</code>（D1–D5）都在图上出现</li>
   <li><b>I13</b> 窗口宽度：舞台窗口用 <code>min(1280px, calc(100vw - 30px))</code>（不越视口）</li>
