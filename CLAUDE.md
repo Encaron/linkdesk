@@ -44,7 +44,7 @@
 
 **🔥 机械操作，不是建议。** 每步必须执行，少一步不提交。
 
-1. `npm run check` 全绿——双工程 tsc 零错误 + ESLint `--max-warnings 0` + vitest 全绿 + 各专项门禁。**无「基线接受」——红灯必须修到绿灯才提交。** 🟢 **分诊跑法**（2026-10-06 拍板）：纯门禁/脚本修复（⛔ 不碰 `src/`、`electron/`）可只跑**该腿 `--self-test` ＋ 本体**（＋同 lib 兄弟腿）即提交，全量不必每笔跟跑；全量回场时机：①动了 `scripts/lib/**` 共享件 ②动了 `src/`、`electron/` ③分诊绿但 CI 又红 ④**打 tag 前 `npm run check:ci`**（CI 口径全链演练——无容器跑全链，当日实证本地全量绿 ≠ CI 绿，判据见发布清单 §一）。CI 每次推送本就全链兜底。
+1. `npm run check` 全绿——双工程 tsc 零错误 + ESLint `--max-warnings 0` + vitest 全绿 + 各专项门禁。**无「基线接受」——红灯必须修到绿灯才提交。** 🟢 **分诊跑法**（2026-10-06 拍板）：纯门禁/脚本修复（⛔ 不碰 `src/`、`electron/`）可只跑**该腿 `--self-test` ＋ 本体**（＋同 lib 兄弟腿）即提交，全量不必每笔跟跑；全量回场时机：①动了 `scripts/lib/**` 共享件 ②动了 `src/`、`electron/` ③分诊绿但 CI 又红 ④发版＝**分支 CI 绿即 tag**（同提交的分支 CI 就是 CI 口径全链；「不推先验」才本地跑 `check:ci`——本地全量绿 ≠ CI 绿，判据见发布清单 §一）。CI 每次推送本就全链兜底。
 2. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
 3. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
 4. 🔥 Vite deps 缓存自动清——`postinstall` 每次 `npm install` 后自动删 `node_modules/.vite`；异常时手动删再重启（memory `toolbox-sop` §6.2）
