@@ -51,6 +51,7 @@
     "check:config-titles": "node scripts/check-config-titles.mjs",
     "check:config-titles:selftest": "node scripts/check-config-titles.mjs --self-test",
     "check:lockfile-sync": "node scripts/check-lockfile-sync.mjs",
+    "check:ci": "node scripts/run-ci-check.mjs",
     "check:lockfile-sync:selftest": "node scripts/check-lockfile-sync.mjs --self-test",
     "check:claude-md": "node scripts/check-claude-md.mjs",
     "check:claude-md:selftest": "node scripts/check-claude-md.mjs --self-test",
