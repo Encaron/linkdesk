@@ -1,0 +1,206 @@
+/**
+ * 「默认打开方式」管理器（`uiHint: fileAssociationsManager`）共享件样式——族段 `ldk-famgr-*`。
+ *
+ * 尺寸/形态权威 = 设计图 `mockups/01-设计图-共享化落地态-整页拟真.html`；两区（多候选类型 /
+ * 按插件浏览）与迁移前**零视觉变化**（⛔ 只有 C3 文案／C5 工具条两处拍板面例外）。
+ *
+ * 三条门禁口径（逐条对过真件）：
+ *   - 颜色一律 `var(--…)` token（`check-css-hardcode`）；字号只走 `--font-size-*`（`check-font-scale-audit`）；
+ *   - padding/margin/gap 落 4px 节奏或 ≤6px 微调（`check-spacing-grid`）——故子节标题那条
+ *     `margin: 22px 0 10px 0` 收成 `24px 0 8px 0`（与「图 10px gap 收 8px」同款处置，见下）；
+ *   - 族段自成一族（`check-css-namespace` 判据①⑦）：⛔ **不借宿主族段 `settings-*`**——
+ *     第三方渲染方那里没有那套骨架，共享件必须自带（硬约束 23）。
+ *
+ * 硬约束 16 设计复核结论见文件末「设计复核」小节。
+ */
+
+/* ══ 竞争行（「多候选类型」区）：信息区（行标签＋描述）＋ 控制区（徽标／下拉／齿轮）════════ */
+
+.ldk-famgr-contested {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 20px;
+  position: relative;
+}
+
+.ldk-famgr-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 行标签：本行是哪些类型（`.docx / .xlsx / .pptx 等 6 类`）——它顶替泛型行的配置键位（本组行无键） */
+.ldk-famgr-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-famgr-desc {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 描述里的生效者加粗（一眼看到「现在是谁」）——注意它与 `.ldk-famgr-why b` 是两处不同语义 */
+.ldk-famgr-desc b {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* 控制区件序 = [徽标][下拉][齿轮]；徽标与下拉之间给隙（控制区自身无 gap） */
+.ldk-famgr-control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-width: 100px;
+  justify-content: flex-end;
+}
+
+.ldk-famgr-contested .ldk-famgr-select {
+  margin-left: 8px;
+}
+
+/* ══ 行内下拉宽度（两区不同：竞争行 180px、卡内行 190px——见下）════════════════════════ */
+
+.ldk-famgr-select {
+  min-width: 180px;
+}
+
+/* ══ 行齿轮（C4 定案：竞争行与卡体行**同一套机制**——24px／行尾／hover 现／同锚点／非模态菜单）══ */
+
+.ldk-famgr-gear {
+  flex-shrink: 0;
+  width: calc(24px * var(--ui-scale));
+  height: calc(24px * var(--ui-scale));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: var(--font-size-lg); /* 齿轮＝真 codicon-gear（字形随 button 字号） */
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease;
+  margin-left: 4px;
+}
+
+/* 露出条件：行悬停或**行内已有焦点**（`:focus-within` 是加性的一条——键盘走到齿轮时它得可见；
+   静息像素零变化，故不违「零视觉变化」） */
+.ldk-famgr-contested:hover .ldk-famgr-gear,
+.ldk-famgr-contested:focus-within .ldk-famgr-gear,
+.ldk-famgr-row:hover .ldk-famgr-gear,
+.ldk-famgr-row:focus-within .ldk-famgr-gear {
+  opacity: 1;
+}
+
+.ldk-famgr-gear:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* ══ 卡体行（「按插件浏览」卡内）：`.ext` ＋ 状态徽标 ＋（命中理由）＋ 行尾下拉 ＋ 行齿轮 ════ */
+
+.ldk-famgr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--separator);
+  font-size: var(--font-size-sm);
+}
+
+.ldk-famgr-row:last-child {
+  border-bottom: none;
+}
+
+.ldk-famgr-row:hover {
+  background: var(--hover-overlay);
+}
+
+.ldk-famgr-row .ldk-famgr-select {
+  margin-left: auto;
+  min-width: 190px;
+}
+
+/* 扩展名照抄**归一存储键**（声明 `MX` → 显示 `.mx`）；等宽字体一眼区分 `.docx` 与插件名 */
+.ldk-famgr-ext {
+  flex: 0 0 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-hover);
+}
+
+/* ══ 状态徽标（六态＋失效覆盖红点）：基态＝中性小胶囊，四态只是点显色，形态同一（不换皮） ══════ */
+
+.ldk-famgr-pill {
+  display: inline-block;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* 用户锁定 / 用户指定——唯一带描边的一态（「这是你定的」，与自动态一眼可辨） */
+.ldk-famgr-pill--user {
+  color: var(--accent-hover);
+  border: 1px solid var(--accent);
+}
+
+/* 自动（含唯一处理者） */
+.ldk-famgr-pill--auto {
+  color: var(--status-connected);
+}
+
+/* 候选 / 无人处理兜底 */
+.ldk-famgr-pill--cand {
+  color: var(--warning);
+}
+
+/* 失效覆盖：键还在、指向的插件已不在册（惰性——重装即复活） */
+.ldk-famgr-pill--dang {
+  color: var(--error);
+}
+
+/* ══ C5：仅显示名命中的**理由标注**（「类型名 TypeScript」）════════════════════════════════
+   理由不可见时，单字母查询在用户眼里就是乱排——标注可压缩（`min-width:0` ＋ 省略号）兜最挤的行宽。 */
+
+.ldk-famgr-why {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+.ldk-famgr-why b {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
