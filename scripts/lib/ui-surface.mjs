@@ -79,6 +79,15 @@ const HELPER_NAMES = new Set([
   "isSettingsUiHint",
   "formatEffectiveValue",
   "splitStringList",
+  // 默认打开方式管理器共享化（2026-10-06）：聚合口径与归一存储键的纯函数/常量（一处实现）
+  "buildManagerModel",
+  "normalizeExt",
+  "normalizeExtList",
+  "overrideKeyOf",
+  "readOverride",
+  "extractDeclaredExtensions",
+  "extLabelHead",
+  "EXT_LABEL_MAX",
 ]);
 
 const RE_DEFAULT = /^export\s*\{\s*default\s+as\s+([A-Za-z_$][\w$]*)\s*\}\s*from\s*["']([^"']+)["']/;

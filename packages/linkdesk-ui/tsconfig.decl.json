@@ -69,7 +69,10 @@
     "../../src/components/shared/plugin-card/**/*.ts",
     "../../src/components/shared/plugin-card/**/*.tsx",
     "../../src/components/shared/open-with-picker/**/*.ts",
-    "../../src/components/shared/open-with-picker/**/*.tsx"
+    "../../src/components/shared/open-with-picker/**/*.tsx",
+    // 2026-10-06「默认打开方式管理器共享化」1.5：聚合纯函数 + 呈现件套件（含 pieces/ 子目录）
+    "../../src/components/shared/file-associations-manager/**/*.ts",
+    "../../src/components/shared/file-associations-manager/**/*.tsx"
   ],
   "exclude": [
     "../../src/components/shared/**/*.test.ts",

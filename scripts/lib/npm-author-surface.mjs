@@ -46,6 +46,7 @@ export const UI_SURFACE = [
   "src/components/shared/settings-hints/**",
   "src/components/shared/source-badge/**",
   "src/components/shared/file-icon/**",
+  "src/components/shared/file-associations-manager/**", // 2026-10-06「默认打开方式管理器共享化」：聚合纯函数 + 呈现件套件（判据 A 收官件）
   "src/components/shared/file-path-input/**",
   "src/components/shared/font-family-select/**",
   "src/components/shared/form-row/**",

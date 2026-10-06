@@ -11,11 +11,17 @@
     "Button": {
       "since": "0.2.13"
     },
+    "CardRow": {
+      "since": "0.2.52"
+    },
     "ColorPicker": {
       "since": "0.2.13"
     },
     "Combobox": {
       "since": "0.2.13"
+    },
+    "ContestedRow": {
+      "since": "0.2.52"
     },
     "ContextMenu": {
       "since": "0.2.13"
@@ -46,6 +52,9 @@
     },
     "InlineInput": {
       "since": "0.2.13"
+    },
+    "ManagerView": {
+      "since": "0.2.52"
     },
     "MarkdownView": {
       "since": "0.2.13"
@@ -120,6 +129,9 @@
     "DEFAULT_PLUGIN_IDENTITY_URI": {
       "since": "0.2.13"
     },
+    "EXT_LABEL_MAX": {
+      "since": "0.2.52"
+    },
     "MIX_FOLLOW_THEME_SENTINEL": {
       "since": "0.2.40"
     },
@@ -128,6 +140,15 @@
     },
     "SETTINGS_UI_HINTS": {
       "since": "0.2.40"
+    },
+    "buildManagerModel": {
+      "since": "0.2.52"
+    },
+    "extLabelHead": {
+      "since": "0.2.52"
+    },
+    "extractDeclaredExtensions": {
+      "since": "0.2.52"
     },
     "formatEffectiveValue": {
       "since": "0.2.40"
@@ -138,8 +159,20 @@
     "isSettingsUiHint": {
       "since": "0.2.40"
     },
+    "normalizeExt": {
+      "since": "0.2.52"
+    },
+    "normalizeExtList": {
+      "since": "0.2.52"
+    },
+    "overrideKeyOf": {
+      "since": "0.2.52"
+    },
     "pickIdentityArt": {
       "since": "0.2.13"
+    },
+    "readOverride": {
+      "since": "0.2.52"
     },
     "splitStringList": {
       "since": "0.2.40"
@@ -152,11 +185,38 @@
     "BackgroundImagePickerProps": {
       "since": "0.2.40"
     },
+    "BuildInput": {
+      "since": "0.2.52"
+    },
+    "CardModel": {
+      "since": "0.2.52"
+    },
+    "CardRowProps": {
+      "since": "0.2.52"
+    },
+    "ContestedRowModel": {
+      "since": "0.2.52"
+    },
+    "ContestedRowProps": {
+      "since": "0.2.52"
+    },
     "ContextMenuProps": {
       "since": "0.2.13"
     },
+    "DeclaredExtension": {
+      "since": "0.2.52"
+    },
+    "DeclaredPlugin": {
+      "since": "0.2.52"
+    },
     "EffectiveBadgeProps": {
       "since": "0.2.40"
+    },
+    "ExtRowModel": {
+      "since": "0.2.52"
+    },
+    "HandlerSnapshot": {
+      "since": "0.2.52"
     },
     "HintTipProps": {
       "since": "0.2.20"
@@ -166,6 +226,12 @@
     },
     "InlineInputHandle": {
       "since": "0.2.13"
+    },
+    "ManagerModel": {
+      "since": "0.2.52"
+    },
+    "ManagerViewProps": {
+      "since": "0.2.52"
     },
     "ManifestIconShape": {
       "since": "0.2.13"
@@ -182,6 +248,12 @@
     "ResolvedIcon": {
       "since": "0.2.13"
     },
+    "RowOption": {
+      "since": "0.2.52"
+    },
+    "RowState": {
+      "since": "0.2.52"
+    },
     "RunStatusCommand": {
       "since": "0.2.40"
     },
@@ -195,5 +267,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 62
+  "count": 86
 }

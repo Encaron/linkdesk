@@ -7,14 +7,18 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 32 组件（27 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
+ *   - 35 组件（30 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
- *   - 11 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
+ *   - 19 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
- *       isSettingsUiHint / formatEffectiveValue / splitStringList）
- *   - 15 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *       isSettingsUiHint / formatEffectiveValue / splitStringList /
+ *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
+ *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX）
+ *   - 28 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
- *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps）
+ *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
+ *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowOption / ExtRowModel / CardModel /
+ *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
@@ -95,3 +99,19 @@ export type { SourceBadgeSource, SourceBadgeKind, SourceBadgeProps } from "@shar
 export type { InlineInputHandle } from "@shared/inline-input/InlineInput";
 export type { ContextMenuProps } from "@shared/context-menu/ContextMenu";
 export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUtils";
+
+// ── 04「默认打开方式管理器共享化」（2026-10-06）——判据 A 收官件：管理器消费的全是宿主声明
+//   （插件清单里的文件关联声明 × 系统覆盖表），按硬约束 28 必须住共享层。
+//   交付 = 聚合纯函数 ＋ 呈现件套件 ＋ 类型（C1 定案）：
+//     · 官方设置插件薄壳取数组装 —— 现布局＝默认皮，视觉零变化（C3 文案／C5 工具条两处拍板面除外）；
+//     · 第三方渲染方两路任选：共享聚合 ＋ 共享件自组（零重推导）／只拿数据全画。
+//   🔴 聚合与件套件**不认识任何命令 id**：齿轮菜单项由消费方注入（`*GearItems`）——数据入、事件出。
+export { default as ManagerView } from "@shared/file-associations-manager/ManagerView";
+export { default as CardRow } from "@shared/file-associations-manager/pieces/CardRow";
+export { default as ContestedRow } from "@shared/file-associations-manager/pieces/ContestedRow";
+// 聚合口径的**一处实现**（归一存储键 / 六态 / 聚格 / 失效判定）——⛔ 任何渲染方自推导 = 第二份实现（R4）
+export { buildManagerModel, normalizeExt, normalizeExtList, overrideKeyOf, readOverride, extractDeclaredExtensions, extLabelHead, EXT_LABEL_MAX } from "@shared/file-associations-manager/deriveModel";
+export type { DeclaredExtension, DeclaredPlugin, HandlerSnapshot, RowState, RowOption, ExtRowModel, CardModel, ContestedRowModel, ManagerModel, BuildInput } from "@shared/file-associations-manager/types";
+export type { ManagerViewProps } from "@shared/file-associations-manager/ManagerView";
+export type { CardRowProps } from "@shared/file-associations-manager/pieces/CardRow";
+export type { ContestedRowProps } from "@shared/file-associations-manager/pieces/ContestedRow";
