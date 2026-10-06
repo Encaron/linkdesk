@@ -1,7 +1,7 @@
 /* 校验-拟真度.cjs —— 本 case 设计图的**拟真度机械门**
  * 图：`mockups/01-设计图-聚焦环与分屏圆角.html`　　档案：`00`–`04`
  *
- * 运行（仓库根）：`node "docs/04-软件更新/待抉择池/主区标签栏-聚焦环与分屏圆角/mockups/校验-拟真度.cjs"`
+ * 运行（仓库根）：`node "docs/04-软件更新/已落地/主区标签栏-聚焦环与分屏圆角/mockups/校验-拟真度.cjs"`
  *   负控自证：　`node "…/校验-拟真度.cjs" --self-test`
  *   （纯 Node，无第三方依赖——.cjs 因为仓库是 "type":"module"）
  *
@@ -44,9 +44,9 @@ const REL = {
   groupTabBar: "src/pool/shared/group-tab-bar/GroupTabBar.css",
   layout: "src/pool/zones/main/MainZone/layout.ts",
   contentLayer: "src/pool/zones/main/MainZone/TabContentLayer.tsx",
-  task: "docs/04-软件更新/待抉择池/主区标签栏-聚焦环与分屏圆角/04-任务清单.md",
-  cause: "docs/04-软件更新/待抉择池/主区标签栏-聚焦环与分屏圆角/01-根因与修法.md",
-  edge: "docs/04-软件更新/待抉择池/主区标签栏-聚焦环与分屏圆角/02-边缘情况清单.md",
+  task: "docs/04-软件更新/已落地/主区标签栏-聚焦环与分屏圆角/04-任务清单.md",
+  cause: "docs/04-软件更新/已落地/主区标签栏-聚焦环与分屏圆角/01-根因与修法.md",
+  edge: "docs/04-软件更新/已落地/主区标签栏-聚焦环与分屏圆角/02-边缘情况清单.md",
 };
 /** 提案类名：真源里**还没有**、由本案提出并已登记的类名（I3 的正控，防「图里自己发明类名」） */
 const PROPOSED = ["ldk-group-pane", "ldk-group-pane-split"];

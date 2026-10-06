@@ -426,7 +426,7 @@ th { background: var(--bg-card); color: var(--text-secondary); }
       <b>数据来源</b>：容器 = <code>computeLayout(root, 0, 0, 100, 100)</code>（<a href="../03-实现交接.md">03 §一</a> 落点表 ／ <code>MainZone.tsx:165</code>）；右栏落位 <code>x + w0 + HANDLE_PCT</code> 而宽度仍取 <code>w1</code>（<code>layout.ts:62</code>，垂直同处 <code>:75</code>），<code>w0 + w1 = 100</code> ⇒ 右缘 <b>100.4%</b>（算术，无歧义）；<code>.ldk-main-zone</code> **没有** <code>overflow:hidden</code>（E5.8#98 为不裁环而移除，<code>index.css:270-271</code> 注释）⇒ 越界带落在窗口外。<br>
       <b>行为</b>：越界那 0.4% 里住的正是<b>栏最外侧那条 1px 环</b> ⇒ 「环的右边那一部分没有了」；上下分屏 ⇒ 底边那条（0.4% × 容器高）。第一栏不动 ⇒ 病**只在第二栏**。<br>
       <b>为什么今天才发现</b>：pane 没有背景（S3）⇒ 越界本身看不见，唯一的露头就是这 1px 的环。<br>
-      <b>⚠️ 图的代演（不是口径改动）</b>：真件里裁掉这条带的是**窗口边界**（`.ldk-main-zone` 自己 <em>没有</em> <code>overflow:hidden</code>）；本图在一个 HTML 页里画窗口 ⇒ 由本图骨架的 <code>.ldk-main-zone { overflow:hidden }</code> **代演窗口边**。可见结果一致：越界带**看不见**；差别只是「谁裁的」——⛔ 实现时**不许**给真件加回 <code>overflow:hidden</code>（[01 §5.3](01-根因与修法.md) 丁案判死）。<br>
+      <b>⚠️ 图的代演（不是口径改动）</b>：真件里裁掉这条带的是**窗口边界**（`.ldk-main-zone` 自己 <em>没有</em> <code>overflow:hidden</code>）；本图在一个 HTML 页里画窗口 ⇒ 由本图骨架的 <code>.ldk-main-zone { overflow:hidden }</code> **代演窗口边**。可见结果一致：越界带**看不见**；差别只是「谁裁的」——⛔ 实现时**不许**给真件加回 <code>overflow:hidden</code>（<a href="../01-根因与修法.md">01 §5.3</a> 丁案判死）。<br>
       <b>任务号</b>：T3 ／ T4 ｜ <b>决策</b>：D5 ｜ <b>边缘项</b>：E21 E22 ｜ <b>症状</b>：S5。
     </div>
   </figure>
@@ -581,13 +581,13 @@ th { background: var(--bg-card); color: var(--text-secondary); }
     </div>
     <div class="anno-row">
       <span class="anno-ok">✅ 缝里**常显**一条 1px `--text-muted` 线（＝今天三点用的色，<b>零新 token</b>）——甲只在**暗**主题够看（1.21:1），亮主题 1.09:1 ⇒ 丁 补的就是这一格</span>
-      <span class="anno-ok">✅ 线色对比：与主区底（缝露出 `--bg-window`）<b>暗 ≈4.83:1 ／ 亮 ≈4.54:1</b> ⇒ 两种内置主题都一眼可见（[02 E23](02-边缘情况清单.md)）</span>
+      <span class="anno-ok">✅ 线色对比：与主区底（缝露出 `--bg-window`）<b>暗 ≈4.83:1 ／ 亮 ≈4.54:1</b> ⇒ 两种内置主题都一眼可见（<a href="../02-边缘情况清单.md">02 E23</a>）</span>
       <span class="anno">⚠️ ⛔ 不用 `--separator`（暗 1.79:1 ／ 亮 <b>1.23:1</b>）——它是给「同面细分隔」设计的 hairline ⇒ 亮主题下等于没画，丁 就白选了</span>
       <span class="anno">⚠️ 只作用于分屏把手（`.ldk-split-handle`）：⛔ 不动 zone 分界线（仍 3 点常态 ＋ hover 线）；三点退役；hover **只把线色换成 `--accent`**（仍 1px，⛔ 不加宽 ⇒ 守 #143「零重排」）</span>
       <span class="anno">⚠️ 命中区宽度**仍是 `HANDLE_PCT`（4px）**；横缝方向（`.ldk-split-handle.row`）同理换成高 1px 版；线端圆帽仍读 `--surface-radius` ⇒ 与成面圆角同形</span>
     </div>
     <div class="frame-note">
-      <b>改法（1 处 CSS 覆盖）</b>：把 `.ldk-split-handle::after` 由「hover 才亮」改为「**常显** `--text-muted`、宽 1px」，`.ldk-split-handle::before` 三点 `opacity: 0`，hover 只换色为 `--accent`——规则**追加在 [index.css](../../../../src/index.css) 把手节源序之后**（与共享声明同特异度、后写胜）⇒ 零复制，且**不拆散** `.ldk-zone-resize-handle` 与 `.ldk-split-handle` 的共享规则（⛔ 不动 zone 分界线）。<br>
+      <b>改法（1 处 CSS 覆盖）</b>：把 `.ldk-split-handle::after` 由「hover 才亮」改为「**常显** `--text-muted`、宽 1px」，`.ldk-split-handle::before` 三点 `opacity: 0`，hover 只换色为 `--accent`——规则**追加在 <a href="../../../../../src/index.css">index.css</a> 把手节源序之后**（与共享声明同特异度、后写胜）⇒ 零复制，且**不拆散** `.ldk-zone-resize-handle` 与 `.ldk-split-handle` 的共享规则（⛔ 不动 zone 分界线）。<br>
       <b>任务号</b>：T7 ｜ <b>决策</b>：D3-丁 ｜ <b>边缘项</b>：E23 E24 ｜ <b>症状</b>：S3（两栏连着）。
     </div>
   </figure>
