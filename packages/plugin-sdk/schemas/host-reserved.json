@@ -148,6 +148,33 @@
       "replacedBy": "app.storage.openCacheDir（同键伴生 statusCommand: storage.cacheDirStatus）",
       "landing": "electron/ipc/handlers/storage-handlers.ts:26（resolveEffectiveCacheDir 仍读 settings.json 平键；界面侧改读 storage.cacheDirStatus 命令）",
       "approvedBy": "用户 · 2026-10-03"
+    },
+    {
+      "name": "settings-assoc-*",
+      "kind": "class",
+      "since": "2026-10-06",
+      "why": "04-软件更新〔默认打开方式管理器共享化〕1.2／2.2（2026-10-06 用户「必然论」拍板：管理器拆件套件 ＋ 聚合转正共享层；私有件按 §2.2 整删）：管理器渲染体整批迁进壳共享层，共享件类名属宿主 `ldk-` 命名空间（硬约束 23）⇒ 插件私有族段 `settings-assoc-*`（含 `.settings-assoc-os-*`、空态 `.settings-assoc-empty`）随件整删；⛔ 共享件此后不得再借宿主族段 `settings-*` 造类名",
+      "replacedBy": "ldk-famgr-*（共享件族段：19 类 ＋ 卡内工具条 4 类）",
+      "landing": "无落点（插件仓随件删除；壳源码面零残留）——管理器聚合与呈现全在 src/components/shared/file-associations-manager/，类名走 `ldk-famgr-*`",
+      "approvedBy": "用户 · 2026-10-06"
+    },
+    {
+      "name": "OsFollowBlock",
+      "kind": "class",
+      "since": "2026-10-06",
+      "why": "同案 C3c 形态改判（2026-10-06 用户拍板「升为二级子节」）：OS 跟随开关不再要专件折叠块——摘 `uiHint` ＋ 壳侧声明 `group` ⇒ 由宿主**通用开关行**呈现在二级子节「系统「打开方式」登记」下，`OsFollowBlock` 整件删除（连同其只读状态行一并退役）。⚠️ 名字是**组件名、不是宿主 CSS 类**：账的 kind 词表无「组件名」档，就近归 `class`（它对活面的判据是 hostClassNames，本案不涉及）",
+      "replacedBy": "（无专件——app.osAssociations.followPlugins 改由宿主通用 Toggle 行 ＋ group 子节承载）",
+      "landing": "无落点（插件仓随件删除；壳源码面零残留）",
+      "approvedBy": "用户 · 2026-10-06"
+    },
+    {
+      "name": "FileAssociationsManagerView",
+      "kind": "class",
+      "since": "2026-10-06",
+      "why": "同案 2.2（私有件整删）：插件私有管理器**视图本体**删除——整组渲染改由共享组装视图承担（取数留插件仓、推导与呈现走共享），同一口径不再维护两遍；同笔删掉的私有推导件 `model.ts`（其每个导出都是共享 `deriveModel.ts` 的子集，名字与共享层同名同在活）。⚠️ 名字是**组件名、不是宿主 CSS 类**（同 `OsFollowBlock` 那条的档位说明）",
+      "replacedBy": "ManagerView（@linkdesk/ui 共享组装视图 ＋ buildManagerModel／orderRows／filterRows；since 0.2.52）",
+      "landing": "无落点（插件仓随件删除；壳源码面零残留）",
+      "approvedBy": "用户 · 2026-10-06"
     }
   ]
 }
