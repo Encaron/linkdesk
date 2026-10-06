@@ -37,6 +37,8 @@
  *   A. 内容哈希漂移 且 package.json 版本 == 基线版本 → 「内容改了但版本没动——货架可能落后」⚠️
  *   B. package.json 版本 != 基线版本 → 「版本号动过但没 release:mark——真发了跑 mark 收尾；没打算发别动版本号」⚠️
  *   基线即当下 → 全静默（exit 0）。
+ *   🟡 G5（2026-10-06 补，案卷 04 §2.3）：npm 轴护栏——账本里 since 高于最新已发布壳的导出 ⇒ 黄灯
+ *      （「ui 内容不许发在壳之前」；mark/check 两模式都出声，判定本体 = lib/plugin-shell-ahead.mjs）。
  *
  * 作者面定义（tarball 内容的仓库侧代理）：
  *   @linkdesk/contracts         → contracts/linkdesk.d.ts + README.md（files 白名单成品；d.ts=作者消费的类型本体）
@@ -54,8 +56,12 @@
  * 插件 README 的图片靠它才显示）**一个月无声**。**「脚手架」这个漏最要命**——它正是 L3.7 3.7.5 整轮要改的东西：
  * **改完骨架却不发版 = 那一轮的全部劳动第三方作者看不到。**
  */
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+// 🔴 G5（插件最低壳版本门禁）npm 轴护栏的判定本体 → scripts/lib/plugin-shell-ahead.mjs
+//    （与 G5 主腿 check-plugin-shell-ahead.mjs、官方目录收录链的黄灯同一份，⛔ 不在这里另写第二套）。
+import { exportsAheadOfShell, flattenLedger, latestPublishedShell } from "./lib/plugin-shell-ahead.mjs";
 import { collectUiSharedDirs } from "./lib/ui-surface.mjs";
 // 🔴 surface 名单 / 内容哈希 / 逐文件漂移判据 → scripts/lib/npm-author-surface.mjs
 //    （E6#166 抽出：发布判据⑤「对货不对号」与黄灯共用同一份实现，别在这里另写一套）。
@@ -70,6 +76,8 @@ import {
 
 const REPO_ROOT = resolve(import.meta.dirname ?? __dirname, ".."); // scripts/ → repo 根
 const STATE_FILE = join(REPO_ROOT, "scripts", "npm-release-state.json");
+/** G5 npm 轴读的工作区账本（四栏真源；随包投影的完整性由 check-ui-surface-additive 那条腿盯） */
+const LEDGER_FILE = join(REPO_ROOT, "scripts", "ui-surface.json");
 const mark = process.argv.includes("--mark");
 const allowDrift = process.argv.includes("--allow-drift");
 
@@ -421,6 +429,42 @@ for (const pkg of PACKAGES) {
     );
   }
   // else: 内容没变、版本没动 → 静默
+}
+
+// 🟡 G5 · npm 轴护栏（案卷「插件最低壳版本门禁」04 §2.3，2026-10-06 补齐）：**ui 内容不许发在壳之前**——
+//    账本里 since 高于最新已发布壳的导出一旦上了 npm 货架，用它们的插件就会被 G2 逼着声明一个
+//    还不存在的壳版本 ⇒ 在壳 tag 追上之前，那些插件在所有已发布壳上都装不上／加载即崩。
+//    黄灯（同 D3：dev 攒批节奏可能是故意的），但**必须让人看见**；壳 tag 追上后自动熄灭。
+//    mark/check 两模式都出声——mark 正是「内容上货架」的那一刻，更得看见。判定本体在
+//    lib/plugin-shell-ahead.mjs（与 G5 主腿、收录链黄灯同一份；自测挂 check-plugin-shell-ahead --self-test）。
+{
+  let shellAheadNote = null;
+  try {
+    const tags = execFileSync("git", ["tag", "--list", "v*"], { cwd: REPO_ROOT, encoding: "utf8" })
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const latestShell = latestPublishedShell(tags);
+    const ledger = flattenLedger(existsSync(LEDGER_FILE) ? JSON.parse(readFileSync(LEDGER_FILE, "utf8")) : null);
+    if (latestShell === null) {
+      shellAheadNote = `ℹ️  [npm-release] G5 npm 轴不判：本地一个 release tag 都没有——「最新已发布壳」无可比对象（不是通过，是没得比）。`;
+    } else if (ledger === null) {
+      shellAheadNote = `⚠️  [npm-release] G5 npm 轴未核验：读不到工作区账本（scripts/ui-surface.json，或形态是半份）——本次不判（未核验 ≠ 通过；账本完整性另有 check-ui-surface-additive 盯）。`;
+    } else {
+      const ahead = exportsAheadOfShell(ledger, latestShell);
+      if (ahead.length > 0) {
+        const needShell = ahead[ahead.length - 1].since; // 升序末位 = 最高的 since（追上它灯才灭）
+        shellAheadNote =
+          `\n⚠️  [npm-release] 黄灯（G5 · npm 轴）：ui 内容跑到壳前面——账本里 ${ahead.length} 个导出的 since 高于最新已发布壳 v${latestShell}（不拦，但必须让人看见）：\n` +
+          `     ${ahead.map((x) => `${x.name}(${x.since})`).join("、")}\n` +
+          `   ⇒ 在含这些导出的壳 v${needShell} 发布前，任何静态导入它们的插件在所有已发布壳上都装不上／加载即崩（G2 会逼作者声明那个未发布号）。\n` +
+          `   ⇒ dev 攒批节奏的有意抢跑请知悉；壳 tag 追上 v${needShell} 后本灯自动熄灭。`;
+      }
+    }
+  } catch (e) {
+    shellAheadNote = `⚠️  [npm-release] G5 npm 轴未核验（不拦）：${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (shellAheadNote) console.warn(shellAheadNote + "\n");
 }
 
 if (mark) {

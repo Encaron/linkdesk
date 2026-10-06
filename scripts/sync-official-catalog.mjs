@@ -45,11 +45,15 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 // 官方目录坐标与插件仓命名规则**同源于一处**（E6#101：`sync:bundled` 与新鲜度门禁读同一份；
 // 两处各写一遍 owner/prefix 迟早漂移——漂移那天的表现是「一个工具认为这批是我们的、另一个不认」）
 import { OFFICIAL_REPO, PLUGIN_REPO } from "./lib/official-catalog.mjs";
+// 🔴 G5（插件最低壳版本门禁）收录链黄灯的判定本体 → scripts/lib/plugin-shell-ahead.mjs
+//    （与 G5 主腿、check-npm-release 的 npm 轴护栏同一份，⛔ 不在这里另写第二套）。
+import { judgeShellAhead, latestPublishedShell } from "./lib/plugin-shell-ahead.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -322,6 +326,37 @@ async function main() {
   console.log(`  │ 同版未动 ${report.unchanged.length}：${report.unchanged.join(", ") || "（无）"}`);
   console.log(`  │ 🔴 别人的行原样保留 ${report.keptForeign.length}：${report.keptForeign.map((k) => `${k.id}(${k.existingVersion} vs 我们${k.oursVersion})`).join(", ") || "（无）"}`);
   console.log(`  └─ 产物：${out}`);
+
+  // 🟡 G5 · 收录链声明轴（案卷「插件最低壳版本门禁」04 §2.2，D3 = 黄灯，2026-10-06）：
+  //    条目声明的 `minAppVersion` 高于最新已发布壳 ⇒「这只插件要求一个还没发布的壳——用户装不上，
+  //    或者装上就崩」。收录链手里只有各仓 marketplace.json 的**条目**（没有源码），只能判声明轴；
+  //    声明低于实际的存量（本事故形态）要扫源码，收录前另跑主腿：`npm run check:plugin-shell-ahead`。
+  //    黄灯**不拦**（dev 攒批节奏里「插件先于壳」可能是故意的），但必须让人看见（⛔ 不许静默）。
+  const latestShell = latestPublishedShell(
+    execFileSync("git", ["tag", "--list", "v*"], { cwd: ROOT, encoding: "utf8" })
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  if (latestShell) {
+    const ahead = [];
+    for (const entry of ours) {
+      const verdict = judgeShellAhead({
+        declared: typeof entry.minAppVersion === "string" ? entry.minAppVersion : null,
+        actualFloor: null,
+        latestShell,
+      });
+      if (verdict.level === "warn") ahead.push(`· ${entry.id}（${verdict.msg}）`);
+    }
+    if (ahead.length > 0) {
+      console.log("");
+      console.log(`  🟡 G5 · 插件跑到壳前面（黄灯 · 不拦，但必须让人看见）：${ahead.length} 条要求一个还没发布的壳：`);
+      for (const a of ahead) console.log(`    ${a}`);
+      console.log(`  ⚠️ 声明轴只看条目里写了什么——收录前请再跑主腿 \`npm run check:plugin-shell-ahead\`（扫源码算地板_实际）。`);
+    }
+  } else {
+    console.log("  ℹ️ G5 收录链黄灯不判：本地一个 release tag 都没有（首次发布，无可比对象）。");
+  }
   console.log("");
   console.log("  ⚠️ 产物只是**候选**——落进官方目录仍要人过目 + 用户点头（本脚本零写调用）。");
 
