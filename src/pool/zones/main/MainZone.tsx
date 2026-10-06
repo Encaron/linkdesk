@@ -165,6 +165,10 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     ? computeLayout(root!, 0, 0, 100, 100, branchIndices, localSizesRef.current)
     : null;
 
+  // **主区标签栏-聚焦环与分屏圆角**（T3 · D3-甲，2026-10-07）：分屏态才让每栏「成面」。
+  // 判据与 D1 的「是否分屏」同源（layout 只在多面板分支存在 ⇒ panels.length > 1 等价于 useAbsolute）。
+  const isSplit = (layout?.panels.length ?? 0) > 1;
+
   // E5.8#141：tab 视图保活——所有标签页内容平级渲染于 .main-zone 根级（key=tab.id 永远同级），
   // 跨 group 移动只改 rect/显隐不改 DOM 位置（对标 B22 面板平级推广到 tab 层）。
   // rect 来源：多面板 = layout.panels；单面板 = 全屏 (0,0,100,100)。
@@ -182,6 +186,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
         rect,
         visible: tab.id === group.activeTabId,
         focused: groupFocused && tab.id === group.activeTabId,
+        split: isSplit,
       });
     }
   }
@@ -210,8 +215,16 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
               <div
                 key={p.groupId}
                 data-group-id={p.groupId}
-                // E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影零布局位移
-                className={p.groupId === activeGroupId ? "ldk-group-pane-focused" : undefined}
+                // E5.8#30.15（P5）：聚焦面板 accent 环——覆盖层零布局位移（index.css ::after）
+                // **主区标签栏-聚焦环与分屏圆角**（T3）：稳定类 ldk-group-pane ＋ 分屏修饰类
+                //   ldk-group-pane-split——分屏才成面（圆角/面色/阴影全走既有 token）
+                className={[
+                  "ldk-group-pane",
+                  isSplit && "ldk-group-pane-split",
+                  p.groupId === activeGroupId && "ldk-group-pane-focused",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 // E5.8#30.15（P5）：点面板空白聚焦该面板——同组 no-op（省一次 IPC 回环）
                 onMouseDown={() => {
                   if (activeGroupId !== p.groupId) {
@@ -275,7 +288,11 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
             key={group.id}
             data-group-id={group.id}
             // E5.8#30.15（P5）：单面板也带聚焦环（聚焦行为与多面板一致）
-            className={group.id === activeGroupId ? "ldk-group-pane-focused" : undefined}
+            // **主区标签栏-聚焦环与分屏圆角**（T3）：稳定类照挂，⛔ 不带分屏修饰类
+            //   ⇒ 零内缩、零圆角、零面色（E15 单面板逐像素零变化）
+            className={["ldk-group-pane", group.id === activeGroupId && "ldk-group-pane-focused"]
+              .filter(Boolean)
+              .join(" ")}
             onMouseDown={() => {
               if (activeGroupId !== group.id) {
                 tabAction({ action: "focusGroup", groupId: group.id });

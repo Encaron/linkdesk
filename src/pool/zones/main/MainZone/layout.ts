@@ -56,8 +56,13 @@ export function computeLayout(
   const s1 = total > 0 ? effective[1] / total : 0.5;
 
   if (node.direction === "horizontal") {
-    const w0 = w * s0;
-    const w1 = w * s1;
+    // 主区标签栏-聚焦环与分屏圆角（T3 · D5-甲 · 2026-10-07）：**先把缝从可分配总量里扣掉**再按比例分。
+    // 否则第二子盒落位是 `x + w0 + HANDLE_PCT`，而 w0 + w1 = w ⇒ 它的右缘 = 100.4%（S5：外缘环被裁）。
+    // 扣缝后右缘 = (w − HP) + HP = 恰 100%，两栏仍等宽（50/50 ⇒ 各 49.8%，各让 0.2%）。
+    // ⛔ HANDLE_PCT 的**值**仍不许动（缝的位置与宽度一个字不变）；⛔ 落位算式不动。
+    const wEff = w - HANDLE_PCT;
+    const w0 = wEff * s0;
+    const w1 = wEff * s1;
     const left = computeLayout(node.children[0], x, y, w0, h, branchIndices, localSizes);
     const right = computeLayout(node.children[1], x + w0 + HANDLE_PCT, y, w1, h, branchIndices, localSizes);
     const handle: HandleRect = {
@@ -69,8 +74,10 @@ export function computeLayout(
     };
     return { panels: [...left.panels, ...right.panels], handles: [...left.handles, handle, ...right.handles] };
   } else {
-    const h0 = h * s0;
-    const h1 = h * s1;
+    // 竖分同构（同横分那条注释）：先扣缝再分，下栏下缘落回 100%（S5）。
+    const hEff = h - HANDLE_PCT;
+    const h0 = hEff * s0;
+    const h1 = hEff * s1;
     const top = computeLayout(node.children[0], x, y, w, h0, branchIndices, localSizes);
     const bottom = computeLayout(node.children[1], x, y + h0 + HANDLE_PCT, w, h1, branchIndices, localSizes);
     const handle: HandleRect = {

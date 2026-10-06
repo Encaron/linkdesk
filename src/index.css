@@ -264,14 +264,59 @@ html, body, #root, #pool-root {
 }
 .ldk-input:focus { border-color: var(--accent); }
 
-/* E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影不占布局（聚焦/失焦零位移），
-   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex）。
-   E5.8#98 修：border-radius 跟随 --surface-radius（主区表面圆角同源）——环画在包裹元素上，
-   inset box-shadow 沿元素圆角走；缺省 0px = 直角，现状零变化。圆角开大时环四角不再被
-   main-zone overflow 裁掉（此前直角环四角顶在圆角表面上被裁）。 */
+/* E5.8#30.15（P5）立；**主区标签栏-聚焦环与分屏圆角**（T1/T2 · D2-甲，2026-10-07）改：
+   环从「pane 自身的 inset 阴影」搬到 **pane 的 ::after 覆盖层**——inset 阴影的绘制次序是
+   「自身背景之上、子元素之下」⇒ 被 35px 标签栏与内容层整圈盖住（S1：内置主题实测 accent 像素 0）；
+   ::after 画在子元素之上 ⇒ 任何主题、任何内容（含不透明附图页）都全周可见。
+   · position:relative 只为覆盖层锚定——多面板分支 pane 是行内 position:absolute（行内胜，本条不生效），
+     单面板 fallback 的 pane 是 flex 静态定位（缺它 ::after 会锚到 .ldk-main-zone ⇒ 环画满整个主区）。
+   · inset:0 ＋ 全局 box-sizing:border-box ⇒ 零布局位移（聚焦/失焦不推挤，E5）。
+   · pointer-events:none ⇒ 不吃点击——面板聚焦仍由 pane 的 mousedown 承担（E11）。
+   · z-index:1 ⇒ 压内容层（兄弟节点、z:auto）与标签栏，低于把手 --z-sticky(200)。
+   · border-radius:inherit ⇒ 仍读下行 var(--surface-radius)（E5.8#98 的「环随分区圆角」不变量保住）；
+     缺省 0px = 直角，现状零变化。 */
 .ldk-group-pane-focused {
+  position: relative;
   border-radius: var(--surface-radius, 0px);
-  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.ldk-group-pane-focused::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── 主区 pane 家族（**主区标签栏-聚焦环与分屏圆角** T3/T4/T7，2026-10-07 · D3-甲＋丁 ／ D5-甲）──
+   分屏的两栏**不是两个 zone**，是同一个 .ldk-main-zone 里两个绝对定位 div（MainZone.tsx）——它们今天
+   不吃任何「面」的契约（只有六个 zone 类吃 --surface-radius/--surface-shadow），彼此之间无背景无圆角，
+   缝里露的又是同一底色 --bg-window ⇒ 视觉上「两栏连着」（S3）。修法是**分屏时才成面**——借 zone 的
+   表面契约，⛔ 不把 pane 升格为 zone（那要动池网格格与 DTO）／⛔ 零新 token。
+   · .ldk-group-pane 只声明**定位上下文**，不画任何东西——单面板态照挂（E15 逐像素零变化不受影响）。
+   · .ldk-group-pane-split 才成面；pane 行内样式已带 overflow:hidden ⇒ 标签条的方角由 pane 自己的
+     圆角自动裁掉，⛔ 无须为标签条另写圆角规则。 */
+.ldk-group-pane {
+  position: relative;
+}
+
+.ldk-group-pane-split {
+  border-radius: var(--surface-radius, 0px);
+  background: var(--bg-card);
+  box-shadow: var(--surface-shadow, none);
+}
+
+/* 分屏内容层：按缝法则内缩（--surface-inset：圆角 0 → 0px，否则 2px）＋ 吃同一个 --surface-radius
+   与环同值同形（T3 内缩 ／ T5 · D4-乙）——「环有角、内容方角」的斜切（S4／E6）就此消除。
+   🔴 内容层是 pane 的**兄弟**（E5.8#141 保活层 TabContentLayer）⇒ 内缩只能落在这里；pane 的 padding
+   够不着内容、只会把标签栏挤窄。⛔ 单面板不带这个类 ⇒ 零内缩零圆角（E15）。 */
+.ldk-tab-content-split {
+  left: var(--surface-inset, 0px);
+  right: var(--surface-inset, 0px);
+  bottom: var(--surface-inset, 0px);
+  border-radius: var(--surface-radius, 0px);
 }
 
 /* Phase 3.5 新增 —— focus-visible 键盘导航指示器 */
@@ -506,6 +551,35 @@ select {
 .ldk-zone-resize-handle:hover::before,
 .ldk-split-handle:hover::before {
   opacity: 0;
+}
+
+/* ── 主区标签栏-聚焦环与分屏圆角（T7 · D3-丁，2026-10-07）：分屏缝**常显** 1px 分隔线 ──
+   分屏两栏各自成面后，缝里露的仍是主区底色 --bg-window，而面色 --bg-card 与它只差 1.21:1（亮主题 1.09:1）
+   ⇒ 光靠「两块面」在亮主题下几乎分不开（S3 的残留）。故把把手的静止态由「三个点」改「一条线」：
+   线色取 --text-muted（＝今天三点用的**同一个 token** ⇒ 零新 token、零新颜色角色），与缝底对比
+   暗 ≈4.83:1 ／ 亮 ≈4.54:1，两种内置主题都一眼可见。⛔ 不用 --separator（亮主题下仅 1.23:1，等于没画）。
+   🔴 覆盖规则一律**追加在本节源序之后**（同特异度、后写胜）⇒ 零复制、不拆散与 .ldk-zone-resize-handle
+   的共享规则；⛔ 只作用于分屏把手——zone 分界线仍是「三点常态 ＋ hover 成线」，两种分隔语言并存是
+   有意取舍（E24：实机若觉得不统一，另开一条扩展，⛔ 不在本轮顺手改）。
+   · hover 只把线**换色**为 --accent，⛔ 不加宽到 2px——守 E5.8#143「零重排」（只动 opacity/颜色）。
+   · 命中区宽度仍是 4px（拖拽手感零变化）；线端圆帽仍读 --surface-radius（与成面圆角同形）。 */
+.ldk-split-handle::before {
+  opacity: 0; /* 三点退役（只退分屏把手，zone 把手不变） */
+}
+
+.ldk-split-handle::after {
+  width: 1px;
+  background: var(--text-muted);
+  opacity: 1;
+}
+
+/* 横缝（.row）：线宽走 height——基础规则的 width:1px 由上面 .row 的 width:auto 接管（特异性更高） */
+.ldk-split-handle.row::after {
+  height: 1px;
+}
+
+.ldk-split-handle:hover::after {
+  background: var(--accent);
 }
 
 .ldk-zone-resize-handle.vertical {

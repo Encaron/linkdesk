@@ -25,6 +25,9 @@ export interface TabContentItem {
   visible: boolean;
   /** 所属 group 聚焦 && 本 tab 活跃——E5.8#30.15（P5）isActive 单聚焦判定 */
   focused: boolean;
+  /** **主区标签栏-聚焦环与分屏圆角**（T3/T5，2026-10-07）：所属 pane 分屏已成面 ⇒ 内容层按缝法则
+      内缩（--surface-inset）并吃 --surface-radius 与环同形；单面板/未分屏恒 false（E15 零变化） */
+  split: boolean;
 }
 
 interface TabContentLayerProps {
@@ -36,7 +39,7 @@ interface TabContentLayerProps {
 export default function TabContentLayer({ items, creatableViews, onPaneMouseDown }: TabContentLayerProps) {
   return (
     <>
-      {items.map(({ tab, groupId, rect, visible, focused }) => (
+      {items.map(({ tab, groupId, rect, visible, focused, split }) => (
         <div
           key={tab.id}
           data-tab-content-id={tab.id}
@@ -51,15 +54,19 @@ export default function TabContentLayer({ items, creatableViews, onPaneMouseDown
             pointerEvents: "none",
           }}
         >
-          {/* 内容区从标签栏下方开始（tab bar 由面板层 GroupPane 渲染）——absolute + TAB_BAR_HEIGHT 精确对齐 */}
+          {/* 内容区从标签栏下方开始（tab bar 由面板层 GroupPane 渲染）——absolute + TAB_BAR_HEIGHT 精确对齐。
+              **主区标签栏-聚焦环与分屏圆角**（T3/T5）：分屏态的左/右/下三边交给 .ldk-tab-content-split
+              （按 --surface-inset 内缩 ＋ 吃 --surface-radius 与环同形）——值是主题 token，故落在 CSS 类里
+              （⛔ 不写内联值：内联会压住主题层与插件 CSS）；单面板仍贴边 0 ⇒ 逐像素零变化（E15）。 */}
           <div
+            className={split ? "ldk-tab-content-split" : undefined}
             onMouseDown={() => onPaneMouseDown(groupId)}
             style={{
               position: "absolute",
-              left: 0,
-              right: 0,
+              left: split ? undefined : 0,
+              right: split ? undefined : 0,
               top: TAB_BAR_HEIGHT,
-              bottom: 0,
+              bottom: split ? undefined : 0,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
