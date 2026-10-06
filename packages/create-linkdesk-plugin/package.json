@@ -20,5 +20,8 @@
     "scaffold",
     "create"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "prepublishOnly": "node ../../scripts/prepublish-auth-preflight.mjs --npm"
+  }
 }

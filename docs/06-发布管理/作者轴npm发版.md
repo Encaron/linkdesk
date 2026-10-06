@@ -63,6 +63,8 @@ npm run docs:check     # 与真源逐字节比对
 #     ⚠️ 包轴版本号唯一真相源 = 该包自己的 package.json——不是根那份
 
 # ③ 发布（🔴 --registry 必须显式带，理由见 §三 ①）
+#     🆕 这一步自带**凭据预检**（五个包的 prepublishOnly → scripts/prepublish-auth-preflight.mjs --npm）：
+#     token 没配 / 到期会在**打包之前**以中文诊断拦下，而不是发到一半 401（见 §三 ⑤）
 cd packages/<包> && npm publish --registry=https://registry.npmjs.org   # packages/ 下的四根
 cd contracts     && npm publish --registry=https://registry.npmjs.org   # contracts 进目录发，见 §三 ②
 
@@ -78,7 +80,7 @@ npm run release:mark
 
 ---
 
-## 三、三个实测到的坑（别再踩）
+## 三、五个实测到的坑（别再踩）
 
 > 出处：L7 第 7.8 增补轮（五轴全量重新分发）现场实测。
 
@@ -101,6 +103,20 @@ cd contracts && npm publish --registry=https://registry.npmjs.org   # ✅ 进目
 README / 模板这类**文本表面**，改完到 publish 之间**任何一次再改都会造成货架漂移**（黄灯 A 立刻回来）。E6#108 实测**两条**都踩了：① `contracts` 发完才改 README ⇒ 重发一位；② `create-linkdesk-plugin` 与 `plugin-sdk` 发完后，**pre-commit 的 `blank-at-eof` 钩子**报「new blank line at EOF」⇒ trim 尾空行 ⇒ 又漂 ⇒ 各自再重发一位。**两次多发的版本号全都源于"发表面之前没定格"**（该轮五包共发 7 次）。
 
 ⇒ **固化动作：`git add` 之后、`npm publish` 之前，先真跑一次 pre-commit**（`git commit` 一次空提交，或 `npx lefthook run pre-commit`）。**钩子先绿，再发。**
+
+**⑤ 🔴 两把钥匙都会到期，而**到期日谁都读不出来**。**
+作者轴要**两把不同的**钥匙，各有一个已实测的到期事故：① **npm token**（`~/.npmrc` 的 `//registry.npmjs.org/:_authToken=`，发五根轴用；granular token 带到期日，当前那枚 30 天期）；② **GitHub PAT**（`{configDir}/linkdesk-sdk/config.json` 的 `githubToken`，`sdk publish` 建 Release 与目录写入用它；2026-09-14 实证死于 7 天到期，诊断三步见 memory `version-and-release` §7）。
+🔴 **两把的有效期都读不出来**（npm 与 GitHub 都没有「查我这枚 token 何时过期」的命令）⇒ 过期只会在**用它那一下**以 401 露头，而那时 bump / CHANGELOG 都已备好。
+
+⇒ **固化动作：开工第一句跑一次凭据预检**（1 秒，联网）：
+
+```bash
+node scripts/prepublish-auth-preflight.mjs            # 两把都探（人 / 开工用）
+node scripts/prepublish-auth-preflight.mjs --github   # 只探 SDK 那把 PAT
+```
+
+五个包的 `npm publish` **自带** npm 那半边（`prepublishOnly` → `--npm`）；GitHub 那半边要手工跑一次。
+🔴 探针**不判**到期日与写权限（读不出来 / 验不了，见脚本头「域外声明」）；**到期日现值只记一份**——memory `version-and-release`，**换钥匙时同笔更新那里**（本档不写日期，免得两处漂移）。
 
 ---
 
@@ -145,6 +161,7 @@ npm cache clean --force          # 全清（粗暴但有效）
 
 | 东西 | 在哪 | 干什么 |
 |:--|:--|:--|
+| `scripts/prepublish-auth-preflight.mjs` | 五个包的 `prepublishOnly`（⛔ **不挂** `npm run check`——无凭据的环境不该因此红） | 凭据预检：npm token ＋ SDK 的 GitHub PAT 此刻能不能用（1 秒；自测 15 例；SDK 改取钥匙处会红） |
 | `scripts/check-npm-release.mjs` | 挂 `npm run check` | 两条黄灯（离线、永不判红）；`--mark` 时联网核对货架 |
 | `scripts/npm-release-state.json` | 仓根 | 基线账（`release:mark` 写，**勿手改**） |
 | `scripts/check-scaffold.mjs` | 挂 `npm run check` | 脚手架生成物契约（需 git 在 PATH） |

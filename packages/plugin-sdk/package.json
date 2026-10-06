@@ -64,6 +64,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
+    "prepublishOnly": "node ../../scripts/prepublish-auth-preflight.mjs --npm",
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepack": "npm run build"

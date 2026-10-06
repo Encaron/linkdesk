@@ -24,6 +24,7 @@
     "access": "public"
   },
   "scripts": {
+    "prepublishOnly": "node ../../scripts/prepublish-auth-preflight.mjs --npm",
     "build": "node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.decl.json --noEmit --emitDeclarationOnly false",
     "prepack": "node scripts/build.mjs"

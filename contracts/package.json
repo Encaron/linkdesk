@@ -12,6 +12,7 @@
     "access": "public"
   },
   "scripts": {
+    "prepublishOnly": "node ../scripts/prepublish-auth-preflight.mjs --npm",
     "prepack": "node ../scripts/generate-contract.mjs"
   },
   "keywords": [

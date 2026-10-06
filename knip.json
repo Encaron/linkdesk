@@ -66,7 +66,15 @@
         //   链接判据 import 门禁那把尺子（check-doc-links 的 `linkTargetsInLine`），故它不是孤岛。
         //   ⚠️ 自测 15 例**故意不挂 check 链**——改由 main() 在**写盘前**自跑（判据坏则拒跑）；
         //   不塞 check 链的理由：package.json 正被并行案修改，为一条自测腿去动它＝同笔混装。
-        "scripts/archive-case.mjs"
+        "scripts/archive-case.mjs",
+        // 作者轴凭据预检（2026-10-07 立）：**发布动作之内的探针**——它的消费方是**五个可发布包的
+        //   `prepublishOnly`**（`contracts/` ＋ `packages/` 下四包），而 `packages/*` 在 ignoreWorkspaces、
+        //   `contracts/` 根本不是 workspace ⇒ knip 读不到那几个 package.json 的 script 引用，
+        //   故壳 scope 里零消费方——非死代码。命令行直跑（`node scripts/prepublish-auth-preflight.mjs`
+        //   `--npm` / `--github` / `--self-test`）；接线与判定式见 docs/06-发布管理/作者轴npm发版.md §三 ⑤。
+        //   ⚠️ 自测 15 例**故意不挂 check 链**（同 archive-case.mjs 的理由）：它判的是「**这台机器此刻
+        //   有没有钥匙**」，无凭据的环境跑它必红——挂上就是给所有人一个假红。
+        "scripts/prepublish-auth-preflight.mjs"
       ],
       "project": [
         // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/
