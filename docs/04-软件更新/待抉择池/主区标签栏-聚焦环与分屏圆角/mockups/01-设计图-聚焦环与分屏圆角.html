@@ -225,8 +225,8 @@ th { background: var(--bg-card); color: var(--text-secondary); }
 </p>
 
 <div class="notice">
-  <b>🔴 板已拍齐，但仍未动一行产品代码</b>：本图是<em>诊断图</em>（现状／方案对照），<b>不是</b>已定稿设计——**拍板 ≠ 可写码**，写码前还须过设计硬门（硬约束 16：`/impeccable` ＋ `/ui ux pro max`）。
-  实现阶段任何 CSS 改动前必须过设计硬门 <code>/impeccable</code> ＋ <code>/ui ux pro max</code>（硬约束 16）。
+  <b>🔴 板已拍齐 ＋ 代码已落（2026-10-07）</b>：本图是<em>诊断图</em>（现状／方案对照），<b>不是</b>已定稿设计——拍板 ≠ 可写码，写码前须过设计硬门（硬约束 16：<code>/impeccable</code> ＋ <code>/ui ux pro max</code>，<b>已过</b>：impeccable 探针三文件零发现）。
+  实现落点与逐像素实测读数见 <a href="../04-任务清单.md">04 §一／§三</a>；⛔ 本图**不随实现回改**——它记的是「现状 vs 方案」，回改会毁掉对照价值。
   <b>D1–D6 已拍板（2026-10-07）</b>（<a href="../04-任务清单.md">04 §二</a>）。
 </div>
 
@@ -653,7 +653,7 @@ th { background: var(--bg-card); color: var(--text-secondary); }
   <li><b>I1</b> 真 token 同源：本图 <code>:root</code> / <code>[data-theme="light"]</code> 的每个 token 与 <code>src/index.css</code> 逐字节相等</li>
   <li><b>I2</b> 零硬编码色：<code>&lt;style&gt;</code> 内除真源 token 块外无 <code>#hex</code></li>
   <li><b>I3</b> 真类名：本图用到的每个 <code>ldk-*</code> 类名都能在真源找到，或已在 01/04 登记为**提案类名**</li>
-  <li><b>I4</b> 现状规则逐字：<code>.demo-current .ldk-group-pane-focused</code> 的声明集 = <code>src/index.css</code> 该规则声明集</li>
+  <li><b>I4</b> 现状规则逐字：<code>.demo-current .ldk-group-pane-focused</code> 的声明集 = <code>src/index.css</code> 该规则声明集，真源取 <b>立案基线快照</b>（<code>5d68368e3</code>，⛔ 不是活源码——本图引用的是<b>修前</b>，修复落地后活源码必然与图分岔）</li>
   <li><b>I5</b> 拟改规则在位：<code>inset: 0</code> / <code>border: 1px solid var(--accent)</code> / <code>border-radius: inherit</code> / <code>z-index: 1</code> / <code>pointer-events: none</code> 全在</li>
   <li><b>I6</b> 缝法则同源：本图滑杆的 <code>--surface-inset</code> 派生口径 = <code>tokens.ts:308-313</code>（0 → 0px；否则 2px）；<b>且实况台按真几何真源跑</b>——<code>HANDLE_PCT = 0.4%</code> 与 <code>(W - HP) / 2</code>（S5 修正态）两态都在</li>
   <li><b>I7</b> 零手填 px：产品区（<code>ldk-*</code>）规则里 <code>border-radius</code> 一律走 token ／ <code>inherit</code> ／ <code>%</code>（把手圆点＝真源的 <code>50%</code>），⛔ 不写死 px</li>

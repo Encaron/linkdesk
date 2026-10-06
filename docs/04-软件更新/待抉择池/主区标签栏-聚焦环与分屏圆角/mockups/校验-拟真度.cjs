@@ -9,7 +9,7 @@
  *   I1  真 token 同源：本图 `:root` / `[data-theme="light"]` 的每个 token 与 `src/index.css` **逐值相等**
  *   I2  零硬编码色：真源 token 块**之外**的 `<style>` 里不许出现 `#hex`
  *   I3  真类名：本图每个 `ldk-*` 类名要么在真源里存在，要么是已登记的**提案类名**
- *   I4  现状规则逐字：`.demo-current .ldk-group-pane-focused` 声明集 = `src/index.css` 同名规则声明集
+ *   I4  现状规则逐字：`.demo-current .ldk-group-pane-focused` 声明集 = **立案基线快照**（`BASELINE_COMMIT`，⛔ 不是活源码）里同名规则声明集
  *   I5  拟改规则在位：覆盖层环的五条声明（inset / border / border-radius / z-index / pointer-events）全在
  *   I6  缝法则＋几何真源同源：`constants.ts` 的 `SURFACE_SEAM_INSET_PX = 2` ＋ `tokens.ts` 派生口径 = 图内 JS 口径；
  *       且实况台按真件百分比几何跑（`HANDLE_PCT = 0.4%` 与「先扣缝再分」`(W - HP) / 2` 两态都在——症状 S5）
@@ -31,6 +31,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { execFileSync } = require("child_process");
 
 const dir = __dirname;
 const repo = path.resolve(dir, "../../../../..");
@@ -61,6 +62,26 @@ const readRel = (r) => {
     return null;
   }
 };
+/** 🔴 I4 的「现状」真源＝**立案基线快照**（首次把本夹加进仓库的那一笔）＝图里「现状」引用的那版代码。
+ *  诊断图引用的是**修前**；修复一旦落地，活源码必然与图分岔 ⇒ 若 I4 拿活源码当真源，
+ *  这条断言落地后**恒假**，等于反过来逼图把「现状」改画成修后（毁掉图的用途）。
+ *  改造先例：`已落地/共享输入框圆角与候选名漏译` 的同一门落地后 76/77 红（同一种漂移，只是没治）。
+ *  ⛔ 钉 SHA 不钉 `HEAD~n`；⛔ 读不到基线时 I4 判红，**不许**静默退回活源码。 */
+const BASELINE_COMMIT = "5d68368e3c170456b9f02fe0975f8ecfb4b5a333";
+const B8 = BASELINE_COMMIT.slice(0, 9);
+/** 取立案基线那一版文件（git 历史是这件事唯一的恒真源）；读不到 ⇒ `null` ⇒ 由调用方判红 */
+function readBaseline(rel) {
+  try {
+    return execFileSync("git", ["show", `${BASELINE_COMMIT}:${rel}`], {
+      cwd: repo,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 8 * 1024 * 1024,
+    });
+  } catch {
+    return null;
+  }
+}
 const norm = (s) => s.replace(/\s+/g, " ").trim();
 /** 取 `<style>` 内容——CSS 断言只扫它 */
 function cssOf(html) {
@@ -185,12 +206,19 @@ function audit(htmlText) {
   info.push(`本图用到 ldk-* 类名 ${used.size} 个（真源命中 ${[...used].filter((c) => real.has(c)).length} ／ 提案 ${[...used].filter((c) => PROPOSED.includes(c)).length}）`);
   ok("I3", unknown.length === 0, `这些 ldk-* 类名在真源里不存在、也不是已登记提案类名：${unknown.join(", ")}`);
 
-  /* ── I4 现状规则逐字 ── */
-  const realRing = decls(findBlock(realIndexCss, ".ldk-group-pane-focused"));
+  /* ── I4 现状规则逐字（真源＝立案基线快照，见 BASELINE_COMMIT） ──
+     ⚠️ 与 I1 的分工：I1（token 表）钉**活**源码——主题契约变了图就得跟；I4（这条规则）钉**基线**——图引用的是修前。 */
+  const baselineRaw = readBaseline(REL.index);
+  const baselineCss = baselineRaw == null ? null : stripComments(baselineRaw);
+  const baseRing = baselineCss == null ? [] : decls(findBlock(baselineCss, ".ldk-group-pane-focused"));
+  const liveRing = decls(findBlock(realIndexCss, ".ldk-group-pane-focused"));
   const mockRing = decls(findBlock(css, ".demo-current .ldk-group-pane-focused"));
-  const sameRing = JSON.stringify(realRing) === JSON.stringify(mockRing);
-  info.push(`现状环声明集：真源 [${realRing.join(" | ")}] ／ 本图 [${mockRing.join(" | ")}]`);
-  ok("I4", sameRing && realRing.length > 0, `本图的「现状」环声明与 src/index.css:272-275 不逐字相同（真源 [${realRing.join(" | ")}] ≠ 本图 [${mockRing.join(" | ")}]）`);
+  const sameRing = baselineCss != null && JSON.stringify(baseRing) === JSON.stringify(mockRing);
+  info.push(`现状环声明集：立案基线 ${B8} [${baseRing.join(" | ")}] ／ 本图 [${mockRing.join(" | ")}]`);
+  info.push(`活源码同名规则 [${liveRing.join(" | ")}]——${JSON.stringify(liveRing) === JSON.stringify(baseRing) ? "＝基线（本案未动这条）" : "≠ 基线（本案已动这条 ⇒ I4 真源必须钉基线）"}`);
+  ok("I4", sameRing && baseRing.length > 0, baselineCss == null
+    ? `拿不到立案基线快照（\`git show ${B8}:${REL.index}\` 失败）——I4 缺真源，⛔ 不判绿`
+    : `本图的「现状」环声明与立案基线 ${B8} 的 ${REL.index} 不逐字相同（基线 [${baseRing.join(" | ")}] ≠ 本图 [${mockRing.join(" | ")}]）`);
 
   /* ── I5 拟改规则在位 ── */
   const fixBody = findBlock(css, ".demo-fix .ldk-group-pane-focused::after");
