@@ -105,7 +105,9 @@ function main() {
   if (!present || repos.length === 0) {
     console.log(
       `⚠️ 插件容器不在场（${container}）⇒ **插件域跳过**（本腿对插件域是空转，⛔ 不是「已干净」）；` +
-        "壳域照常判。有容器时用 `npm run check:foreign-command-ids` 走全量。",
+        "壳域照常判；**例外账本的「过期例外」核对同跳**——外仓 id 宇宙来自扫插件仓，宇宙为空时" +
+        "任何例外都显得「一条没放行」，核对结果无意义（2026-10-06 CI 实证假红）。" +
+        "有容器时用 `npm run check:foreign-command-ids` 走全量。",
     );
   }
 
@@ -131,7 +133,8 @@ function main() {
   const shellHits = findForeignRefs({ files: shellFiles, ownership, selfIds: [SHELL_ID] }).map((h) => ({ ...h, repo: SHELL_ID }));
 
   // 例外只对**壳域**开（插件域是硬耦合，没有例外这回事）
-  const { kept, passed, violations } = applyExceptions(EXCEPTIONS, shellHits);
+  // 「过期例外」核对只在判定宇宙完整（容器在场）时有意义——见 applyExceptions opts 注
+  const { kept, passed, violations } = applyExceptions(EXCEPTIONS, shellHits, { judgeStale: repos.length > 0 });
 
   if (report.length) {
     console.log(`ℹ️ 第三方仓命中 ${report.length} 处（⛔ 只报不判红、不代改）：`);
@@ -210,6 +213,11 @@ function selfTest() {
     "🔴 负控⑦：**过期例外**（今天一条也没放行）⇒ 报 stale-exception",
     applyExceptions(good, []).violations.some((v) => v.kind === "stale-exception"),
     true,
+  ]);
+  cases.push([
+    "正控⑧：judgeStale:false（容器缺席模式）⇒ 过期核对跳过、零违规",
+    applyExceptions(good, [], { judgeStale: false }).violations.length,
+    0,
   ]);
   cases.push([
     "🔴 负控⑧：例外缺**到期条件** ⇒ 报 exception-incomplete（⛔ 不许写「以后再删」之外的空话）",

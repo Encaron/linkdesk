@@ -380,9 +380,12 @@ export function findPlacementShapes(files) {
  *      （逼人删条目，而不是让白名单越积越宽——那正是「白名单吃掉门禁」的死法）。
  * @param {{file: string, id: string, why: string, until: string}[]} entries
  * @param {{rel: string, id: string}[]} hits 本次全部原始命中（未扣除例外）
+ * @param {{judgeStale?: boolean}} [opts] `judgeStale:false` = 跳过「过期例外」核对——**只该在
+ *   判定宇宙不完整时用**（R1 的外仓 id 宇宙来自扫插件仓；容器缺席 ⇒ 宇宙为空 ⇒ 任何例外都
+ *   显得「一条没放行」，核对结果无意义。2026-10-06 CI 实证：无容器假红 stale-exception）。
  * @returns {{kept: any[], passed: any[], violations: any[]}}
  */
-export function applyExceptions(entries, hits) {
+export function applyExceptions(entries, hits, { judgeStale = true } = {}) {
   const violations = [];
   const passed = [];
   const kept = [];
@@ -398,12 +401,14 @@ export function applyExceptions(entries, hits) {
     if (hit) passed.push({ ...h, why: hit.why, until: hit.until });
     else kept.push(h);
   }
-  for (const e of entries) {
-    if (!hits.some((h) => h.rel === e.file && (e.id === "*" || e.id === h.id))) {
-      violations.push({
-        kind: "stale-exception",
-        msg: `例外条目「${e.file}」（id=${e.id}）今天**一条违规也没放行** ⇒ 过期例外，删掉它（到期条件：${e.until}）`,
-      });
+  if (judgeStale) {
+    for (const e of entries) {
+      if (!hits.some((h) => h.rel === e.file && (e.id === "*" || e.id === h.id))) {
+        violations.push({
+          kind: "stale-exception",
+          msg: `例外条目「${e.file}」（id=${e.id}）今天**一条违规也没放行** ⇒ 过期例外，删掉它（到期条件：${e.until}）`,
+        });
+      }
     }
   }
   return { kept, passed, violations };
