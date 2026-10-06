@@ -2,7 +2,7 @@
 /**
  * R9 · uiHint 渲染体共享化门禁（`check-ui-hint-renderer-shared.mjs`）。
  *
- * 判据出处：`docs/04-软件更新/待抉择池/分段预览色块边缘串色/06-尾巴总账与验收.md`
+ * 判据出处：`docs/04-软件更新/已落地/分段预览色块边缘串色/06-尾巴总账与验收.md`
  *   —— 判据 T-A / T-B / T-C 在 §一，14 uiHint × 3 renderHint × type 词表逐条账在 §二/§三/§四，
  *      本腿要补的那个洞（G-1）写在 §八。账本（机器真相源）= `scripts/ui-hint-renderer-ledger.json`。
  *
