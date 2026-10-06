@@ -190,6 +190,8 @@ span.ldk-plugin-card-icon-glyph{font-size:var(--font-size-lg);line-height:1;}
 .settings-assoc-row .settings-assoc-select{margin-left:auto;min-width:190px;}
 .settings-assoc-ext{flex:0 0 92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono);font-size:var(--font-size-sm);color:var(--accent-hover);}
 .settings-assoc-pill{display:inline-block;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;padding:1px 8px;border-radius:var(--radius-pill);background:var(--bg-input);color:var(--text-secondary);font-size:var(--font-size-xs);line-height:1.6;white-space:nowrap;}
+.settings-assoc-why{flex:0 1 auto;min-width:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--font-size-2xs);color:var(--text-muted);} /* C5 分档：仅显示名命中时标出命中理由（真件同类 muted 小字先例＝.settings-row-desc） */
+.settings-assoc-why b{color:var(--text-secondary);font-weight:600;}
 .settings-assoc-pill--user{color:var(--accent-hover);border:1px solid var(--accent);}
 .settings-assoc-pill--auto{color:var(--status-connected);}
 .settings-assoc-pill--cand{color:var(--warning);}
@@ -289,7 +291,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.settings-row-gear
       <li><b>I8 空态</b>：多候选区空 → `.settings-assoc-empty` 说明行；搜索无匹配 → 「没有匹配的类型或插件」（组恒保留豁免不变）。</li>
       <li><b>I9 OS 通用行（C3c）</b>：子节标题「系统「打开方式」登记」＝`prop.group` 声明（竖杠子节真骨架）；开关＝通用 Toggle，副标题/描述走壳声明与 SectionSubtitle 下方小字——OsFollowBlock 退役。</li>
       <li><b>I10 聚合防爆炸（E32/E34 不变）</b>：候选集合相同 × 生效值相同 ⇒ 一行一格；单类单独设置 ⇒ 拆行；恢复自动 ⇒ 并回。聚合零语义。</li>
-      <li><b>I11 卡内过滤＋排序（C5 定案：做）</b>：<b>声明 ≥8 类</b>的卡展开后自带工具条——① <b>过滤框</b>（打字即滤本卡，⛔ 不碰左上全局搜索）：匹配<b>扩展名＋显示名</b>（输 python 命中 .py）、忽略大小写与前导点、命中数实时显示「命中 N / 45」、Esc 清空、卡一折叠即复位；② <b>排序 SelectBox</b>＝「按字母序」（默认）／「按默认排序」（＝<b>插件声明原始次序</b>，清单数组序透传，编辑器 45 类现在那种分区顺序）。两件都是<b>已有共享件</b>（InlineInput／SelectBox），<b>零新造</b>；行序与过滤＝共享聚合层的<b>纯函数</b>（一处实现，第三方渲染器同一口径）。点工具条右侧排序钮看真实 SelectBox 面板。<b>阈值实证</b>：本图 5 张卡仅编辑器（45 类）达标，其余 1/1/1/2 类均 &lt;8 ⇒ 无工具条（<b>是阈值，不是漏画</b>）；阈值＝组装方一处常量（`ManagerView` 里），⛔ 不进 `PluginCard`。</li>
+      <li><b>I11 卡内过滤＋排序（C5 定案：做）</b>：<b>声明 ≥8 类</b>的卡展开后自带工具条——① <b>过滤框</b>（打字即滤本卡，⛔ 不碰左上全局搜索）：匹配<b>扩展名＋显示名</b>（输 python 命中 .py）、忽略大小写与前导点、<b>分档</b>（2026-10-06 口径：扩展名命中在上、仅显示名命中沉底并在行内标「<b>类型名 …</b>」——命中理由必须可见）、命中数实时显示「命中 N / 45」、Esc 清空、卡一折叠即复位；② <b>排序 SelectBox</b>＝「按字母序」（默认）／「按默认排序」（＝<b>插件声明原始次序</b>，清单数组序透传，编辑器 45 类现在那种分区顺序）。两件都是<b>已有共享件</b>（InlineInput／SelectBox），<b>零新造</b>；行序与过滤＝共享聚合层的<b>纯函数</b>（一处实现，第三方渲染器同一口径）。点工具条右侧排序钮看真实 SelectBox 面板。<b>阈值实证</b>：本图 5 张卡仅编辑器（45 类）达标，其余 1/1/1/2 类均 &lt;8 ⇒ 无工具条（<b>是阈值，不是漏画</b>）；阈值＝组装方一处常量（`ManagerView` 里），⛔ 不进 `PluginCard`。</li>
     </ol>
   </div>
   <b>组件账（共享层交付 · C1=B）</b>
@@ -403,16 +405,27 @@ function rowHTML(label, desc, ctrl, gearItems){
 function renderNav(counts){
   $("nav").innerHTML = GROUPS.map(g => `<button class="nv${state.group===g?" active":""}" tabindex="0" onclick="state.group='${g}';renderGroup()"><span>${g}</span><span class="cnt">${counts[g]??0}</span></button>`).join("");
 }
-/* ── C5：卡体工具条（过滤＋排序）。两件控件都是**已有共享件**；行序与过滤＝**纯函数**（落共享聚合层，一处实现） ── */
+/* ── C5：卡体工具条（过滤＋排序）。两件控件都是**已有共享件**；行序与过滤＝**纯函数**（落共享聚合层，一处实现） ──
+   过滤分档（2026-10-06 定）：扩展名命中的行在上、**仅显示名命中**（类型名）的行沉底并标「类型名 …」——
+   两源都留（python 只靠显示名命中 .py），只是让「为什么这行在」可见；选定排序在各自撮内继续生效 */
 const FILTER_MIN = 8;   /* 声明 <8 类的卡不摆工具条（3 类的卡摆过滤框＝纯噪音）；阈值属组装方策略，⛔ 不进 PluginCard */
 const SORTS = [{value:"alpha", label:"按字母序"}, {value:"declared", label:"按默认排序"}];  /* declared＝插件声明原始次序（清单数组序，模型透传不重排） */
 function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
 function orderRows(id){ const a=(PLUGINS[id].assoc||[]).slice();
   return state.sortMode[id]==="declared" ? a : a.sort((x,y)=>x.localeCompare(y)); }   /* alpha 默认；declared 原样＝声明序 */
+function qOf(id){ const v=(state.filter[id]||"").trim().toLowerCase(); return v.charAt(0)==="."?v.slice(1):v; }
+function hitKind(x,q){   /* "ext"＝扩展名命中 ／ "name"＝仅显示名命中（类型名）／ ""＝不命中 */
+  if(x.includes(q)) return "ext";
+  return String(DISPLAY[x]||"").toLowerCase().includes(q) ? "name" : ""; }
 function filterRows(id){
-  const q=(state.filter[id]||"").trim().toLowerCase().replace(/^\./,"");
-  const rows=orderRows(id);
-  return q ? rows.filter(x => x.includes(q) || String(DISPLAY[x]||"").toLowerCase().includes(q)) : rows; }
+  const q=qOf(id);
+  if(!q) return orderRows(id);
+  /* C5 分档（2026-10-06 定：命中理由必须可见——否则输 c 时 .bat(Batch) 排头像乱排）：
+     扩展名命中在上、仅显示名命中沉底；选定排序在各自撮内继续生效（⛔ 分档不改排序语义）。
+     两源都留：显示名匹配删不得——python 只靠它命中 .py */
+  const strong=[], weak=[];
+  for(const x of orderRows(id)){ const k=hitKind(x,q); if(k==="ext") strong.push(x); else if(k==="name") weak.push(x); }
+  return strong.concat(weak); }
 function hitText(id){ return (state.filter[id]||"").trim()
   ? `命中 ${filterRows(id).length} / ${(PLUGINS[id].assoc||[]).length}` : ""; }
 function sortLabel(id){ return (SORTS.find(s=>s.value===(state.sortMode[id]||"alpha"))||SORTS[0]).label; }
@@ -491,7 +504,9 @@ function cardBodyHTML(id){
       options:[{value:"",label:"自动"}, ...hs.map(pid=>({value:pid, label:PLUGINS[pid].name}))],
       onPick:v => v==="" ? clearDefault(x) : setDefault(x, v) });
     const rgid="row_"+x; GEAR_MENUS[rgid]=[{label:"打开方式…（."+x+"）〔壳命令〕", fn:()=>toast("（示意）workbench.action.openWith {ext:'"+x+"'} → 居中弹出选择器","ok")}];
-    return `<div class="settings-assoc-row"><span class="settings-assoc-ext">.${x}</span>${pill}${ctrlSel}
+    const why = hitKind(x, qOf(id))==="name"     /* 仅显示名命中 ⇒ 把「为什么这行在」标出来（C5 分档） */
+      ? `<span class="settings-assoc-why">类型名 <b>${esc(DISPLAY[x]||"")}</b></span>` : "";
+    return `<div class="settings-assoc-row"><span class="settings-assoc-ext">.${x}</span>${pill}${why}${ctrlSel}
       <button class="settings-row-gear" aria-label=".${x} 的更多操作" title="更多操作（C4 定案：统一行齿轮机制）" onclick="gearMenu(event,'${rgid}')"><span class="codicon codicon-gear" aria-hidden="true"></span></button></div>`;
   }).join(""); }
 function renderGroup(){
@@ -569,7 +584,7 @@ function renderGroup(){
     /* 工具条：两件全是**已有共享件**——图标＋InlineInput 照设置页搜索栏同款结构；排序＝真件 SelectBox */
     const toolbar = (open && decl.length>=FILTER_MIN) ? `<div class="ldk-plugin-card-toolbar">
       <span class="famgr-filter"><span class="codicon codicon-search famgr-filter-icon" aria-hidden="true"></span>
-        <input class="ldk-inline-input ldk-inline-input--normal" value="${esc(state.filter[id]||"")}" placeholder="过滤 ${decl.length} 类…" aria-label="过滤文件类型（匹配扩展名与显示名）"
+        <input class="ldk-inline-input ldk-inline-input--normal" value="${esc(state.filter[id]||"")}" placeholder="过滤 ${decl.length} 类…" aria-label="过滤文件类型（先扩展名、后类型名；仅类型名命中的行有标注）"
           oninput="onFilter('${id}',this.value)" onkeydown="if(event.key==='Escape'){this.value='';onFilter('${id}','');}"></span>
       <span class="famgr-hit" id="hit_${id}">${hitText(id)}</span>
       ${selectBoxHTML("sort_"+id, { value: state.sortMode[id]||"alpha", label: sortLabel(id), options: SORTS,

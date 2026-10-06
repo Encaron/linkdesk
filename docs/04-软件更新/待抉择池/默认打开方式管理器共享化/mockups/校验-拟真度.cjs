@@ -164,6 +164,35 @@ setTimeout(() => {
   })());
   ok("阈值标注块仍在", $$(".famgr-anno").length === 1 && /是阈值，不是漏画/.test($(".famgr-anno").textContent));
 
+  /* ── K2. C5 过滤分档（2026-10-06 口径：扩展名命中在前、仅显示名命中沉底并标「类型名 …」） ──
+     ⚠️ 本段自持排序口径：段 G 早前把排序切到过 declared，这里先显式置回 alpha */
+  w.eval("state.sortMode.editor='alpha';renderGroup()");
+  const inpK = $(".ldk-plugin-card-toolbar input.ldk-inline-input");   /* ⚠️ 前面折叠/展开过卡 ⇒ 150 行捕获的 inp 已脱树 */
+  inpK.value = "c"; fire(inpK, "input");
+  const cRows = rowsOf("editor"), ext9 = ".c.cfg.cjs.cmd.cpp.css.jsonc.patch.scss";
+  ok("输 c ⇒ 17 行分档：前 9 行全是扩展名命中（按字母序）、沉底 8 行全是仅显示名命中且带「类型名 …」标注",
+    cRows.length === 17 &&
+      cRows.slice(0, 9).map((r) => r.querySelector(".settings-assoc-ext").textContent).join("") === ext9 &&
+      cRows.slice(0, 9).every((r) => !r.querySelector(".settings-assoc-why")) &&
+      cRows.slice(9).every((r) => !!r.querySelector(".settings-assoc-why")) &&
+      /类型名 Batch/.test(cRows[9].querySelector(".settings-assoc-why").textContent) &&
+      /类型名 TypeScript/.test(cRows[cRows.length - 1].querySelector(".settings-assoc-why").textContent),
+    cRows.map((r) => r.querySelector(".settings-assoc-ext").textContent).join(" "));
+  w.eval("state.sortMode.editor='declared';renderGroup()");
+  const dRows = rowsOf("editor");
+  ok("换「按默认排序」只换序不换集（仍 17 行；分档保持——首行＝声明序里第一个扩展名命中 .cjs，仅显示名命中的 8 行仍沉底）",
+    dRows.length === 17 && dRows[0].querySelector(".settings-assoc-ext").textContent === ".cjs" &&
+      dRows.slice(0, 9).every((r) => !r.querySelector(".settings-assoc-why")) &&
+      dRows.slice(9).every((r) => !!r.querySelector(".settings-assoc-why")),
+    dRows.map((r) => r.querySelector(".settings-assoc-ext").textContent).join(" "));
+  w.eval("state.filter.editor='';state.sortMode.editor='alpha';renderGroup()");
+  const inp2 = $(".ldk-plugin-card-toolbar input.ldk-inline-input");
+  inp2.value = "python"; fire(inp2, "input");
+  ok("输 python ⇒ 1 行 .py（纯显示名命中）且标「类型名 Python」",
+    extsOf("editor").length === 1 && extsOf("editor")[0] === ".py" && /类型名 Python/.test($(".settings-assoc-why")?.textContent || ""),
+    extsOf("editor").join(" "));
+  w.eval("state.filter.editor='';renderGroup()");   /* 复原：段 L 从干净态起跑 */
+
   // ── L. 通用 / 外观 演示行的控件也是真件 SelectBox ──
   click($$(".setnav .nv")[0]);
   ok("通用组：字体行＝SelectBox", !!$('[data-sel="row_font"]'));
