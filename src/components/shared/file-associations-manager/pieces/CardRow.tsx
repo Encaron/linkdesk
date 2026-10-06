@@ -44,6 +44,10 @@ export default function CardRow({ row, onPick, gearItems = [], nameOnlyHit = fal
   const { t } = useTranslation();
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
 
+  // 候选显示名＝**插件声明的原文**（模型只给原文）⇒ 渲染前一律过 `t()`；「自动」那一项是本件拼的 i18n 标签。
+  // 🔴 下拉项与 `onPick` 的 label **必须同一份**（消费方拿 label 拼回执文案）——两处各算一次＝回执仍是原文。
+  const options = [{ value: "", label: t("自动") }, ...row.options.map((o) => ({ ...o, label: t(o.label) }))];
+
   // 六态文案（模型只给枚举，文案住呈现件）
   const pill = (() => {
     switch (row.state) {
@@ -58,13 +62,16 @@ export default function CardRow({ row, onPick, gearItems = [], nameOnlyHit = fal
       case "auto":
         return { tone: "auto", label: t("默认（自动）") };
       case "lost":
-        return { tone: "cand", label: t("候选 · 默认：{{name}}", { name: row.currentName ?? "—" }) };
+        return {
+          tone: "cand",
+          label: t("候选 · 默认：{{name}}", { name: row.currentName === undefined ? "—" : t(row.currentName) }),
+        };
       case "sole":
         return { tone: "auto", label: t("唯一处理者（自动）") };
       case "orphan":
         return {
           tone: "cand",
-          label: t("无人处理 · 角色兜底（{{name}}）", { name: row.currentName ?? "—" }),
+          label: t("无人处理 · 角色兜底（{{name}}）", { name: row.currentName === undefined ? "—" : t(row.currentName) }),
         };
     }
   })();
@@ -95,17 +102,19 @@ export default function CardRow({ row, onPick, gearItems = [], nameOnlyHit = fal
       {row.dangling && <span className="ldk-famgr-pill ldk-famgr-pill--dang">{t("失效覆盖")}</span>}
       {nameOnlyHit && row.typeLabel && (
         <span className="ldk-famgr-why">
-          {t("类型名")} <b>{row.typeLabel}</b>
+          {t("类型名")} <b>{t(row.typeLabel)}</b>
         </span>
       )}
       <SelectBox
         className="ldk-famgr-select"
         value={row.value}
-        options={[{ value: "", label: t("自动") }, ...row.options]}
+        options={options}
         title={t(".{{ext}} 的默认打开方式", { ext: row.ext })}
         onChange={(v) => {
-          const picked = row.options.find((o) => o.value === v);
-          onPick([row.ext], v || null, picked?.label);
+          const picked = options.find((o) => o.value === v);
+          // 「自动」项没有插件标签 ⇒ 报 `undefined`（恢复自动只报 `null`，⛔ 不报一个假名字；
+          // 消费方的回执在 `pluginId === null` 那支本来就不用 name）
+          onPick([row.ext], v || null, v ? picked?.label : undefined);
         }}
       />
       {gearItems.length > 0 && (

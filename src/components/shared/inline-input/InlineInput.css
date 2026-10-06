@@ -6,6 +6,7 @@
 
 .ldk-inline-input {
   border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-primary);
   font-family: inherit;

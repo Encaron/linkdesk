@@ -1,6 +1,6 @@
 /* 校验-拟真度.cjs —— 本 case 设计图的**拟真度机械门**（`mockups/01-设计图-输入框圆角与候选名翻译-同屏对照.html`）
  *
- * 运行：在仓库根执行　`node "docs/04-软件更新/待抉择池/共享输入框圆角与候选名漏译/mockups/校验-拟真度.cjs"`
+ * 运行：在仓库根执行　`node "docs/04-软件更新/已落地/共享输入框圆角与候选名漏译/mockups/校验-拟真度.cjs"`
  *       负控（篡改 fixture，必须跑红）　`node "…/校验-拟真度.cjs" --self-test`
  *       （jsdom 自仓库 node_modules 解析；本文件须为 .cjs —— 仓库是 "type":"module"）
  *

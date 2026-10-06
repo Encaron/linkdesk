@@ -60,7 +60,12 @@ export interface HandlerSnapshot {
   isCurrent: boolean;
 }
 
-/* ── 模型输出 ── */
+/* ── 模型输出 ──
+ * 🔴 渲染纪律：模型里的**显示名字段**（`CardModel.name` · `ExtRowModel.currentName` ·
+ * `ContestedRowModel.effectiveName` · `ExtRowModel.typeLabel` · `RowOption.label`）一律是
+ * **i18n 原文**（插件作者在清单/声明里写的那串字），渲染前必须过 `t()`；`pluginId` 是**机器名**，
+ * ⛔ 不翻——两个来源别混（兜底值是 id 时 `t()` 无键回落原文＝原样显示，不会误伤）。
+ */
 
 /**
  * 卡内一行的状态——**六态**（四态 ＋ 单家可锁 ＋ 无人处理兜底）：
@@ -82,6 +87,7 @@ export type RowSortMode = "alpha" | "declared";
 /** 行内下拉的候选（**不含**「自动」项——那一项是视图拼的 i18n 标签）。 */
 export interface RowOption {
   value: string;
+  /** 插件显示名（`HandlerSnapshot.title`）——**i18n 原文**，渲染前由视图 `t()` */
   label: string;
 }
 

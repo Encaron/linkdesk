@@ -11,12 +11,14 @@
  *   ④ D2 定案：卡体 0 行 ⇒ 一行 muted「没有匹配的类型」，**零按钮**（⛔ 不带清空入口）。
  *   ⑤ C5 卡内工具条：阈值边界（声明 8 类出 / 7 类不出）、过滤分档与理由标注、折叠复位、
  *      防抖窗口内折叠不写回过期词、以及「改怎么看」绝不触发写入面（E1/E2/E7/E9/E10/E11/E17）。
+ *   ⑥ 英文态显示名收口：模型给的显示名（插件声明原文）在**英文环境**下五处都＝译名——这是唯一
+ *      能覆盖「值是运行时变量、本该翻却没人翻」这一格的红灯（两道字面量门＋键覆盖门原理上都照不到）。
  * @vitest-environment jsdom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { MenuItemDescriptor } from "@linkdesk/contracts";
-import "../../../i18n";
+import i18n from "../../../i18n";
 import ManagerView from "./ManagerView";
 import { buildManagerModel } from "./deriveModel";
 import type {
@@ -369,5 +371,126 @@ describe("ManagerView——C5 卡内工具条", () => {
     expect(filterBox()!.getAttribute("aria-label")).toBe(
       "过滤文件类型（先扩展名、后类型名；仅类型名命中的行有标注）",
     );
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+ * ⑥ 英文态显示名收口（轴二的主验收）
+ *
+ * 轴二的风险形状是「**值是运行时变量、本该翻却没人翻**」——两道字面量门（只收 `t()` 里的
+ * 中文）与 `audit-i18n --strict`（只看 `t()` 用到的键）**原理上都照不到**它。唯一能红的
+ * 断言＝**灌一份中英词典、切英文环境、看那几处文字到底出什么**。
+ *
+ * 夹具的显示名一律**虚构**（`演示甲`/`锈语言` 一类），词典也是本测试自己 `addResourceBundle`
+ * 塞进去的（插件自带词典并入 `translation` 命名空间的等价物）——⛔ 不依赖壳里任何真实词条，
+ * 于是「把 `t()` 从任一处删掉」必然让本块变红。
+ * ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** 虚构的插件自带词典（键＝插件作者写的中文原文，值＝译名） */
+const EN_DICT = { 演示甲: "Demo A", 演示乙: "Demo B", 锈语言: "Rust" };
+
+/** 两插件争同一类：`demo-a` 当前生效 ⇒ `demo-a` 那行 `auto`、`demo-b` 那行 `lost`（带「默认：X」） */
+const EN_WORLD: BuildInput = {
+  plugins: [
+    { pluginId: "demo-a", name: "演示甲", exts: [{ ext: "rs", raw: "rs", typeLabel: "锈语言" }] },
+    { pluginId: "demo-b", name: "演示乙", exts: [{ ext: "rs", raw: "rs" }] },
+  ],
+  handlersByExt: {
+    rs: [
+      { pluginId: "demo-a", title: "演示甲", typeLabel: "锈语言", isCurrent: true },
+      { pluginId: "demo-b", title: "演示乙", typeLabel: "锈语言", isCurrent: false },
+    ],
+  },
+  overrideTable: {},
+};
+
+/** 八类声明（够出卡内工具条）——首类挂**中文**类型名，其余沿用 EIGHT 的英文类型名 */
+const EN_EIGHT: BuildInput = {
+  plugins: [
+    {
+      pluginId: "demo-a",
+      name: "演示甲",
+      exts: [{ ext: "rs", raw: "rs", typeLabel: "锈语言" }, ...EIGHT.slice(1)],
+    },
+  ],
+  handlersByExt: {},
+};
+
+const enRender = (input: BuildInput) => render(<ManagerView model={buildManagerModel(input)} onPick={vi.fn()} />);
+
+const cardTitles = () =>
+  [...document.querySelectorAll<HTMLElement>(".ldk-plugin-card-title")].map((e) => e.textContent);
+
+const optionTexts = () =>
+  [...document.querySelectorAll<HTMLElement>(".ldk-selectbox-item")].map((e) => e.textContent!.trim());
+
+describe("ManagerView——英文态显示名收口（i18n 调用点）", () => {
+  beforeEach(async () => {
+    i18n.addResourceBundle("en", "translation", EN_DICT, true, true);
+    await i18n.changeLanguage("en");
+  });
+  afterEach(async () => {
+    cleanup(); // 先卸载再切语言——免得已卸载的组件被 languageChanged 唤起重渲（act 噪声）
+    await i18n.changeLanguage("zh");
+  });
+
+  it("卡头 ＋ 竞争区「当前单击打开：X」＝ 译名（不是插件声明的中文原文）", () => {
+    enRender(EN_WORLD);
+    expect(cardTitles()).toEqual(["Demo A", "Demo B"]);
+    expect(document.querySelector<HTMLElement>(".ldk-famgr-desc b")!.textContent).toBe("Demo A");
+  });
+
+  it("竞争区下拉项 ＝ 译名（整格那处：显示名与写入面 label 同源）", () => {
+    enRender(EN_WORLD);
+    fireEvent.click(contestedSelect());
+    const texts = optionTexts();
+    expect(texts).toContain("Demo A");
+    expect(texts).toContain("Demo B");
+    expect(texts.join("|")).not.toContain("演示"); // ⛔ 一个中文原文都不许漏进下拉
+  });
+
+  it("卡体行下拉项 ＋ 「候选 · 默认：X」胶囊内插值 ＝ 译名", () => {
+    enRender(EN_WORLD);
+    fireEvent.click(cardToggle(1)); // 第二张卡（demo-b）——它的 rs 行是 lost 态
+    const pill = document.querySelector<HTMLElement>(".ldk-plugin-card-body .ldk-famgr-pill")!;
+    expect(pill.textContent).toContain("Demo A"); // 插值里那个 X 也过了 t()
+    expect(pill.textContent).not.toContain("演示甲");
+
+    fireEvent.click(document.querySelector<HTMLElement>(".ldk-plugin-card-body .ldk-selectbox-trigger")!);
+    const texts = optionTexts();
+    expect(texts).toContain("Demo A");
+    expect(texts).toContain("Demo B");
+    expect(texts.join("|").split("演示")[0]).toBe(texts.join("|")); // 同位断言：下拉里没有「演示」
+  });
+
+  it("「仅类型名命中」的理由标注 ＝ 译名（类型名也是插件声明的原文）", async () => {
+    enRender(EN_EIGHT);
+    fireEvent.click(cardToggle()); // 声明 8 类 ⇒ 得先展开才摆工具条（E1 阈值）
+    await typeFilter("锈");
+    expect(bodyExts()).toEqual(["rs"]);
+    expect(document.querySelector<HTMLElement>(".ldk-famgr-why b")!.textContent).toBe("Rust");
+    expect(whyTexts()[0]).not.toContain("锈语言");
+  });
+
+  it("兜底值是 pluginId（机器名）⇒ 原样显示（词典没有该键，⛔ 不是漏译）", () => {
+    enRender({
+      plugins: [{ pluginId: "demo-c", name: "demo-c", exts: [decl("rs")] }],
+      handlersByExt: {
+        rs: [{ pluginId: "demo-c", title: "demo-c", typeLabel: "demo-c", isCurrent: true }],
+      },
+      overrideTable: {},
+    });
+    expect(cardTitles()).toEqual(["demo-c"]);
+  });
+
+  it("词典里没有这条显示名 ⇒ 原样中文（`t()` 无键回落原文——预期行为，⛔ 不是 bug）", () => {
+    enRender({
+      plugins: [{ pluginId: "demo-d", name: "未收录名", exts: [decl("rs")] }],
+      handlersByExt: {
+        rs: [{ pluginId: "demo-d", title: "未收录名", typeLabel: "误语言", isCurrent: true }],
+      },
+      overrideTable: {},
+    });
+    expect(cardTitles()).toEqual(["未收录名"]);
   });
 });

@@ -230,6 +230,20 @@ const { t } = useTranslation();
 <button>{t("发送")}</button>  // the i18n key = the plugin UI's source text (a Chinese plugin uses Chinese, an English/French plugin uses its own language)
 ```
 
+**🔴 Don't mix up the two sources — same `t()`, opposite verdicts:**
+
+| The string in your hand | What to do |
+|:--|:--|
+| A text field the host **has already resolved** (`bellTitle` / `panelTitle` / group labels returned by `pool.getLayout()` / `notifications.list()`, …) | **Display as-is** — do ⛔ not pass it through `t()` a second time (source: [01-plugin-api-contract](01-plugin-api-contract.md), read-surface rules ③) |
+| Text **you declared yourself** (plugin display name from the manifest, a file type's `displayName`, an option `label`, …) arriving back to you **as a variable** | **Must go through `t(thatVariable)` before rendering** — ⛔ never render the raw variable |
+
+```tsx
+{row.handlers.map((h) => <option key={h.pluginId} value={h.pluginId}>{t(h.label)}</option>)}
+//                                                                          ^^^^^^^^ declared source text arrives as a variable ⇒ wrap it in t()
+```
+
+**Why this needs its own rule:** both literal gates (`audit-i18n` / the dictionary gate) only collect **Chinese literals inside `t()`**; a **variable form** like `{name}` is invisible to them by construction — write it wrong and nothing turns red, you only see it when **the English UI actually shows Chinese**. Same goes when a shared component hands display names back to you as data (e.g. `RowOption.label` from `@linkdesk/ui`).
+
 ---
 
 ## 7. Sidebar List Item Selection → `onMouseDown` (not `onClick`)

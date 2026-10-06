@@ -39,6 +39,10 @@ export default function ContestedRow({ row, onPick, gearItems = [] }: ContestedR
   const { t } = useTranslation();
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
 
+  // 候选显示名＝**插件声明的原文**（模型只给原文）⇒ 渲染前过 `t()`；「自动」那一项是本件拼的 i18n 标签。
+  // 🔴 下拉项与 `onPick` 的 label **同一份**（消费方拿 label 拼回执文案），见 CardRow 同款注释。
+  const options = [{ value: "", label: t("自动") }, ...row.handlers.map((h) => ({ ...h, label: t(h.label) }))];
+
   // 行标签：最多 3 类直列，超出走「等 N 类」（`.ts / .tsx / .js 等 6 类`）
   const label = extLabelHead(row.exts);
   const more = row.exts.length > EXT_LABEL_MAX ? t(" 等 {{count}} 类", { count: row.exts.length }) : "";
@@ -69,7 +73,7 @@ export default function ContestedRow({ row, onPick, gearItems = [] }: ContestedR
         <span className="ldk-famgr-desc">
           {/* 显示名走 <b>：描述里生效者是加粗的（一眼看到「现在是谁」） */}
           {t("当前单击打开：")}
-          <b>{row.effectiveName}</b>
+          <b>{t(row.effectiveName)}</b>
           {sourceWord}
           {t(" · 候选 {{count}} 个", { count: row.handlerCount })}
           {splitHint}
@@ -80,11 +84,12 @@ export default function ContestedRow({ row, onPick, gearItems = [] }: ContestedR
         <SelectBox
           className="ldk-famgr-select"
           value={row.value}
-          options={[{ value: "", label: t("自动") }, ...row.handlers]}
+          options={options}
           title={t("{{types}} 的默认打开方式", { types: label })}
           onChange={(v) => {
-            const picked = row.handlers.find((h) => h.value === v);
-            onPick(row.exts, v || null, picked?.label);
+            const picked = options.find((o) => o.value === v);
+            // 同 `CardRow`：「自动」项报 `undefined`（恢复自动只报 `null`）
+            onPick(row.exts, v || null, v ? picked?.label : undefined);
           }}
         />
         {gearItems.length > 0 && (
