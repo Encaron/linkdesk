@@ -47,6 +47,8 @@ export const UI_SURFACE = [
   "src/components/shared/source-badge/**",
   "src/components/shared/file-icon/**",
   "src/components/shared/file-associations-manager/**", // 2026-10-06「默认打开方式管理器共享化」：聚合纯函数 + 呈现件套件（判据 A 收官件）
+  "src/components/shared/color-field/**", // 2026-10-06《分段预览色块边缘串色》尾巴 T1：`color` hint 渲染体
+  "src/components/shared/object-editor/**", // 同上 T2：`object`/`array` type 的键值编辑器
   "src/components/shared/file-path-input/**",
   "src/components/shared/font-family-select/**",
   "src/components/shared/form-row/**",

@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 35 组件（30 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
+ *   - 37 组件（32 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
@@ -92,6 +92,14 @@ export { default as BackgroundImagePicker } from "@shared/image-picker/Backgroun
 export { default as EffectiveBadge } from "@shared/effective-badge/EffectiveBadge";
 export { default as SourceBadge } from "@shared/source-badge/SourceBadge";
 export { SegmentPreviewText, SegmentPreviewSwatch } from "@shared/segment-preview/SegmentPreview";
+// 2026-10-06《分段预览色块边缘串色》案 · 尾巴收口（判据 A）——宿主声明的 `color` hint 与
+//   `object`／`array` type 的渲染体转正归共享层：原两处住官方设置插件私有件
+//   （`renderControl.tsx` 的自画色块 ＋ `ObjectEditor.tsx`），换一只设置插件这两类键就画不出来 = GUI 退化。
+//   · `ColorField`——色块 ＋ 即时写文本输入；调色弹层仍是共享 `ColorPicker`，由调用方接线（本件不起弹层）。
+//   · `ObjectEditor`——键值行（键改名/布尔/数字/文本/删行/加行）；文案经 props 注入，件内⛔ 无 i18n
+//     （`newKeyBase` 是**数据键名**，故意不翻译）。
+export { default as ColorField } from "@shared/color-field/ColorField";
+export { default as ObjectEditor } from "@shared/object-editor/ObjectEditor";
 
 export type { RunStatusCommand } from "@shared/readonly-text/useStatusPolling";
 export type { BackgroundImagePickerProps } from "@shared/image-picker/BackgroundImagePicker";

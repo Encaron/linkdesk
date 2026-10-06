@@ -1,0 +1,106 @@
+/* ObjectEditor——object/array 配置项键值对编辑器样式（@linkdesk/ui）。
+ * 2026-10-06《分段预览色块边缘串色》案 T2：自官方设置插件整件上移
+ *（原 SettingsView-objectEditor.css，逐条值不变——.settings-object-editor* → .ldk-object-editor*）。
+ * 类名 ldk- 前缀（硬约束 23）；颜色全走 CSS 变量（硬约束 1），零 hex；
+ * 三个输入框吃宿主类 ldk-input——外观归壳，本件只补尺寸/节奏。 */
+
+.ldk-object-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.ldk-object-editor__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ldk-object-editor__key {
+  flex: 1;
+  min-width: 80px;
+  font-size: var(--font-size-sm);
+  padding: 2px 6px;
+  height: calc(24px * var(--ui-scale));
+}
+
+.ldk-object-editor__colon {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* 两个方形按钮（布尔开关／删行）同几何：合用一条规则——⛔ 不各写一份（那份重复会被
+   `npm run duplication` 的 jscpd 判红：9 行 / 61 token 就够触发）。差异只留在各自那条。 */
+.ldk-object-editor__toggle,
+.ldk-object-editor__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(24px * var(--ui-scale));
+  height: calc(24px * var(--ui-scale));
+  padding: 0;
+  background: transparent;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+
+.ldk-object-editor__toggle {
+  border: 1px solid var(--border);
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.ldk-object-editor__toggle:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.ldk-object-editor__toggle--on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.ldk-object-editor__toggle--on:hover {
+  color: var(--accent);
+}
+
+.ldk-object-editor__value {
+  flex: 1;
+  min-width: 60px;
+  font-size: var(--font-size-sm);
+  padding: 2px 6px;
+  height: calc(24px * var(--ui-scale));
+}
+
+.ldk-object-editor__delete {
+  border: none;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.ldk-object-editor__delete:hover {
+  color: var(--error);
+  background: var(--hover-overlay);
+}
+
+.ldk-object-editor__add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.ldk-object-editor__add:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}

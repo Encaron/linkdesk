@@ -6,6 +6,7 @@
     "Badge": { "since": "0.2.13" },
     "Button": { "since": "0.2.13" },
     "CardRow": { "since": "0.2.52" },
+    "ColorField": { "since": "0.2.52" },
     "ColorPicker": { "since": "0.2.13" },
     "Combobox": { "since": "0.2.13" },
     "ContestedRow": { "since": "0.2.52" },
@@ -22,6 +23,7 @@
     "ManagerView": { "since": "0.2.52" },
     "MarkdownView": { "since": "0.2.13" },
     "NumberInput": { "since": "0.2.13" },
+    "ObjectEditor": { "since": "0.2.52" },
     "OpenWithPicker": { "since": "0.2.48" },
     "OverlayPortal": { "since": "0.2.13" },
     "PluginCard": { "since": "0.2.48" },
@@ -101,5 +103,5 @@
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 92
+  "count": 94
 }

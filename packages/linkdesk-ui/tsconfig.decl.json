@@ -72,7 +72,12 @@
     "../../src/components/shared/open-with-picker/**/*.tsx",
     // 2026-10-06「默认打开方式管理器共享化」1.5：聚合纯函数 + 呈现件套件（含 pieces/ 子目录）
     "../../src/components/shared/file-associations-manager/**/*.ts",
-    "../../src/components/shared/file-associations-manager/**/*.tsx"
+    "../../src/components/shared/file-associations-manager/**/*.tsx",
+    // 2026-10-06《分段预览色块边缘串色》案尾巴 T1/T2：`color` 控件与 object/array 编辑器的渲染体
+    "../../src/components/shared/color-field/**/*.ts",
+    "../../src/components/shared/color-field/**/*.tsx",
+    "../../src/components/shared/object-editor/**/*.ts",
+    "../../src/components/shared/object-editor/**/*.tsx"
   ],
   "exclude": [
     "../../src/components/shared/**/*.test.ts",

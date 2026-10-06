@@ -19,6 +19,19 @@
 - 📄 **AI 助手回执引对了按钮名**：设置页那枚按钮的提示语里此前把它叫「重置为默认项」，照这个名字在设置页找不到按钮；回执已改引真名「重置此设置」。
 - 🧪 **新增体检 8 条把口径钉死**：命令元数据体检（分类前缀不许手写进名字、分类取值须住正典词表、状态词不许占用归属格、菜单不许冗余覆写命令名），每条都配反例自测——以后新命令写歪会当场报红，不靠人眼。
 
+### 作者轴
+
+- `@linkdesk/ui` **0.2.48**（2026-10-06，独立发版——共享 UI 包，软件本体不动）：**「默认打开方式」管理器的组装视图**随包出货——`ManagerView` ＋ `CardRow` / `ContestedRow` / `buildManagerModel`（含 `orderRows` / `filterRows` / `normalizeExt*` 推导族）＋ `ldk-famgr` 族段。第三方的设置插件从此能把这张管理界面**整只**装进自己的页面，不必自画一份（补记：该版已发 npm，本文件当时漏记）。
+- `@linkdesk/ui` **0.2.49**（2026-10-06，独立发版）：**⚠️ 该版的分段预览修复未生效**——只给 `.ldk-segment-preview` 基类补了 `background-origin: border-box`，而 `.ldk-segment-preview--split` 用的是 **`background` 简写**（`--accent` 同）：简写会把 `background-origin` 一并重置回 `padding-box`，基类那行于是白写。逐像素实测与修前**逐字节相同**（左右边框列 `#F2F2F2` / `#272727`，即用户报的那对互换）。真正落地的修法见下一条 **0.2.50**。
+- `@linkdesk/ui` **0.2.50**（2026-10-06，独立发版）：**分段预览色块左右各 1px 串色**的真修复——两个变体改用**长手**（`background-image: linear-gradient(...)` / `background-color: var(--accent)`），让基类的 `background-origin: border-box` 活下来（并写下 🔴 注释：本件变体一律禁 `background` 简写）。根因是**铺贴几何**而非配色：全局 `box-sizing: border-box` 下盒子的 padding-box 比 border-box 每边少 1px，而渐变本身没有固有尺寸、`background-repeat` 缺省 repeat ⇒ 铺贴块（50×28）在 52×30 的绘制区里环绕一圈，多出的左右两列压在 `--separator` 边框底下——边框不透明时被盖住，半透明主题（`aurora-glass` 0.06 等）就露成「左侧取到渐变末列 = 浅、右侧取到首列 = 深」。实测读数：修后左/右边框列 `#272727` / `#F2F2F2`（＝分别取到深/浅两半并叠 6% 白），修前为 `#F2F2F2` / `#272727`。铺贴几何是盒子自己的属性 ⇒ 修在基类，凡用本件者一并正确；设置插件那份同名几何（私有 `.settings-segmented-swatch` / `.settings-font-tone-half`）同笔删除，改吃本共享原子。
+- `@linkdesk/plugin-sdk` **0.1.86**（2026-10-06，同链独立发版）：随包三份清单**同笔重生**——`schemas/host-css-names.json` 补收共享管理器族段 `ldk-famgr-*` 22 类 ＋ `ldk-plugin-card-toolbar`（1.2／1.8 欠账，共 23 类）；`schemas/ui-surface.json` 补 `SETTINGS_HIDDEN_HINTS` / `isSettingsHiddenHint` 两条（`since 0.2.52`，账 90 → 92）；`schemas/host-reserved.json` 添三条**退役登记**（`settings-assoc-*` 族段 → `ldk-famgr-*`、`OsFollowBlock`、`FileAssociationsManagerView`，落点均为「无落点」——插件私有件随件删除、壳源码面零残留）。作者照清单写样式、照账算地板，都不会误判。
+- `@linkdesk/contracts` **0.1.42**（2026-10-06，同链独立发版）：`PoolQuickPickItem` 的 `checked` / `category` 两处**注释级**更新（类型面一字未增删）——`checked` 写明两语义并存（①「当前生效项」②「开关态」，⛔ 不再添第三用途）、`category` 写明「归属／分类／附注专用，状态不许借这一格」。
+- `@linkdesk/plugin-docs` **0.1.71**（2026-10-06，同链独立发版）：作者手册中英同笔——`ui` 新共享件一节、`19-组件速查` 补 `ManagerView` 与卡内工具条槽、`10-如何造一个设置插件` 补共享件段、`05-插件UI写法规约` §12 补槽位与族段、`16-命名规范` 补族段账指针。
+- `@linkdesk/ui` **0.2.51**（2026-10-06，独立发版——共享 UI 包，软件本体不动）：**两件设置控件转正归共享层**，出处是《分段预览色块边缘串色》案尾巴 T1／T2——`ColorField`（色块 ＋ 即时写文本输入；调色弹层仍由调用方接共享 `ColorPicker`，本件不起层）＋ `ObjectEditor`（键值行：键改名／布尔／数字／文本／删行／加行；文案一律经 props 注入，件内⛔ 无中文、不做翻译）。此前 `color` / `object` / `array` 三类键的渲染体住**设置插件私有件**（含私有 CSS），现按判据 A（消费**宿主声明**——`uiHint` 就是宿主声明——的控件住壳或共享件）整件上移；换一只设置插件那三类键原样画不出来 ＝ GUI 退化，故这一笔是必搬而非顺手搬。设置插件那份私有 CSS 族段 `.settings-color-*` 同笔删除、改吃本共享件（两件 `since 0.2.52`）。
+- `@linkdesk/plugin-sdk` **0.1.87**（2026-10-06，同链独立发版）：随包两份清单**同笔重生**——`schemas/ui-surface.json` 账 92 → **94 条面**（新增 `ColorField` / `ObjectEditor` 两条，`since 0.2.52`）；`schemas/host-css-names.json` 补收 **11 类**（`ldk-color-field` / `__swatch`，`ldk-object-editor` 及 `__row` / `__key` / `__colon` / `__toggle` / `__toggle--on` / `__value` / `__delete` / `__add`）。作者照清单写样式、照账算地板，都不会误判。
+- `@linkdesk/plugin-docs` **0.1.73**（2026-10-06，同链独立发版）：`19-组件速查`（中英）随 `ui-surface` 同笔重生——37 组件 ／ 94 条面。⚠️ **订正：0.1.72 是空转版**——真源重生后漏跑 `npm run docs:build`（产物目录 `packages/plugin-docs/docs/` 要从 `docs/03-插件制造/**` 拷一次），于是发出去的那份速查仍是旧的（`ColorField` / `ObjectEditor` 两行不在包里）。npm 一发不可撤 ⇒ 只能抬版本重发：0.1.73 已**核过包内实际内容**（解包后 `0.2.52` 行五件齐全），`npm run check` 里 `[plugin-docs] 产物与真源一致` 那条腿现已转绿——这条腿就是为这种漏拷而设的。
+- `@linkdesk/ui` **0.2.52**（2026-10-06，独立发版）：**同件 CSS 去重**——上一版 `ObjectEditor.css` 里「布尔开关」与「删行」两个方形按钮各写了一份同样几何（9 行 ／ 61 token），被 `npm run duplication` 的 jscpd（配置 `exitCode: 1`）当场判红；改成**两条选择器合用一条规则**，差异（`border` / `transition`）留各自那条，渲染结果一字不变。字节变了 ⇒ 货架核对会认作漂移，故抬版本重发（0.2.51 的组件面与本版相同，只是带着那份重复）。
+
 ## v0.2.51（2026-10-06）
 
 **快捷键显示与「当前项」标记归一：同一条命令在软件里任何地方都是同一种写法，同一个「当前生效项」都是同一种标记。**

@@ -1,0 +1,24 @@
+/* ColorField——「颜色」控件渲染体样式（@linkdesk/ui）。
+ * 2026-10-06《分段预览色块边缘串色》案 T1：自官方设置插件整段上移
+ *（原 SettingsView-rows.css 的 .settings-color-control / .settings-color-swatch，几何值与 hover 逐字不变）。
+ * 类名 ldk- 前缀（硬约束 23）；颜色全走 CSS 变量（硬约束 1），零 hex；
+ * 文本框吃宿主类 ldk-input——外观归壳，本件⛔ 不重定义它。 */
+
+.ldk-color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ldk-color-field__swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--separator);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ldk-color-field__swatch:hover {
+  border-color: var(--accent);
+}
