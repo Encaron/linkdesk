@@ -29,6 +29,23 @@ export function MyView() {
 
 > 🔥 Styling goes through host CSS variables — there is no need (and no reason) to override theme hex values inside a plugin. i18n strings go through the host language system, and the text inside components is translated by the host.
 
+## Manager views (whole sections, not just single controls)
+
+Some host contributions are not a single control but a **whole manager section**. Those views ship here too, built on the same contracts, so every settings renderer shows the same thing:
+
+- `ManagerView` — the assembly view for the host group that declares `uiHint: "fileAssociationsManager"` (the "default Open With" manager): a "types with multiple handlers" section plus a "browse by plugin" card list. Feed it a `ManagerModel` produced by `buildManagerModel({ plugins, handlersByExt, overrideTable, search })` and an `onPick(exts, pluginId, label)` writer (`pluginId: null` = restore automatic). `contestedGearItems` / `cardGearItems` / `cardRowGearItems` inject gear-menu items — command ids stay yours; omit them and no gear is drawn.
+- `PluginCard` — the plugin-card shell (identity + icon, controlled expand, gear menu, disabled state) with an optional `toolbar` slot. The slot renders as **its own row** between the card head and the card body (`.ldk-plugin-card-toolbar`); the card head click is expand/collapse, so never nest interactive controls inside it.
+- `CardRow` / `ContestedRow` — the card-body row (extension + state pill + per-row dropdown + gear) and the contested-group row (whole-group dropdown), for when you assemble the sections yourself.
+- **One aggregation, no second implementation**: `buildManagerModel` (six row states, same-signature group merging, stale-override detection), `orderRows` / `filterRows` (row order — declaration order preserved verbatim — plus filtering and the hit-reason split via `hitKindOf`), `extractDeclaredExtensions` / `normalizeExt` / `normalizeExtList` / `overrideKeyOf` / `readOverride` / `extLabelHead`, and `isSettingsHiddenHint` / `SETTINGS_HIDDEN_HINTS` (the canonical hidden-slot hint list — a renderer that does not recognise a hint in this list must not draw that row at all).
+- Styling of these views is the host's: the class family is `ldk-famgr-*` (shared components never borrow a host plugin's family such as `settings-*`).
+
+**Two supported ways to consume them** — pick either, they are equally first-class:
+
+1. **Take the whole view** (the default skin the official settings plugin uses): `ManagerView` + the shared model + your writer. Zero re-derivation, and your renderer still owns grouping/search/wiring.
+2. **Draw it yourself** from the same pieces: keep `buildManagerModel` and lay out `PluginCard` / `CardRow` / `ContestedRow` (or your own markup) however you like — the data surface is all existing contracts, so a renderer can also fetch the data itself.
+
+What you must **not** do is re-implement the row states, the group merging, or the row order/filter rules in your own plugin: they live exactly once, in the helpers above.
+
 ## Design constraints
 
 - **Single source, copying forbidden**: this package's `dist/` is a build artifact (the source lives only in the LinkDesk shell repository), and plugins depend on the npm distribution directly; do not fork components into a plugin and maintain them there.

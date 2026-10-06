@@ -194,6 +194,11 @@ watching it for you).
   hook names are **not judged**; test and mock files are not scanned.
 - **Informed bypass**: `// eslint-disable-next-line linkdesk/no-reserved-class-name -- reason` (same id as the
   namespace leg).
+- **Where the family ledger lives**: the `ldk-` **family segments** owned by the host and the shared components
+  (including `ldk-famgr` from 2026-10-06—the class family of the file-associations manager assembly view) are not
+  registered in the table above; their registry is the two reserved-name tables in
+  [05-UI Conventions §12](05-ui-conventions.md) (guarded both ways by `check-reserved-names-doc-sync`). You may
+  **consume** them only, ⛔ never borrow a family segment to name your own elements.
 - **Host definition set unreadable** ⇒ the leg reports "**unverified**" instead of "0 issues"—that means a broken
   install; reinstall `@linkdesk/plugin-sdk`.
 

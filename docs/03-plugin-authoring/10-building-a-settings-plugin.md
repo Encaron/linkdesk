@@ -97,6 +97,8 @@ import { InlineInput, SelectBox, FormRow } from "@linkdesk/ui";
 
 > The official settings implementation (`src/views/SettingsView.tsx`, in the settings plugin's own repo) imports from `@linkdesk/ui` — copy the import line as-is, no extra project configuration needed.
 
+**Exclusive capability groups are not private to a renderer either — they are shared parts too.** A whole manager section like the "default Open With" manager (the host group declaring `uiHint: "fileAssociationsManager"`) reaches a renderer as the shared **assembly view** `ManagerView` plus the shared `buildManagerModel` / `orderRows` / `filterRows`: recognise that hint and the whole group goes to `ManagerView`; a renderer that does not recognise the hint uses `isSettingsHiddenHint` to decide which rows not to draw. So a second settings UI's author can build it fully **without reading the official set's source** — their job is only the *assembly* (dispatch, grouping, search, wiring), and ⛔ row states / group merging / row order and filtering are never written a second time inside a renderer.
+
 ## The composition layer is free-form — same data, laid out however you like
 
 The data API only determines "what data exists"; **the layout is your free play**. Current references:
