@@ -9,11 +9,24 @@
 # (app-builder-lib/toolsets/7zip.js) and only exists after a packaging run -- not a build input
 # we can depend on. Pinning the official binary keeps the bootstrapper build reproducible offline
 # (once fetched) and auditable (hash below).
+#
+# The URL below is 7-Zip's *rolling* "current release" path -- it silently serves whatever the
+# newest build is, so this pin WILL trip whenever upstream cuts a release (2026-10-07: 26.03 ->
+# 26.04, the tag run died here with an empty "got" in the runner's log). Re-pin deliberately,
+# never by copying the hash out of a failing log:
+#   1. download it yourself and hash it -- it must match what the runner reported;
+#   2. `.\7zr.exe` with no args must print "7-Zip (r) <Version> (x86) : Igor Pavlov : Public
+#      domain : <date>" -- that banner, not the $Version label, is the real version. Compare it
+#      with the previous binary and with https://www.7-zip.org/download.html;
+#   3. it should be a rebuilt binary (nearly every byte differs), not a same-size near-copy --
+#      a byte here and there is what a tampered download looks like.
+# Also refresh $Version to the banner version: it is only a label (the cache filename and the
+# "downloading ..." line), and it had drifted to 25.01 while the binary was already 26.03.
 
 param(
     [string]$Proxy = "",
-    [string]$Version = "25.01",
-    [string]$Sha256 = "ad4c82fadcbdf93c03b4fc440f300509c7d60c5c2f4d183e35d9d70d6957037d"
+    [string]$Version = "26.04",
+    [string]$Sha256 = "256feca8e274e5da655e2a284fabafd9f554365eb164862089dacd4e8276d282"
 )
 
 $ErrorActionPreference = "Stop"
