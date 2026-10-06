@@ -269,6 +269,28 @@
 /* 🔴 真件**没有** `.ldk-selectbox-item:hover` 规则（焦点靠 JS 挪类）——本图同样不写 */
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════
+   ④ 壳输入框契约 `.ldk-input`——逐字抄 src/index.css:255-265。§A5 的**契约基准格**：
+   同一个界面里**跟着 app.surfaceRadius 变**的那只输入框，用来对照共享件 InlineInput 不跟。
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+.ldk-input{
+  background:var(--bg-input);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:4px 8px;
+  color:var(--text-primary);
+  font-size:var(--font-size-sm);
+  transition:border-color 150ms;
+  outline:none;
+}
+.ldk-input:focus{border-color:var(--accent);}
+
+/* §A5「圆角标尺对照排」的排布（纯脚手架，非产品件）——⛔ 不给格子里的产品件加任何本图自造的
+   边框/底色/圆角声明（那会覆盖真件声明、把对照做假）；布局只用 flex 与宽高。 */
+.rrow{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+.rbox{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+.rbox .tag{font-size:var(--font-size-2xs);color:var(--text-muted);line-height:1.5;}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
    以下＝**图的脚手架**（页头/分栏/格子/图例/卡壳）。⛔ 不是产品件，别照抄进产品。
    ══════════════════════════════════════════════════════════════════════════════════════════ */
 *{box-sizing:border-box;}
@@ -318,10 +340,11 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
   <h1>01 · 共享输入框圆角 与 候选名漏译 —— 改前／改后同屏对照</h1>
   <p class="lead">
     两个轴同一个病根：<b>契约写了、实现少一行，而门禁照不到这一行</b>。轴一＝共享件 <code>InlineInput</code> 缺一条
-    <code>border-radius</code> 声明（恒直角、不跟主题）；轴二＝管理器把<b>插件显示名的中文原文</b>直接喂给渲染
-    （<b>从未调用 <code>t()</code></b>）。🟥＝今天（改前）／🟩＝本方案（改后）。
-    <br>⚠️ 本图是<b>可交互预览</b>：输入框可聚焦（看焦点环是否跟着圆）、下拉可点开（看候选文字）、右下角可切
-    <b>主题</b>与 <b>--ui-scale</b>（看高度随缩放、圆角跟着主题）。
+    <code>border-radius</code> 声明 ⇒ <b>没接上圆角标尺</b>（<code>app.surfaceRadius</code> 拉到 32、别的件全变圆，
+    它纹丝不动）；轴二＝管理器把<b>插件显示名的中文原文</b>直接喂给渲染（<b>从未调用 <code>t()</code></b>）。
+    🟥＝今天（改前）／🟩＝本方案（改后）。
+    <br>⚠️ 本图是<b>可交互预览</b>：输入框可聚焦（看焦点环是否跟着圆）、下拉可点开（看候选文字）、上方可切
+    <b>主题</b>／<b>--ui-scale</b>／<b>组件圆角</b>（圆角那条就是实机外观设置页的 <code>app.surfaceRadius</code> 滑杆）。
   </p>
   <div class="bar">
     <button class="btn" id="themeBtn" type="button">切换主题：暗 / 亮</button>
@@ -329,13 +352,36 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
     <span class="readout" id="stateReadout">data-theme=（空＝兜底暗色）｜--ui-scale=1</span>
   </div>
 
+  <!-- ══ 圆角控制条 ＝ 实机「外观 · 圆角」组的真件 ══════════════════════════════════════════════
+       标题/描述/单位照抄 src/App/config/appearance.ts 的 app.surfaceRadius 声明（uiHint:slider · unit:px ·
+       0–RADIUS_MAX_PX · group「圆角」 · title「组件圆角」）。
+       🔴 机制照真源 ThemeEngine/tokens.ts:247-258（applyRadiusAbsolute）＋ applyOverrides ①/①c：
+         · 六档 --radius-xs/sm/md/lg/xl/2xl **平铺全 = 滑杆值**（0 → 全方角；32 → 最圆润）
+         · --radius-pill 也随滑杆（滑到 ≥10 时浏览器 clamp 半边长天然又成胶囊）
+         · --radius-full 是 50% 几何值，⛔ 不参与
+         · 没拉过 = presence 门控一个键都不写 ⇒ 六档走主题（没主题写则壳 :root 静态兜底 2/4/6/8/16）
+       本图因此能证明本案的取景：**滑杆拉到头，全软件一起变圆，唯独没声明圆角的 InlineInput 不动**。 -->
+  <div class="bar">
+    <b>app.surfaceRadius</b>
+    <button class="btn" id="radiusMinus" type="button" aria-label="组件圆角减 1px">−</button>
+    <input id="radiusRange" type="range" min="0" max="32" step="1" value="8"
+           aria-label="组件圆角（app.surfaceRadius，绝对 px，0 方角 / 32 最圆润）" style="width:200px;">
+    <button class="btn" id="radiusPlus" type="button" aria-label="组件圆角加 1px">＋</button>
+    <span class="readout" id="radiusReadout"></span>
+    <button class="btn" id="radiusReset" type="button">重置为跟随主题</button>
+  </div>
+
   <!-- ═══════════════════════════════════════════════════════════════════════════════════════
        §A 轴一 · 输入框圆角：三处消费位 × 改前/改后
        ═══════════════════════════════════════════════════════════════════════════════════════ -->
   <h2>§A 轴一 · 输入框圆角（三处消费位 × 改前／改后）</h2>
   <p class="lead">
-    同一支共享件、三处消费位。🟥 改前＝直角（真件此刻<b>连 radius 声明都没有</b>）；🟩 改后＝基类补
-    <code>border-radius: var(--radius-sm)</code>（4px，与仓内输入框契约 <code>.ldk-input</code> 同源）。
+    同一支共享件、三处消费位。🟥 改前＝直角（真件此刻<b>连 radius 声明都没有</b> ⇒ 圆角滑杆拉到头也拉不动它）；
+    🟩 改后＝基类补 <code>border-radius: var(--radius-sm)</code>——<b>接上圆角标尺</b>。
+    ⚠️ 圆角<b>不是</b>写死 4px：<code>4px</code> 只是壳 <code>:root</code> 的静态兜底值，实机这个值由
+    <code>app.surfaceRadius</code> 拉（见上方控制条）；六档今天被滑杆<b>写成同一个值</b>，所以接哪一档等价——
+    选 <code>--radius-sm</code> 只为与仓内输入框契约 <code>.ldk-input</code>（<code>src/index.css:258</code>）同源、
+    不新造概念。
   </p>
 
   <h3>A1 · 设置页「搜索设置」（消费位：settings 插件 · <code>size="normal"</code> · 32px 档）</h3>
@@ -350,13 +396,13 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
       <div class="note">真源 InlineInput.css 基类 8 条声明 —— <b>无 border-radius</b><br>高度 calc(32px * var(--ui-scale)) · font-size: var(--font-size-md)</div>
     </div>
     <div class="cell after">
-      <span class="tag">🟩 改后 · --radius-sm（4px）</span>
+      <span class="tag">🟩 改后 · 接上标尺 var(--radius-sm)</span>
       <div class="stage"><div class="demo-toolbar">
         <span class="codicon codicon-search ldk-famgr-filter-icon" aria-hidden="true"></span>
         <input id="in-a1-after" class="ldk-inline-input ldk-inline-input--normal"
-               placeholder="搜索设置" aria-label="搜索设置（改后：4px 圆角）">
+               placeholder="搜索设置" aria-label="搜索设置（改后：接上圆角标尺）">
       </div></div>
-      <div class="note">同一支件 ＋ <b>恰一条</b> border-radius: var(--radius-sm)<br>其余 8 条声明逐字不变（几何零位移）</div>
+      <div class="note">同一支件 ＋ <b>恰一条</b> border-radius: var(--radius-sm)<br>其余 8 条声明逐字不变（几何零位移）· 4px 只是壳 <code>:root</code> 静态兜底，实机由 <code>app.surfaceRadius</code> 拉</div>
     </div>
   </div>
 
@@ -375,12 +421,12 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
       <div class="note">.ldk-famgr-filter{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0}</div>
     </div>
     <div class="cell after">
-      <span class="tag">🟩 改后 · --radius-sm（4px）</span>
+      <span class="tag">🟩 改后 · 接上标尺 var(--radius-sm)</span>
       <div class="stage">
         <span class="ldk-famgr-filter">
           <span class="codicon codicon-search ldk-famgr-filter-icon" aria-hidden="true"></span>
           <input id="in-a2-after" class="ldk-inline-input ldk-inline-input--normal"
-                 placeholder="过滤 45 类…" aria-label="过滤文件类型（改后：4px 圆角）">
+                 placeholder="过滤 45 类…" aria-label="过滤文件类型（改后：接上圆角标尺）">
         </span>
         <div class="hint" style="margin-top:8px;">↑ 同一支件 → 这一处<b>不需要</b>任何单独改动</div>
       </div>
@@ -400,11 +446,11 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
       <div class="note">高度 calc(22px * var(--ui-scale)) · font-size: var(--font-size-sm) · padding: 0 4px</div>
     </div>
     <div class="cell after">
-      <span class="tag">🟩 改后 · 同一档 4px</span>
+      <span class="tag">🟩 改后 · 同一支件接上标尺</span>
       <div class="stage"><div class="host">
         <span class="ldk-famgr-ext">.tsx</span>
         <input id="in-a3-after" class="ldk-inline-input ldk-inline-input--compact"
-               value="App.tsx" aria-label="行内重命名（改后：4px 圆角）">
+               value="App.tsx" aria-label="行内重命名（改后：接上圆角标尺）">
       </div></div>
       <div class="note">22px 高配 4px 圆角<b>已有生产先例</b>：<br>file-tree 22px 筛选框（SearchView.css:109，1.0.24 修的同一个病）</div>
     </div>
@@ -426,12 +472,58 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════════════════════
+       §A5 轴一 · 圆角标尺对照排：谁在跟、谁不跟（本图**主证据**）
+       ═══════════════════════════════════════════════════════════════════════════════════════ -->
+  <h3>A5 · 拉一拉上方的 <code>app.surfaceRadius</code>：这四件全变，共享件输入框（改前）纹丝不动</h3>
+  <div class="stage">
+    <div class="rrow">
+      <div class="rbox">
+        <span class="tag">壳输入框契约 <code>.ldk-input</code><br><code>border-radius: var(--radius-sm)</code></span>
+        <input id="in-a5-contract" class="ldk-input" style="width:190px;" value="读写 .md 的默认打开方式"
+               aria-label="壳输入框契约（跟圆角标尺）">
+      </div>
+      <div class="rbox">
+        <span class="tag">共享件 SelectBox 触发器<br><code>radius-xs</code></span>
+        <span class="ldk-selectbox" data-sel="a5" data-items="按字母序|按默认排序" style="min-width:190px;">
+          <button class="ldk-selectbox-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+            <span class="ldk-selectbox-label">按字母序</span>
+            <span class="codicon codicon-chevron-down ldk-selectbox-arrow" aria-hidden="true"></span>
+          </button>
+        </span>
+      </div>
+      <div class="rbox">
+        <span class="tag">状态胶囊 <code>.ldk-famgr-pill</code><br><code>radius-pill</code>（也随滑杆）</span>
+        <span class="ldk-famgr-pill ldk-famgr-pill--auto">自动</span>
+      </div>
+      <div class="rbox">
+        <span class="tag">🟥 共享件 InlineInput（改前）<br><b>基类无 radius 声明</b></span>
+        <input id="in-a5-before" class="ldk-inline-input ldk-inline-input--normal ldk-inline-input-noradius"
+               style="width:190px;" value="过滤 45 类…" aria-label="共享件输入框（改前：不跟圆角标尺）">
+      </div>
+      <div class="rbox">
+        <span class="tag">🟩 共享件 InlineInput（改后）<br><code>var(--radius-sm)</code></span>
+        <input id="in-a5-after" class="ldk-inline-input ldk-inline-input--normal" style="width:190px;"
+               value="过滤 45 类…" aria-label="共享件输入框（改后：跟圆角标尺）">
+      </div>
+    </div>
+    <div class="hint" style="margin-top:12px;">
+      ↑ 滑到 0 ＝全方角；滑到 32 ＝全最圆润。<b>六档 + pill 被滑杆写成同一个值</b>（真源
+      <code>applyRadiusAbsolute</code>＋<code>applyOverrides</code> ①c）⇒「接上标尺」＝选哪一档都等价，
+      <code>--radius-full</code>（50% 几何值）不参与。⚠️ 胶囊滑到 ≥10 时浏览器按半边长 clamp 又长得像胶囊、
+      滑到 2–4 就成小圆角方块——这是设计口径（用户覆盖＝主动统一），不是 bug。本排只用产品类名；
+      本图其余处的 <code>.cell</code>／<code>.btn</code> 是脚手架，别当产品件看。
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════════════════════
        §B 轴一 · 三条边界（照 E1/E2/E3 画出来）
        ═══════════════════════════════════════════════════════════════════════════════════════ -->
   <h2>§B 轴一 · 边界三态（E1 主题跟随 ／ E2 缩放不乘圆角 ／ E3 焦点环随圆）</h2>
   <p class="lead">
-    E1：把主题切成亮色（上方按钮）——<b>底色/边框/文字跟着换，圆角是 token 所以也跟主题走</b>（硬编码 4px 就断了这条路）。
-    E2：切 <code>--ui-scale</code> 到 1.25 —— <b>高度跟着变（40px / 27.5px），圆角仍 4px</b>（radius token 是 px、不参与缩放，与
+    E1：<b>拉上方圆角滑杆</b>（<code>app.surfaceRadius</code>，0→32）——🟩 改后那格跟着变、🟥 改前那格纹丝不动；
+    把主题切成亮色则底色/边框/文字跟着换（圆角是 token 所以随主题走，写死 px 就断了这条路）。
+    E2：切 <code>--ui-scale</code> 到 1.25 —— <b>高度跟着变（40px / 27.5px），圆角值不动</b>（radius token 是绝对 px、
+    不参与缩放，与
     <code>.ldk-input</code>／<code>SelectBox</code> 同口径）。E3：<b>点进任何输入框</b>——焦点环
     <code>box-shadow: 0 0 0 1px var(--accent)</code> 画在同一元素的 border-box 上，<b>环自然随圆角变圆</b>，⛔ 不会出现「方角环套圆角框」。
   </p>
@@ -645,7 +737,7 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
     <tr><td>I1</td><td><b>真 token 逐值同源</b>：本图每个 radius/font token 与 <code>src/index.css</code> 逐字节相等</td><td>解析两文件、比字符串</td></tr>
     <tr><td>I2</td><td><b>亮色块同源</b>：<code>[data-theme="light"]</code> 的值照抄 <code>src/index.css:140-187</code></td><td>同上；并断言切换按钮真改 <code>data-theme</code> 属性</td></tr>
     <tr><td>I3</td><td><b>真类名</b>：本图用到的每个 <code>ldk-*</code> 类名都能在对应真源 CSS 里找到</td><td>逐文件 grep 类名</td></tr>
-    <tr><td>I4</td><td><b>改后 ＝ 真件 ＋ 恰一条</b>：<code>.ldk-inline-input</code> 的声明集 ＝ 真源声明集 ∪ {<code>border-radius: var(--radius-sm)</code>}</td><td>解析两处声明集做差集</td></tr>
+    <tr><td>I4</td><td><b>改后 ＝ 真件 ＋ 恰一条</b>：<code>.ldk-inline-input</code> 的声明集 ＝ 真源声明集 ∪ {<code>border-radius: var(--radius-sm)</code>}——就是这一条让它<b>接上圆角标尺</b></td><td>解析两处声明集做差集</td></tr>
     <tr><td>I5</td><td><b>真件 DOM 形状</b>：InlineInput＝裸 <code>input</code>（无 wrapper／无子元素）；SelectBox＝trigger＞label＋codicon-chevron-down；面板＝dropdown＞ul＞li</td><td>jsdom 结构查询</td></tr>
     <tr><td>I6</td><td><b>⛔ 零手绘图标</b>：产品区 <code>svg</code> 数为 0（图标全走真 codicon 字形）</td><td><code>querySelectorAll</code> ＋ 真字体文件存在性</td></tr>
     <tr><td>I7</td><td><b>⛔ 零手填 px</b>：产品区类名的 <code>font-size</code> 无裸 px；圆角一律 <code>var(--radius-*)</code>；高度一律 <code>calc(Npx * var(--ui-scale))</code></td><td>正则扫 CSS 文本</td></tr>
@@ -655,7 +747,11 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
     <tr><td>I11</td><td><b>焦点机制＝真件</b>：悬停/方向键只换 <code>ldk-selectbox-item-focus</code> 类，<b>节点同一</b>、焦点项恰 1</td><td>节点引用比对</td></tr>
     <tr><td>I12</td><td><b>开合可交互</b>：点触发器开／再点关；⛔ 真件无 <code>.ldk-selectbox-item:hover</code> 规则（本图也不写）</td><td>事件派发 ＋ CSS 文本反断言</td></tr>
     <tr><td>I13</td><td><b>边界两态在位</b>：缺词条＝原文、无 name＝pluginId（且都<b>不</b>被翻掉）</td><td>文本断言</td></tr>
-    <tr><td>I14</td><td><b>负控有效</b>：<code>--self-test</code> 篡改 token 值／删 radius 声明／把候选文字改回中文 ⇒ 对应断言必须<b>跑红</b></td><td>内存内改 fixture 复跑</td></tr>
+    <tr><td>I14</td><td><b>负控有效</b>：<code>--self-test</code> 篡改 token 值／删 radius 声明／改滑杆上限／改机制键表／给改前格偷加声明／把候选文字改回中文 ⇒ 对应断言必须<b>跑红</b></td><td>内存内改 fixture 复跑</td></tr>
+    <tr><td>I15</td><td><b>滑杆＝真件</b>：控制条圆角滑杆 <code>min=0 / max=32 / step=1</code>，max 与真源 <code>RADIUS_MAX_PX</code> 同值（滑杆上限＝引擎 clamp 上限）</td><td>解析真源常量比数</td></tr>
+    <tr><td>I16</td><td><b>机制＝真源</b>：滑杆写<b>六档 ＋ <code>--radius-pill</code></b> 同值，<b>不写</b> <code>--radius-full</code>（50% 几何值）；六档键名与真源 <code>RADIUS_SCALE_STEPS</code> 派生一致（防两份清单漂移）</td><td>跨文件对账键集合</td></tr>
+    <tr><td>I17</td><td><b>presence 门控</b>：「重置为跟随主题」把六个档键 ＋ pill 的 inline 值<b>全摘除</b>（不写即主题，同真源 <code>resetsToTheme</code>）</td><td>点按钮后查 inline style</td></tr>
+    <tr><td>I18</td><td><b>改前格真无消费</b>：<code>.ldk-inline-input</code> 基类<b>与</b> <code>.ldk-inline-input-noradius</code> 都不含 <code>border-radius</code> ⇒ 滑杆拉到头它也不动（滑杆写的是根上的 token，没消费它的元素自然不动）</td><td>CSS 文本反断言</td></tr>
   </table>
 
   <footer>
@@ -742,6 +838,50 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
      --ui-scale＝改根上的自定义属性（实机由字号引擎 applyOverrides ④ 写）。 */
   var root = doc.documentElement;
   var readout = doc.getElementById("stateReadout");
+
+  /* ══ 组件圆角 app.surfaceRadius ═════════════════════════════════════════════════════════════
+     真机制（ThemeEngine/tokens.ts:247-258 applyRadiusAbsolute ＋ applyOverrides ①/①c）：
+       滑杆值 ⇒ **六档平铺全 = 滑杆值**（0 方角 / 32 最圆润）＋ **--radius-pill 也 = 滑杆值**；
+       --radius-full 是 50% 几何值，⛔ 不参与。写点＝根（实机 applyOverrides 就写 :root 同一处）。
+       未拉过 ＝ presence 门控一个键都不写 ⇒ 六档走主题（本图「重置为跟随主题」走的就是这条）。
+     🔴 六档键名与真源 types/theme.ts RADIUS_SCALE_STEPS（["xs","sm","md","lg","xl","2xl"]）同源——
+        机械门 I16 拿这份键表与真源派生结果对账，改名／漏项／把 full 混进来都会跑红。 */
+  var RADIUS_SCALE_KEYS = ["--radius-xs", "--radius-sm", "--radius-md", "--radius-lg", "--radius-xl", "--radius-2xl"];
+  var RADIUS_PILL_KEY = "--radius-pill";  /* ①c：用户覆盖生效时胶囊也随滑杆（≥10 浏览器 clamp 半边长又成胶囊） */
+  var RADIUS_WRITE_KEYS = RADIUS_SCALE_KEYS.concat([RADIUS_PILL_KEY]);  /* ⛔ 不含 --radius-full */
+  var radiusRange = doc.getElementById("radiusRange");
+  var radiusReadout = doc.getElementById("radiusReadout");
+  function applyRadius(px) {
+    RADIUS_WRITE_KEYS.forEach(function (k) { root.style.setProperty(k, px + "px"); });
+  }
+  function clearRadius() {  /* presence 门控：摘除即「跟随主题」 */
+    RADIUS_WRITE_KEYS.forEach(function (k) { root.style.removeProperty(k); });
+  }
+  function syncRadius() {
+    if (!radiusReadout || !radiusRange) return;
+    var px = Number(radiusRange.value);
+    var userSet = RADIUS_WRITE_KEYS.some(function (k) { return root.style.getPropertyValue(k) !== ""; });
+    radiusReadout.textContent = userSet
+      ? "app.surfaceRadius=" + px + "px ⇒ 六档 + pill 同写 " + px + "px（--radius-full 不动）"
+      : "app.surfaceRadius 未显式设置 ⇒ 六档走主题（presence 门控：不写即主题）";
+  }
+  function setRadius(px, write) {
+    var v = Math.max(0, Math.min(32, Math.round(px)));
+    if (radiusRange) radiusRange.value = String(v);
+    if (write) applyRadius(v);
+    syncRadius();
+  }
+  if (radiusRange) {
+    /* 本图加载即按默认主题的 md 档播种（真源 seeds.ts:92 从主题 radius-md 播种） */
+    setRadius(Number(radiusRange.value), true);
+    radiusRange.addEventListener("input", function () { setRadius(Number(radiusRange.value), true); });
+  }
+  var rMinus = doc.getElementById("radiusMinus");
+  if (rMinus) rMinus.addEventListener("click", function () { setRadius(Number(radiusRange.value) - 1, true); });
+  var rPlus = doc.getElementById("radiusPlus");
+  if (rPlus) rPlus.addEventListener("click", function () { setRadius(Number(radiusRange.value) + 1, true); });
+  var rReset = doc.getElementById("radiusReset");
+  if (rReset) rReset.addEventListener("click", function () { clearRadius(); syncRadius(); });
   function sync() {
     if (!readout) return;
     readout.textContent = "data-theme=" + (root.dataset.theme || "（空＝兜底暗色）") +
@@ -759,6 +899,7 @@ footer code{font-family:var(--font-mono);font-size:var(--font-size-2xs);color:va
     sync();
   });
   sync();
+  syncRadius();
 })();
 </script>
 </body>

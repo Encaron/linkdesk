@@ -1,7 +1,7 @@
 # 共享输入框圆角与候选名漏译（`InlineInput` 少一行声明 ＋ 插件显示名少一次 `t()`）
 
 > **状态：🔵 待拍板**（2026-10-06 立案）——用户点单两条：① 「给这个搜索框加上圆角功能，记得出设计图 html」② 「这个翻译问题**不仅仅是表面问题**」。本夹＝设计前置 ＋ 任务布置，⛔ **未拍板前不动一行代码**；设计图 [mockups/01](mockups/01-设计图-输入框圆角与候选名翻译-同屏对照.html)（可交互 · 真件拟真 · 机械门 `node mockups/校验-拟真度.cjs`）。
-> 两个轴同一个病根：**契约写了、实现少一行，而门禁照不到这一行**。轴一 = `InlineInput` 缺 `border-radius` 声明（恒直角、不跟主题）；轴二 = 管理器把**插件显示名的中文原文**直接喂给渲染（从未调用 `t()`）。两条都不是「功能没做」，是**共享件与视图各少一步**——所以本案的重点是**把「少的那一步」定出落点 ＋ 判断门禁能不能机械接住**（轴二见 [01 §六](01-方案与落点契约.md)：现有两道门原理上都看它不见）。
+> 两个轴同一个病根：**契约写了、实现少一行，而门禁照不到这一行**。轴一 = `InlineInput` 缺 `border-radius` 声明（恒直角 ⇒ **既不跟主题、更不跟 `app.surfaceRadius` 滑杆**）；轴二 = 管理器把**插件显示名的中文原文**直接喂给渲染（从未调用 `t()`）。两条都不是「功能没做」，是**共享件与视图各少一步**——所以本案的重点是**把「少的那一步」定出落点 ＋ 判断门禁能不能机械接住**（轴二见 [01 §六](01-方案与落点契约.md)：现有两道门原理上都看它不见）。
 
 ## 一、案由（2026-10-06，用户实机目视 + 复问）
 
@@ -24,10 +24,12 @@
 | 壳里**没有**给裸 `input` 兜底的圆角规则（radius 只挂具体类） | `src/index.css` radius 命中：`:227` xs ／ `:245` md ／ `:258` `.ldk-input` sm |
 | 仓内**事实上的输入框契约**是 `.ldk-input`：`bg-input` ＋ `border` ＋ `border-radius: var(--radius-sm)` ＋ `padding 4px 8px` | `src/index.css:255-262` |
 | radius 七档 token 在册（`xs 2 / sm 4 / md 6 / lg 8 / 2xl 16 / pill 999 / full 50%`），主题可整套覆盖 | `src/index.css:81-87`（注释：默认值 = 现状，不加载主题零视觉变化） |
+| 🔴 **但这些静态数不是圆角值的真源**：`app.surfaceRadius` 是 0–32 的**绝对 px 滑杆**，**一拉就把六档写成同一个值**（`--radius-pill` 同跟；`--radius-full` 50% 几何不参与） | 声明 `src/App/config/appearance.ts:251-264`；写面 `seeds.ts:324-330` ⇒ `tokens.ts:255-258`（`applyOverrides` ①／①c）；标尺单一权威 `constants.ts`（`RADIUS_MAX_PX = 32`／`clampRadiusPx`／`radiusTokenPx`）＋ `types/theme.ts:70` `RADIUS_SCALE_STEPS` |
+| ⚠️ **presence 门控**：用户从没碰过滑杆 ⇒ 六个键一个都不写 ⇒ 六档回落主题／壳静态兜底；且 **`--radius-xl` 没有静态兜底**（`index.css:81-87` 只有 xs/sm/md/lg/2xl/pill/full）⇒ 未覆盖态的「六档成阶梯」只在拉过滑杆前成立（本案**只登记**，不在射程） | 同上：`tokens.ts` 仅写 override；`getBaseRadius()` 取不到键回落 `"0px"` |
 | **旁证：文件树插件把自己两处输入框都对齐了 `.ldk-input` 契约**（连「没写 radius = 恒直角」这个病都被它自己修过一次） | 插件仓 `file-tree/src/styles/SearchView.css:24`（「契约对齐壳侧 `.ldk-input`（index.css:252）：bg-input／border／radius-sm／focus accent＋环」）＋ `:109`（「1.0.24：**原先连 radius 声明都没有（恒直角）** → 对齐 `.ldk-input` 契约跟主题走」）＋ 该仓 `docs/02-搜索重设计/00-README.md:77`（补刀记录） |
 | 消费位四处（共享件一支，四处外观应当一致） | 壳 `ManagerView.tsx:336`（`normal`）· settings 插件 `SettingsView.tsx:185`（`normal`，搜索设置）· file-tree 插件 `NameCell.tsx:24`（`compact`，行内重命名）· serial-monitor 插件 `SessionListItem.tsx`／`SessionList.tsx`（`compact`） |
 
-**⇒ 一句判据**：共享输入框是**唯一没跟这条契约的输入框**——`.ldk-input` 有 `--radius-sm`、文件树自绘那两处也有，只有它没声明。不是「皮肤偏好」，是**契约缺口**（同一支控件在四处长得不一样）。
+**⇒ 一句判据**：共享输入框是**唯一没接上圆角标尺的输入框**——`.ldk-input` 消费 `--radius-sm`、文件树自绘那两处也消费了，只有它**连一条 radius 声明都没有**（既不跟主题，更不跟用户拉的滑杆）。不是「皮肤偏好」，是**契约缺口**：同一支控件在四处里，有一处连标尺都没插上。
 
 ### 轴二 · 候选名漏译（含「为什么门禁没拦」）
 
@@ -57,7 +59,7 @@
 
 | # | 落点 | 是什么 | 为什么 |
 |:--:|:--|:--|:--|
-| ① | 壳 `src/components/shared/inline-input/InlineInput.css` | 基类补一行 `border-radius: var(--radius-sm)`（两档尺寸共用；决定点 [D1](04-任务清单.md)） | 对齐仓内既有输入框契约（`.ldk-input` ＋ 文件树两处先例）；随主题走（token 消费） |
+| ① | 壳 `src/components/shared/inline-input/InlineInput.css` | 基类补一行 `border-radius: var(--radius-sm)`（两档尺寸共用；决定点 [D1](04-任务清单.md)） | 接上**圆角标尺**（`app.surfaceRadius` 滑杆／主题；与 `.ldk-input` 同源）＋ 文件树两处先例 |
 | ② | 同上 ＋ `npm run ui:build` | 共享件是 **`@linkdesk/ui` 的构建产物**在供货：改完必须重建，dev 才看得见（CLAUDE.md 开发命令行） | 忘跑 = 「改了没反应」的假阴性 |
 | ③ | 管理器**视图侧**四处（`ManagerView`／`CardRow`／`ContestedRow`） | 插件显示名统一过 `t()`（模型保持吐原文；决定点 [D2](04-任务清单.md)） | 兑现 `types.ts:37` 既有契约，收口「谁翻」 |
 | ④ | 类型面收口（建议：`RowOption.label` 更名 `labelRaw`／等价手段） | 让「原文当标签直接渲染」在**编译期**不成立 | 唯一能机械接住轴二的路径（[D3](04-任务清单.md)） |

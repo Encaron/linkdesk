@@ -4,7 +4,7 @@
  *       负控（篡改 fixture，必须跑红）　`node "…/校验-拟真度.cjs" --self-test`
  *       （jsdom 自仓库 node_modules 解析；本文件须为 .cjs —— 仓库是 "type":"module"）
  *
- * 覆盖（对应图尾 §D 断言清单 I1–I14）：
+ * 覆盖（对应图尾 §D 断言清单 I1–I18）：
  *   段 A 字体与「零手绘」：真 codicon 字形在位 ／ 产品区 svg 清零 ／ 无原生 <select>
  *   段 B **真 token 逐值同源**：本图半径/字号/颜色 token 与 `src/index.css` 逐字节相等
  *   段 C 亮色块同源 ＋ 主题切换真改 `data-theme`
@@ -15,7 +15,9 @@
  *   段 H 文字断言：🟥 冒烟枪（合成项已翻、候选未翻）／🟩 改后四处一致／中文态回归／两个边界态（E9/E10）
  *   段 I 交互：开合可点、焦点靠 JS 挪类且**节点同一**、真件无 `.ldk-selectbox-item:hover` 规则
  *   段 J 图与文档完备：断言清单在位、相对链接不断链、**图内无 markdown 裸语法**、硬约束 16 声明在位
- *   段 K `--self-test`：六种篡改各自必须跑红（负控自证）
+ *   段 L **圆角标尺机制**（I15–I18）：滑杆上限＝真源 RADIUS_MAX_PX ／ 六档键名＝真源 RADIUS_SCALE_STEPS 派生
+ *          ／ 写面＝六档＋--radius-pill 同值且 ⛔ 不碰 --radius-full ／ 载入播种·拖动跟随·重置摘除
+ *   段 K `--self-test`：十种篡改各自必须跑红（负控自证）
  *
  * 口径：真件一致性（真 token/真类名/真规则/真 DOM 形状/真焦点机制）＋ 零手填 px ＋ 文字与交互不变量。
  * 依据：2026-10-06 用户判据「已有组件长什么样就是什么样」（先例＝滑杆搬迁）
@@ -157,6 +159,13 @@ async function audit(html) {
   ok("D1 InlineInput 类名在真源里齐备", mI.length === 0, mI.join(","));
   ok("D2 ldk-famgr-* 类名在真源里齐备", mF.length === 0, mF.join(","));
   ok("D3 ldk-selectbox-* 类名在真源里齐备", mS.length === 0, mS.join(","));
+  // §A5 契约基准格：壳输入框 `.ldk-input`（真源 src/index.css）——同一个界面里**跟着滑杆变**的输入框
+  const shellMissing = miss(real.index, [".ldk-input", ".ldk-input:focus"]);
+  ok("D4 壳输入框契约类名在 src/index.css 里齐备（§A5 基准格）", shellMissing.length === 0, shellMissing.join(","));
+  const mkLi = declSet(cssText, ".ldk-input"), rlLi = declSet(real.index, ".ldk-input");
+  ok("D5 §A5 契约格 .ldk-input 声明逐条同源（是本图抄壳，⛔ 不是壳随本图改）",
+    !!mkLi && !!rlLi && [...diff(mkLi, rlLi), ...diff(rlLi, mkLi)].length === 0,
+    mkLi && rlLi ? [...diff(mkLi, rlLi), ...diff(rlLi, mkLi)].join(" | ") : "解析失败");
 
   // ══ 段 E · 改后 = 真件 ＋ 恰一条 (I4) ══
   const mkBase = declSet(cssText, ".ldk-inline-input");
@@ -301,7 +310,7 @@ async function audit(html) {
     (click(sb), root.style.getPropertyValue("--ui-scale") === "1"));
 
   // ══ 段 J · 图与文档完备 ══
-  ok("J1 断言清单 I1–I14 在位", /I1\b/.test(html) && /I14\b/.test(html));
+  ok("J1 断言清单 I1–I18 在位", /I1\b/.test(html) && /I18\b/.test(html));
   const links = Array.from(d.querySelectorAll("a")).map((a) => a.getAttribute("href"));
   const rel = links.filter((h) => h && !/^https?:/.test(h));
   const broken = rel.filter((h) => !fs.existsSync(path.resolve(dir, h)));
@@ -318,11 +327,57 @@ async function audit(html) {
   ok("J4 硬约束 16 声明在位（设计门已走 ui-ux-pro-max）", /ui-ux-pro-max/.test(html) && /硬约束 16/.test(html));
   ok("J5 页脚给了图的机械门运行命令", /校验-拟真度\.cjs/.test(html));
 
+  // ══ 段 L · 圆角标尺机制 (I15–I18) ══
+  //   本案真机制**不是**「写死 4px」：圆角由 app.surfaceRadius（绝对 px 滑杆）拉，一拉就把六档
+  //   --radius-xs..2xl **平铺写成同一个值**，--radius-pill 也随滑杆（applyOverrides ①c），
+  //   --radius-full 是 50% 几何值不参与。真源常量跨文件对账，防本图自说自话。
+  const maxPx = (readSrc("src/core/services/ui/ThemeEngine/constants.ts").match(/RADIUS_MAX_PX\s*=\s*(\d+)/) || [])[1];
+  const stepsRaw = (readSrc("src/core/types/theme.ts").match(/RADIUS_SCALE_STEPS\s*=\s*\[([^\]]*)\]/) || [])[1];
+  const stepKeys = stepsRaw
+    ? stepsRaw.split(",").map((s) => "--radius-" + s.trim().replace(/"/g, "")).filter((s) => s !== "--radius-")
+    : [];
+  ok("L0 真源常量读齐（RADIUS_MAX_PX ＋ RADIUS_SCALE_STEPS 六档）",
+    !!maxPx && stepKeys.length === 6, "max=" + maxPx + " steps=" + stepKeys.join(","));
+  const rr = $("#radiusRange");
+  ok("L1 圆角滑杆＝真件形状（range · min=0 · step=1 · max＝真源 RADIUS_MAX_PX）",
+    !!rr && rr.getAttribute("type") === "range" && rr.getAttribute("min") === "0" &&
+    rr.getAttribute("step") === "1" && rr.getAttribute("max") === maxPx,
+    rr ? ["min=" + rr.getAttribute("min"), "max=" + rr.getAttribute("max"), "step=" + rr.getAttribute("step")].join(" ") : "无滑杆");
+  const jsKeysRaw = (html.match(/var RADIUS_SCALE_KEYS = \[([^\]]*)\]/) || [])[1];
+  const mkStepKeys = jsKeysRaw
+    ? jsKeysRaw.split(",").map((s) => s.trim().replace(/"/g, "")).filter((s) => s.length > 0)
+    : [];
+  ok("L2 本图六档键名＝真源 RADIUS_SCALE_STEPS 派生（两份清单不许漂）",
+    JSON.stringify(mkStepKeys) === JSON.stringify(stepKeys), mkStepKeys.join(",") + " vs " + stepKeys.join(","));
+  const jsWriteRaw = (html.match(/var RADIUS_WRITE_KEYS = ([^;]*);/) || [])[1] || "";
+  ok("L3 写面＝六档 ＋ --radius-pill 同值，⛔ 不含 --radius-full",
+    /RADIUS_SCALE_KEYS\.concat\(\[RADIUS_PILL_KEY\]\)/.test(jsWriteRaw) &&
+    /var RADIUS_PILL_KEY = "--radius-pill"/.test(html) && !/radius-full/.test(jsWriteRaw),
+    jsWriteRaw.trim());
+  const rootEl = d.documentElement;
+  const wKeys = stepKeys.concat(["--radius-pill"]);
+  const wVals = () => wKeys.map((k) => rootEl.style.getPropertyValue(k));
+  ok("L4 载入即按默认主题 md 档播种：七键同值（＝滑杆值）",
+    wVals().every((v) => v === "8px"), wVals().join(","));
+  ok("L5 --radius-full（50% 几何值）不被写", rootEl.style.getPropertyValue("--radius-full") === "");
+  if (rr) { rr.value = "20"; fire(rr, "input"); }
+  ok("L6 拉滑杆 ⇒ 六档平铺同值 ＋ pill 随滑杆", wVals().every((v) => v === "20px"), wVals().join(","));
+  click($("#radiusReset"));
+  ok("L7 「重置为跟随主题」摘除全部 inline 值（presence 门控：不写即主题）",
+    wVals().every((v) => v === ""), wVals().join(","));
+  const a5b = $("#in-a5-before"), a5a = $("#in-a5-after");
+  ok("L8 改前格带影子类（根上 token 怎么变它都是 0——「没接上标尺」的可视化）",
+    !!a5b && a5b.classList.contains("ldk-inline-input-noradius") &&
+    /\.ldk-inline-input-noradius\{[^}]*border-radius:0/.test(cssS));
+  ok("L9 改后格不带影子类（吃 var(--radius-sm) ⇒ 跟滑杆走）＋ 契约格在排内",
+    !!a5a && !a5a.classList.contains("ldk-inline-input-noradius") &&
+    !!$("#in-a5-contract") && $("#in-a5-contract").classList.contains("ldk-input"));
+
   dom.window.close();
   return { pass, fail, fails, info };
 }
 
-/* ── 负控：六种篡改，各自必须跑红 ─────────────────────────────────────────── */
+/* ── 负控：十种篡改，各自必须跑红 ─────────────────────────────────────────── */
 async function selfTest(html) {
   const cases = [
     { name: "K1 篡改 token 值（--radius-sm 4px→5px）",
@@ -345,6 +400,22 @@ async function selfTest(html) {
       expect: /字体/ },
     { name: "K6 产品区塞一个手绘 svg",
       html: replaceFirst(html, '<div class="page">', '<div class="page"><svg viewBox="0 0 16 16"></svg>'), expect: /svg/ },
+    { name: "K7 圆角滑杆上限改成 31（真源 RADIUS_MAX_PX=32）",
+      html: replaceFirst(html, 'id="radiusRange" type="range" min="0" max="32"',
+        'id="radiusRange" type="range" min="0" max="31"'), expect: /滑杆/ },
+    { name: "K8 机制键表删掉 --radius-2xl（与真源六档漂移）",
+      html: replaceFirst(html,
+        '["--radius-xs", "--radius-sm", "--radius-md", "--radius-lg", "--radius-xl", "--radius-2xl"]',
+        '["--radius-xs", "--radius-sm", "--radius-md", "--radius-lg", "--radius-xl"]'),
+      expect: /六档键名/ },
+    { name: "K9 写面漏掉 pill（用户覆盖时胶囊不跟滑杆）",
+      html: replaceFirst(html, "RADIUS_SCALE_KEYS.concat([RADIUS_PILL_KEY])", "RADIUS_SCALE_KEYS"),
+      expect: /写面/ },
+    { name: "K10 摘掉改前格的影子类（对照就做假了）",
+      html: replaceFirst(html,
+        'id="in-a5-before" class="ldk-inline-input ldk-inline-input--normal ldk-inline-input-noradius"',
+        'id="in-a5-before" class="ldk-inline-input ldk-inline-input--normal"'),
+      expect: /改前格带影子类/ },
   ];
   let bad = 0;
   for (const c of cases) {
