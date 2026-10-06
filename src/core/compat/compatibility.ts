@@ -24,6 +24,7 @@
 import { versionGte } from "../utils/plugin/semverUtils.js";
 import type { PluginCompatibilityReading, PluginCompatibilityRequest } from "../api/linkdesk-api/types.js";
 import { scanInstalledPluginDir } from "./dangling-scan.js";
+import { UI_SURFACE_LEDGER } from "./ui-surface.generated.js";
 
 /** 主进程环境（注入——本模块不 import electron，单测可桩） */
 export interface CompatHostContext {
@@ -32,8 +33,8 @@ export interface CompatHostContext {
   shellBuiltAtRaw: string;
   /** 已装插件目录的定位（盘上没有 ⇒ null） */
   locatePluginDir: (pluginId: string) => string | null;
-  /** 悬空扫描（默认 = 运行时真扫描腿；单测注入桩） */
-  scanDangling?: (dir: string) => { dangling: { name: string }[] } | null;
+  /** 悬空扫描（默认 = 运行时真扫描腿；单测注入桩）。`uiImports` 是 G4 实际地板的输入（可省 = 旧桩形状） */
+  scanDangling?: (dir: string) => { dangling: { name: string }[]; uiImports?: string[] } | null;
 }
 
 /** 任意日期原文 → `YYYY-MM-DD`（取日期段；解析不出 ⇒ null。⛔ 不引入时区换算——日期口径只取日） */
@@ -41,6 +42,47 @@ export function normalizeDay(raw: string | null | undefined): string | null {
   if (typeof raw !== "string" || !raw) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw.trim());
   return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
+/* ── G4（「插件最低壳版本门禁」）：实际地板——输入构造的一部分，⛔ 五态映射与日期口径不在此 ──
+ *
+ * 已装产物对 `@linkdesk/ui` 的静态具名导入名（悬空扫描同一次顺带产出，见 dangling-scan.ts）
+ * 在账本（`ui-surface.generated.ts`，scripts/ui-surface.json 的第四份投影）里查 `since`，
+ * 取 max ＝ **实际地板**；生效地板 = max(声明, 实际)。
+ *
+ * 🔴 账本查不到的名字 = 本壳 vendor ui **没有这个导出** ⇒ 链接期必炸（本事故的形状）⇒
+ *    **fail-closed 按不满足**（与 G2 构建期门禁同口径；漏报比误报贵）——诊断记 `uiImport:notInLedger:<名>`。
+ * 🔴 产物读不到 / 没消费 ui ⇒ 退化成「只有声明地板」，⛔ 不判坏消息（照兼容读数既有的诚实纪律）。
+ */
+
+/** 账本查 since（四栏一个面——插件可导入组件 / hooks / helpers 任一运行时导出） */
+const UI_LEDGER_SINCE: ReadonlyMap<string, string> = new Map(
+  (["components", "hooks", "helpers", "types"] as const).flatMap((cat) =>
+    Object.entries(UI_SURFACE_LEDGER[cat]).map(([name, entry]) => [name, entry.since] as const),
+  ),
+);
+
+interface UiActualFloor {
+  /** 实际地板（所有查到名字的 since 最大值） */
+  floor: string | null;
+  /** 账本查不到的名字（⇒ 按不满足） */
+  notInLedger: string[];
+}
+
+/** 产物 ui 具名导入 → 实际地板。无清单 / 空清单 ⇒ null（没有实际地板可加） */
+function actualUiFloor(uiImports: readonly string[] | undefined): UiActualFloor | null {
+  if (!uiImports || uiImports.length === 0) return null;
+  const notInLedger: string[] = [];
+  let floor: string | null = null;
+  for (const name of uiImports) {
+    const since = UI_LEDGER_SINCE.get(name);
+    if (!since) {
+      notInLedger.push(name);
+      continue;
+    }
+    if (floor === null || versionGte(since, floor)) floor = since;
+  }
+  return { floor, notInLedger };
 }
 
 /**
@@ -52,10 +94,12 @@ export function computeCompatibilityReading(req: PluginCompatibilityRequest, ctx
   const unknown: string[] = [];
   const pluginId = req.pluginId;
 
-  // ① minAppVersion：调用方传入的已是**生效值**（handler 对已装插件用磁盘 manifest 覆盖——
+  // ① minAppVersion：调用方传入的**声明值**（handler 对已装插件用磁盘 manifest 覆盖——
   //    那是加载器执法的那份；未装插件才吃调用方从 catalog 供给的）。
-  const minAppVersion = typeof req.minAppVersion === "string" && req.minAppVersion.trim() ? req.minAppVersion.trim() : null;
-  const minAppSatisfied = minAppVersion
+  //    ⛔ 它只是地板的「声明」半边——②′ 会用产物扫描出的实际地板抬它（只抬不降）。
+  const declaredMinAppVersion = typeof req.minAppVersion === "string" && req.minAppVersion.trim() ? req.minAppVersion.trim() : null;
+  let minAppVersion = declaredMinAppVersion;
+  let minAppSatisfied = minAppVersion
     ? versionGte(ctx.shellVersion, minAppVersion)
     : null;
 
@@ -65,6 +109,19 @@ export function computeCompatibilityReading(req: PluginCompatibilityRequest, ctx
   const dangling = scanned ? { count: scanned.dangling.length, names: scanned.dangling.map((d) => d.name) } : null;
   // unknown[] 是**机器码诊断面**（消费方 = 维护者日志；⛔ 不是用户面文案——用户面词归市场插件 i18n）
   if (!dangling) unknown.push(dir ? "dangling:scan-failed" : "dangling:uninstalled");
+
+  // ②′ 实际地板（G4）：生效地板 = max(声明, 实际)。产物读不到（scanned null）/ 没消费 ui ⇒
+  //     什么都不加（退化成只有声明地板，不判坏消息）；查不到的名字 ⇒ fail-closed 按不满足。
+  const uiFloor = actualUiFloor(scanned?.uiImports);
+  if (uiFloor) {
+    if (uiFloor.notInLedger.length > 0) {
+      minAppSatisfied = false;
+      for (const name of uiFloor.notInLedger) unknown.push(`uiImport:notInLedger:${name}`);
+    } else if (uiFloor.floor && (!minAppVersion || versionGte(uiFloor.floor, minAppVersion))) {
+      minAppVersion = uiFloor.floor; // 只抬不降：实际 ≤ 声明时维持声明（负控 3）
+      minAppSatisfied = versionGte(ctx.shellVersion, minAppVersion);
+    }
+  }
 
   // ③ 两个真日期（归一化为 YYYY-MM-DD 后比大小——⛔ 没有阈值）
   const lastUpdate = normalizeDay(req.publishedAt);

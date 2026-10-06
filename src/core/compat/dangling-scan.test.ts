@@ -91,6 +91,47 @@ describe("桩层——判定行为（照格 1 自测形态，虚构名）", () =
   });
 });
 
+describe("G4——产物里 @linkdesk/ui 静态具名导入的采集（实际地板的输入）", () => {
+  const uiImportsOf = (id: string, js: string): string[] => {
+    const d = mkPlugin(id, js);
+    const r = scanInstalledPluginDir(d);
+    expect(r).not.toBeNull();
+    return r!.uiImports;
+  };
+
+  it("正控：静态具名导入 ⇒ 抓到**原名**（as 别名不进地板）；压缩形态（无空格）同抓", () => {
+    expect(uiImportsOf("demo-ui-named", 'import { PluginCard, HintTip as H } from "@linkdesk/ui";')).toEqual(["HintTip", "PluginCard"]);
+    expect(uiImportsOf("demo-ui-min", 'import{Badge as e,Button}from"@linkdesk/ui";')).toEqual(["Badge", "Button"]);
+    expect(uiImportsOf("demo-ui-mixed", 'import Ge, { InlineInput } from "@linkdesk/ui";')).toEqual(["InlineInput"]);
+    expect(uiImportsOf("demo-ui-single", `import{Slider}from'@linkdesk/ui';`)).toEqual(["Slider"]);
+  });
+
+  it("负控 A：不消费 / type-only / 命名空间 / side-effect / 动态 / require / 子路径 ⇒ 零名字（链接期不炸的形态不算）", () => {
+    expect(uiImportsOf("demo-ui-none", 'const x = 1; console.log(x);')).toEqual([]);
+    expect(uiImportsOf("demo-ui-ns", 'import * as ui from "@linkdesk/ui"; const C = ui.Badge;')).toEqual([]);
+    expect(uiImportsOf("demo-ui-side", 'import "@linkdesk/ui"; import "@linkdesk/ui/styles.css";')).toEqual([]);
+    expect(uiImportsOf("demo-ui-dyn", 'const m = await import("@linkdesk/ui"); const r = require("@linkdesk/ui");')).toEqual([]);
+    expect(uiImportsOf("demo-ui-sub", 'import { X } from "@linkdesk/ui/other";')).toEqual([]);
+  });
+
+  it("负控 B：字符串 / 注释里的 import 语句（生成式文本）⇒ 不是导入（同负控 E 的误报控）", () => {
+    expect(uiImportsOf("demo-ui-string", 'const help = "import { PluginCard } from \\"@linkdesk/ui\\";";')).toEqual([]);
+    expect(uiImportsOf("demo-ui-comment", '// import { PluginCard } from "@linkdesk/ui"\n/* import { Badge } from "@linkdesk/ui" */')).toEqual([]);
+  });
+
+  it("负控 C：其他包的具名导入照常不抓（只认 @linkdesk/ui）", () => {
+    expect(uiImportsOf("demo-ui-other", 'import { createPluginContext } from "@linkdesk/plugin-sdk"; import React from "react";')).toEqual([]);
+  });
+
+  it("负控 D：坏形态子句 ⇒ 整句放弃（不猜半个名字）；对悬空判定零影响", () => {
+    expect(uiImportsOf("demo-ui-broken", "import { Badge from \"@linkdesk/ui\";")).toEqual([]);
+    const d = mkPlugin("demo-ui-both", 'import { PluginCard } from "@linkdesk/ui"; jsx("div",{className:"ldk-ghost-x"});');
+    const r = scanInstalledPluginDir(d)!;
+    expect(r.uiImports).toEqual(["PluginCard"]);
+    expect(r.dangling.map((x) => x.name)).toEqual(["ldk-ghost-x"]);
+  });
+});
+
 /* jscpd:ignore-start */
 /* ↑ 极简 zip 读取与格 1 脚本的 zipIndex/zipEntryText 结构同源（测试侧解包真产物用，对账关系见文件头） */
 

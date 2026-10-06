@@ -6,7 +6,8 @@
  * **逐文件**读、扫完即丢文本（几百 MB 的包内存也只留派生小集），归并用
  * `createArtifactScanAccumulator()`——与同步入口**同一份口径**，两路结果一致由构造保证。
  *
- * 协议：收 `{ dir }` → 回 `{ dangling, ldkRefs, scanMs }` 或 `{ error }`。
+ * 协议：收 `{ dir }` → 回 `{ dangling, ldkRefs, uiImports, scanMs }` 或 `{ error }`
+ * （`uiImports` = G4 实际地板的输入，同一次扫描顺带产出）。
  * 只读、无副作用；单文件读不动 ⇒ 整体 error（与同步口径「读数缺失不猜」一致）。
  */
 import { parentPort } from "node:worker_threads";
@@ -29,8 +30,9 @@ if (parentPort) {
         // 逐文件读、扫完即丢——内存只留派生小集（大包友好）
         acc.scanFile({ name: normalizePath(p.slice(dir.length + 1)), text: readFileSync(p, "utf8") });
       }
-      const judged = judgeDangling(acc.finish(), HOST_CLASSES, HOST_KEYFRAMES);
-      parentPort!.postMessage({ dangling: judged.dangling, ldkRefs: judged.ldkRefs, scanMs: Date.now() - t0 });
+      const scan = acc.finish();
+      const judged = judgeDangling(scan, HOST_CLASSES, HOST_KEYFRAMES);
+      parentPort!.postMessage({ dangling: judged.dangling, ldkRefs: judged.ldkRefs, uiImports: scan.uiImports, scanMs: Date.now() - t0 });
     } catch (e) {
       parentPort!.postMessage({ error: e instanceof Error ? e.message : String(e) });
     }

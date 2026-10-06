@@ -109,3 +109,94 @@ describe("状态算法——负控三条（判据⑥）", () => {
     expect(r.shellVersion).toBe("0.2.12");
   });
 });
+
+/**
+ * G4（「插件最低壳版本门禁」）——实际地板：读数判据由「声明」扩为 max(声明, 实际)。
+ * 账本读数（UI_SURFACE_LEDGER，scripts/ui-surface.json 的投影）：Badge/InlineInput = 0.2.13、
+ * HintTip = 0.2.20、useStatusPolling = 0.2.40、PluginCard = 0.2.48。
+ * type-only（负控 2）在本腿是结构性豁免：产物是编译后 JS，`import type` 不存在；
+ * 产物层的形态采集正负控见 dangling-scan.test.ts 的 G4 组。
+ */
+describe("G4 读数腿——生效地板 = max(声明, 实际)", () => {
+  /** 桩扫描：悬空名 ＋ ui 具名导入一把给 */
+  const scanUi = (names: string[], uiImports: string[]) => (_dir: string) => ({
+    dangling: names.map((name) => ({ name })),
+    uiImports,
+  });
+
+  it("正控（本事故形状）：声明 0.2.32、产物导入 PluginCard（since 0.2.48）⇒ 0.2.41 判 incompatible，minAppVersion 是算出来的 0.2.48", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.32", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ shellVersion: "0.2.41", locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], ["Badge", "PluginCard"]) }),
+    );
+    expect(r.state).toBe("incompatible");
+    expect(r.minAppVersion).toBe("0.2.48"); // ⛔ 不是声明里那个 0.2.32——读数不再照抄 manifest
+    expect(r.minAppSatisfied).toBe(false);
+  });
+
+  it("正控 b：四栏都查（hooks/helpers/types 一个面）——useStatusPolling 的 since 抬地板", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.32", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ shellVersion: "0.2.41", locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], ["useStatusPolling"]) }),
+    );
+    expect(r.minAppVersion).toBe("0.2.40");
+    expect(r.minAppSatisfied).toBe(true); // 0.2.41 ≥ 0.2.40
+  });
+
+  it("负控 1：完全不消费 @linkdesk/ui ⇒ 只看声明（零影响）", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.0", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], []) }),
+    );
+    expect(r.minAppVersion).toBe("0.2.0");
+    expect(r.minAppSatisfied).toBe(true);
+    expect(r.state).toBe("compatible");
+  });
+
+  it("负控 3：消费的全部导出 since ≤ 声明 ⇒ 维持声明（只抬不降，不是见 ui 就抬）", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.20", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ shellVersion: "0.2.20", locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], ["Badge", "HintTip"]) }),
+    );
+    expect(r.minAppVersion).toBe("0.2.20"); // HintTip 0.2.20 == 声明，Badge 0.2.13 更低 ⇒ 不抬
+    expect(r.minAppSatisfied).toBe(true);
+  });
+
+  it("负控 4：产物读不到（扫描 null）⇒ 退化成只有声明地板，⛔ 不判坏消息", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.0", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ locatePluginDir: () => "C:/demo/dir", scanDangling: () => null }),
+    );
+    expect(r.minAppVersion).toBe("0.2.0"); // 没有实际地板可加
+    expect(r.minAppSatisfied).toBe(true);
+    expect(r.unknown).not.toContain(expect.stringContaining("uiImport"));
+  });
+
+  it("负控 5：日期缺失仍落 compatible（⛔ 不落 unknown）——G4 抬地板不改变日期口径", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.20", publishedAt: null },
+      CTX({ shellVersion: "0.2.20", locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], ["Badge"]) }),
+    );
+    expect(r.state).toBe("compatible");
+  });
+
+  it("负控 6：壳版本 == 实际地板 ⇒ 满足（versionGte 边界，≤ 不算越界）", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.32", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ shellVersion: "0.2.48", locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], ["PluginCard"]) }),
+    );
+    expect(r.minAppVersion).toBe("0.2.48");
+    expect(r.minAppSatisfied).toBe(true);
+    expect(r.state).toBe("compatible");
+  });
+
+  it("fail-closed：账本查不到的名字（本壳 vendor ui 没有的导出）⇒ 按不满足，⛔ 不许落「正常/兼容」", () => {
+    const r = computeCompatibilityReading(
+      { pluginId: "demo-plugin", minAppVersion: "0.2.13", publishedAt: "2026-01-01T00:00:00.000Z" },
+      CTX({ shellVersion: "9.9.9", locatePluginDir: () => "C:/demo/dir", scanDangling: scanUi([], ["BrandFutureComponent"]) }),
+    );
+    expect(r.state).toBe("incompatible");
+    expect(r.minAppSatisfied).toBe(false);
+    expect(r.unknown).toContain("uiImport:notInLedger:BrandFutureComponent");
+  });
+});

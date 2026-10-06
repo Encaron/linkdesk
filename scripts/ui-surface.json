@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-10-05T16:26:14.762Z",
-  "shellVersion": "0.2.49",
+  "shellVersion": "0.2.50",
   "components": {
     "BackgroundImagePicker": { "since": "0.2.40" },
     "Badge": { "since": "0.2.13" },

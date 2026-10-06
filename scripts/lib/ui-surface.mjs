@@ -51,6 +51,12 @@ export const BARREL_REL = "packages/linkdesk-ui/src/index.ts";
 export const SNAPSHOT_REL = "scripts/ui-surface.json";
 /** 随 `@linkdesk/plugin-sdk` 包下发的**同一份账本**（生成器同笔投影；`--check` 对账） */
 export const SDK_LEDGER_REL = "packages/plugin-sdk/schemas/ui-surface.json";
+/**
+ * 壳运行期 TS 投影（「插件最低壳版本门禁」G4 加的**第四份投影**，同笔生成；`--check` 对账）。
+ * 壳不依赖 `@linkdesk/plugin-sdk` ⇒ 运行期读不到随包那份 ⇒ 照 `host-css.generated.ts` 同族先例，
+ * 生成一份编译内的账本给兼容读数腿（`src/core/compat/compatibility.ts`）。
+ */
+export const RUNTIME_LEDGER_REL = "src/core/compat/ui-surface.generated.ts";
 /** 壳版本来源（`since` 打戳 + 账本信息栏都取它） */
 export const SHELL_PKG_REL = "package.json";
 
@@ -270,6 +276,53 @@ export function renderSdkLedger({ names, since }) {
   for (const cat of CATEGORIES) body[cat] = Object.fromEntries(names[cat].map((n) => [n, { since: since[`${cat}.${n}`] }]));
   body.count = CATEGORIES.reduce((a, c) => a + names[c].length, 0);
   return JSON.stringify(body, null, 2) + "\n";
+}
+
+/**
+ * 壳运行期 TS 投影（G4 的第四份投影，`src/core/compat/ui-surface.generated.ts`）。
+ * 与 `renderSdkLedger` 同一纪律：**无活戳**（⛔ 不塞 generatedAt——字节稳定，发布物 diff 才有意义）；
+ * `shellVersion` 是账本信息栏，照留。任一 since 缺失/形态坏 ⇒ **抛**（运行期半本账比没账更坏——
+ * 消费方拿它算实际地板，空 since 会算出假绿）。
+ */
+export function renderRuntimeLedger({ names, since, shellVersion }) {
+  for (const cat of CATEGORIES) {
+    for (const n of names[cat]) {
+      const v = since[`${cat}.${n}`];
+      if (typeof v !== "string" || !SEMVER_RE.test(v)) {
+        throw new Error(`renderRuntimeLedger：${cat}.${n} 的 since = ${JSON.stringify(v)} 不是 x.y.z——运行期投影拒绝生成（先补账）`);
+      }
+    }
+  }
+  const cols = CATEGORIES.map((cat) => {
+    const rows = names[cat].map((n) => `    ${JSON.stringify(n)}: { since: ${JSON.stringify(since[`${cat}.${n}`])} },`);
+    return `  ${cat}: {\n${rows.join("\n")}\n  }`;
+  });
+  return `/**
+ * \`@linkdesk/ui\` 导出面账本——**生成物，勿手改**（「插件最低壳版本门禁」G4 · 壳运行期投影）。
+ *
+ * 生成器：\`scripts/gen-ui-surface.mjs\`；数据唯一源 = \`scripts/ui-surface.json\`（同笔第四份投影：
+ * 账本 json ×2 ＋ 作者手册 since 表 ＋ 本文件，\`--check\` 对账抓漂移）。
+ * 壳不依赖 \`@linkdesk/plugin-sdk\` ⇒ 运行期读不到随包那份 ⇒ 照 \`host-css.generated.ts\` 同族先例
+ * 生成编译内的一份。⚠️ 字节稳定（无 generatedAt 之类活戳）；改了账本跑 \`npm run ui-surface:regen\`
+ * 同笔重写四份。
+ *
+ * 消费方：\`src/core/compat/compatibility.ts\`（G4 兼容读数腿）——已装产物对 \`@linkdesk/ui\` 的
+ * 静态具名导入名在此查 \`since\`（四栏一个面），取 max ＝ 实际地板。
+ */
+export interface UiSurfaceLedger {
+  /** 打戳基准（账本信息栏，非判据输入） */
+  shellVersion: string;
+  components: Readonly<Record<string, { readonly since: string }>>;
+  hooks: Readonly<Record<string, { readonly since: string }>>;
+  helpers: Readonly<Record<string, { readonly since: string }>>;
+  types: Readonly<Record<string, { readonly since: string }>>;
+}
+
+export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
+  shellVersion: ${JSON.stringify(shellVersion)},
+${cols.join(",\n")},
+};
+`;
 }
 
 /** 两份账本 diff：`removed` = 面被拿走（判红），`added` = 面变多（允许方向）。路径 = `<栏>.<名>`。 */

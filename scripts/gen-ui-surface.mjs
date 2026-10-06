@@ -37,14 +37,16 @@
  * 用法：
  *   node scripts/gen-ui-surface.mjs                 # 增量：保留磁盘上已有的 since，新导出打「当前壳版本」
  *   node scripts/gen-ui-surface.mjs --backfill      # 一次性/补账：从 git 历史（快照提交序列）回溯全部 since
- *   node scripts/gen-ui-surface.mjs --check         # 对账：磁盘**三份生成物** == 重算（不一致退出码 1）
+ *   node scripts/gen-ui-surface.mjs --check         # 对账：磁盘**四份生成物** == 重算（不一致退出码 1）
  *   node scripts/gen-ui-surface.mjs --self-test     # 打戳 / 渲染 / 对账 / 嵌块的纯函数自测
  *
- * ── 三份生成物（同一份账本，三个投影；都别手改）──
+ * ── 四份生成物（同一份账本，四个投影；都别手改）──
  *   ① `scripts/ui-surface.json`                     壳仓账本（带活戳：generatedAt / shellVersion）
  *   ② `packages/plugin-sdk/schemas/ui-surface.json` 随包下发（第三方 `npm i` 后**离线**可判；无活戳 ⇒ 字节稳定）
  *   ③ `docs/03-插件制造/19-组件速查.md` §2.1 与 `docs/03-plugin-authoring/19-component-cheatsheet.md` §2.1
  *      的「起于哪个壳版本」表（**作者读得到的那一份**——账本 json 不是给作者看的）
+ *   ④ `src/core/compat/ui-surface.generated.ts`     壳运行期 TS 投影（G4 读数腿；壳不依赖 plugin-sdk，
+ *      照 host-css.generated.ts 同族先例；无活戳 ⇒ 字节稳定）
  *
  * ── 与 barrel 头注释的计数对账（两处数字互为对账，硬校验）──
  *   barrel 头注释里写着各栏计数（如「32 组件 · 4 hooks · 11 helpers · 15 类型」）。本生成器重算后
@@ -58,6 +60,7 @@ import {
   BARREL_REL,
   CATEGORIES,
   ROOT,
+  RUNTIME_LEDGER_REL,
   SDK_LEDGER_REL,
   SEMVER_RE,
   SHELL_PKG_REL,
@@ -72,6 +75,7 @@ import {
   ledgerGaps,
   ledgerSinceMap,
   renderLedger,
+  renderRuntimeLedger,
   renderSdkLedger,
   renderSinceDoc,
   spliceSinceDoc,
@@ -393,6 +397,31 @@ function selfTest() {
     push("负控9：未知语种 ⇒ 当场抛（⛔ 不静默回落成 zh，作者会拿到看不懂的表）", /未知语种/.test(threw), threw);
   }
 
+  // ── 第四份投影：壳运行期 TS 清单（G4 读数腿的输入）──
+  {
+    const a = renderRuntimeLedger({ names: NAMES, since: SINCE, shellVersion: "0.2.49" });
+    const b = renderRuntimeLedger({ names: NAMES, since: SINCE, shellVersion: "0.2.49" });
+    push(
+      "正控13：运行期投影字节稳定、无活戳（同输入两次渲染逐字节同；无 generatedAt 键，shellVersion 只进信息栏）",
+      a === b && a.includes('shellVersion: "0.2.49"') && !/"generatedAt"/.test(a),
+      `同 = ${a === b}`,
+    );
+  }
+  {
+    const text = renderRuntimeLedger({ names: NAMES, since: SINCE, shellVersion: "0.2.49" });
+    const allIn = ["PluginCard", "useClickPreview", "urlSourceKey", "HintTipProps"].every((n) => text.includes(`"${n}"`));
+    push("正控14：运行期投影四栏名字全在（消费方按名查 since，跨栏都要查得到）", allIn);
+  }
+  {
+    let threw = "";
+    try {
+      renderRuntimeLedger({ names: NAMES, since: { ...SINCE, "components.PluginCard": "" }, shellVersion: "0.2.49" });
+    } catch (e) {
+      threw = e.message;
+    }
+    push("负控10：since 缺失 ⇒ 运行期投影当场抛（半本账会让读数算出假绿，⛔ 不静默生成）", /不是 x\.y\.z/.test(threw), threw);
+  }
+
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log(`${c.ok ? "✅" : "🔴"} ${c.name}${c.ok ? "" : `\n     ↳ ${c.detail}`}`);
   console.log(
@@ -507,6 +536,8 @@ function main() {
   const ledgerText = renderLedger({ names, since, shellVersion, generatedAt: diskJson?.generatedAt });
   const sdkText = renderSdkLedger({ names, since });
   const sdkDisk = readDisk(SDK_LEDGER_REL);
+  const runtimeText = renderRuntimeLedger({ names, since, shellVersion });
+  const runtimeDisk = readDisk(RUNTIME_LEDGER_REL);
 
   if (CHECK) {
     const expected = ledgerContent(ledgerOf(names, since));
@@ -528,6 +559,14 @@ function main() {
       ok = false;
     } else if (sdkDisk.text !== sdkText) {
       console.error(`🔴 ${SDK_LEDGER_REL} 与壳仓账本不同步（随包投影漂了）⇒ 跑 \`npm run ui-surface:regen\` 同笔重写两份。`);
+      ok = false;
+    }
+    // 第四份投影：壳运行期 TS 清单（G4 读数腿的输入；壳不依赖 plugin-sdk ⇒ 必须编译内有一份）
+    if (!runtimeDisk) {
+      console.error(`🔴 磁盘上没有 ${RUNTIME_LEDGER_REL}（壳运行期投影）⇒ 跑 \`npm run ui-surface:regen\` 生成它并提交。`);
+      ok = false;
+    } else if (runtimeDisk.text !== runtimeText) {
+      console.error(`🔴 ${RUNTIME_LEDGER_REL} 与壳仓账本不同步（运行期投影漂了）⇒ 跑 \`npm run ui-surface:regen\` 同笔重写四份。`);
       ok = false;
     }
     // 第三份投影：作者手册 §2.1 的 since 表（手写必然漂——组件加了、表没加）
@@ -552,6 +591,7 @@ function main() {
 
   writeFileSync(resolve(ROOT, SNAPSHOT_REL), ledgerText);
   writeFileSync(resolve(ROOT, SDK_LEDGER_REL), sdkText);
+  writeFileSync(resolve(ROOT, RUNTIME_LEDGER_REL), runtimeText);
   // 作者手册 §2.1 的 since 表（第三份投影：账本 → 中英各一张表，作者不用读 json）
   for (const doc of expectedSinceDocs(names, since)) {
     if (doc.text === null) {
@@ -560,7 +600,7 @@ function main() {
     }
     writeFileSync(resolve(ROOT, doc.rel), doc.text);
   }
-  console.log(`✅ 已写 ${SNAPSHOT_REL} ＋ ${SDK_LEDGER_REL} ＋ ${Object.values(SINCE_DOC_FILES).join(" ＋ ")}（壳 ${shellVersion}；${flattenUiSurface(surface).length} 条面）：`);
+  console.log(`✅ 已写 ${SNAPSHOT_REL} ＋ ${SDK_LEDGER_REL} ＋ ${RUNTIME_LEDGER_REL} ＋ ${Object.values(SINCE_DOC_FILES).join(" ＋ ")}（壳 ${shellVersion}；${flattenUiSurface(surface).length} 条面）：`);
   for (const c of CATEGORIES) console.log(`   · ${c.padEnd(11)} ${names[c].length} 个`);
   const bySince = {};
   for (const v of Object.values(since)) bySince[v] = (bySince[v] ?? 0) + 1;

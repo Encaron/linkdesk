@@ -185,9 +185,71 @@ const skipRegex = (text: string, i: number): number => {
 /** 命名站点（格 1 `shoutSites` 同构）：className/class 赋值位字面量 ＋ classList 族 ＋ querySelector 族字面量实参 */
 interface ShoutSite { name: string; line: number; file?: string }
 
-function shoutSites(text: string): { literals: ShoutSite[]; skipped: { interp: number; dynamic: number } } {
+/**
+ * 「插件最低壳版本门禁」G4：`import` 子句采集——静态具名导入 `@linkdesk/ui` 的**导出名**。
+ * 挂在 `shoutSites` 同一次 `scanCode` 遍历里（⛔ 不做第二遍全文词法——编辑器 37.6MB 那课）。
+ * 口径照 04 §1.2 判据：只有 `import { a, b as c } from "@linkdesk/ui"` 给得出名字（链接期必炸的形态）——
+ * `import * as ns`（链接期不炸，属性访问是软崩）/ `import "…"`（side-effect；模块本身自 vendor 起就在）/
+ * 动态 `import()` ＋ `require()`（运行期才解析）都不给名字；`{ default as x }` 的 `default` 不是账本名
+ * （存在性与版本无关）跳过；re-export 与字符串拼接是既有腿的同族盲区（设计 §八.2），不求更全。
+ * 形态读不懂 / 子句里有注释 ⇒ 整句放弃（不猜——宁可漏一个病态子句，不制造假名字）。
+ * 🔴 记的是 **import 侧原名**（`as` 前那个）——账本的键是导出名，不是本地别名。
+ */
+const UI_SPECIFIER = "@linkdesk/ui";
+const identAt = (text: string, i: number): string | null => {
+  const m = /^[A-Za-z_$][\w$]*/.exec(text.slice(i, i + 128));
+  return m ? m[0] : null;
+};
+
+function collectUiImportClause(text: string, afterImport: number, sink: Set<string>): void {
+  let i = afterImport;
+  const ws = (): void => { while (i < text.length && /\s/.test(text[i])) i++; };
+  ws();
+  const first = identAt(text, i);
+  if (first && text[i] !== "{") {
+    // 默认导入绑定（`import Ge, { X } from …`）——跳过它与逗号；无逗号（纯 default）即出
+    i += first.length;
+    ws();
+    if (text[i] === ",") { i++; ws(); }
+  }
+  if (text[i] !== "{") return; // 具名子句之外（* as ns / side-effect / 动态）都不给名字
+  i++;
+  const members: string[] = [];
+  for (;;) {
+    ws();
+    if (text[i] === "}") { i++; break; }
+    const imported = identAt(text, i);
+    if (!imported) return;
+    i += imported.length;
+    ws();
+    if (text.slice(i, i + 2) === "as" && !/[\w$]/.test(text[i + 2] ?? "")) {
+      i += 2;
+      ws();
+      const local = identAt(text, i);
+      if (!local) return;
+      i += local.length;
+      ws();
+    }
+    if (imported !== "default") members.push(imported);
+    if (text[i] === ",") { i++; continue; }
+    if (text[i] === "}") { i++; break; }
+    return;
+  }
+  ws();
+  if (text.slice(i, i + 4) !== "from") return;
+  i += 4;
+  ws();
+  const q = text[i];
+  if (q !== '"' && q !== "'") return;
+  const close = text.indexOf(q, i + 1);
+  if (close < 0) return;
+  if (text.slice(i + 1, close) === UI_SPECIFIER) for (const n of members) sink.add(n);
+}
+
+function shoutSites(text: string): { literals: ShoutSite[]; skipped: { interp: number; dynamic: number }; uiImports: string[] } {
   const literals: ShoutSite[] = [];
   const skipped = { interp: 0, dynamic: 0 };
+  const uiImports = new Set<string>();
   const push = (raw: string, at: number): void => {
     const line = lineAt(text, at);
     for (const tok of raw.split(/\s+/)) {
@@ -201,6 +263,10 @@ function shoutSites(text: string): { literals: ShoutSite[]; skipped: { interp: n
     return { raw: allowSelector ? [...m[2].matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((x) => x[1]).join(" ") : m[2] };
   };
   scanCode(text, 0, (word, end) => {
+    if (word === "import") {
+      collectUiImportClause(text, end, uiImports);
+      return;
+    }
     if (word === "className" || word === "class") {
       let i = end;
       while (i < text.length && /\s/.test(text[i])) i++;
@@ -246,7 +312,7 @@ function shoutSites(text: string): { literals: ShoutSite[]; skipped: { interp: n
       else if (r?.raw != null) push(r.raw, end);
     }
   });
-  return { literals, skipped };
+  return { literals, skipped, uiImports: [...uiImports].sort() };
 }
 
 /** 一个选择器里的类名（剥属性选择器后再抓 `.x`） */
@@ -298,7 +364,7 @@ function scanCss(cleaned: string): {
 /** 一份产物的文本面（调用方从磁盘目录读出） */
 export interface ArtifactFile { name: string; text: string }
 
-/** 一个产物的扫描结果（格 1 `scanArtifact` 同构） */
+/** 一个产物的扫描结果（格 1 `scanArtifact` 同构；`uiImports` 是 G4 加的第四份输入） */
 export interface ArtifactScan {
   jsNames: ShoutSite[];
   kfRefs: ShoutSite[];
@@ -308,6 +374,8 @@ export interface ArtifactScan {
   skipped: { interp: number; dynamic: number };
   cssFiles: number;
   jsFiles: number;
+  /** 产物对 `@linkdesk/ui` 的静态具名导入名（排序去重；G4 实际地板的输入） */
+  uiImports: string[];
 }
 
 /**
@@ -322,6 +390,7 @@ export function createArtifactScanAccumulator(): { scanFile: (f: ArtifactFile) =
   const selfDefs = new Set<string>();
   const selfKeyframes = new Set<string>();
   const skipped = { interp: 0, dynamic: 0 };
+  const uiImports = new Set<string>();
   let cssFiles = 0;
   let jsFiles = 0;
   return {
@@ -336,14 +405,15 @@ export function createArtifactScanAccumulator(): { scanFile: (f: ArtifactFile) =
         for (const r of css.kfRefs) kfRefs.push({ ...r, file: f.name });
       } else if (/\.(js|mjs|cjs|html)$/.test(f.name)) {
         jsFiles++;
-        const { literals, skipped: s } = shoutSites(f.text);
+        const { literals, skipped: s, uiImports: ui } = shoutSites(f.text);
         for (const l of literals) jsNames.push({ ...l, file: f.name });
+        for (const n of ui) uiImports.add(n);
         skipped.interp += s.interp;
         skipped.dynamic += s.dynamic;
       }
     },
     finish(): ArtifactScan {
-      return { jsNames, kfRefs, cssMentions, selfDefs, selfKeyframes, skipped, cssFiles, jsFiles };
+      return { jsNames, kfRefs, cssMentions, selfDefs, selfKeyframes, skipped, cssFiles, jsFiles, uiImports: [...uiImports].sort() };
     },
   };
 }
@@ -412,8 +482,9 @@ export const HOST_KEYFRAMES = new Set<string>(HOST_CSS_MANIFEST.keyframes);
 /**
  * 扫一个**已装插件目录**的悬空名（运行时唯一入口——已装插件是解包目录，不是 zip）。
  * 读不出 / 目录不存在 ⇒ 返回 null（调用方落 `unknown`，⛔ 不当 `drifted`）。
+ * G4：同一次扫描顺带产出 `uiImports`（对 `@linkdesk/ui` 的静态具名导入名）——实际地板的输入。
  */
-export function scanInstalledPluginDir(dir: string): { dangling: DanglingName[]; ldkRefs: number } | null {
+export function scanInstalledPluginDir(dir: string): { dangling: DanglingName[]; ldkRefs: number; uiImports: string[] } | null {
   let files: string[];
   try {
     files = walkFiles(dir, ARTIFACT_EXTS);
@@ -430,5 +501,5 @@ export function scanInstalledPluginDir(dir: string): { dangling: DanglingName[];
   }
   const scan = scanArtifact(artifact);
   const judged = judgeDangling(scan, HOST_CLASSES, HOST_KEYFRAMES);
-  return { dangling: judged.dangling, ldkRefs: judged.ldkRefs };
+  return { dangling: judged.dangling, ldkRefs: judged.ldkRefs, uiImports: scan.uiImports };
 }

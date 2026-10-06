@@ -25,6 +25,8 @@ import { scanInstalledPluginDir } from "./dangling-scan.js";
 export interface DanglingScanReading {
   dangling: DanglingName[];
   ldkRefs: number;
+  /** 产物对 `@linkdesk/ui` 的静态具名导入名（G4 实际地板的输入；同一次扫描顺带产出） */
+  uiImports: string[];
   /** 本次扫描耗时（毫秒）——超 1s 打慢读数告警（性能护栏读数） */
   scanMs: number;
 }
@@ -33,7 +35,7 @@ export interface CompatScanCacheDeps {
   /** 后台 worker 扫描（不可用/异常返 null）——注入以便单测不真开 worker */
   spawnWorkerScan: (dir: string) => Promise<DanglingScanReading | null>;
   /** 同步兜底（worker 不可用时的旧行为，一次/版本并入账） */
-  syncFallback: (dir: string) => { dangling: DanglingName[]; ldkRefs: number } | null;
+  syncFallback: (dir: string) => { dangling: DanglingName[]; ldkRefs: number; uiImports: string[] } | null;
   /** 落盘账文件（{userData}/compat-dangling-cache.json） */
   cacheFile: string;
   readCacheFile?: (file: string) => string | null;
@@ -62,7 +64,8 @@ export function createCompatScanCache(deps: CompatScanCacheDeps): CompatScanCach
     try {
       const parsed = JSON.parse(raw) as Record<string, DanglingScanReading>;
       for (const [k, v] of Object.entries(parsed)) {
-        if (v && Array.isArray(v.dangling) && typeof v.scanMs === "number") disk[k] = v;
+        // G4 起 uiImports 是读数的必备栏：没有它的旧账作废（重扫一次）——⛔ 不把「没扫过 ui」当「没消费 ui」
+        if (v && Array.isArray(v.dangling) && Array.isArray(v.uiImports) && typeof v.scanMs === "number") disk[k] = v;
       }
     } catch { /* 账坏了 = 没有账，重扫重建（不猜） */ }
   }
