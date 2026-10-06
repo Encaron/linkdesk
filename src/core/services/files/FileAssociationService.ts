@@ -46,9 +46,11 @@ import { FALLBACK_PLUGIN_ID } from "../../utils/plugin/fallbackPluginId";
 /**
  * D1 用户覆盖表的宿主配置键（settings.json 平键）。
  * 🔴 **注册进设置页 ConfigurationRegistry 只为一件事：挂「默认打开方式」管理器**（第 4 波口径更新）——
- * 那一组的键声明 `uiHint: "fileAssociationsManager"`，设置插件据此把**整组**渲染成自定义视图
+ * 本键声明 `uiHint: "fileAssociationsManager"`，设置插件据此把**整组**渲染成自定义视图
  * （竞争类型/按插件浏览）；⛔ 不走泛型设置行（`ObjectEditor` 再也画不到它 ⇒ 不存在第二处真相源，
- * D1 原意保住）。写入唯一入口 = `fileAssociation.setDefault` / `.setDefaultBulk` 写面
+ * D1 原意保住）。🔴 这个 hint 是**隐藏位 hint**（C2b，2026-10-06）：**不认识它的渲染器整行不画**
+ * （⛔ 不是画成只读 `{}` 垃圾行）——名单 `SETTINGS_HIDDEN_HINTS` 住共享层，任何渲染器同读。
+ * 写入唯一入口 = `fileAssociation.setDefault` / `.setDefaultBulk` 写面
  * （壳 IpcBridgeHandler → ConfigurationService 单写者）；读 = 主进程 registry-handlers 平键直读
  * （storage-handlers `resolveEffectiveCacheDir` 同款先例）。
  */
@@ -60,8 +62,13 @@ export const WORKBENCH_FILE_ASSOCIATIONS_KEY = "workbench.fileAssociations";
  *     OS「打开方式」候选（运行期动态半，见 `electron/services/os-associations.ts`）。
  *   · `…overrides`（object，默认 `{}`）：稀疏例外表 `{".pdf": false}`——单个类型不跟随；
  *     v1 **不给 UI**（只有手工改 settings.json 能到），故不设 per-type 行。
- * 壳侧声明住 `src/App/startup.ts` 的「系统集成」节；主进程消费方按这两条字面量读 settings.json
+ * 壳侧声明住 `src/App/config/fileAssociations.ts`（组 `file-associations`，由 `src/App/startup.ts`
+ * 调 `registerFileAssociationConfiguration()` 注册）；主进程消费方按这两条字面量读 settings.json
  * （`electron/services/os-associations-sync.ts`）——⛔ 两边各写一遍必然漂移成「开关静默失效」。
+ * 🔴 形态（C3c，2026-10-06）：`…followPlugins` **不挂 hint**，声明 `group: t("系统「打开方式」登记")`
+ * ⇒ 任何渲染器都按**通用布尔行**画（最低保证的可操作半）；`…overrides` 仍挂管理器 hint ⇒ 与挂载键
+ * 同走隐藏位语义（认识管理器的不画行、不认识的也不画行）。⛔ 别把这两个键挪去 `startup.ts` 的
+ * 「系统集成」节——那是安装器静态 `app.osIntegration.*` 的地盘（静态半/动态半分工，D6 钉死）。
  */
 export const OS_ASSOCIATIONS_FOLLOW_PLUGINS_KEY = "app.osAssociations.followPlugins";
 export const OS_ASSOCIATIONS_OVERRIDES_KEY = "app.osAssociations.overrides";
