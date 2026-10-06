@@ -1,0 +1,105 @@
+{
+  "$comment": [
+    "R9 · uiHint 渲染体共享化账本 —— 出处：docs/04-软件更新/待抉择池/分段预览色块边缘串色/06-尾巴总账与验收.md",
+    "（判据 T-A / T-B / T-C 在 §一，逐条账在 §二/§三/§四，门禁洞 G-1 在 §八）。",
+    "🔴 本文件是这一条的【机器唯一真相源】——06 那篇的表是它的人类视图，⛔ 别只改一处。",
+    "判据 A 的关系：消费宿主声明（uiHint / renderHint / type 词表）的控件必须住壳或 @linkdesk/ui；",
+    "渲染方（设置插件）只许做接线。凡臂里出现「共享件名之外的元素」或「插件私有类名」⇒ 就是尾巴。"
+  ],
+  "version": 1,
+  "measuredAt": "2026-10-06",
+  "pluginId": "settings",
+  "renderFile": "src/views/SettingsView/renderControl.tsx",
+  "uiHintCases": {
+    "themePicker": "ThemePicker",
+    "select": "DynamicSelect",
+    "accentSource": "AccentSourceControl",
+    "slider": "Slider",
+    "image": "ImageControl",
+    "fontTone": "FontToneControl",
+    "fontFamily": "FontFamilySelect",
+    "color": "ColorField",
+    "file": "FilePathInput",
+    "directory": "FilePathInput",
+    "fontSize": "NumberInput",
+    "segmented": "SegmentedRadio",
+    "stringList": "StringListEditor",
+    "fileAssociationsManager": "@handledElsewhere",
+    "default": "UnknownHintControl"
+  },
+  "uiHintHandledElsewhere": {
+    "fileAssociationsManager": {
+      "note": "隐藏位挂载键：该键自己没有行，认识它的渲染器把整键所在**整组**画成管理器（走共享组装视图）。",
+      "sites": [
+        {
+          "file": "src/views/SettingsView.tsx",
+          "names": ["ManagerView", "isSettingsHiddenHint"],
+          "why": "整组交给共享组装视图；隐藏位判定走共享守卫。"
+        },
+        {
+          "file": "src/views/file-associations-manager/useFileAssociationsModel.ts",
+          "names": ["buildManagerModel"],
+          "why": "取数与接线只到这里，聚合口径走共享纯函数。"
+        }
+      ]
+    }
+  },
+  "typeCases": {
+    "boolean": "Toggle",
+    "string": ["SelectBox", "ActionButton", "ColorField", "input"],
+    "number": "NumberInput",
+    "object": "ObjectEditor",
+    "array": "ObjectEditor",
+    "default": "span"
+  },
+  "renderHintSites": {
+    "readonly": [
+      { "marker": "if (prop.renderHint === \"readonly\")", "via": "ReadonlyControl" }
+    ],
+    "action": [
+      { "marker": "if (prop.renderHint === \"action\")", "via": "ActionButton" }
+    ],
+    "color": [
+      { "marker": "if (prop.renderHint === \"color\")", "via": "ColorField" }
+    ]
+  },
+  "adapters": {
+    "ImageControl": {
+      "file": "src/views/SettingsView/renderControl/sharedAdapters.tsx",
+      "composes": ["BackgroundImagePicker"],
+      "note": "接线件：对话框与入库经 props 注入，渲染体是共享 BackgroundImagePicker。"
+    },
+    "ReadonlyControl": {
+      "file": "src/views/SettingsView/renderControl/sharedAdapters.tsx",
+      "composes": ["ReadOnlyText"],
+      "note": "接线件：statusCommand 与宿主命令句柄注入，渲染体是共享 ReadOnlyText。"
+    },
+    "UnknownHintControl": {
+      "file": "src/views/SettingsView/renderControl/sharedAdapters.tsx",
+      "composes": [],
+      "note": "未知 hint 的只读降级（两个原生元素 ＋ 一句说明），是**降级契约**不是控件 ⇒ 无共享件可接（判据 T-C）。"
+    },
+    "FontToneControl": {
+      "file": "src/views/SettingsView/renderControl/toneControls.tsx",
+      "composes": ["SegmentedRadio", "SegmentPreviewText"],
+      "note": "接线件：预览覆盖层的选项映射（mapSegmentedOptions）是本仓编排，控件与预览都是共享件。"
+    },
+    "AccentSourceControl": {
+      "file": "src/views/SettingsView/renderControl/toneControls.tsx",
+      "composes": ["SegmentedRadio", "SegmentPreviewSwatch"],
+      "note": "同 FontToneControl——本案「边缘串色」就出在这个共享原子的铺贴几何上，修在共享件、两边同时正确。"
+    },
+    "ActionButton": {
+      "file": "src/views/SettingsView/renderControl.tsx",
+      "composes": ["Button"],
+      "note": "主部件形态与伴生形态共用同一段，渲染体是共享 Button，点击走 window.linkdesk.commands。"
+    }
+  },
+  "pluginLocalClasses": [],
+  "nativeTags": ["input", "span"],
+  "residual": [
+    "伴生件区（主部件之后的 `[伴生按钮][伴生只读]`，住 renderControl.tsx 的两个 switch 之外）不在本腿域内——它的逐条账在 06 §五（人查）。",
+    "「元素名对不对」是**形状**启发式：插件把自画件换个名字、或经第三方封装绕一层，本腿看不见（同 check-host-capability-placement 的残余边界纪律）。",
+    "若渲染方改用**内联样式**自画几何（零 className），本腿的类名那条看不见——但「元素必须是共享件名」那条仍会红。"
+  ]
+}

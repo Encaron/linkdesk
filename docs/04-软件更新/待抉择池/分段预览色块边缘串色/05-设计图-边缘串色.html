@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>分段预览色块边缘串色 · 根因 · 无效的第一版 · 真修</title>
+<style>
+  /* ── 本文档自己的配色（文档配色，非产品 token）── */
+  :root{
+    --bg:#17171b; --card:#202027; --line:#33333d; --txt:#e9e9ec; --txt2:#b3ada4;
+    --ink:#161616; --acc:#8a6ff0; --ok:#2fbf8a; --bad:#ff7a6b; --warn:#ffb35c;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 30px 60px;background:var(--bg);color:var(--txt);font:14px/1.7 var(--sans)}
+  h1{margin:0 0 12px;font:600 23px/1.35 var(--sans)}
+  h2{margin:36px 0 10px;font:600 17px/1.4 var(--sans);padding-bottom:7px;border-bottom:1px solid var(--line)}
+  h3{margin:22px 0 8px;font:600 14px/1.4 var(--sans);color:var(--txt)}
+  p{margin:10px 0}
+  .lead{color:var(--txt2);max-width:80ch}
+  .quote{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:#1d1d23;
+         color:var(--txt2);font-size:13px;max-width:84ch}
+  .sys{color:var(--bad);font:500 12px/1.6 var(--mono);letter-spacing:.02em}
+  .ok-sys{color:var(--ok);font:500 12px/1.6 var(--mono);letter-spacing:.02em}
+  .hint{color:var(--txt2);font-size:12.5px}
+  code,kbd{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:var(--txt)}
+  table{max-width:1000px;border-collapse:collapse;margin-top:8px;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 11px;text-align:left;vertical-align:top}
+  th{background:#23232b;font-weight:600}
+  td.m{font:12.5px var(--mono)}
+  .yes{color:var(--ok);font-weight:600}
+  .no{color:var(--bad);font-weight:600}
+  .warnc{color:var(--warn);font-weight:600}
+
+  /* ══════════════════════════════════════════════════════════════════
+     产品 CSS —— 逐字抄自产品源**当前**状态（真修之后）：
+       壳 @linkdesk/ui：src/components/shared/segment-preview/SegmentPreview.css
+       插件 settings ：✅ 私有那份已随 1.0.40 整删 —— 本页不再有第二份拷贝
+     🔴 真修 = 基类 background-origin:border-box ＋ 变体**长手**；
+        `.pre-fix` 就是「修前」＝「无效的第一版」：把变体写回 `background` **简写**
+        （简写会把 background-origin 一并重置回 padding-box ⇒ 基类那行白写）。
+        本页这两个类只服务对照，产品源里没有 `.pre-fix`。
+     唯一差别：本页把 token 值挂在 .stage 上（产品里由 :root 与主题色板写）。 ── */
+  .stage{
+    --radius-sm:4px;                 /* 壳 :root 默认（src/index.css:82） */
+    --tone-surface-deep:#1A1A1A;     /* 系统双字系标尺（src/index.css:14-17，明暗主题同值） */
+    --tone-ink-on-deep:#FFFFFF;
+    --tone-surface-light:#F2F2F2;
+    --tone-ink-on-light:#1A1A1A;
+    --separator:#E8E8E8;             /* 主题色板写；此处默认取内置 light */
+  }
+  .ldk-segment-preview{
+    display:flex; width:52px; height:30px; border-radius:var(--radius-sm);
+    overflow:hidden; border:1px solid var(--separator); flex-shrink:0;
+    background-origin:border-box;    /* ← 真修的第 1 步（几何是盒子的属性 ⇒ 加在基类） */
+  }
+  /* 变体一律**长手** —— 简写会重置 background-origin（下 §⑤ 现场可切） */
+  .ldk-segment-preview--split{
+    background-image:linear-gradient(90deg,var(--tone-surface-deep) 50%,var(--tone-surface-light) 50%);
+  }
+  .ldk-segment-preview--accent{background-color:var(--acc)}   /* 产品里读 var(--accent) */
+  /* 对照件：修前 ＝ 无效的第一版（简写把基类那行抹掉）—— ⛔ 不属产品源 */
+  .pre-fix{
+    background:linear-gradient(90deg,var(--tone-surface-deep) 50%,var(--tone-surface-light) 50%);
+  }
+  /* 对照件：B 案（no-repeat，已被否决）—— ⛔ 不属产品源 */
+  .fixB{background-repeat:no-repeat}
+  /* 同比例放大 8×：几何全部 ×8（不是位图放大、不是 transform 缩放）——
+     1px 的串色条在这里就是 8px 宽，机制与真身逐字同一份 CSS，只是长度都乘了 8 */
+  .x8{width:416px;height:240px;border-width:8px;border-radius:32px}
+
+  /* 分段按钮壳（照 SegmentedRadio.css:7-31 抄几何，供「真身」放回按钮里看） */
+  .ldk-seg{display:flex;gap:4px}
+  .ldk-seg-option{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 8px;
+                  background:transparent;border:1px solid var(--separator);border-radius:var(--radius-sm)}
+  .ldk-seg-option.is-selected{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+  .ldk-seg-label{font-size:12px;color:var(--txt2)}
+
+  /* ── 版面件 ── */
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 4px}
+  .tbtn{border:1px solid var(--line);background:#1f1f26;color:var(--txt);border-radius:7px;
+        padding:5px 11px;font:12.5px var(--sans);cursor:pointer}
+  .tbtn.on{border-color:var(--acc);background:#2a2436}
+  .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px;max-width:1180px}
+  .tcard{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:12px 14px}
+  .tcard.bad{border-color:#5a2f2c}
+  .tcard.good{border-color:#2d5142}
+  .tname{font:600 13px var(--sans)}
+  .tval{font:12px var(--mono);color:var(--txt2);margin:2px 0 10px}
+  .pin{padding:2px 7px;border-radius:5px;font:600 11.5px var(--sans);margin-left:6px}
+  .pin.bad{background:var(--bad);color:var(--ink)}
+  .pin.good{background:var(--ok);color:var(--ink)}
+  .body1{margin-bottom:10px}
+  .x8wrap{overflow:hidden;width:416px;height:240px}
+  .cols{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-top:12px}
+  .colc{flex:0 0 auto}   /* 列宽＝内容宽（×8 真身 416px），不够就整列换行，⛔ 不压缩不重叠 */
+  .colc h3{margin-top:0}
+  /* 逐列示意图（③ 机理）：8px = 1 列 */
+  .cells{display:flex;height:60px;border:1px solid var(--line);border-radius:6px;overflow:hidden;max-width:460px}
+  .cell-l{width:32px;background:#f2f2f2;flex:0 0 auto}
+  .cell-r{width:32px;background:#272727;flex:0 0 auto}
+  .cell-mid{flex:1;background:linear-gradient(90deg,#1a1a1a 50%,#f2f2f2 50%)}
+  .celllabel{font:12px var(--mono);color:var(--txt2);max-width:460px}
+  .celllabel b{color:var(--txt)}
+  .tile{display:flex;height:60px;border:1px solid var(--line);border-radius:6px;overflow:hidden;max-width:420px}
+  .tile-a{flex:1;background:#1a1a1a;display:flex;align-items:center;justify-content:center;
+          font:11.5px var(--mono);color:#cfcfcf}
+  .tile-b{flex:1;background:#f2f2f2;display:flex;align-items:center;justify-content:center;
+          font:11.5px var(--mono);color:#3a3a3a}
+  footer{margin-top:38px;color:var(--txt2);font-size:12.5px;max-width:90ch;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+
+<h1>分段预览色块「边缘串色」—— 黑侧边冒白、白侧边冒黑</h1>
+<p class="lead">本页是<b>病灶图 ＋ 三案对照</b>（修前 ／ 真修 ／ 已否决的 B 案）。里面那个黑白分半的小色块，CSS <b>逐字抄自产品源当前状态</b>（壳 <code>SegmentPreview.css</code>；
+⚠️ 旧版本页里写的「插件 <code>SettingsView-rows.css</code> 那份拷贝」<b>已随插件 1.0.40 整删</b>，⛔ 今天全生态只有一处实现）。
+<b>上面那两个开关（主题 / 修前）可以现场切</b>——切到「修前」你会看到同一个色块又开始串色，而那正是<b>无效的第一版</b>的样子。</p>
+
+<div class="quote">你的原话（2026-10-06）：<b>「本来是黑白双拼的，一般的 <code>app.theme: light</code> 这种都是显示正常。但是我切换到 <code>theme-aurora-glass.aurora-glass</code>，那个黑色那边的最边上会出现白色，白色那边的一点会出现黑色，看起来像是最边上两个竖条像素交换位置了。」</b></div>
+
+<p class="sys">判定：你说得一个字不差——就是「最边上两个竖条像素交换了位置」。⛔ 而且<b>与玻璃无关</b>、也与「主题好不好」无关：是这个色块自己画渐变的方式踩了一个 CSS 默认值（下详）。</p>
+<p class="ok-sys">现状：✅ 真修已落地（<code>@linkdesk/ui</code> 0.2.50 已发 npm；插件 1.0.40 已改吃共享件、待你 dev 目视后发版）。</p>
+
+<h2>① 真身：放回按钮里看（1:1 真实尺寸）</h2>
+<div class="toolbar">
+  <span class="hint">主题（只改 separator）：</span>
+  <button class="tbtn on" data-sep="rgba(255,255,255,0.06)" data-name="极光玻璃 0.06">极光玻璃 <span class="hint">0.06</span></button>
+  <button class="tbtn" data-sep="rgba(255,255,255,0.12)" data-name="panorama 0.12">panorama <span class="hint">0.12</span></button>
+  <button class="tbtn" data-sep="rgba(214,51,108,0.10)" data-name="pill 0.10">pill <span class="hint">0.10</span></button>
+  <button class="tbtn" data-sep="#E8E8E8" data-name="内置 light #E8E8E8">内置 light</button>
+  <button class="tbtn" data-sep="#474747" data-name="内置 dark #474747">内置 dark</button>
+  <span class="sep"></span>
+  <label class="hint"><input type="checkbox" id="preFix"> 打勾＝退回「修前」（＝<b>无效的第一版</b>：变体用 <code>background</code> 简写，把基类的 <code>background-origin</code> 抹掉）</label>
+</div>
+<p class="hint">↑ 这两个开关只作用于下面这枚 <b>1:1 真身</b> 与紧接着的 <b>「现场 8×」</b> 那一块；③④⑤ 里的对照列是<b>定稿对照</b>（各带各的标注，不跟着开关变）。</p>
+
+<div class="toolbar">
+  <div class="stage jssep" style="--separator:rgba(255,255,255,0.06)">
+    <div class="ldk-seg">
+      <div class="ldk-seg-option is-selected">
+        <span class="ldk-segment-preview ldk-segment-preview--split" id="real"></span>
+        <span class="ldk-seg-label">跟随主题配方</span>
+      </div>
+      <div class="ldk-seg-option">
+        <span class="ldk-segment-preview ldk-segment-preview--accent"></span>
+        <span class="ldk-seg-label">自定义</span>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="hint">↑ 1:1 真身（左边那一枚就是 <code>app.accentSource</code> 的第一个按钮）。当前 separator：<b id="curName">极光玻璃 0.06</b>。
+这一尺寸下那条 1px 的毛病<b>肉眼可见但很细</b>——所以下面给了同比例放大 8× 的版本。</p>
+
+<div class="stage jssep" style="--separator:rgba(255,255,255,0.06);margin:6px 0 4px">
+  <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8" id="demoSw"></span></div>
+</div>
+<p class="hint">↑ <b>现场 8×</b>：跟着上面的「主题」与「修前」两个开关一起变——<b>同一个色块</b>，只是几何全乘 8。
+默认（＝真修）：两侧都是本色＋6% 白边；打勾之后：左缘 8px 浅、右缘 8px 深，<span class="no">一眼就是「两条竖条换了位置」</span>。</p>
+
+<h2>② 同比例放大 8×（把 1px 放大成 8px，机制不变）</h2>
+<div class="cols">
+  <div class="colc stage" style="--separator:rgba(255,255,255,0.06)">
+    <h3>修前 ＝ 无效的第一版（极光玻璃 0.06）</h3>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+    <p class="hint">左缘 —— 一条 <b>8px 宽的浅色</b>（＝色块<b>末列</b>的颜色）；右缘 —— 一条 <b>8px 宽的深色</b>（＝色块<b>首列</b>的颜色）。<span class="no">这就是你看到的「两条竖条换了位置」。</span></p>
+  </div>
+  <div class="colc stage" style="--separator:rgba(255,255,255,0.06)">
+    <h3>真修之后（同一主题、同一 separator）<span class="pin good">已落地</span></h3>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8"></span></div>
+    <p class="hint">两侧都变成<b>本色 ＋ 6% 白边</b>：左缘 8px ＝ <code>#272727</code>（近黑＋白边）、右缘 8px ＝ <code>#F2F2F2</code>（近白＋白边）。<span class="yes">两侧都正常了。</span></p>
+  </div>
+</div>
+
+<h2>③ 机理：为什么只在左右两列露馅</h2>
+
+<h3>① 一个盒子，两个尺寸</h3>
+<p>全局 <code>box-sizing: border-box</code>（<code>src/index.css:197</code>）⇒ 色块写的是 <code>52×30</code>，但它的<b>内边距盒只有 50×28</b>（被 1px 边框吃掉一圈）。<br>
+而 <code>background-origin</code> 的默认值是 <code>padding-box</code> ⇒ <b>渐变铺贴块按 50×28 画</b>；<code>background-size</code> 默认 <code>auto</code>，渐变又没有固有尺寸 ⇒ 铺贴块尺寸 = 铺贴区 = <b>50×28</b>；<code>background-repeat</code> 又默认 <code>repeat</code> ⇒ 这块 50×28 的图样会<b>平铺</b>去填满 52×30 的绘制区（边框盒）。</p>
+
+<h3>② 平铺块长这样（50 列 = 50px）</h3>
+<div class="tile">
+  <span class="tile-a">第 1 列 · 深 #1A1A1A</span>
+  <span class="tile-b">第 50 列 · 浅 #F2F2F2</span>
+</div>
+<p class="celllabel">↑ 铺贴块的<b>第 1 列</b>是渐变起点（深），<b>第 50 列</b>是渐变终点（浅）。硬停 50% 在它中间。</p>
+
+<h3>③ 边框盒 52 列 = 补上的两列</h3>
+<div class="cells">
+  <span class="cell-l"></span><span class="cell-mid"></span><span class="cell-r"></span>
+</div>
+<p class="celllabel">
+  最左那 1 列（x=0）落在平铺实例 <b>k=−1</b> 的最后一列 ⇒ 拿到<b>末列＝浅色</b>；<br>
+  最右那 1 列（x=51）落在平铺实例 <b>k=+1</b> 的第一列 ⇒ 拿到<b>首列＝深色</b>。
+</p>
+
+<h3>④ 为什么上下看不出来、为什么只有某些主题看得见</h3>
+<table>
+  <tr><th>问</th><th>答</th></tr>
+  <tr><td class="m">上下两行不也被补上了吗？</td><td>被补了，但这是<b>水平</b>渐变——每一行的颜色都一样，上下补出来的颜色与本体同色 ⇒ <b>看不出来</b>。所以症状只有左右两条竖条，正好对上你说的「两个竖条像素」。</td></tr>
+  <tr><td class="m">那两条本来就存在，为什么 light 主题看不见？</td><td>因为那两列是画在<b>边框底下</b>的：<code>background-clip</code> 默认 <code>border-box</code> ⇒ 渐变铺到边框底下，再由边框盖一层。内置 light 的 <code>separator</code> 是<b>不透明</b>的 <code>#E8E8E8</code> ⇒ 直接把下面那两列盖死，四边只看到一条均匀的边框色；极光玻璃的 <code>separator</code> 是 <code>rgba(255,255,255,0.06)</code> ⇒ <b>94% 透明</b>，边框＝「透出底下的渐变」——四边本该都透出渐变本色（看不出来），唯独左右两条透出的是<b>对侧的颜色</b>。</td></tr>
+  <tr><td class="m">所以是「玻璃」的锅？</td><td>不是。跟玻璃、跟 blur 都无关，<b>只跟 separator 的透明度有关</b>：任何写半透明 <code>separator</code> 的主题都会露（下节列全 15 个配色）。</td></tr>
+</table>
+
+<h2>④ 哪些主题会露（官方主题仓 15 个配色全表）</h2>
+<p class="hint">判据一条：<b>separator 不透明 ⇒ 被边框盖住；半透明 ⇒ 透出来</b>。下面五张卡是活的（真身 1:1 ＋ 同比例 8×），可以自己比。</p>
+<div class="grid">
+  <div class="tcard bad stage" style="--separator:rgba(255,255,255,0.06)">
+    <div class="tname">theme-aurora-glass <span class="pin bad">会露</span></div>
+    <div class="tval">极光紫 · separator: rgba(255,255,255,0.06)</div>
+    <div class="body1"><span class="ldk-segment-preview ldk-segment-preview--split pre-fix"></span></div>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+  </div>
+  <div class="tcard bad stage" style="--separator:rgba(255,255,255,0.12)">
+    <div class="tname">theme-panorama <span class="pin bad">会露</span></div>
+    <div class="tval">moonlight · separator: rgba(255,255,255,0.12)</div>
+    <div class="body1"><span class="ldk-segment-preview ldk-segment-preview--split pre-fix"></span></div>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+  </div>
+  <div class="tcard bad stage" style="--separator:rgba(214,51,108,0.10)">
+    <div class="tname">theme-pill <span class="pin bad">会露</span></div>
+    <div class="tval">bubble · separator: rgba(214,51,108,0.10)</div>
+    <div class="body1"><span class="ldk-segment-preview ldk-segment-preview--split pre-fix"></span></div>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+  </div>
+  <div class="tcard good stage" style="--separator:#E8E8E8">
+    <div class="tname">light（内置）<span class="pin good">被盖住</span></div>
+    <div class="tval">light · separator: #E8E8E8</div>
+    <div class="body1"><span class="ldk-segment-preview ldk-segment-preview--split pre-fix"></span></div>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+  </div>
+  <div class="tcard good stage" style="--separator:#474747">
+    <div class="tname">light（内置 · dark 配色）<span class="pin good">被盖住</span></div>
+    <div class="tval">theme-defaults.dark · separator: #474747</div>
+    <div class="body1"><span class="ldk-segment-preview ldk-segment-preview--split pre-fix"></span></div>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+  </div>
+</div>
+<p class="hint">⚠️ 这五张卡故意画<b>修前</b>形态（带 <code>.pre-fix</code>）：只有修前才看得出「哪三只会露」。真修之后，五张卡左右两缘都会回本色。</p>
+<table style="margin-top:16px">
+  <tr><th>主题配方</th><th>配色</th><th>separator</th><th>判定</th></tr>
+  <tr><td class="m">theme-aurora-glass</td><td>aurora</td><td class="m">rgba(255,255,255,0.06)</td><td class="no">会露</td></tr>
+  <tr><td class="m">theme-panorama</td><td>moonlight</td><td class="m">rgba(255,255,255,0.12)</td><td class="no">会露</td></tr>
+  <tr><td class="m">theme-pill</td><td>bubble</td><td class="m">rgba(214,51,108,0.10)</td><td class="no">会露</td></tr>
+  <tr><td class="m">light（内置）</td><td>light / dark</td><td class="m">#E8E8E8 / #474747</td><td class="yes">被盖住</td></tr>
+  <tr><td class="m">theme-mint-soda</td><td>×4 档</td><td class="m">#EDE5DD / #DCE8ED / #E4DED6 / #DCE8DC</td><td class="yes">被盖住</td></tr>
+  <tr><td class="m">theme-songti</td><td>paper</td><td class="m">#E8E2D6</td><td class="yes">被盖住</td></tr>
+  <tr><td class="m">theme-terminal</td><td>phosphor</td><td class="m">#162A24</td><td class="yes">被盖住</td></tr>
+  <tr><td class="m">theme-twilight-forest</td><td>×4 档</td><td class="m">#5A5646 / #364540 / #3E3648 / #354A38</td><td class="yes">被盖住</td></tr>
+</table>
+<p class="sys">⇒ 15 个配色里 <b>3 个会露</b>，且不限于官方主题：任何第三方主题写了半透明 separator 都一样。</p>
+
+<h2>⑤ 三案对照（含「无效的第一版」为什么无效）</h2>
+<div class="cols">
+  <div class="colc stage" style="--separator:rgba(255,255,255,0.06)">
+    <h3>修前 ＝ 无效的第一版</h3>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 pre-fix"></span></div>
+    <p class="hint">左缘 <code>#F2F2F2</code> ／ 右缘 <code>#272727</code>：<span class="no">两侧各显示对侧颜色</span>。<br>
+    🔴 这一格同时代表两件事：<b>①</b> 修前的产品代码；<b>②</b> 「只给基类加了一行 <code>background-origin: border-box</code>、变体却还用 <code>background</code> 简写」的那一版（<b>已发成 <code>@linkdesk/ui</code> 0.2.49</b>）——简写会把那行重置回 <code>padding-box</code> ⇒ <b>逐像素与修前相同</b>。</p>
+  </div>
+  <div class="colc stage" style="--separator:rgba(255,255,255,0.06)">
+    <h3>真修 · 基类 <code>border-box</code> ＋ 变体<b>长手</b> <span class="pin good">已落地 0.2.50</span></h3>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8"></span></div>
+    <p class="hint">铺贴块 = 边框盒（52×30），没有多余的环绕条。左缘 <code>#272727</code> ／ 右缘 <code>#F2F2F2</code>——<span class="yes">两侧都是本色＋6% 白边</span>。<br>
+    🔑 关键在两处一起改：<code>background-image: linear-gradient(…)</code>（不是 <code>background:</code>）与 <code>background-color: var(--accent)</code>。</p>
+  </div>
+  <div class="colc stage" style="--separator:rgba(255,255,255,0.06)">
+    <h3>B 案 · <code>background-repeat: no-repeat</code> <span class="pin bad">已否决</span></h3>
+    <div class="x8wrap"><span class="ldk-segment-preview ldk-segment-preview--split x8 fixB"></span></div>
+    <p class="hint">环绕条没了，但边框那 1px <b>没东西可铺</b> ⇒ 露出底下的面板色（实测 <code>#1e252d</code>）：<span class="warnc">脏边仍在，只是换了个颜色</span>。</p>
+  </div>
+</div>
+
+<h3>🔴 为什么「第一版」在别处看着有效、在产品里却无效？——样式表顺序</h3>
+<p>本页的 <code>.pre-fix</code> 与产品的差异只有一处：<b>谁写在后面</b>。规则库里 <code>background</code> 简写会把 <code>background-origin</code> 一并重置，所以「基类那行到底算不算数」取决于**声明顺序**——后写者胜。</p>
+<table>
+  <tr><th>写法</th><th>样式表顺序</th><th>结果</th></tr>
+  <tr><td class="m">无效的第一版（产品 0.2.49）</td><td class="m">基类 <code>background-origin</code> → 变体 <code>background</code> 简写</td><td class="no">简写在后 ⇒ 把 origin 抹回 <code>padding-box</code> ⇒ 等于没修</td></tr>
+  <tr><td class="m">真修（产品 0.2.50）</td><td class="m">基类 <code>background-origin</code> → 变体 <code>background-image</code> 长手</td><td class="yes">长手不含 origin，基类那行活下来 ⇒ 修好</td></tr>
+  <tr><td class="m">（当年本页的写法）</td><td class="m">变体简写 → 本页 <code>.fix</code> 在后</td><td class="warnc">本页那行在后 ⇒ 看着有效——**这就是当初误判「已修好」的原因**</td></tr>
+</table>
+<p class="hint">⇒ 结论写进产品注释：<b>几何声明住基类 ＋ 变体一律长手，两条一起才成立</b>；本件（<code>SegmentPreview.css</code>）从此禁用 <code>background</code> 简写。</p>
+
+<h2>⑥ 实测读数（无头 Edge · DPR 1 · 真身 CSS 直连 · 单行采样）</h2>
+<p class="hint">口径（第二轮，2026-10-06）：页面 <code>&lt;link&gt;</code> 直连<b>产品文件本体</b> <code>src/components/shared/segment-preview/SegmentPreview.css</code>（⛔ 不抄副本），全局 <code>box-sizing:border-box</code>，单行采样 <code>y=40</code>（避开圆角与叠加线）。修后那块占 x=20..71：<b>x=20 是左边框那一列、x=71 是右边框那一列</b>。</p>
+<table>
+  <tr><th>变体（同一主题 separator 0.06）</th><th>左边框列</th><th>渐变主体</th><th>右边框列</th><th>判定</th></tr>
+  <tr><td class="m">✅ 真修（border-box ＋ 长手）</td><td class="m yes">#272727 深＋6%白</td><td class="m">#1A1A1A（列 21–45）</td><td class="m yes">#F2F2F2 浅＋6%白</td><td class="yes">两侧都是本色</td></tr>
+  <tr><td class="m">🔴 修前 ＝ 无效的第一版</td><td class="m no">#F2F2F2 浅</td><td class="m">#1A1A1A</td><td class="m no">#272727 深</td><td class="no">两侧各显对侧色</td></tr>
+  <tr><td class="m">⚪ 不透明边框对照（#2b3440）</td><td class="m">#2B3440</td><td class="m">#1A1A1A</td><td class="m">#2B3440</td><td class="yes">边框色盖死 ⇒ 看不出来</td></tr>
+</table>
+<p class="hint">第一轮（抄写副本 · 按 y=3..26 取列均值）读数为 左 <code>#f1f1f1</code> ／ 右 <code>#272727</code>，与第二轮差 1 属取整/抗锯齿口径差，不是矛盾。<br>
+DPR 1.25 复测：左缘仍为 <code>#e2e3e4</code>（与 <code>#525252</code> 之间有抗锯齿过渡）——<b>缩放只柔化它，不消除</b>。</p>
+
+<h2>⑦ 改哪里（✅ 只有一处：共享件）</h2>
+<table>
+  <tr><th>#</th><th>仓 / 文件</th><th>改什么</th><th>谁看得见</th></tr>
+  <tr>
+    <td>①</td>
+    <td class="m">linkdesk（壳）<br>src/components/shared/segment-preview/<br>SegmentPreview.css</td>
+    <td class="m">基类：<code>background-origin: border-box;</code><br>变体：<code>background-image</code> ／ <code>background-color</code>（长手）</td>
+    <td>全生态（<code>@linkdesk/ui</code> 随包出货，0.2.50）；<code>app.accentSource</code> 两枚 ＋ <code>app.fontTone</code> 的 <code>Aa</code> 半都在内</td>
+  </tr>
+  <tr>
+    <td>②</td>
+    <td class="m">插件仓 official/settings<br><s>src/views/SettingsView-rows.css:255</s></td>
+    <td class="m"><b>整删</b>（私有 <code>.settings-segmented-swatch*</code> ／ <code>.settings-font-tone-half*</code>），改吃共享件</td>
+    <td>✅ 已随 1.0.40 删除 —— <b>今天没有第二份源</b>（<code>packages/linkdesk-ui/dist/index.css</code> 只是编译产物，<code>ui:build</code> 自动重生）</td>
+  </tr>
+</table>
+<p class="hint">⛔ <b>四种不许的改法</b>：① 改 <code>separator</code> 透明度去盖；② 用 <code>background-size:100% 100%</code> 去凑；③ 在变体里用 <code>background</code> <b>简写</b>（会静默重置 origin = 修了等于没修）；④ 只改一处、漏掉另一处（归一化前是两份拷贝，现已并成一处）。</p>
+
+<h3>决策点 D1（✅ 已拍板 ＝ B · 归一化）</h3>
+<table>
+  <tr><th>#</th><th>问</th><th>裁定</th><th>你的原话</th></tr>
+  <tr>
+    <td class="m">D1</td>
+    <td>只修共享件那一行（A），还是按归一化把插件那份私有拷贝接到共享件上（B）？</td>
+    <td><b>B</b>，且更进一步：凡「消费宿主声明的控件」由插件自画的，一律接上共享件</td>
+    <td class="m">「你修 <code>@linkdesk/ui</code> 和插件仍在自画的都是修，为什么不按归一化修」<br>「设置插件是外部插件引用 <code>@linkdesk/ui</code> 的一个官方示例插件，必须标准」</td>
+  </tr>
+</table>
+<p class="hint">原「A（先止血）」建议已作废：它当时记的两条前提（须走 <code>pick()</code> 双轨 ／ 插件地板 0.2.32）今天都不成立——地板已抬 0.2.52，双轨已整层删除。尾巴总账与「换一套设置插件 GUI 不退化」验收见同夹 <b>06-尾巴总账与验收.md</b>。</p>
+
+<footer>
+  ✅ <b>本夹已不是「零改动」</b>：真修已落地（壳共享件改了、<code>@linkdesk/ui</code> 0.2.50 已发 npm、插件私有拷贝整删改吃共享件＝settings 1.0.40）。⏳ 仍等你的 dev 目视点头，之后才是插件发版那一段。<br>
+  档案：同夹 <b>06-尾巴总账与验收.md</b>（尾巴总账 ＋ 换插件不退化验收 ＋ 门禁洞）· <b>01-根因与修法.md</b>（机制推导 ＋ 逐像素实测 ＋ 落位判据 ＋ 验证路径）· <b>02-边缘情况清单.md</b>（16 条边缘）·
+  <b>03-实现交接.md</b>（逐文件落点 ＋ 跨仓发版账 ＋ 门禁）· <b>04-任务清单.md</b>（阶段与验收）。<br>
+  本页除排版件与两枚对照类（<code>.pre-fix</code> / <code>.fixB</code>）外，色块相关的那几条 CSS 逐字来自产品源；token 值逐字来自 <code>src/index.css</code> 与各主题配方的 <code>colors.separator</code>。
+</footer>
+
+<script>
+  /* 只动「现场」那一组：① 1:1 真身 ＋ 现场 8× 演示块（#demoSw）。
+     ⛔ 不碰 ②③⑤ 的对照列——那些是带标注的定稿对照，跟着开关变就等于把对照毁了。 */
+  var live = [document.getElementById("real"), document.getElementById("demoSw")];
+
+  // 「修前」开关：勾上 = 变体退回简写（≡ 无效的第一版）
+  function applyPreFix(){
+    var on = document.getElementById("preFix").checked;
+    for (var i=0;i<live.length;i++) live[i].classList.toggle("pre-fix", on);
+  }
+  document.getElementById("preFix").addEventListener("change", applyPreFix);
+  applyPreFix();
+
+  // 主题切换：只改 .stage.jssep 上的 --separator（产品里由主题色板写）
+  document.querySelectorAll("[data-sep]").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll("[data-sep]").forEach(function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      var sep = b.getAttribute("data-sep");
+      document.querySelectorAll(".stage.jssep").forEach(function(s){ s.style.setProperty("--separator", sep); });
+      document.getElementById("curName").textContent = b.getAttribute("data-name");
+    });
+  });
+</script>
+
+</body>
+</html>

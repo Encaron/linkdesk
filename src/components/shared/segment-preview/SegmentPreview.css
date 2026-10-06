@@ -1,6 +1,8 @@
 /* SegmentPreview——分段控件段内预览（@linkdesk/ui）。
- * 几何照抄设置仓 SettingsView-rows.css 的 .settings-segmented-swatch / .settings-font-tone-half
- * （52×30 ＋ var(--radius-sm)），类名换 ldk- 前缀（硬约束 23）；颜色全走 CSS 变量（硬约束 1），零 hex。 */
+ * 几何 52×30 ＋ var(--radius-sm)，类名 ldk- 前缀（硬约束 23）；颜色全走 CSS 变量（硬约束 1），零 hex。
+ * ⛔ 本件是这两处预览的**唯一**实现：设置插件（官方示例）原先自画的私有几何
+ *    `.settings-segmented-swatch` / `.settings-font-tone-half` 已随 1.0.40 整删、改吃本件——
+ *    别再把它当「从插件抽出来的副本」去找第二份源码，插件仓里已无此物。 */
 .ldk-segment-preview {
   display: flex;
   width: 52px;
@@ -8,16 +10,26 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--separator);
-  flex-shrink: 0;
+  /* 全局 box-sizing:border-box ⇒ padding-box 比 border-box 每边少 1px；background-origin 缺省
+     padding-box 而 --split 的渐变又没有固有尺寸 ⇒ 铺贴块只有 50×28，被 background-repeat
+     在 52×30 的绘制区里环绕一圈，多出的左右两列恰好压在边框底下。--separator 不透明时被盖住，
+     半透明主题（aurora-glass 0.06）就露成左右各 1px 的串色（左侧取到渐变末列=浅、右侧取到首列=深）。
+     铺贴几何是盒子的属性 ⇒ 修在基类（诊断见
+     docs/04-软件更新/待抉择池/分段预览色块边缘串色/01-根因与修法.md）。 */
+  background-origin: border-box;
 }
+/* 🔴 本件所有变体一律用**长手**（background-image / background-color），⛔ 不许用 `background` 简写：
+ *   简写会把 background-origin 一并重置回 padding-box ⇒ 基类那行白写、串色如故。
+ *   2026-10-06 实测钉住：简写版本下左右边框列读数为 #F2F2F2 / #272727（＝修前逐像素相同），
+ *   换长手后为 #272727 / #F2F2F2（见本案 05-设计图-边缘串色.html 的读数）。 */
 /* 中性分半示意「主题决定强调色」——两半用 --tone-* 实色标尺（玻璃合成把 --bg-window 写成
  * alpha 0 时，读 --bg-window 会与背景融为一体＝「完全空心」，故走实色标尺） */
 .ldk-segment-preview--split {
-  background: linear-gradient(90deg, var(--tone-surface-deep) 50%, var(--tone-surface-light) 50%);
+  background-image: linear-gradient(90deg, var(--tone-surface-deep) 50%, var(--tone-surface-light) 50%);
 }
-/* 自定义——实时生效强调色（声明式读 CSS 变量） */
+/* 自定义——实时生效强调色（声明式读 CSS 变量；纯色，无铺贴几何可言） */
 .ldk-segment-preview--accent {
-  background: var(--accent);
+  background-color: var(--accent);
 }
 .ldk-segment-preview__half {
   flex: 1;
