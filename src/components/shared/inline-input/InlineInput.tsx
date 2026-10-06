@@ -164,6 +164,10 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   };
 
   const handleFocus = () => {
+    // 🔴 复位一次性 latch：`isActive` 停在 false 时 blur 不再走确认分支，退出清理 effect 也不再跑
+    // ⇒ 常驻输入框（过滤框，反复聚焦/失焦）会把 inputFocus + keybindingCapture 永久卡在 true，
+    // 而 captureActive=true 会让 KeybindingRegistry 吞掉**全部**全局快捷键（dispatch.ts `return false`）。
+    setIsActive(true);
     lk().contextKey?.set?.("inputFocus", true);
     lk().keybindings?.setKeybindingCaptureActive?.(true);
   };

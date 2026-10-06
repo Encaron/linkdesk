@@ -184,6 +184,28 @@ describe("InlineInput", () => {
     expect(mockSetCapture).toHaveBeenCalledWith(false);
   });
 
+  // ── 6b. 🔴 常驻输入框（过滤框：反复聚焦/失焦，不随确认卸载）二次失效 ──
+
+  it("反复 聚焦→失焦：每轮失焦都恢复全局状态（`isActive` latch 必须随聚焦复位）", () => {
+    const { input } = renderInput();
+    // 第一轮：聚焦 → 失焦（blur 走确认分支 → isActive→false → 清理 effect 恢复）
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+    expect(mockSetValue).toHaveBeenLastCalledWith("inputFocus", false);
+    flushRAF();
+    expect(mockSetCapture).toHaveBeenLastCalledWith(false);
+    // 第二轮：再聚焦 → 再失焦——`isActive` 若停在 false，blur 不进确认分支、
+    // 清理 effect 也不重跑 ⇒ inputFocus/capture 永久卡 true（captureActive=true 吞掉全部全局快捷键）
+    mockSetValue.mockClear();
+    mockSetCapture.mockClear();
+    fireEvent.focus(input);
+    expect(mockSetValue).toHaveBeenLastCalledWith("inputFocus", true);
+    fireEvent.blur(input);
+    expect(mockSetValue).toHaveBeenLastCalledWith("inputFocus", false);
+    flushRAF();
+    expect(mockSetCapture).toHaveBeenLastCalledWith(false);
+  });
+
   // ── 7. 两个加性可选 prop（缺省＝今天的行为，⛔ 既有调用方零改动） ──
 
   it("ariaLabel 给了 ⇒ 挂 aria-label；缺省 ⇒ ⛔ 不挂该属性", () => {

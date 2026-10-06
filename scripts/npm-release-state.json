@@ -131,8 +131,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.53",
-      "contentHash": "96dad609cccc7e63e10666219a70809a408dcdc40b2d69c8640c3a5e49d92277",
+      "version": "0.2.54",
+      "contentHash": "b5eb12896b67c09beaecf4ce601d3787c59cd1b02820784c7e6bb6983c45db06",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "656affde2e0191c4",
@@ -191,8 +191,8 @@
         "src/components/shared/image-picker/BackgroundImagePicker.css": "c8846591abdc3b84",
         "src/components/shared/image-picker/BackgroundImagePicker.tsx": "9c0e45775fe9786a",
         "src/components/shared/inline-input/InlineInput.css": "00290b9bb67838fa",
-        "src/components/shared/inline-input/InlineInput.test.tsx": "1be773e503a4aec6",
-        "src/components/shared/inline-input/InlineInput.tsx": "055d5f2446c3650a",
+        "src/components/shared/inline-input/InlineInput.test.tsx": "3e4682f2bc73abb1",
+        "src/components/shared/inline-input/InlineInput.tsx": "bbf88517930a88a7",
         "src/components/shared/keybinding-hint/KeybindingHint.css": "c6f622c20ced4e34",
         "src/components/shared/keybinding-hint/KeybindingHint.test.tsx": "58891f4a4cac9352",
         "src/components/shared/keybinding-hint/KeybindingHint.tsx": "e4c7c1d37369b91a",
