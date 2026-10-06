@@ -51,7 +51,7 @@ describe("resolveFallbackTabType（T7 角色挂牌兜底）", () => {
     registerHolder(HOLDER_A, ["zzz"]);
     expect(resolveFallbackTabType()).toBe(HOLDER_A);
 
-    // 第二家挂牌者进场——只是进候选，当前默认不动（D7「牌=提名不是夺权」）
+    // 第二家挂牌者加入——只是进候选，当前默认不动（D7「牌=提名不是夺权」）
     registerHolder(HOLDER_B, ["qqq"]);
     expect(resolveFallbackTabType()).toBe(HOLDER_A);
     expect(getRoleHolders()).toEqual([HOLDER_A, HOLDER_B]);
