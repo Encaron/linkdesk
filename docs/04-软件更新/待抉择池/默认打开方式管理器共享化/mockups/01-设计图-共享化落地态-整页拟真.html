@@ -283,15 +283,15 @@ button:focus-visible,select:focus-visible,input:focus-visible,.settings-row-gear
     <ol>
       <li><b>I1 逐 hint 分发（C1=B 落地形态）</b>：管理器 hint 键 → 共享<b>组装视图</b>（两区默认皮）；OS 键摘 hint 后走<b>通用 SettingRow</b>——同一组里「自定义视图＋普通行」并存。</li>
       <li><b>I2 下拉＝写覆盖表</b>：多候选行（整格生效）/卡体行（单类）改下拉 → `fileAssociation.setDefault` 写 `workbench.fileAssociations` → toast＋右侧覆盖表/日志联动。</li>
-      <li><b>I3 行齿轮（hover 显现；**点击打开非模态菜单——条目全是真实注册面**，五种齿轮逐一点开即可对照）</b>：① 多候选行＝「恢复自动（本格 N 类）」＋「打开方式…（.ext）」（settings 插件真实条目＋壳命令）；② <b>卡体行＝「打开方式…（.ext）」（C4 建议形态）</b>；③ 卡头＝「清除相关默认覆盖（N 类）」＋「复制插件 ID」（真实条目）；④ 配置行（OS 行/通用行）＝壳槽 SettingItemGear **真实条目**：恒显「复制设置 ID／复制设置名称／复制为 JSON」，「重置此设置」when=改动过才显（**把 OS 开关切一下再开齿轮即可见**），「跟随主题」「打开存储位置」按 when 本页不显，copySettingAsUrl/toggleSettingSync 两条 when:false 永隐（母案台账 P8）；⑤ 图标栏底部齿轮＝ExtensionGear 槽真实条目（命令面板/打开设置/主题/语言/快捷键/DevTools ── 检查更新/关于；「回退内置设置页」when=第三方套激活才显）。菜单锚齿轮下方非模态、不吞首击（真实机制）。</li>
-      <li><b>I4 插件卡展开＋卡体限高滚动</b>：点卡头原地展开；卡头摘要＝<b>声明 N · 竞争 N · 默认持有 N</b>（数字加粗，照 PluginCard 真骨架）。**编辑器 45 类 ⇒ 展开体 `max-height:280px` 卡内滚动**（plugin-card.css 真值——滚轮在卡体内滚，页面不跟着跑）；搜索命中**自动展开**（C6：清空不收回，用户自己收）。</li>
+      <li><b>I3 行齿轮（hover 显现；**点击打开非模态菜单——条目全是真实注册面**，五种齿轮逐一点开即可对照）</b>：① 多候选行＝「恢复自动（本格 N 类）」＋「打开方式…（.ext）」（settings 插件真实条目＋壳命令）；② <b>卡体行＝「打开方式…（.ext）」（C4 定案形态）</b>；③ 卡头＝「清除相关默认覆盖（N 类）」＋「复制插件 ID」（真实条目）；④ 配置行（OS 行/通用行）＝壳槽 SettingItemGear **真实条目**：恒显「复制设置 ID／复制设置名称／复制为 JSON」，「重置此设置」when=改动过才显（**把 OS 开关切一下再开齿轮即可见**），「跟随主题」「打开存储位置」按 when 本页不显，copySettingAsUrl/toggleSettingSync 两条 when:false 永隐（母案台账 P8）；⑤ 图标栏底部齿轮＝ExtensionGear 槽真实条目（命令面板/打开设置/主题/语言/快捷键/DevTools ── 检查更新/关于；「回退内置设置页」when=第三方套激活才显）。菜单锚齿轮下方非模态、不吞首击（真实机制）。</li>
+      <li><b>I4 插件卡展开＋卡体限高滚动</b>：点卡头原地展开；卡头摘要＝<b>声明 N · 竞争 N · 默认持有 N</b>（数字加粗，照 PluginCard 真骨架）。**编辑器 45 类 ⇒ 展开体 `max-height:280px` 卡内滚动**（plugin-card.css 真值——滚轮在卡体内滚，页面不跟着跑）；搜索命中**自动展开**（母案 卡交互 C6＝E38：清空不收回，用户自己收）。</li>
       <li><b>I5 状态胶囊（真值四态点显）＋单家行下拉（E35 真形态）</b>：user＝唯一带描边（蓝）／auto＝绿／cand＝warning 黄／dang 失效＝error 红。**每行都有下拉**（自动＋全部候选）——单家类型下拉只有「自动/自己」两项，**选自己＝锁定**（胶囊变「用户锁定」）；编辑器卡 45 行全是这个形态。</li>
       <li><b>I6 模拟装卸</b>：装「图像大师 B」→ 多候选区出现 .jpg/.png 行＋默认不漂移；卸载被覆盖表指向的插件 → 失效胶囊；重装 → 用户原选择复活。</li>
       <li><b>I7 搜索</b>：顶部搜索输入 `.p`/`阅读`/`登记` → 过滤行与卡；OS 行标题/说明现在**也被搜得到**（升通用行后自然接入索引域）。</li>
       <li><b>I8 空态</b>：多候选区空 → `.settings-assoc-empty` 说明行；搜索无匹配 → 「没有匹配的类型或插件」（组恒保留豁免不变）。</li>
       <li><b>I9 OS 通用行（C3c）</b>：子节标题「系统「打开方式」登记」＝`prop.group` 声明（竖杠子节真骨架）；开关＝通用 Toggle，副标题/描述走壳声明与 SectionSubtitle 下方小字——OsFollowBlock 退役。</li>
       <li><b>I10 聚合防爆炸（E32/E34 不变）</b>：候选集合相同 × 生效值相同 ⇒ 一行一格；单类单独设置 ⇒ 拆行；恢复自动 ⇒ 并回。聚合零语义。</li>
-      <li><b>I11 卡内过滤＋排序（C5 定案：做）</b>：<b>声明 ≥8 类</b>的卡展开后自带工具条——① <b>过滤框</b>（打字即滤本卡，⛔ 不碰左上全局搜索）：匹配<b>扩展名＋显示名</b>（输 python 命中 .py）、忽略大小写与前导点、<b>分档</b>（2026-10-06 口径：扩展名命中在上、仅显示名命中沉底并在行内标「<b>类型名 …</b>」——命中理由必须可见）、命中数实时显示「命中 N / 45」、Esc 清空、卡一折叠即复位；② <b>排序 SelectBox</b>＝「按字母序」（默认）／「按默认排序」（＝<b>插件声明原始次序</b>，清单数组序透传，编辑器 45 类现在那种分区顺序）。两件都是<b>已有共享件</b>（InlineInput／SelectBox），<b>零新造</b>；行序与过滤＝共享聚合层的<b>纯函数</b>（一处实现，第三方渲染器同一口径）。点工具条右侧排序钮看真实 SelectBox 面板。<b>阈值实证</b>：本图 5 张卡仅编辑器（45 类）达标，其余 1/1/1/2 类均 &lt;8 ⇒ 无工具条（<b>是阈值，不是漏画</b>）；阈值＝组装方一处常量（`ManagerView` 里），⛔ 不进 `PluginCard`。</li>
+      <li><b>I11 卡内过滤＋排序（C5 定案：做）</b>：<b>声明 ≥8 类</b>的卡展开后自带工具条——① <b>过滤框</b>（打字即滤本卡，⛔ 不碰左上全局搜索）：匹配<b>扩展名＋显示名</b>（输 python 命中 .py）、忽略大小写与前导点、<b>分档</b>（2026-10-06 口径：扩展名命中在上、仅显示名命中沉底并在行内标「<b>类型名 …</b>」——命中理由必须可见）、命中数实时显示「命中 N / 45」、Esc 清空、卡一折叠即复位；② <b>排序 SelectBox</b>＝「按字母序」（默认）／「按默认排序」（＝<b>插件声明原始次序</b>，清单数组序透传，编辑器 45 类现在那种分区顺序）。两件都是<b>已有共享件</b>（InlineInput／SelectBox），<b>零新造</b>；行序与过滤＝共享聚合层的<b>纯函数</b>（一处实现，第三方渲染器同一口径）。点工具条右侧排序钮看真实 SelectBox 面板；③ <b>0 命中空态</b>（D2 定案 2026-10-06）＝卡体一行 muted「<b>没有匹配的类型</b>」，<b>⛔ 不带清空入口</b>（清空靠删字或 Esc——那两条已在 ① 里）。<b>阈值实证</b>：本图 5 张卡仅编辑器（45 类）达标，其余 1/1/1/2 类均 &lt;8 ⇒ 无工具条（<b>是阈值，不是漏画</b>）；阈值＝组装方一处常量（`ManagerView` 里），⛔ 不进 `PluginCard`。</li>
     </ol>
   </div>
   <b>组件账（共享层交付 · C1=B）</b>
@@ -407,7 +407,7 @@ function renderNav(counts){
 }
 /* ── C5：卡体工具条（过滤＋排序）。两件控件都是**已有共享件**；行序与过滤＝**纯函数**（落共享聚合层，一处实现） ──
    过滤分档（2026-10-06 定）：扩展名命中的行在上、**仅显示名命中**（类型名）的行沉底并标「类型名 …」——
-   两源都留（python 只靠显示名命中 .py），只是让「为什么这行在」可见；选定排序在各自撮内继续生效 */
+   两源都留（python 只靠显示名命中 .py），只是让「为什么这行在」可见；选定排序在各自档内继续生效 */
 const FILTER_MIN = 8;   /* 声明 <8 类的卡不摆工具条（3 类的卡摆过滤框＝纯噪音）；阈值属组装方策略，⛔ 不进 PluginCard */
 const SORTS = [{value:"alpha", label:"按字母序"}, {value:"declared", label:"按默认排序"}];  /* declared＝插件声明原始次序（清单数组序，模型透传不重排） */
 function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
@@ -421,7 +421,7 @@ function filterRows(id){
   const q=qOf(id);
   if(!q) return orderRows(id);
   /* C5 分档（2026-10-06 定：命中理由必须可见——否则输 c 时 .bat(Batch) 排头像乱排）：
-     扩展名命中在上、仅显示名命中沉底；选定排序在各自撮内继续生效（⛔ 分档不改排序语义）。
+     扩展名命中在上、仅显示名命中沉底；选定排序在各自档内继续生效（⛔ 分档不改排序语义）。
      两源都留：显示名匹配删不得——python 只靠它命中 .py */
   const strong=[], weak=[];
   for(const x of orderRows(id)){ const k=hitKind(x,q); if(k==="ext") strong.push(x); else if(k==="name") weak.push(x); }
@@ -488,7 +488,7 @@ function sortSel(){ return { value: state.sortMode.editor||"alpha", options: SOR
 /* 卡体行清单（共享件 CardRow 形态）：行序/过滤走上面两条纯函数；行尾齿轮＝C4 定案（菜单注册键稳定 ⇒ 重复渲染不涨表） */
 function cardBodyHTML(id){
   const rows = filterRows(id);
-  if(!rows.length) return `<div class="settings-assoc-empty">（无匹配「${esc((state.filter[id]||"").trim())}」）</div>`;
+  if(!rows.length) return `<div class="settings-assoc-empty">没有匹配的类型</div>`;
   return rows.map(x => {
     const hs=handlers(x); const cur=curDefault(x);
     /* 真实 CardRow 形态：**每行都有下拉**（自动＋全部候选；单家类型 = 自动/自己，选自己＝锁定 E35） */
@@ -520,7 +520,7 @@ function renderGroup(){
     .filter(x => hit("."+x) || extCount[x].some(id=>PLUGINS[id].name.toLowerCase().includes(q)));
   const browsable = state.installed.filter(id => (PLUGINS[id].assoc||[]).length
     && (hit(PLUGINS[id].name) || (PLUGINS[id].assoc||[]).some(x=>hit("."+x))));
-  if (q) browsable.forEach(id => { state.expanded[id]=1; }); /* C6 搜索命中自动展开；清空不收回（用户自己收） */
+  if (q) browsable.forEach(id => { state.expanded[id]=1; }); /* 母案 卡交互 C6＝E38：搜索命中自动展开；清空不收回（用户自己收） */
   const osHit = hit("跟随插件登记") || hit("系统「打开方式」登记");
   renderNav({ "通用":3, "外观":1, "默认打开方式": contested.length + browsable.length });
   if (state.group==="通用"){

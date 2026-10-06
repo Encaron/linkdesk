@@ -191,6 +191,15 @@ setTimeout(() => {
   ok("输 python ⇒ 1 行 .py（纯显示名命中）且标「类型名 Python」",
     extsOf("editor").length === 1 && extsOf("editor")[0] === ".py" && /类型名 Python/.test($(".settings-assoc-why")?.textContent || ""),
     extsOf("editor").join(" "));
+  /* ── K3. D2 定案（2026-10-06）：卡内过滤 0 命中 ⇒ 卡体一行 muted 文案「没有匹配的类型」（⛔ 不带清空入口） ── */
+  const inpD = $(".ldk-plugin-card-toolbar input.ldk-inline-input");
+  inpD.value = "zzz"; fire(inpD, "input");
+  const bodyD = $("#body_editor"), emptyD = $("#body_editor .settings-assoc-empty");
+  ok("过滤 0 命中 ⇒ 卡体只剩一行 muted「没有匹配的类型」（零行、零按钮）",
+    rowsOf("editor").length === 0 && $$("#body_editor .settings-assoc-empty").length === 1 &&
+      !!emptyD && emptyD.textContent.trim() === "没有匹配的类型" &&
+      bodyD.querySelectorAll("button").length === 0 && !/清空/.test(bodyD.textContent),
+    bodyD.textContent.trim().slice(0, 40));
   w.eval("state.filter.editor='';renderGroup()");   /* 复原：段 L 从干净态起跑 */
 
   // ── L. 通用 / 外观 演示行的控件也是真件 SelectBox ──

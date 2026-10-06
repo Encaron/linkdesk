@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- 图标＝真 codicon 字体（同产品：src/main.tsx import @vscode/codicons/dist/codicon.css） -->
 <link rel="stylesheet" href="../../../../../node_modules/@vscode/codicons/dist/codicon.css">
-<title>02 · 未知渲染器降级态——「默认打开方式」组（C2b 预览 · 可交互）</title>
+<title>02 · 未知渲染器降级态——「默认打开方式」组（C2b 定案 · 可交互）</title>
 <!-- 设计门：硬约束 16（ui-ux-pro-max 已走）。样式逐条照抄真源（同 01：SettingsView(.css/-rows.css)＋SectionSubtitle＋plugin-card.css 量纲）。
      本图 = 「默认打开方式管理器共享化」案 C2b 实证预览：
      一台**未实现 fileAssociationsManager hint** 的最小第三方设置渲染器（通用引擎＋按 type 渲染）看到什么——
      · OS 键（C3c：摘 hint＋group 子节）⇒ 通用布尔行，**可操作**（判据铁证）；
-     · 挂载键 workbench.fileAssociations ⇒ 按 C2b 建议形态**隐藏**（🔵 待拍；备选＝只读展示）；
+     · 挂载键 workbench.fileAssociations ⇒ **C2b 定案（2026-10-06）：隐藏**（不渲染只读 `{}` 垃圾行；备选「只读展示」已落选）；
      · overrides 键（维持管理器 hint）⇒ UnknownHintControl 只读降级；
       · 齿轮菜单 = 壳槽 SettingItemGear 真实条目（恒显三条；overrides 有 title ⇒ settingHasTitle 成立）。
      · 🔴 **共享件/图标一律照真件实例画**（2026-10-06 用户判据，先例＝滑杆搬迁）：齿轮＝真 codicon 字形；开关＝
@@ -89,7 +89,7 @@ button:focus-visible,input:focus-visible,.settings-row-gear:focus-visible{outlin
 <body>
 <div class="page-head">
   <h2>02 · 未知渲染器降级态——「默认打开方式」组 <span style="color:var(--text-muted);font-size:12px;font-weight:400;">（C2b 实证预览 · 可交互：OS 开关可操作／hover 齿轮＝真实条目）</span></h2>
-  <div class="sub">视角＝一台**未实现** fileAssociationsManager hint 的最小第三方设置渲染器（通用引擎＋按 type 渲染）。共享化做完后它看到：OS 行可操作、挂载键隐藏（C2b 建议）、overrides 只读降级——没有残缺误导。</div>
+  <div class="sub">视角＝一台**未实现** fileAssociationsManager hint 的最小第三方设置渲染器（通用引擎＋按 type 渲染）。共享化做完后它看到：OS 行可操作、挂载键隐藏（C2b 定案）、overrides 只读降级——没有残缺误导。</div>
 </div>
 
 <div class="stage">
@@ -139,7 +139,7 @@ button:focus-visible,input:focus-visible,.settings-row-gear:focus-visible{outlin
             </div>
           </div>
         </div>
-        <!-- C2b 建议形态：挂载键 workbench.fileAssociations 在此渲染器中隐藏（不渲染只读垃圾行） -->
+        <!-- C2b 定案（2026-10-06）：挂载键 workbench.fileAssociations 在此渲染器中隐藏（不渲染只读垃圾行） -->
       </div>
     </div>
   </div>
@@ -149,7 +149,7 @@ button:focus-visible,input:focus-visible,.settings-row-gear:focus-visible{outlin
     </div>
     <div class="panel"><h3>三条键的去向（本渲染器视角）</h3>
       <p style="margin-top:4px;"><span class="tag">可操作</span><b>app.osAssociations.followPlugins</b> —— C3c：摘 hint＋group 子节 ⇒ 通用布尔行（type 就够画）。</p>
-      <p style="margin-top:8px;"><span class="tag">隐藏</span><b>workbench.fileAssociations</b> —— C2b 建议形态（🔵 待拍）：管理器挂载键对未知渲染器隐藏，不出只读 `{}` 垃圾行。备选＝只读展示。</p>
+      <p style="margin-top:8px;"><span class="tag">隐藏</span><b>workbench.fileAssociations</b> —— C2b **定案（2026-10-06）**：管理器挂载键对未知渲染器隐藏，不出只读 `{}` 垃圾行（备选「只读展示」落选；源码处留注释说明理由）。</p>
       <p style="margin-top:8px;"><span class="tag">只读降级</span><b>app.osAssociations.overrides</b> —— 维持管理器 hint ⇒ 未知渲染器按降级契约只读（v1 无界面是刻意决定，不落 ObjectEditor 可编辑兜底）。</p>
       <p style="margin-top:8px;"><span class="tag">渲染管理器</span>实现了这个 hint 的渲染器（官方或第三方）⇒ 分发到共享**组装视图**（@linkdesk/ui），喂数据即得完整管理器——与 themePicker 分发同形状。</p>
     </div>
