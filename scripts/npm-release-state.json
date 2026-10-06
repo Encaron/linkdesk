@@ -131,8 +131,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.54",
-      "contentHash": "b5eb12896b67c09beaecf4ce601d3787c59cd1b02820784c7e6bb6983c45db06",
+      "version": "0.2.55",
+      "contentHash": "f4562f35e96e11302141156f38e0960f7750f82ab93514e1df8bbb60318e914e",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "656affde2e0191c4",
@@ -224,7 +224,7 @@
         "src/components/shared/readonly-text/useStatusPolling.ts": "6961c37414501520",
         "src/components/shared/section-subtitle/SectionSubtitle.css": "284021f1a242eff9",
         "src/components/shared/section-subtitle/SectionSubtitle.tsx": "ef620974241ee000",
-        "src/components/shared/segment-preview/SegmentPreview.css": "b217fcb89845be24",
+        "src/components/shared/segment-preview/SegmentPreview.css": "4275429f150e0c4b",
         "src/components/shared/segment-preview/SegmentPreview.tsx": "b5b49548e5b5c30f",
         "src/components/shared/segmented-radio/SegmentedRadio.css": "6294289d8cb3c91d",
         "src/components/shared/segmented-radio/SegmentedRadio.test.tsx": "0a61c7a2b209b74a",
