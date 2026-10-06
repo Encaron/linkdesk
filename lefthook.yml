@@ -25,6 +25,14 @@ pre-commit:
     - name: whitespace (staged)
       run: git diff --cached --check
 
+    # 黄灯（2026-10-07）：这一笔碰了 @linkdesk/ui 的**作者面** ⇒ 壳树内容与 npm 货架就不一致了。
+    # 出声不拦（脚本退出码恒 0）：改了共享件而这次不发 npm 是常态，不该被拦；该被拦的只在发版那一刻。
+    # 由头：一次**文档归档**顺手改了共享件里一条注释的路径（改动本身正当），代价却是推 tag 时判据⑤红、
+    #   白付一整轮 CI。发现时机本该在提交这零点几秒，而不是发版那十分钟。判据只有一条：暂存集 ∩
+    #   UI_SURFACE（名单真源住 scripts/lib/npm-author-surface.mjs，⛔ 不在此另抄一份）。
+    - name: ui author surface notice (2026-10-07)
+      run: node scripts/warn-ui-author-surface.mjs
+
 # E6#57.15e（2026-09-13，用户拍板）：提交消息必须给软件侧变更分类——**硬拦**。
 # 为什么不在 Claude 的 PreToolUse 钩子里（原来的位置）：那儿只覆盖「Claude 敲 git commit」
 # 一条路，用户本人手敲 / CI / 别的工具全都不经过。`commit-msg` 是 **git 自己**触发的，覆盖全部。
@@ -38,5 +46,24 @@ commit-msg:
 
 pre-push:
   jobs:
+    # 发版预演（2026-10-07）——**只在本推的是 `refs/tags/v*` 时才干活**：普通分支推送它读一眼 stdin
+    # 就静默放行（不拖慢日常 push，也就不给人「绕过它」的理由）；删 tag 同样放行。
+    # 为什么要有它：v0.2.52 那次 tag 推上去，CI 第 28 秒红在判据⑤（ui 作者面漂移，起因是一笔文档归档），
+    #   修完再推第 6 分钟又红在 Build 步（7zr 上游换了文件）——**两次都不是代码写错，是「只有发版那一下
+    #   才照见的漂移」**，各白付一整轮 CI（≈10 分钟）。判据早就写好了（check-publish-gate 本地就能跑），
+    #   缺的只是「推之前没人想起来跑」⇒ 挂进钩子：红了就推不出去。
+    # 跑什么：发布门禁 ①②③⑤（离线，秒级）→ 已发 Release 正文对账 → 出厂种子新鲜 → 第三方钉。
+    #   ⛔ 本地**全量门禁**（npm run check）刻意不在这——那是下面 typecheck 与 CI 的活，重复只是更慢。
+    # 🔴 **`use_stdin: true` 不能省**（2026-10-07 实测踩到）：git 把「本次推了哪些 ref」
+    #   打在 pre-push 钩子的 **stdin** 上（每行 `<local ref> <local oid> <remote ref> <remote oid>`），
+    #   而 lefthook **默认不把 stdin 转给 job** ⇒ 脚本读不到 tag、静默放行 = **hook 在、闸不在**的假门禁
+    #   （实测：不带这行时，推 `refs/tags/v0.2.52` 的 dry-run 打印「不含版本 tag……放行」）。
+    #   脚本侧也做了兜底：stdin 为空会**大声说「这次没跑」**，不再装作通过。
+    # 逃生口：`git push --no-verify`（git 机制，非本闸漏洞）；**CI 的 tag 运行仍是最后防线**——
+    #   本钩子的价值是省掉一轮 CI，不是取代它。
+    - name: release rehearsal (pre-push)
+      run: node scripts/pre-push-release-rehearsal.mjs
+      use_stdin: true
+
     - name: typecheck
       run: npm run typecheck

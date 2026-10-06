@@ -43,9 +43,20 @@
  * 🔴 CI 里**必须 `fetch-depth: 0`**（checkout 默认只取 1 个提交、**不带 tag**）——否则 tag 列表恒为空，
  *   ① 就退化成「每次都判首次发布」的**恒真门禁**。这一条写进 build.yml 的 checkout 注释里了。
  *
+ * ── `--pre-push` 为什么不判②（2026-10-07 加，同一病因的第二次归一）──
+ *   推 tag 的**前一刻**，本地已经是「tag 存在」的状态（tag 由人先 `git tag` 建再推）⇒ 必须按 CI 口径判①
+ *   （`selfTagIsThisRelease`），否则本地①会红成「这一版已经发布过」——2026-10-07 实盘踩到：
+ *   `npm run publish` 因此拒跑（tag 建了但从未发布过），只能先删 tag 再打。
+ *   ⛔ 而②（package.json == electron/product.json）在**发布链之外**必然红：product.json 的发布身份
+ *   由 publish.mjs / CI 在门禁**之前**写入，本地此刻是 dev 占位 `0.1.0` ⇒ 在这儿断言只会**恒红**，
+ *   恒红的闸＝假门禁（推 tag 的人三天就学会无视它）。⇒ `--pre-push` **只降级②**，其余判据一字不让。
+ *   ⚠️ 本地 `npm run publish` 仍走默认模式——它判的是「打包前该不该发布」，那一刻还没有推 tag 这回事。
+ *
  * 用法：
- *   node scripts/check-publish-gate.mjs                      # 本地发布前 ①②③
+ *   node scripts/check-publish-gate.mjs                      # 本地发布前 ①②③⑤
  *   node scripts/check-publish-gate.mjs --expect-tag v0.1.50 # CI：额外断言 tag === v{package.json version}
+ *   node scripts/check-publish-gate.mjs --expect-tag v0.1.50 --pre-push
+ *                                                            # 推 tag 前的本地预演（= CI 口径但②不判）
  *   node scripts/check-publish-gate.mjs --changelog-body     # 只输出 `## v{version}` 段正文到 stdout（CI 用）
  *   node scripts/check-publish-gate.mjs --changelog-date     # 只输出段头日期到 stdout（CI 用；缺则空）
  *   node scripts/check-publish-gate.mjs --self-test
@@ -425,6 +436,9 @@ function main() {
   }
 
   const checks = [];
+  // 推 tag 前的本地预演（scripts/pre-push-release-rehearsal.mjs 调的就是这个档）：与 CI 同口径判①，
+  // 但②不判（本地 product.json 必然是 dev 占位 ⇒ 判了恒红）。理由见文件头「--pre-push 为什么不判②」。
+  const prePush = process.argv.includes("--pre-push");
   const expectIdx = process.argv.indexOf("--expect-tag");
   let expectedTag = null;
   if (expectIdx >= 0) {
@@ -434,10 +448,16 @@ function main() {
       process.exit(1);
     }
   }
+  if (prePush && expectedTag === null) {
+    fail("--pre-push 必须与 --expect-tag <tag> 同用（预演要判「推的 tag == package.json 版本」）");
+    process.exit(1);
+  }
   // 传了 --expect-tag ⇒ 这是 CI 的发布运行，此刻 tag 必然已存在（见 judgeVersionAdvance 头注）
   const tags = localVersionTags();
   checks.push(judgeVersionAdvance(pkgVersion, tags, { selfTagIsThisRelease: expectedTag !== null }));
-  checks.push(judgeVersionMatch(pkgVersion, existsSync(PRODUCT) ? readFileSync(PRODUCT, "utf8") : null));
+  if (!prePush) {
+    checks.push(judgeVersionMatch(pkgVersion, existsSync(PRODUCT) ? readFileSync(PRODUCT, "utf8") : null));
+  }
   checks.push(judgeChangelog(changelogSection(changelogText, pkgVersion)));
   checks.push(judgeUiSurfaceSynced(readUiAuthorFaceStatus()));
   if (expectedTag !== null) {
@@ -446,6 +466,13 @@ function main() {
 
   for (const c of checks) {
     process.stdout.write(`${c.ok ? "✅" : "🔴"} ${c.msg}\n`);
+  }
+  if (prePush) {
+    process.stdout.write(
+      `ℹ️  判据②（package.json == electron/product.json 版本）**本档不判**：product.json 的发布身份由发布链\n` +
+        `   在门禁之前写入，本地此刻是 dev 占位 0.1.0 ⇒ 在这儿断言只会恒红（恒红的闸＝假门禁）。\n` +
+        `   它在 CI 的 tag 运行里照判（那时 product.json 已被 CI 写好）。\n`
+    );
   }
   process.stdout.write(
     `ℹ️  判据④（产物 asar 里真有 electron/product.json）不在此处——由 scripts/check-packaging-files.mjs ` +
