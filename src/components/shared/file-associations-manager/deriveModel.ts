@@ -1,6 +1,6 @@
 /**
  * file-associations-manager/deriveModel——「默认打开方式」管理器的**纯聚合函数**（零 React、
- * 零 `window.linkdesk`、零 i18n）。判据全在这里，呈现件只做渲染与转发：聚合法则
+ * 零宿主桥、零 i18n）。判据全在这里，呈现件只做渲染与转发：聚合法则
  * （「候选集合签名 × 当前生效值」）与六态徽标是本案最容易出错的窄事实，埋在 JSX 里只能靠目视。
  *
  * ⛔ **本件不自己算「谁是默认」**：一律消费宿主 `listHandlersFor(ext)` 给的 `isCurrent`
