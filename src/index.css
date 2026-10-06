@@ -553,34 +553,11 @@ select {
   opacity: 0;
 }
 
-/* ── 主区标签栏-聚焦环与分屏圆角（T7 · D3-丁，2026-10-07）：分屏缝**常显** 1px 分隔线 ──
-   分屏两栏各自成面后，缝里露的仍是主区底色 --bg-window，而面色 --bg-card 与它只差 1.21:1（亮主题 1.09:1）
-   ⇒ 光靠「两块面」在亮主题下几乎分不开（S3 的残留）。故把把手的静止态由「三个点」改「一条线」：
-   线色取 --text-muted（＝今天三点用的**同一个 token** ⇒ 零新 token、零新颜色角色），与缝底对比
-   暗 ≈4.83:1 ／ 亮 ≈4.54:1，两种内置主题都一眼可见。⛔ 不用 --separator（亮主题下仅 1.23:1，等于没画）。
-   🔴 覆盖规则一律**追加在本节源序之后**（同特异度、后写胜）⇒ 零复制、不拆散与 .ldk-zone-resize-handle
-   的共享规则；⛔ 只作用于分屏把手——zone 分界线仍是「三点常态 ＋ hover 成线」，两种分隔语言并存是
-   有意取舍（E24：实机若觉得不统一，另开一条扩展，⛔ 不在本轮顺手改）。
-   · hover 只把线**换色**为 --accent，⛔ 不加宽到 2px——守 E5.8#143「零重排」（只动 opacity/颜色）。
-   · 命中区宽度仍是 4px（拖拽手感零变化）；线端圆帽仍读 --surface-radius（与成面圆角同形）。 */
-.ldk-split-handle::before {
-  opacity: 0; /* 三点退役（只退分屏把手，zone 把手不变） */
-}
-
-.ldk-split-handle::after {
-  width: 1px;
-  background: var(--text-muted);
-  opacity: 1;
-}
-
-/* 横缝（.row）：线宽走 height——基础规则的 width:1px 由上面 .row 的 width:auto 接管（特异性更高） */
-.ldk-split-handle.row::after {
-  height: 1px;
-}
-
-.ldk-split-handle:hover::after {
-  background: var(--accent);
-}
+/* ── 分屏缝**不**另设常显线（D3-丁 已于 2026-10-07 撤 · 用户实机定夺）──
+   现状＝分屏把手与 .ldk-zone-resize-handle **共用**上面那套伪元素规则（常态三点居中 → hover 整条线
+   淡入、点淡出，E5.8#143 · 先例 `feaa3f995`，当时 CDP 五场景自验全绿）。用户原话：「两栏之间，分割形式，
+   换回三个点形式……这个在区分 zone 的时候效果得到过印证，是良好的效果」。
+   ⛔ 别再给 .ldk-split-handle 单加覆盖规则：分屏与 zone 两种分隔场景刻意说同一种语言。 */
 
 .ldk-zone-resize-handle.vertical {
   width: 4px;
