@@ -2,10 +2,12 @@
  * @vitest-environment jsdom
  * E5#27e：InlineInput 单元测试。
  * 渲染/selectMode/onConfirm/onCancel/自动 focus/清理恢复/Enter+Blur 竞态防线
+ * ＋ 两个**加性**可选 prop（`ariaLabel` / `syncValue`，C5 卡内过滤框要用；缺省＝原行为）
  *
  * 🔥 E5.5#7-p5：零 @src/core import——测试 mock window.linkdesk.* 替代旧 ContextKeyService/setKeybindingCaptureActive
  */
 
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 
@@ -180,5 +182,67 @@ describe("InlineInput", () => {
     unmount();
     expect(mockSetValue).toHaveBeenCalledWith("inputFocus", false);
     expect(mockSetCapture).toHaveBeenCalledWith(false);
+  });
+
+  // ── 7. 两个加性可选 prop（缺省＝今天的行为，⛔ 既有调用方零改动） ──
+
+  it("ariaLabel 给了 ⇒ 挂 aria-label；缺省 ⇒ ⛔ 不挂该属性", () => {
+    const labeled = renderInput({ ariaLabel: "过滤文件类型" }).input;
+    expect(labeled.getAttribute("aria-label")).toBe("过滤文件类型");
+    const plain = renderInput().input;
+    expect(plain.hasAttribute("aria-label")).toBe(false);
+  });
+
+  it("syncValue 缺省＝**一次性种子**（rename 语义）：父侧 value 变了也不覆盖正在打的字", () => {
+    const { input, rerender } = renderInput({ value: "old.txt" });
+    fireEvent.change(input, { target: { value: "typing.txt" } });
+    rerender(<InlineInput size="compact" value="parent-changed.txt" onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(input.value).toBe("typing.txt");
+  });
+
+  it("syncValue ⇒ 受控回灌：父侧清空（Esc → onCancel 那条路）时输入框**真清空**", () => {
+    // 忠实接线（＝C5 过滤框那条链）：父侧持值、`onChange` 回灌、`onCancel` 清空——
+    // 缺省语义下 `onCancel` 清得掉父侧值，却清不掉输入框里已经打上的字（界面残留已过滤的词、行已回全量）
+    const Wrapper = () => {
+      const [v, setV] = useState("");
+      return (
+        <InlineInput
+          size="compact"
+          value={v}
+          syncValue
+          onChange={setV}
+          onConfirm={vi.fn()}
+          onCancel={() => setV("")}
+        />
+      );
+    };
+    const { container } = render(<Wrapper />);
+    const input = container.querySelector("input")!;
+    fireEvent.change(input, { target: { value: "py" } });
+    expect(input.value).toBe("py");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(input.value).toBe("");
+  });
+
+  it("syncValue ＋ 父侧回灌 ⇒ 打字不被吞（onChange 即时通知，value 跟着回来）", () => {
+    const Wrapper = () => {
+      const [v, setV] = useState("se");
+      return (
+        <InlineInput
+          size="compact"
+          value={v}
+          syncValue
+          onChange={setV}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      );
+    };
+    const { container } = render(<Wrapper />);
+    const input = container.querySelector("input")!;
+    fireEvent.change(input, { target: { value: "sear" } });
+    expect(input.value).toBe("sear");
+    fireEvent.change(input, { target: { value: "" } });
+    expect(input.value).toBe("");
   });
 });

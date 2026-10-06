@@ -9,10 +9,12 @@
  *   ③ C3 文案（「多候选类型」/「按插件浏览」）与**四处空态**逐字在：区级两句 ＋ 搜索无匹配一句
  *      ＋ 未就绪两句（加载中 / 失败）；
  *   ④ D2 定案：卡体 0 行 ⇒ 一行 muted「没有匹配的类型」，**零按钮**（⛔ 不带清空入口）。
+ *   ⑤ C5 卡内工具条：阈值边界（声明 8 类出 / 7 类不出）、过滤分档与理由标注、折叠复位、
+ *      防抖窗口内折叠不写回过期词、以及「改怎么看」绝不触发写入面（E1/E2/E7/E9/E10/E11/E17）。
  * @vitest-environment jsdom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { MenuItemDescriptor } from "@linkdesk/contracts";
 import "../../../i18n";
 import ManagerView from "./ManagerView";
@@ -202,5 +204,170 @@ describe("ManagerView——卡体 0 命中（D2 定案）", () => {
     expect(body.textContent?.trim()).toBe("没有匹配的类型");
     expect(body.querySelectorAll("button")).toHaveLength(0); // ⛔ 无清空入口
     expect(body.querySelectorAll(".ldk-famgr-row")).toHaveLength(0);
+  });
+});
+
+/* ── ⑤ C5 卡内工具条（阈值 / 过滤分档 / 折叠复位 / 防抖弃值） ──
+ * 钉的是**坏了不报错**的几条：阈值边界（8 出 7 不出）、不过滤不报数、分档与理由标注、
+ * 折叠复位、防抖窗口内折叠不得把过期词写回、以及「改怎么看」绝不触发写入面。 */
+
+/** 八类声明——**声明序刻意 ≠ 字典序**（否则「按默认排序」换序这条测不出来） */
+const EIGHT: DeclaredExtension[] = [
+  { ext: "py", raw: "py", typeLabel: "Python" },
+  { ext: "ts", raw: "ts", typeLabel: "TypeScript" },
+  { ext: "tsx", raw: "tsx", typeLabel: "TypeScript React" },
+  { ext: "js", raw: "js", typeLabel: "JavaScript" },
+  { ext: "jsx", raw: "jsx", typeLabel: "JavaScript React" },
+  { ext: "md", raw: "md", typeLabel: "Markdown" },
+  { ext: "json", raw: "json", typeLabel: "JSON" },
+  { ext: "css", raw: "css", typeLabel: "CSS" },
+];
+const DECLARED_ORDER = ["py", "ts", "tsx", "js", "jsx", "md", "json", "css"];
+const ALPHA_ORDER = ["css", "js", "json", "jsx", "md", "py", "ts", "tsx"];
+
+/** 一张卡：声明前 n 类（n=8 出工具条 / n=7 不出——E1 的边界夹具） */
+const cardModel = (n: number) =>
+  buildManagerModel({ plugins: [plugin("plug-a", EIGHT.slice(0, n))], handlersByExt: {} });
+
+const toolbarEl = () => document.querySelector<HTMLElement>(".ldk-plugin-card-toolbar");
+const filterBox = () =>
+  document.querySelector<HTMLInputElement>(".ldk-plugin-card-toolbar input.ldk-inline-input");
+const hitLine = () => document.querySelector<HTMLElement>(".ldk-famgr-hit")?.textContent ?? "";
+const sortTrigger = () =>
+  document.querySelector<HTMLElement>(".ldk-plugin-card-toolbar .ldk-selectbox-trigger")!;
+/** 卡体内行的扩展名（去掉前导点）＋「仅显示名命中」那些行的理由标注 */
+const bodyExts = () =>
+  [...document.querySelectorAll<HTMLElement>(".ldk-plugin-card-body .ldk-famgr-ext")].map((e) =>
+    e.textContent!.replace(/^\./, ""),
+  );
+const whyTexts = () =>
+  [...document.querySelectorAll<HTMLElement>(".ldk-plugin-card-body .ldk-famgr-why")].map((e) => e.textContent);
+
+/** 打字 → 过防抖窗口（hook 150ms）；`act` 包住定时器触发那一下，免 React 的 act 噪声告警 */
+async function typeFilter(text: string) {
+  fireEvent.change(filterBox()!, { target: { value: text } });
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 220));
+  });
+}
+
+describe("ManagerView——C5 卡内工具条", () => {
+  it("E1 阈值：声明 8 类出工具条；7 类不出（阈值＝组装方常量，⛔ 不进 PluginCard）", () => {
+    const { unmount } = render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    expect(toolbarEl()).toBeTruthy();
+    expect(filterBox()!.placeholder).toBe("过滤 8 类…");
+    unmount();
+
+    render(<ManagerView model={cardModel(7)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    expect(document.querySelector(".ldk-plugin-card-body")).toBeTruthy(); // 展开了
+    expect(toolbarEl()).toBeNull(); // 就是不出工具条
+  });
+
+  it("E17 折叠 ⇒ 槽不渲染（不占位）；再展开 ⇒ 槽回来", () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle()); // 展开
+    expect(toolbarEl()).toBeTruthy();
+    fireEvent.click(cardToggle()); // 折叠
+    expect(toolbarEl()).toBeNull();
+    fireEvent.click(cardToggle()); // 再展开
+    expect(toolbarEl()).toBeTruthy();
+  });
+
+  it("E2 不过滤不报命中数；过滤后报「命中 N / 总数」（数字与行数同源）", async () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    expect(hitLine()).toBe(""); // ⛔ 不过滤不报数
+
+    await typeFilter("py");
+    expect(hitLine()).toBe("命中 1 / 8");
+    expect(bodyExts()).toEqual(["py"]);
+  });
+
+  it("E7 分档：扩展名命中在上、仅显示名命中的沉底并标「类型名 X」——两档各自守选定行序", async () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+
+    // 输 n：扩展名命中只有 .json；仅**显示名**命中的是 .md(Markdown) 与 .py(Python)
+    await typeFilter("n");
+    expect(bodyExts()).toEqual(["json", "md", "py"]); // 默认 alpha：两档各自字母序
+    expect(whyTexts()).toEqual(["类型名 Markdown", "类型名 Python"]); // 只有沉底两行带理由
+    expect(hitLine()).toBe("命中 3 / 8");
+
+    // 切「按默认排序」⇒ 换序不换集，分档保持（档内改用声明序：py 在 md 之前）
+    fireEvent.click(sortTrigger());
+    pickOption("按默认排序");
+    expect(bodyExts()).toEqual(["json", "py", "md"]);
+    expect(hitLine()).toBe("命中 3 / 8");
+  });
+
+  it("E9 排序切换：按默认排序＝插件声明原始次序（声明序是唯一真源，聚合层不重排）", () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    expect(bodyExts()).toEqual(ALPHA_ORDER); // 默认按字母序
+
+    fireEvent.click(sortTrigger());
+    pickOption("按默认排序");
+    expect(bodyExts()).toEqual(DECLARED_ORDER); // 原样透传声明序
+  });
+
+  it("E9 `Esc` ⇒ 清空过滤：输入框真空、行回全量、命中数消失", async () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    await typeFilter("py");
+    expect(bodyExts()).toEqual(["py"]);
+
+    fireEvent.keyDown(filterBox()!, { key: "Escape" });
+    expect(filterBox()!.value).toBe(""); // 输入框真清空（受控回灌）
+    expect(bodyExts()).toEqual(ALPHA_ORDER);
+    expect(hitLine()).toBe("");
+  });
+
+  it("E9 折叠＝卡内视图态整条复位：过滤清空 ＋ 行序回落默认（再展开为全量）", async () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    await typeFilter("py");
+    fireEvent.click(sortTrigger());
+    pickOption("按默认排序");
+
+    fireEvent.click(cardToggle()); // 折叠
+    fireEvent.click(cardToggle()); // 再展开
+    expect(filterBox()!.value).toBe("");
+    expect(bodyExts()).toEqual(ALPHA_ORDER); // 排序也回落 alpha（E9：不止清过滤）
+    expect(hitLine()).toBe("");
+  });
+
+  it("E11 防抖窗口内折叠 ⇒ 过期词不得写回（再展开仍是全量、无命中数）", async () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+
+    fireEvent.change(filterBox()!, { target: { value: "py" } }); // 150ms 窗口内…
+    fireEvent.click(cardToggle()); // …立刻折叠（槽卸载，定时器随之清掉）
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250)); // 等过原定防抖点
+    });
+    fireEvent.click(cardToggle()); // 再展开
+
+    expect(bodyExts()).toEqual(ALPHA_ORDER);
+    expect(hitLine()).toBe("");
+  });
+
+  it("E10 视图本地：改怎么看（过滤/排序）⛔ 一个字节也不写回宿主（onPick 不被触发）", async () => {
+    const onPick = vi.fn();
+    render(<ManagerView model={cardModel(8)} onPick={onPick} />);
+    fireEvent.click(cardToggle());
+    await typeFilter("py");
+    fireEvent.click(sortTrigger());
+    pickOption("按默认排序");
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it("过滤框挂无障碍名（无可见 label 的输入必须有 aria-label）", () => {
+    render(<ManagerView model={cardModel(8)} onPick={vi.fn()} />);
+    fireEvent.click(cardToggle());
+    expect(filterBox()!.getAttribute("aria-label")).toBe(
+      "过滤文件类型（先扩展名、后类型名；仅类型名命中的行有标注）",
+    );
   });
 });

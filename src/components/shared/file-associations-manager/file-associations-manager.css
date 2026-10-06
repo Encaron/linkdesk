@@ -248,6 +248,37 @@
   font-weight: 600;
 }
 
+/* ══ C5：卡体工具条的三件**内部件**（槽壳 `.ldk-plugin-card-toolbar` 归共享件 PluginCard）══
+   两件控件本身是既有共享件（InlineInput 过滤 ／ SelectBox 排序）——这里只管它们的**排布与前置图标**：
+   图标 ＋ 输入（占满剩余宽）＋ 命中数 ＋ 排序。布局照设置页搜索栏 `.settings-search-bar` 同款结构
+   （图标 ＋ InlineInput），但类名自成一族 `ldk-famgr-*`：⛔ 不借宿主族段 `settings-*`（硬约束 23）。 */
+
+.ldk-famgr-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 前置搜索图标——与设置页 `.settings-search-icon` 同值（真 codicon-search，字号走 lg 档） */
+.ldk-famgr-filter-icon {
+  flex: none;
+  font-size: var(--font-size-lg);
+  color: var(--text-muted);
+}
+
+/* 命中数（「命中 1 / 45」）——**只在过滤词非空时**出现（E2：不过滤不报数）；⛔ 不参与布局抖动：
+   `flex: none` ＋ `nowrap`，长词由输入框先收窄。
+   墨色下移一档（muted → secondary）：与 ① `.ldk-famgr-why` 同因——本行住卡体 `--bg-card`，
+   11px 文字用 muted 只有 3.99:1（掉 4.5:1 地板下）；图取 muted ⇒ **有意偏差**（见「1.8 追加」⑤）。 */
+.ldk-famgr-hit {
+  flex: none;
+  font-size: var(--font-size-2xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    设计复核（硬约束 16）· 2026-10-06
    ──────────────────────────────────────────────────────────────────────────────────────────
@@ -285,4 +316,37 @@
      · `--font-mono` 只给文件扩展名（真数据 token），非「技术感」cosplay；
      · 零渐变字／零装饰性玻璃／零 emoji 代图标（齿轮是真 `codicon-gear` 字形）／零硬阴影；
      · 空态四处文案与图逐字一致（区级带全角括号、行级陈述句＝D2 定案原样）。
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   设计复核（硬约束 16）· 1.8 追加（C5 卡体工具条）
+   ──────────────────────────────────────────────────────────────────────────────────────────
+   `impeccable`：`context` 定向本件 ＋ `detect --json` 对**本趟改动面全覆盖**——
+   本件 ／ plugin-card.css ／ PluginCard.tsx ／ InlineInput.tsx ／ ManagerView.tsx ／
+   pieces/CardRow.tsx ／ pieces/ContestedRow.tsx ⇒ **`[]`（零发现）**；无检测器项按 craft-floor
+   逐条人工过（对比度／间距节奏／字号阶梯／动效／布局稳定性／键盘可见性／文案）。
+
+   ▸ 一处修正（1.8 新面）
+     ⑤ `.ldk-famgr-hit` 墨色下移一档：`--text-muted` → `--text-secondary`。**与 ① 同因同解**
+        ——本行住卡体 `--bg-card`，11px 文字用 muted 只有 3.99:1，掉 4.5:1 地板下。图（`mockups/01`
+        行 154）取 muted ⇒ 与 ① 同列**有意偏差**，⛔ **图不改**。
+
+   ▸ 逐值照图（工具条三件，`mockups/01` 行 151–154 逐值同源 ⇒ 偏差只上述一条）
+     · 槽壳 `.ldk-plugin-card-toolbar`（归**共享件 PluginCard**，不在本件）：`gap 8px` ／
+       `padding 6px 12px` ／ `border-bottom: 1px solid var(--separator)`；
+     · `.ldk-famgr-filter`：`gap 6px` ／ `flex: 1 1 auto` ／ `min-width: 0`；
+     · `.ldk-famgr-filter-icon`：`--font-size-lg` ＋ muted（＝`.settings-search-icon` 同值）；
+     · 两件控件**零新造**：过滤＝`InlineInput`（既有共享件，`size="normal"`）／排序＝`SelectBox`
+       （既有共享件，宽度走它的默认 `min-width: 100px`）。
+
+   ▸ 显式通过（逐条给证据）
+     · **布局稳定性**：命中数 `flex: none` ＋ `nowrap`，输入框 `flex: 1 1 auto` ＋ `min-width: 0`
+       ⇒ 过滤词变长时先收窄输入框，命中数与排序**不跳位**（防抖让这一步最多每 150ms 一次）；
+     · **前置图标不是唯一线索**：它是装饰性字形（`aria-hidden`），可供性由 `InlineInput` 自带的
+       边框 ＋ placeholder 承担 ⇒ 3.99:1 过**非文字** 3:1 地板（文字地板只管文字）；
+     · **零新动效**：本趟新增规则只给 `display/gap/padding/flex/font-size/color/border`
+       （`transition` 一处未加）；
+     · **字号全走既有阶梯**：`--font-size-lg`（图标）／`--font-size-2xs`（命中数）——⛔ 无裸 px；
+     · **间距**：`6px`／`8px`／`6px 12px` 均在 ≤6px 微调或 4px 节奏内（`check-spacing-grid` 口径）；
+     · **族段纪律**：新增三条全是 `ldk-famgr-*`（⛔ 未借宿主族段 `settings-*`，硬约束 23）。
    ══════════════════════════════════════════════════════════════════════════════════════════ */

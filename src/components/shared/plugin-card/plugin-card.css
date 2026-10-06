@@ -182,6 +182,17 @@ span.ldk-plugin-card-icon-glyph {
   font-size: var(--font-size-md);
 }
 
+/* ── 通用工具条槽（C5）：卡头与卡体之间一行——本件**零业务语义**（槽里装什么由调用方定）。
+      槽是卡头全宽真按钮的**兄弟**，故不受卡头 `padding: 0 32px 0 12px`（那是给齿轮让位的）牵制；
+      `border-bottom` 与卡头同款（`--separator`）＝与卡体行分隔线一套皮。 */
+.ldk-plugin-card-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--separator);
+}
+
 /* ── 展开体（行清单由调用方组装；本件只管容器：限高滚动，03 §4） ── */
 
 .ldk-plugin-card-body {

@@ -23,16 +23,43 @@
  *
  * 底部 OS 登记块**不在这里**：C3c 形态改判把它改成设置页的**通用布尔行**（`prop.group` 子节），
  * 与「跟随插件登记」开关同处一子节——它不再是管理器的私有折叠块。
+ *
+ * ## C5 卡内工具条（本件＝**组装方**，策略住这里）
+ *
+ * | 事 | 归谁 |
+ * |:--|:--|
+ * | 槽壳 `.ldk-plugin-card-toolbar`（卡头与卡体之间一行） | 共享件 `PluginCard`（**零业务语义**，E20） |
+ * | 过滤框 / 排序件 | **既有**共享件 `InlineInput`（`size="normal"`）／`SelectBox`——⛔ 不再造控件 |
+ * | 行序与过滤的**口径** | 聚合层纯函数 `orderRows` ／ `filterRows`（一处实现，E7） |
+ * | 阈值（声明 ≥`FILTER_MIN` 类才摆）／折叠复位／防抖毫秒 | **本件**（组装方策略，⛔ 不进 `PluginCard`） |
+ *
+ * 🔴 三处「视图本地、不持久化」（E10）：过滤词与行序都只活在本视图 state 里，⛔ 不写覆盖表、
+ * ⛔ 不进配置面——它们是「这一次怎么看」，不是「你要什么」。
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MenuItemDescriptor } from "@linkdesk/contracts";
 import PluginCard from "../plugin-card/PluginCard";
+import SelectBox from "../select-box/SelectBox";
+import { InlineInput } from "../inline-input/InlineInput";
+import { useDebouncedInput } from "../hooks/useDebouncedInput";
 import CardRow from "./pieces/CardRow";
 import ContestedRow from "./pieces/ContestedRow";
-import type { CardModel, ContestedRowModel, ExtRowModel, ManagerModel } from "./types";
+import { filterRows, hitKindOf, orderRows } from "./deriveModel";
+import type { CardModel, ContestedRowModel, ExtRowModel, ManagerModel, RowSortMode } from "./types";
 import "./file-associations-manager.css";
+
+/**
+ * 工具条阈值（E1）——声明**少于 8 类**的卡不摆工具条（3 类的卡摆过滤框＝纯噪音）。
+ *
+ * 🔴 这是**组装方策略常量**：⛔ 不进 `PluginCard`（它不认识过滤/排序/阈值，E20）、
+ * ⛔ 也不做成 prop 或配置项（E10：视图本地＝不持久化、不入配置面）。
+ */
+const FILTER_MIN = 8;
+
+/** 过滤防抖（E11）——窗口内切卡/折叠，过期值不得写回（hook 卸载即清定时器） */
+const FILTER_DEBOUNCE_MS = 150;
 
 export interface ManagerViewProps {
   /** 共享聚合出的模型（`buildManagerModel`） */
@@ -67,6 +94,18 @@ export default function ManagerView({
   const { t } = useTranslation();
   const q = search.trim();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // C5 卡内工具条的两件**视图本地态**（E10：⛔ 不持久化）——键＝pluginId；
+  // `rowFilter` 存的是**已生效**（防抖后）的词（即时值住 CardToolbar 里的 hook，见下）
+  const [rowFilter, setRowFilter] = useState<Record<string, string>>({});
+  const [rowSort, setRowSort] = useState<Record<string, RowSortMode>>({});
+
+  const setCardFilter = useCallback((pluginId: string, next: string) => {
+    setRowFilter((prev) => (prev[pluginId] === next ? prev : { ...prev, [pluginId]: next }));
+  }, []);
+
+  const setCardSort = useCallback((pluginId: string, next: RowSortMode) => {
+    setRowSort((prev) => (prev[pluginId] === next ? prev : { ...prev, [pluginId]: next }));
+  }, []);
 
   // 搜索联动：命中（本卡在当前搜索结果里）⇒ 自动展开。清空搜索**不收回**（展开态是受控的、
   // 策略归本视图——用户自己收；出处＝母案 卡交互 C6＝E38）。
@@ -86,8 +125,17 @@ export default function ManagerView({
     });
   }, [q, matchedIds, model.cards]);
 
+  // 折叠＝卡内视图态**整条复位**（E9）：过滤清空（再展开为全量）＋ 行序回落默认「按字母序」。
+  // 🔴 图上的折叠处理只清过滤词；E9 的口径多一条「排序回落默认」——按 E9 办（更严，且不违反图）。
   const toggleCard = useCallback((pluginId: string, next: boolean) => {
     setExpanded((prev) => ({ ...prev, [pluginId]: next }));
+    if (next) return;
+    setRowFilter((prev) => (prev[pluginId] ? { ...prev, [pluginId]: "" } : prev));
+    setRowSort((prev) => {
+      const mode = prev[pluginId];
+      // 只在确实不是默认值时写回——省掉没必要的 state 换壳（键本身留懒：从没排过序就不落这个键）
+      return mode && mode !== "alpha" ? { ...prev, [pluginId]: "alpha" } : prev;
+    });
   }, []);
 
   if (error && !ready) {
@@ -145,6 +193,10 @@ export default function ManagerView({
               expanded={!!expanded[card.pluginId]}
               onToggle={toggleCard}
               onPick={onPick}
+              filter={rowFilter[card.pluginId] ?? ""}
+              sortMode={rowSort[card.pluginId] ?? "alpha"}
+              onCardFilter={setCardFilter}
+              onCardSort={setCardSort}
               {...(cardGearItems ? { gearItems: cardGearItems(card) } : {})}
               {...(cardRowGearItems ? { rowGearItems: cardRowGearItems } : {})}
             />
@@ -162,6 +214,10 @@ function AssocCard({
   expanded,
   onToggle,
   onPick,
+  filter,
+  sortMode,
+  onCardFilter,
+  onCardSort,
   gearItems,
   rowGearItems,
 }: {
@@ -169,10 +225,21 @@ function AssocCard({
   expanded: boolean;
   onToggle(pluginId: string, next: boolean): void;
   onPick(exts: readonly string[], pluginId: string | null, label?: string): void;
+  /** 本卡**已生效**的过滤词（防抖后；'' ＝ 不过滤） */
+  filter: string;
+  /** 本卡行序（视图本地） */
+  sortMode: RowSortMode;
+  onCardFilter(pluginId: string, next: string): void;
+  onCardSort(pluginId: string, next: RowSortMode): void;
   gearItems?: readonly MenuItemDescriptor[];
   rowGearItems?(row: ExtRowModel): readonly MenuItemDescriptor[];
 }) {
   const { t } = useTranslation();
+
+  // 行序 → 过滤（顺序有要求：先排序再分档——分档只在**命中理由**上分层，不改排序语义，E7）。
+  // 声明序是「按默认排序」的唯一真源：`declared` 原样透传模型序（聚合层 ⛔ 不重排）。
+  const rows = filterRows(orderRows(card.rows, sortMode), filter);
+  const hitQuery = filter.trim();
 
   return (
     <PluginCard
@@ -190,20 +257,106 @@ function AssocCard({
       expanded={expanded}
       onToggle={(next) => onToggle(card.pluginId, next)}
       {...(gearItems ? { gearItems: [...gearItems] } : {})}
+      {...(expanded && card.rows.length >= FILTER_MIN
+        ? {
+            toolbar: (
+              <CardToolbar
+                pluginId={card.pluginId}
+                total={card.rows.length}
+                hitCount={rows.length}
+                filter={hitQuery}
+                sortMode={sortMode}
+                onCardFilter={onCardFilter}
+                onCardSort={onCardSort}
+              />
+            ),
+          }
+        : {})}
     >
-      {card.rows.length === 0 ? (
+      {rows.length === 0 ? (
         // 过滤 0 命中：一行 muted 文案（⛔ 不带清空入口——清空靠删字或 Esc）
         <div className="ldk-famgr-empty">{t("没有匹配的类型")}</div>
       ) : (
-        card.rows.map((row) => (
+        rows.map((row) => (
           <CardRow
             key={row.ext}
             row={row}
             onPick={onPick}
             {...(rowGearItems ? { gearItems: rowGearItems(row) } : {})}
+            // 仅显示名命中 ⇒ 标出理由「类型名 X」（分档后这批沉底；理由不可见时单字母查询＝乱排）
+            nameOnlyHit={!!hitQuery && hitKindOf(row.ext, row.typeLabel, hitQuery) === "name"}
           />
         ))
       )}
     </PluginCard>
+  );
+}
+
+/* ── 一张卡的卡内工具条（C5）：图标 ＋ 过滤框 ＋ 命中数 ＋ 排序 —— 装进 `PluginCard` 的槽 ──
+ * 两件控件都是**既有**共享件；本件只管排布与「谁触发什么」。
+ * 🔴 住成独立子件的原因：防抖 hook（`useDebouncedInput`）**不能**在卡片循环里调用——
+ * 每张卡各持一份即时值，卸载（折叠）即随 hook 一并清掉定时器（E11）。 */
+
+function CardToolbar({
+  pluginId,
+  total,
+  hitCount,
+  filter,
+  sortMode,
+  onCardFilter,
+  onCardSort,
+}: {
+  pluginId: string;
+  /** 本卡声明总数（＝模型行数；⛔ 不受过滤影响） */
+  total: number;
+  /** 命中行数（＝ `filterRows` 出来的条数） */
+  hitCount: number;
+  /** 已生效的过滤词（非空才报命中数，E2） */
+  filter: string;
+  sortMode: RowSortMode;
+  onCardFilter(pluginId: string, next: string): void;
+  onCardSort(pluginId: string, next: RowSortMode): void;
+}) {
+  const { t } = useTranslation();
+  const apply = useCallback((next: string) => onCardFilter(pluginId, next), [onCardFilter, pluginId]);
+  const { value, onChange, onClear } = useDebouncedInput(apply, FILTER_DEBOUNCE_MS);
+
+  const sortOptions = useMemo(
+    () => [
+      { value: "alpha", label: t("按字母序") },
+      { value: "declared", label: t("按默认排序") },
+    ],
+    [t],
+  );
+
+  return (
+    <>
+      <span className="ldk-famgr-filter">
+        <span className="codicon codicon-search ldk-famgr-filter-icon" aria-hidden="true" />
+        <InlineInput
+          size="normal"
+          value={value}
+          onChange={onChange}
+          onConfirm={() => {}}
+          onCancel={onClear}
+          // 搜索框**受控**：Esc → `onClear` 把词清了，输入框必须跟着真清空（缺省一次性种子不跟随）
+          syncValue
+          ariaLabel={t("过滤文件类型（先扩展名、后类型名；仅类型名命中的行有标注）")}
+          placeholder={t("过滤 {{count}} 类…", { count: total })}
+        />
+      </span>
+      {/* 命中数：⛔ 不过滤不报数（E2）——`filter` 是防抖后的词，与行清单同源，数字与行数永远一致 */}
+      {filter && (
+        <span className="ldk-famgr-hit">
+          {t("命中 {{done}} / {{total}}", { done: hitCount, total })}
+        </span>
+      )}
+      <SelectBox
+        value={sortMode}
+        options={sortOptions}
+        title={t("行序：按字母序 ／ 按默认排序（插件声明原始次序）")}
+        onChange={(next) => onCardSort(pluginId, next === "declared" ? "declared" : "alpha")}
+      />
+    </>
   );
 }

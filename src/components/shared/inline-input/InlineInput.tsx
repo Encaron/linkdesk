@@ -48,6 +48,21 @@ export interface InlineInputProps {
   /** 数字类型的 min/max */
   min?: number;
   max?: number;
+
+  /**
+   * 无障碍名（E13）——过滤框这类**没有可见 label** 的输入必须有 `aria-label`；缺省不挂该属性。
+   */
+  ariaLabel?: string;
+
+  /**
+   * 受控回灌：`value` 变化即重新播种本地值。缺省 `false` ＝ **一次性种子**（rename 语义——编辑中
+   * 父组件的 `value` 是「已保存的名字」，不该覆盖用户正在打的字）。
+   *
+   * 🔴 搜索/过滤类用法置 `true`：`Esc` → `onCancel` 把父侧值清空后，输入框必须**真清空**
+   * （缺省语义下本地值不跟随 `value` ⇒ 界面残留已过滤的词、行却已回全量）。
+   * 置 true 的前提是父组件把 `onChange` 的值**回灌**到 `value`（照设置页搜索栏写法）。
+   */
+  syncValue?: boolean;
 }
 
 /** 暴露给父组件的 imperative handle——外部按钮读当前值 */
@@ -68,10 +83,17 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   type = "text",
   min,
   max,
+  ariaLabel,
+  syncValue = false,
 }, ref) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localValue, setLocalValue] = useState(value);
   const [isActive, setIsActive] = useState(true);
+
+  // 受控回灌（`syncValue`）——缺省不跑：一次性种子是 rename 的既定语义，⛔ 别让它悄悄变成受控
+  useEffect(() => {
+    if (syncValue) setLocalValue(value);
+  }, [syncValue, value]);
 
   // 暴露当前值给外部（如 ✓ 按钮）
   useImperativeHandle(ref, () => ({
@@ -162,6 +184,7 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
       onFocus={handleFocus}
       onDragStart={(e) => e.preventDefault()}
       placeholder={placeholder}
+      {...(ariaLabel ? { "aria-label": ariaLabel } : {})}
       min={min}
       max={max}
       style={width ? { width } : undefined}

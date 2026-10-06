@@ -45,6 +45,16 @@ interface PluginCardProps {
   gearItems?: MenuItemDescriptor[];
   /** 插件停用：卡体降不透明度＋「已停用」徽标。行与动作的惰性由管理器组装的 children 承担（03 §1）。 */
   disabled?: boolean;
+  /**
+   * 卡头与卡体之间的一行**通用工具条槽**（C5）——`PluginCard` 对它**零业务语义**：不认识过滤、
+   * 不认识排序，也不认识阈值（阈值/口径/行序全属组装方策略）。
+   *
+   * 🔴 槽是卡头那个**铺满整头的真按钮的兄弟**（卡头 `div` 的第二个孩子之后、卡体之前）——
+   * ⛔ 槽内控件（`<input>`／真件 SelectBox 的 `<button>` 触发）绝不许成为卡头按钮的子孙：
+   * HTML 不合法，且点击/打字会被卡头开合吞掉（嵌套按钮禁令，见本文件头注）。
+   * ⛔ 折叠态不渲染（不占位、不参与布局）；不传槽的既有调用方**逐像素不变**（加性 API）。
+   */
+  toolbar?: ReactNode;
   /** 展开体（行清单）——管理器自组。 */
   children: ReactNode;
 }
@@ -59,6 +69,7 @@ function PluginCard({
   onToggle,
   gearItems,
   disabled,
+  toolbar,
   children,
 }: PluginCardProps) {
   const { t } = useTranslation();
@@ -140,6 +151,9 @@ function PluginCard({
           </button>
         )}
       </div>
+      {/* 通用工具条槽（C5）——卡头与卡体之间一行；折叠态不渲染。
+          ⛔ 不嵌进 `.ldk-plugin-card-toggle`：那是铺满整头的真按钮，塞 input/button 进它 = 嵌套按钮。 */}
+      {expanded && toolbar != null && <div className="ldk-plugin-card-toolbar">{toolbar}</div>}
       {expanded && (
         <div className="ldk-plugin-card-body" id={bodyId}>
           {children}

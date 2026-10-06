@@ -140,3 +140,56 @@ describe("PluginCard——受控开合", () => {
     expect(toggle.getAttribute("aria-controls")).toBe(body.id);
   });
 });
+
+/* ── C5 通用工具条槽（`toolbar`） ──
+ * 钉四条**坏了不报错**的形状：① 不传槽的既有调用方**逐像素不变**（加性 API，E16）；
+ * ② 折叠态⛔ 不渲染槽（不占位不参与布局，E17）；③ 槽是卡头那个**铺满整头的真按钮的兄弟**
+ * ——槽内 input/button 一旦成了它的子孙＝嵌套按钮（HTML 不合法，点击/打字被开合吞掉，E18）；
+ * ④ 槽内容对卡壳**零业务语义**：塞什么它照渲染，不认识过滤/排序（E20）。 */
+
+describe("PluginCard——通用工具条槽（C5）", () => {
+  const SLOT = "过滤框占位";
+
+  it("不传 toolbar ⇒ ⛔ 不出现槽元素（既有调用方零改动）", () => {
+    const { container } = renderCard({ expanded: true });
+    expect(container.querySelector(".ldk-plugin-card-body")).toBeTruthy(); // 体在
+    expect(container.querySelector(".ldk-plugin-card-toolbar")).toBeNull(); // 槽不在
+  });
+
+  it("传了槽但卡折叠 ⇒ ⛔ 不渲染（不占位、不参与布局）", () => {
+    const { container } = renderCard({
+      expanded: false,
+      toolbar: <span data-testid="slot">{SLOT}</span>,
+    });
+    expect(container.querySelector(".ldk-plugin-card-toolbar")).toBeNull();
+    expect(container.querySelector('[data-testid="slot"]')).toBeNull();
+  });
+
+  it("展开 ＋ 传槽 ⇒ 槽在卡头与卡体**之间**，且是卡头（含真按钮那个 div）的**兄弟**（⛔ 不在按钮里）", () => {
+    const { container } = renderCard({
+      expanded: true,
+      toolbar: <input data-testid="slot" aria-label={SLOT} />,
+    });
+    const toolbar = container.querySelector(".ldk-plugin-card-toolbar")!;
+    const head = container.querySelector(".ldk-plugin-card-head")!;
+    const toggle = container.querySelector(".ldk-plugin-card-toggle")!;
+    const body = container.querySelector(".ldk-plugin-card-body")!;
+    expect(toolbar).toBeTruthy();
+    // 兄弟而非子孙——嵌套按钮/输入被开合吞掉是这个槽最容易踩的坑
+    expect(head.contains(toolbar)).toBe(false);
+    expect(toggle.contains(toolbar)).toBe(false);
+    expect(toolbar.parentElement).toBe(head.parentElement);
+    // 位置：卡头之后、卡体之前（DOM 序）
+    expect(head.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toolbar.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("槽内容原样上屏——卡壳对它零业务语义（不认识过滤/排序）", () => {
+    const { getByTestId } = renderCard({
+      expanded: true,
+      toolbar: <button type="button">{SLOT}</button>,
+    });
+    expect(getByTestId("rows")).toBeTruthy();
+    expect(document.querySelector(".ldk-plugin-card-toolbar button")!.textContent).toBe(SLOT);
+  });
+});
