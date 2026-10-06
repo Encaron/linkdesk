@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主区标签栏 · 聚焦环与分屏圆角 —— 现状／方案对照</title>
+<!--
+  mockup 仅示意：真实实现走 var(--xxx) + ThemeEngine（本图零硬编码色，全部读 token）。
+  口径：图 = 给设计做预览/对齐的图纸（skill `html-blueprint`）。
+  ① 真源逐字：`:root` / `[data-theme="light"]` 两块 token 与 `src/index.css` 逐字相同（段 A 机械对账）；
+     面板环的现状声明与 `src/index.css:272-275` 逐字相同（段 C 对账）。
+  ② 两态同屏对照：声明**逐字不动**，只在选择器上加 `.demo-current` / `.demo-fix` 作用域前缀（同一份声明两态并置用）；
+     前缀由段 C 剥离后再比对，所以前缀不是「改口径」。
+  ③ 骨架压缩：真件面板是 `position:absolute` ＋ 百分比 rect（`MainZone.tsx:220-227`）；本图 §A／§B 各帧用
+     `position:relative` ＋ flex 压缩（**定位语义相同**，尺寸数字只在「标签栏 35px」一处是真铁律）；
+     **§0 实况台例外**：它按真件口径跑 `left/width` 百分比（含 `HANDLE_PCT = 0.4%` 的 S5 越界 100.4% 与
+     修正后 `(W - HP) / 2 = 49.8%` 两态），由 `btnGeo` 切换——读数是几何真源，⛔ 不是手绘比例。
+  ④ 硬约束 16：本图是**诊断图**（现状/方案对照）；实现阶段任何 CSS 改动前，必须过设计硬门 `/impeccable` ＋ `/ui ux pro max`。
+-->
+<style>
+/* ══════════ 真源块①：暗色兜底 token——逐字抄自 src/index.css 首个 `:root`（段 A 机械对账） ══════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-inactive: #858585;
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  --error: #E06C75;
+  --warning: #CCA700;
+  --success: #4CAF50;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-2xl: 16px;
+  --radius-pill: 999px;
+  --radius-full: 50%;
+}
+/* ══════════ 真源块②：亮色 token——逐字抄自 src/index.css `[data-theme="light"]`（段 A 机械对账） ══════════ */
+[data-theme="light"] {
+  --bg-window: #FFFFFF;
+  --bg-card: #F5F5F5;
+  --bg-input: #FFFFFF;
+  --text-primary: #2D2D2D;
+  --text-secondary: #5A5A5A;
+  --text-muted: #767676;
+  --accent: #0078D4;
+  --accent-hover: #106EBE;
+  --border: #D4D4D4;
+  --separator: #E8E8E8;
+  --icon-inactive: #999999;
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  --error: #B3261E;
+  --warning: #B45309;
+  --success: #388A34;
+}
+
+/* ══════════ 脚手架（**非真源**：本图自用的演示变量与版式，产品里不存在） ══════════ */
+:root {
+  --ui-scale: 1;                /* 真源由 ThemeEngine 写；演示固定 1（E7 登记缩放不乘圆角） */
+  --surface-radius: 8px;        /* 真源 = app.zoneRadiusScale 派生（0–32）；本图默认 8px 才看得见问题 */
+  --surface-inset: 2px;         /* 真源 = 缝法则：surface-radius 为 0 → 0px，否则 2px（tokens.ts:308-313） */
+  --surface-shadow: none;       /* 真源：内置主题未声明 ⇒ none（E20：面色差靠缝与圆角，不靠阴影） */
+  --z-sticky: 200;              /* 真源 = Z_INDEX.panelResizeHandle（把手层级，> 环的 z-index） */
+}
+html, body { margin: 0; padding: 0; background: var(--bg-window); color: var(--text-primary);
+  font: 13px/1.6 "Segoe UI", "Microsoft YaHei", sans-serif; }
+body { padding: 18px 15px 60px; }
+h1 { font-size: 19px; margin: 0 0 6px; }
+h2 { font-size: 15px; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--separator); }
+h3 { font-size: 13px; margin: 18px 0 8px; color: var(--text-secondary); font-weight: 600; }
+code { font-family: Consolas, monospace; font-size: 12px; background: var(--bg-card); padding: 1px 4px; border-radius: var(--radius-xs); }
+.lede { color: var(--text-secondary); max-width: 1180px; margin: 0 0 14px; }
+.muted { color: var(--text-muted); }
+
+/* ── 控件条／读数 ── */
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 6px; }
+.btn { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 5px 10px; font: inherit; cursor: pointer; }
+.btn:hover { background: var(--bg-input); }
+.btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.readout { font-family: Consolas, monospace; font-size: 12px; color: var(--text-secondary); }
+.range { width: 200px; }
+
+/* ── 帧（frame-caption / frame-note 规范：skill `html-blueprint` §八） ── */
+.grid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.frame { margin: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; }
+.frame-caption { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
+.frame-caption .tag { color: var(--text-muted); font-weight: 400; }
+.frame-body { background: var(--bg-window); border-radius: var(--radius-sm); padding: 0; overflow: hidden; }
+.frame-note { font-size: 11.5px; color: var(--text-muted); line-height: 1.75; margin-top: 8px; max-width: 100%; }
+.frame-note b { color: var(--text-secondary); font-weight: 600; }
+.anno { border: 1px dashed var(--error); color: var(--error); font-size: 11px; border-radius: var(--radius-xs); padding: 2px 6px; }
+.anno-ok { border-style: solid; border-color: var(--success); color: var(--success); }
+.anno-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+/* ── 软件骨架（真尺寸：titlebar 30 / icon-bar 42 / 主区 flex / 状态栏 22；标签栏 35px 是主证据） ── */
+.window { width: min(1280px, calc(100vw - 30px)); background: var(--bg-window);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;
+  display: flex; flex-direction: column; }
+.titlebar { height: 30px; flex: 0 0 30px; background: var(--bg-card); display: flex; align-items: center;
+  gap: 8px; padding: 0 10px; font-size: 12px; color: var(--text-secondary); }
+.body { display: flex; min-height: 300px; }
+.icon-bar { width: 42px; flex: 0 0 42px; background: var(--bg-window); display: flex; flex-direction: column;
+  align-items: center; gap: 10px; padding-top: 10px; color: var(--icon-inactive); font-size: 16px; }
+.side-panel { width: 216px; flex: 0 0 216px; background: var(--bg-card); padding: 8px; font-size: 12px; color: var(--text-secondary); }
+.side-item { padding: 4px 6px; border-radius: var(--radius-sm); }
+.main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.statusbar { height: 22px; flex: 0 0 22px; background: var(--bg-window); border-top: 1px solid var(--separator);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 11px; color: var(--text-muted); }
+
+/* ── 主区与面板（**真实结构压缩版**：pane 只带条件类，非聚焦时无类名——见 04 T3） ── */
+.ldk-main-zone { flex: 1 1 auto; position: relative; background: var(--bg-window); overflow: hidden;
+  border-radius: var(--surface-radius, 0px); display: flex; }
+.ldk-group-pane { position: relative; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.split-pane { flex: 1 1 50%; }
+
+/* 标签栏——真源：GroupTabBar.css:8（height 35px / background var(--bg-card)） */
+.ldk-group-tab-bar { height: calc(35px * var(--ui-scale)); flex: 0 0 calc(35px * var(--ui-scale));
+  background: var(--bg-card); display: flex; align-items: stretch; }
+.ldk-group-tab-item { height: calc(30px * var(--ui-scale)); margin: 4px 4px 0 0; padding: 0 10px;
+  min-width: calc(64px * var(--ui-scale)); border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; }
+.ldk-group-tab-item.active { background: var(--bg-window); border-color: var(--separator); color: var(--text-primary);
+  box-shadow: var(--tab-active-shadow); }
+/* 内容层——真源：TabContentLayer.tsx:57-67（left0/right0/top35/bottom0，贴边）。
+   ⚠️ 真件内容层**没有类名**（行内样式）且是 pane 的**兄弟**；本图压缩成 pane 的子节点并给它一个
+   **脚手架类名** `.demo-pane-content`（⛔ 不是提案类名、不是产品类名——段 I3 会盯着这条） */
+.demo-pane-content { flex: 1 1 auto; overflow: hidden; padding: 10px; font-size: 12px; color: var(--text-secondary); }
+.content-opaque { background: var(--bg-window); }   /* 内置主题式：视图根自带不透明底 ⇒ 盖住环（E4） */
+.content-glass { background: transparent; }         /* 玻璃主题式：内容半透明 ⇒ 环偶然透出（E2） */
+/* 附图（详情页里那种不透明图）——E3 用它证明「局部盖住」 */
+.plugin-image { height: 54px; border-radius: var(--radius-sm); background: var(--bg-input);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text-muted); }
+
+/* 缝上的把手——真源：index.css:445-509（4px 命中区透明；::before 三点 --text-muted 常态；::after 2px accent hover） */
+.ldk-split-handle { position: relative; flex: 0 0 4px; z-index: var(--z-sticky); cursor: col-resize; }
+.ldk-split-handle::before { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 2px;
+  border-radius: 50%; background: var(--text-muted); transform: translate(-50%, -50%);
+  box-shadow: 0 5px 0 0 var(--text-muted), 0 -5px 0 0 var(--text-muted); pointer-events: none; }
+.ldk-split-handle:hover::before { opacity: 0; }
+.ldk-split-handle::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+  transform: translateX(-50%); background: var(--accent); border-radius: var(--surface-radius, 0px);
+  opacity: 0; pointer-events: none; }
+.ldk-split-handle:hover::after { opacity: 1; }
+
+/* ── 实况台分屏几何（S5 只能在**绝对定位 ＋ 百分比 rect** 下再现；flex 均分看不出越界）——
+   真源 `computeLayout(root, 0, 0, 100, 100)`（MainZone.tsx:165）：现状 = 右栏落位 `w0 + HANDLE_PCT`、宽度仍 `w1`
+   ⇒ 右栏右缘 = 100.4% ⇒ **越界 0.4%**；修正（D5-甲）= 先把 `HANDLE_PCT` 从总量扣掉再按 s0/s1 分
+   ⇒ 两栏各 49.8%、右栏右缘正好 100%。位置/宽度由脚本按 `state.geoFix` 落成行内样式（真件同款：绝对定位＋矩形）。 ── */
+#wb .ldk-main-zone { display: block; }
+#wb .ldk-group-pane { position: absolute; top: 0; height: 100%; }
+#wb .ldk-split-handle { position: absolute; top: 0; height: 100%; }
+
+/* ── 环的两态（选择器加 .demo-* 作用域前缀，**声明逐字不动**——段 C 剥离前缀后比对） ── */
+/* 现状：真源逐字 src/index.css:272-275 —— inset 盒阴影绘在「自身背景之上、子元素之下」 */
+.demo-current .ldk-group-pane-focused {
+  border-radius: var(--surface-radius, 0px);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* 拟改（01 §5.1 甲案，决策 D2-甲）：环改覆盖层——::after 绘在子元素之上 */
+.demo-fix .ldk-group-pane-focused {
+  border-radius: var(--surface-radius, 0px);
+}
+.demo-fix .ldk-group-pane-focused::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+}
+/* ── 轴二拟改（01 §5.2 甲案，决策 D3-甲）——分屏才成面：稳定类 `ldk-group-pane` ＋ 分屏修饰类。
+   ⚠️ 骨架压缩：本图内容层是 pane 的**子节点** ⇒ `padding` 能内缩它；真件里内容是**兄弟**（E5.8#141 保活层）
+   ⇒ 实现时内缩必须落在 `TabContentLayer`（见 03 §一 ／ 04 T3）。差异已标在 B2 的 frame-note。 ── */
+.demo-fix .ldk-group-pane-split {
+  border-radius: var(--surface-radius);
+  background: var(--bg-card);
+  box-shadow: var(--surface-shadow, none);
+  padding: var(--surface-inset);
+}
+/* 单面板态：`.ldk-group-pane` 不带分屏修饰类 ⇒ 零内缩、零圆角、零面色（E15 现状零变化） */
+
+/* ── 8× 放大镜（症状 S4／方案 B4 用：看得清「弧切方角」与「同形」） ── */
+.zoom { position: relative; width: 190px; height: 150px; background: var(--bg-window);
+  border-right: 1px solid var(--separator); border-bottom: 1px solid var(--separator); }
+.zoom .corner { position: absolute; left: 0; top: 0; width: 150px; height: 110px; background: var(--bg-card); }
+.zoom .arc { position: absolute; left: 0; top: 0; width: 150px; height: 110px;
+  border-left: 2px solid var(--accent); border-top: 2px solid var(--accent); }
+.zoom .arc.rounded { border-top-left-radius: 64px; }
+.zoom .sq { position: absolute; left: 0; top: 0; width: 150px; height: 110px;
+  border-left: 2px solid var(--warning); border-top: 2px solid var(--warning); }
+.zoom-label { font-size: 11px; color: var(--text-muted); }
+
+/* ── 提示／表格 ── */
+table { border-collapse: collapse; font-size: 12px; margin: 8px 0 4px; }
+th, td { border: 1px solid var(--separator); padding: 4px 8px; text-align: left; vertical-align: top; }
+th { background: var(--bg-card); color: var(--text-secondary); }
+.notice { border-left: 3px solid var(--accent); background: var(--bg-card); padding: 8px 12px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: 12px 0; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<h1>主区标签栏 · 聚焦环与分屏圆角 —— 现状／方案对照</h1>
+<p class="lede">
+  两轴：<b>轴一 聚焦环</b>（你以为一直在、其实被内容盖住的 accent 圈）· <b>轴二 圆角与分屏</b>（两栏连着 · 内侧直角 · 标签页不成面）。
+  档案：<a href="../00-README.md">00-README</a> ／ <a href="../01-根因与修法.md">01 根因与修法</a> ／ <a href="../02-边缘情况清单.md">02 边缘情况清单</a> ／ <a href="../03-实现交接.md">03 实现交接</a> ／ <a href="../04-任务清单.md">04 任务清单</a>。
+  本图与 04 **互指**：图上每个 <code>T#／D#</code> 都在 04 里；04 里每个 <code>T#／D#</code> 都在图上（机读见 §E 段 G）。
+</p>
+
+<div class="notice">
+  <b>🔴 未拍板不动一行代码</b>：本图是<em>诊断图</em>（现状／方案对照），<b>不是</b>已定稿设计。
+  实现阶段任何 CSS 改动前必须过设计硬门 <code>/impeccable</code> ＋ <code>/ui ux pro max</code>（硬约束 16）。
+  <b>D1–D5 待你拍板</b>（<a href="../04-任务清单.md">04 §二</a>）。
+</div>
+
+<!-- ══════════════════════════════════════ §0 实况台 ══════════════════════════════════════ -->
+<h2>§0 实况台 · 一个软件轮廓 · 七个开关（把口径摸在手里）</h2>
+<div class="toolbar">
+  <button class="btn" id="btnTheme" type="button">主题：暗 / 亮</button>
+  <button class="btn" id="btnMode" type="button" aria-pressed="false">环：现状（inset 阴影） / 方案（覆盖层）</button>
+  <button class="btn" id="btnLayout" type="button" aria-pressed="false">布局：单面板 / 左右分屏</button>
+  <button class="btn" id="btnAlpha" type="button" aria-pressed="false">内容：不透明（内置主题式） / 半透明（玻璃主题式）</button>
+  <button class="btn" id="btnDir" type="button" aria-pressed="false">方向：左右（横分） / 上下（竖分）</button>
+  <button class="btn" id="btnGeo" type="button" aria-pressed="false">几何：现状（第二栏越界 0.4%） / 修正（扣缝后两栏等宽）</button>
+  <label class="readout">分区圆角 <code>--surface-radius</code>
+    <input class="range" id="radiusRange" type="range" min="0" max="32" step="1" value="8">
+  </label>
+  <span class="readout" id="readout">…</span>
+</div>
+<p class="lede muted">
+  玩法（七个开关，底层全是真机制）：① 拉圆角看 <code>--surface-inset</code> 跟着 0↔2px 变（缝法则）；② 环切「现状」时把内容切到
+  <b>不透明</b>——环<b>整圈消失</b>（这就是内置主题下的实况）；切<b>半透明</b>才偶然透出；③ 切「方案」后，无论内容透明与否，环
+  <b>全周都在</b>；④ 切分屏看两栏是「同一张面」还是「各成一面」；⑤ 🔴 切到分屏 ＋ 环「方案」，看<b>第二栏最外侧那条环</b>——
+  「几何＝现状」时它<b>整条不见了</b>（第二栏外缘 100.4% 越出窗外，S5），切「修正」后回来；⑥ 再切「方向：上下」，同一现象出现在
+  <b>下栏底边那条</b>——就是你说的「很底下那一点点」（横分竖分是<b>同一套算式换轴</b>，见 <code>layout.ts:62</code>／<code>:75</code>）；
+  ⑦ 读数行里「几何」两项给出沿切分轴的百分比账，可对着 [01 §四之二](../01-根因与修法.md) 的数字核。
+</p>
+
+<div class="window" id="wb" data-mode="current">
+  <div class="titlebar"><span>▣</span><span>LinkDesk</span><span class="muted">— 主区标签栏 · 聚焦环演示</span></div>
+  <div class="body">
+    <div class="icon-bar"><span>◧</span><span>⌗</span><span>⚙</span></div>
+    <div class="side-panel">
+      <div class="side-item">▤ 资源管理器</div>
+      <div class="side-item">⌕ 搜索</div>
+      <div class="side-item">◆ 插件市场</div>
+    </div>
+    <div class="main">
+      <div class="ldk-main-zone" id="wbZone">
+        <!-- 面板甲（聚焦；`ldk-group-pane-split` 由 JS 按「是否分屏」加减——演示 D3-甲「只在分屏成面」） -->
+        <div class="ldk-group-pane ldk-group-pane-focused ldk-group-pane-split split-pane" id="wbPaneA">
+          <div class="ldk-group-tab-bar">
+            <div class="ldk-group-tab-item active">编辑器</div>
+            <div class="ldk-group-tab-item">设置</div>
+          </div>
+          <div class="demo-pane-content content-opaque" id="wbContentA">
+            面板甲内容（聚焦栏：标签栏 35px ＋ 此内容层贴边，从 <code>top:35px</code> 到底）
+            <div class="plugin-image">附图（不透明）</div>
+          </div>
+        </div>
+        <!-- 缝上的把手（真件：4px 命中区；本图给了基线宽度便于目视） -->
+        <div class="ldk-split-handle" id="wbHandle"></div>
+        <!-- 面板乙（未聚焦） -->
+        <div class="ldk-group-pane ldk-group-pane-split split-pane" id="wbPaneB">
+          <div class="ldk-group-tab-bar">
+            <div class="ldk-group-tab-item active">串口监视器</div>
+          </div>
+          <div class="demo-pane-content content-opaque">面板乙内容</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="statusbar"><span>就绪</span><span>标签栏 35px · 图标栏 42px · 状态栏 22px</span></div>
+</div>
+
+<!-- ══════════════════════════════════════ §A 现状五帧 ══════════════════════════════════════ -->
+<h2>§A 现状 · 五帧（症状 S1–S5 各一帧，画的是今天源码跑出来的样子）</h2>
+<div class="grid">
+
+  <!-- f-current-1 -->
+  <figure class="frame" id="f-current-1">
+    <figcaption class="frame-caption">A1 · 现状 单面板聚焦<span class="tag">｜症状 S1/S2 ｜内置 dark ＋ 不透明内容</span></figcaption>
+    <div class="frame-body demo-current" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 130px;">
+        <div class="ldk-group-pane ldk-group-pane-focused" style="flex: 1 1 auto;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">内容层（贴边到底）</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">环 = inset 盒阴影：绘在「自身背景之上、子元素之下」</span>
+      <span class="anno">35px 标签栏 ＋ 内容层 ⇒ 三边全盖</span>
+    </div>
+    <div class="frame-note">
+      <b>数据来源</b>：环＝<code>src/index.css:272-275</code> 逐字；标签栏 <code>--bg-card</code>＝
+      <code>GroupTabBar.css:8</code>；内容层贴边＝<code>TabContentLayer.tsx:57-67</code>。<br>
+      <b>行为</b>：聚焦（<code>activeGroupId</code>）时挂类，环**本该**在四周画一圈 1px accent——但被标签栏与内容层盖死。<br>
+      <b>任务号</b>：T1 ／ T2 ｜ <b>决策</b>：D2 ｜ <b>边缘项</b>：E1 E4 E5 E11 ｜ <b>症状</b>：S1 / S2。
+    </div>
+  </figure>
+
+  <!-- f-current-2 -->
+  <figure class="frame" id="f-current-2">
+    <figcaption class="frame-caption">A2 · 现状 插件详情页含附图<span class="tag">｜症状 S1 ｜局部被不透明附图盖住（你的原话③）</span></figcaption>
+    <div class="frame-body demo-current" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 150px;">
+        <div class="ldk-group-pane ldk-group-pane-focused" style="flex: 1 1 auto;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">插件详情</div></div>
+          <div class="demo-pane-content content-glass">
+            <div>插件说明文字…</div>
+            <div class="plugin-image">附图（不透明）</div>
+            <div>更多说明…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">内容半透明 ⇒ 左右两段环偶尔透出（**偶然**）</span>
+      <span class="anno">附图不透明 ⇒ 那一段环被盖死</span>
+    </div>
+    <div class="frame-note">
+      <b>数据来源</b>：同 A1；本帧把内容层设为半透明（玻璃主题式），专画你那句「**配图把圈盖住一下**」。<br>
+      <b>行为</b>：环的**可见性由内容不透明度决定**——半透明段透出、不透明段消失。这就是「很多页面光圈根本不显示」的机制。<br>
+      <b>任务号</b>：T1 ／ T2 ｜ <b>决策</b>：D2 ｜ <b>边缘项</b>：E2 E3 ｜ <b>症状</b>：S1。
+    </div>
+  </figure>
+
+  <!-- f-current-3 -->
+  <figure class="frame" id="f-current-3">
+    <figcaption class="frame-caption">A3 · 现状 左右分屏<span class="tag">｜症状 S3 ｜「这两栏其实是连着的」（你的原话④）</span></figcaption>
+    <div class="frame-body" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 150px;">
+        <div class="ldk-group-pane ldk-group-pane-focused split-pane">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">面板甲</div>
+        </div>
+        <div class="ldk-split-handle"></div>
+        <div class="ldk-group-pane split-pane">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">对话</div></div>
+          <div class="demo-pane-content content-opaque">面板乙</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">两栏共享同一张面：同 <code>--bg-card</code> 标签条 ＋ 同视图底色</span>
+      <span class="anno">缝上只有 4px **透明**命中区 ＋ 3 个 2px 点（把手 <code>::before</code>）</span>
+      <span class="anno">内侧两角：直角（没有任何机制）</span>
+    </div>
+    <div class="frame-note">
+      <b>数据来源</b>：pane＝<code>MainZone.tsx:212-232</code>（`position:absolute`＋百分比、**无背景/无圆角/无阴影**）；
+      把手＝<code>index.css:445-509</code>；缝只作用于池网格格（<code>index.css:358-362</code>）。<br>
+      <b>行为</b>：两栏之间没有背景、没有圆角、没有缝 ⇒ 静止时**在视觉上就是一张面**（把手的 3 个点太小，不足以分开）。<br>
+      <b>任务号</b>：T3 ／ T4 ｜ <b>决策</b>：D3 ｜ <b>边缘项</b>：E13 E14 ｜ <b>症状</b>：S3。
+    </div>
+  </figure>
+
+  <!-- f-current-4 -->
+  <figure class="frame" id="f-current-4">
+    <figcaption class="frame-caption">A4 · 现状 环有角、内容方角<span class="tag">｜症状 S4 ｜8× 放大（你的原话④「一点点直角，它就斜掉」）</span></figcaption>
+    <div class="frame-body demo-current" style="padding: 10px; display: flex; gap: 12px; align-items: center;">
+      <div class="zoom">
+        <div class="corner"></div>
+        <div class="arc rounded"></div>
+        <div class="sq"></div>
+      </div>
+      <div>
+        <div class="zoom-label">🔵 蓝＝环（<code>border-radius: var(--surface-radius)</code>＝8px，随分区圆角）</div>
+        <div class="zoom-label">🟡 黄＝内容层的方角（<b>直角</b>，没有任何圆角机制）</div>
+        <div class="zoom-label">⇒ 弧**横切**方角 ＝「斜掉」</div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">单面板时 pane 的四角靠 <code>.ldk-main-zone</code> 的 <code>overflow:hidden</code> 裁出来</span>
+      <span class="anno">分屏后内侧两角没有任何机制 ⇒ 直角</span>
+    </div>
+    <div class="frame-note">
+      <b>数据来源</b>：环圆角＝<code>index.css:273</code>；zone 圆角＋自裁＝<code>index.css:404-417</code> / <code>419-434</code>；
+      两把标尺与缝法则＝<code>ThemeEngine/constants.ts:10</code> ＋ <code>tokens.ts:308-313</code>。<br>
+      <b>行为</b>：环**有**圆角而内容**没有** ⇒ 不同形；`--surface-radius: 0px` 时两角同直（巧合正确，E5）。<br>
+      <b>任务号</b>：T5 ｜ <b>决策</b>：D4 ｜ <b>边缘项</b>：E5 E6 ｜ <b>症状</b>：S4。
+    </div>
+  </figure>
+
+  <!-- f-current-5 -->
+  <figure class="frame" id="f-current-5">
+    <figcaption class="frame-caption">A5 · 现状 分屏**第二栏越出容器**，外缘环被切<span class="tag">｜症状 S5 ｜你 2026-10-07 二次点单：「右半边那边外边的环的右边那一部分就没有了」「下栏那个外面聚焦环的下半部分就没了」</span></figcaption>
+    <div class="frame-body demo-fix" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 150px;">
+        <div class="ldk-group-pane" style="position: absolute; top: 0; left: 0; width: 50%; height: 100%;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">面板甲 · 第一栏（从 0 起 ⇒ 完全在容器内）</div>
+        </div>
+        <div class="ldk-split-handle" style="position: absolute; top: 0; left: 50%; width: 0.4%; height: 100%;"></div>
+        <div class="ldk-group-pane ldk-group-pane-focused" style="position: absolute; top: 0; left: 50.4%; width: 50%; height: 100%;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">对话</div></div>
+          <div class="demo-pane-content content-opaque">面板乙 · 第二栏（右缘 100.4%）</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">🔴 右栏右缘 = <code>50.4%</code> ＋ <code>50%</code> = <b>100.4%</b> ⇒ 越界 <code>0.4%</code>（≈4px @1000px 宽）</span>
+      <span class="anno">🔴 栏最外侧那条 <b>1px 环</b>整条住在这条越界带里 ⇒ 被裁掉：<b>右缘那条环整条不见</b></span>
+      <span class="anno">🔴 上下分屏同源：下栏下缘 100.4% ⇒ 底边那条环不见（你说的「很底下那一点点」）</span>
+      <span class="anno anno-ok">✅ 对照：第一栏止于 50% ⇒ 完全在容器内 ⇒ 同一圈环在**第一栏**上四边都在</span>
+      <span class="anno">⚠️ 本帧环按**方案态**（<code>::after</code> 覆盖层）画：现状 <code>inset</code> 阴影在<em>不透明内容</em>下整圈不可见 ⇒ 那样就**看不出**「被切」</span>
+    </div>
+    <div class="frame-note">
+      <b>数据来源</b>：容器 = <code>computeLayout(root, 0, 0, 100, 100)</code>（<a href="../03-实现交接.md">03 §一</a> 落点表 ／ <code>MainZone.tsx:165</code>）；右栏落位 <code>x + w0 + HANDLE_PCT</code> 而宽度仍取 <code>w1</code>（<code>layout.ts:62</code>，垂直同处 <code>:75</code>），<code>w0 + w1 = 100</code> ⇒ 右缘 <b>100.4%</b>（算术，无歧义）；<code>.ldk-main-zone</code> **没有** <code>overflow:hidden</code>（E5.8#98 为不裁环而移除，<code>index.css:270-271</code> 注释）⇒ 越界带落在窗口外。<br>
+      <b>行为</b>：越界那 0.4% 里住的正是<b>栏最外侧那条 1px 环</b> ⇒ 「环的右边那一部分没有了」；上下分屏 ⇒ 底边那条（0.4% × 容器高）。第一栏不动 ⇒ 病**只在第二栏**。<br>
+      <b>为什么今天才发现</b>：pane 没有背景（S3）⇒ 越界本身看不见，唯一的露头就是这 1px 的环。<br>
+      <b>⚠️ 图的代演（不是口径改动）</b>：真件里裁掉这条带的是**窗口边界**（`.ldk-main-zone` 自己 <em>没有</em> <code>overflow:hidden</code>）；本图在一个 HTML 页里画窗口 ⇒ 由本图骨架的 <code>.ldk-main-zone { overflow:hidden }</code> **代演窗口边**。可见结果一致：越界带**看不见**；差别只是「谁裁的」——⛔ 实现时**不许**给真件加回 <code>overflow:hidden</code>（[01 §5.3](01-根因与修法.md) 丁案判死）。<br>
+      <b>任务号</b>：T3 ／ T4 ｜ <b>决策</b>：D5 ｜ <b>边缘项</b>：E21 E22 ｜ <b>症状</b>：S5。
+    </div>
+  </figure>
+
+</div>
+
+<!-- ══════════════════════════════════════ §B 方案五帧 ══════════════════════════════════════ -->
+<h2>§B 方案 · 五帧（T1–T5 的目标呈现，仍是**待拍板**的候选）</h2>
+<div class="grid">
+
+  <!-- f-solution-1 -->
+  <figure class="frame" id="f-solution-1">
+    <figcaption class="frame-caption">B1 · 方案 环改覆盖层<span class="tag">｜D2-甲 ｜无论内容透明/不透明，环全周可见</span></figcaption>
+    <div class="frame-body demo-fix" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 130px;">
+        <div class="ldk-group-pane ldk-group-pane-focused" style="flex: 1 1 auto;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">内容层（不透明——现状下环早已消失）</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno-ok">✅ <code>::after</code> + <code>inset:0</code> + <code>border:1px solid var(--accent)</code> ⇒ 压在标签栏与内容之上</span>
+      <span class="anno-ok">✅ <code>z-index:1</code> ＞ 内容层（兄弟、DOM 在后）</span>
+      <span class="anno-ok">✅ <code>pointer-events:none</code> ⇒ 不吃点击（点空白仍聚焦）</span>
+      <span class="anno-ok">✅ <code>border-box</code>＋<code>inset:0</code> ⇒ 零布局位移</span>
+    </div>
+    <div class="frame-note">
+      <b>改法</b>：删 <code>box-shadow: inset …</code> 一行，加 <code>::after</code> 覆盖层块（<a href="../01-根因与修法.md">01 §5.1</a> 甲案；两处 CSS、**不动 TSX**）。<br>
+      <b>任务号</b>：T1（环改层）／ T2（层级与命中护栏）｜ <b>决策</b>：D2-甲 ｜ <b>边缘项</b>：E1 E2 E3 E11。
+    </div>
+  </figure>
+
+  <!-- f-solution-2 -->
+  <figure class="frame" id="f-solution-2">
+    <figcaption class="frame-caption">B2 · 方案 分屏两栏各自成面<span class="tag">｜D3-甲 ｜圆角 ＋ 4px 缝 ＋ 把手居中</span></figcaption>
+    <div class="frame-body demo-fix" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 150px;">
+        <div class="ldk-group-pane ldk-group-pane-split ldk-group-pane-focused split-pane">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">面板甲（自己的面：圆角＋缝）</div>
+        </div>
+        <div class="ldk-split-handle"></div>
+        <div class="ldk-group-pane ldk-group-pane-split split-pane">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">对话</div></div>
+          <div class="demo-pane-content content-opaque">面板乙</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno-ok">✅ 每栏 <code>border-radius: var(--surface-radius)</code> ＋ 面色 <code>--bg-card</code> ＋ 内容按 <code>--surface-inset</code> 内缩</span>
+      <span class="anno-ok">✅ <code>overflow:hidden</code>（行内已有）自裁 ⇒ 内容不出圆角曲线</span>
+      <span class="anno-ok">✅ 缝的<b>位置本来就存在</b>（<code>HANDLE_PCT = 0.4%</code>，<code>layout.ts:34</code>／<code>:62</code>）——今天只是**缺颜色**</span>
+      <span class="anno">⚠️ 真件缝宽 = <code>0.4%</code>（≈4px @1000px 宽）；本图手绘 4px 便于目视，⛔ 不动几何真源</span>
+      <span class="anno">⚠️ 真件内容是<b>兄弟</b>（E5.8#141 保活层）⇒ 内缩落 <code>TabContentLayer</code>，不是 pane 的 <code>padding</code></span>
+    </div>
+    <div class="frame-note">
+      <b>改法（三处落点）</b>：① `MainZone.tsx` pane 加稳定类 <code>ldk-group-pane</code> ＋ 分屏修饰类 <code>ldk-group-pane-split</code>（**提案类名**，见 <a href="../01-根因与修法.md">01 §5.2</a> ／ <a href="../04-任务清单.md">04 T3</a>）；② <code>src/index.css</code> 写面规则（全走既有 token）；③ `TabContentLayer.tsx` 内容层补内缩（<a href="../03-实现交接.md">03 §一</a>）。<br>
+      <b>子问题（D3 选甲时才要答）</b>：面色取哪个 token（<code>--bg-card</code> ／ <code>--bg-window</code>）——见 <a href="../02-边缘情况清单.md">02 E17</a>。<br>
+      <b>任务号</b>：T3（成面）／ T4（把手表达）｜ <b>决策</b>：D3-甲 ｜ <b>边缘项</b>：E13 E14 E16 E17。
+    </div>
+  </figure>
+
+  <!-- f-solution-3 -->
+  <figure class="frame" id="f-solution-3">
+    <figcaption class="frame-caption">B3 · 方案 单面板＝零变化（对照基线）<span class="tag">｜护栏：不给单面板加任何东西</span></figcaption>
+    <div class="frame-body demo-fix" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 130px;">
+        <div class="ldk-group-pane ldk-group-pane-focused" style="flex: 1 1 auto;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">内容层</div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno-ok">✅ 无 <code>ldk-group-pane-split</code> ⇒ 内缩 0 ／ 不新加圆角 ／ 不新加阴影</span>
+      <span class="anno-ok">✅ 与 A1 的<b>几何完全相同</b>（只有环的画法变了）</span>
+    </div>
+    <div class="frame-note">
+      <b>行为</b>：轴二的分割表达**只在分屏时出现**——单面板与改前逐像素一致（<a href="../02-边缘情况清单.md">02 E15</a>）。这是每次验证的基线。<br>
+      <b>任务号</b>：T3 ｜ <b>决策</b>：D3 ｜ <b>边缘项</b>：E5 E15。
+    </div>
+  </figure>
+
+  <!-- f-solution-4 -->
+  <figure class="frame" id="f-solution-4">
+    <figcaption class="frame-caption">B4 · 方案 环与内容同形<span class="tag">｜D4-乙 ｜8× 放大：弧与角同心</span></figcaption>
+    <div class="frame-body demo-fix" style="padding: 10px; display: flex; gap: 12px; align-items: center;">
+      <div class="zoom">
+        <div class="corner" style="border-top-left-radius: 64px;"></div>
+        <div class="arc rounded"></div>
+      </div>
+      <div>
+        <div class="zoom-label">内容容器吃同一个 <code>--surface-radius</code> ⇒ 蓝弧与内容角**同心**</div>
+        <div class="zoom-label">⇒ 不再「斜掉」（<a href="../02-边缘情况清单.md">02 E6</a>）</div>
+      </div>
+    </div>
+    <div class="frame-note">
+      <b>改法</b>：内容容器补 <code>border-radius: var(--surface-radius)</code>（与环同源；<a href="../01-根因与修法.md">01 §5.1</a> 末注）。<br>
+      <b>任务号</b>：T5（可并入 T1 同笔）｜ <b>决策</b>：D4-乙 ｜ <b>边缘项</b>：E6。
+    </div>
+  </figure>
+
+  <!-- f-solution-5 -->
+  <figure class="frame" id="f-solution-5">
+    <figcaption class="frame-caption">B5 · 方案 缝**先扣再分**：两栏都在容器内<span class="tag">｜D5-甲 ＋ D3-甲 ｜右栏右缘正好 100%，外缘环／圆角／面色完整</span></figcaption>
+    <div class="frame-body demo-fix" style="padding: 10px;">
+      <div class="ldk-main-zone" style="height: 150px;">
+        <div class="ldk-group-pane ldk-group-pane-split" style="position: absolute; top: 0; left: 0; width: 49.8%; height: 100%;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+          <div class="demo-pane-content content-opaque">面板甲 · 49.8%</div>
+        </div>
+        <div class="ldk-split-handle" style="position: absolute; top: 0; left: 49.8%; width: 0.4%; height: 100%;"></div>
+        <div class="ldk-group-pane ldk-group-pane-split ldk-group-pane-focused" style="position: absolute; top: 0; left: 50.2%; width: 49.8%; height: 100%;">
+          <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">对话</div></div>
+          <div class="demo-pane-content content-opaque">面板乙（聚焦）· 右缘 = 50.2% ＋ 49.8% = <b>100%</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno-ok">✅ 分配口径 = **先把 <code>HANDLE_PCT</code> 从总量扣掉**（<code>wEff = 100% − 0.4%</code>）再按 s0/s1 分 ⇒ 两栏各 <code>49.8%</code></span>
+      <span class="anno-ok">✅ 右栏右缘**正好 100%** ⇒ 外缘 1px 环完整、右圆角**不被切**、面色完整（D3-甲 能成立的前提）</span>
+      <span class="anno-ok">✅ 两栏仍**等宽**；缝宽仍是既有的 <code>0.4%</code>（<code>HANDLE_PCT</code> 的**值**⛔ 不动）</span>
+      <span class="anno-ok">✅ 单面板不受影响：走 flex fallback（<code>useAbsolute = false</code> ⇒ <code>computeLayout</code> 根本不参与）</span>
+      <span class="anno">⚠️ 每栏比今天窄 <code>0.2%</code>（≈2px @1000px）——「缝从总量里出」的必然代价</span>
+      <span class="anno">⚠️ 回归面：拖拽 sizes ／ 双击复位 50/50 ／ 嵌套分屏 ／ 标签拖拽命中（<code>tabDragTypes</code> 按 rect 命中 ⇒ 改后更准）</span>
+    </div>
+    <div class="frame-note">
+      <b>改法（两行）</b>：<code>MainZone/layout.ts</code> 的 <code>computeLayout</code> 每层分支**先扣缝再分**——水平 <code>const wEff = w - HANDLE_PCT</code> 后 <code>w0 = wEff * s0</code>（垂直同理用 <code>h</code>），<b>第二栏落位公式不变</b>（仍是 <code>x + w0 + HANDLE_PCT</code>）⇒ 孩子总跨度回到精确 100%。⛔ 不动 <code>HANDLE_PCT</code> 的值（<code>0.4</code> 就绪口径）／⛔ 不动递归结构与平级渲染（B22 教训）／⛔ 不改 <code>HandleRect.sizes</code>（拖拽数学）。<br>
+      <b>任务号</b>：T3（成面）／ T4（把手表达）｜ <b>决策</b>：D5-甲 ｜ <b>边缘项</b>：E13 E21 E22 ｜ <b>症状</b>：S5。
+    </div>
+  </figure>
+
+</div>
+
+<!-- ══════════════════════════════════════ §C 决策项图 ══════════════════════════════════════ -->
+<h2>§C 决策项图 · D1「光圈是否只在分屏时显示」（你的原话⑤：先记为决策项）</h2>
+<div class="grid">
+  <!-- f-decision-1 -->
+  <figure class="frame" id="f-decision-1">
+    <figcaption class="frame-caption">C1 · D1 两案并排<span class="tag">｜单面板态下的差别（分屏态两案都一样）</span></figcaption>
+    <div class="frame-body" style="padding: 10px; display: flex; gap: 16px; flex-wrap: wrap;">
+      <div>
+        <div class="zoom-label" style="margin-bottom: 6px;">D1-甲 · 常显（<b>今天如此</b>：单面板也挂环）</div>
+        <div class="demo-fix" style="width: 230px;">
+          <div class="ldk-main-zone" style="height: 96px;">
+            <div class="ldk-group-pane ldk-group-pane-focused" style="flex: 1 1 auto;">
+              <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+              <div class="demo-pane-content content-opaque">单面板</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="zoom-label" style="margin-bottom: 6px;">D1-乙 · 只在分屏显示（单面板**无环**）</div>
+        <div class="demo-fix" style="width: 230px;">
+          <div class="ldk-main-zone" style="height: 96px;">
+            <div class="ldk-group-pane" style="flex: 1 1 auto;">
+              <div class="ldk-group-tab-bar"><div class="ldk-group-tab-item active">编辑器</div></div>
+              <div class="demo-pane-content content-opaque">单面板</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-note">
+      <b>行为</b>：单面板下「焦点属于哪一栏」本来就无歧义 ⇒ 环的信息量低（甲案）；若选乙，判据与 D3-甲的「是否分屏」**同源**，可搭车（`layout.panels.length > 1` 已在手）。<br>
+      <b>任务号</b>：T6 ｜ <b>决策</b>：D1 ｜ <b>边缘项</b>：E9。
+    </div>
+  </figure>
+</div>
+
+<!-- ══════════════════════════════════════ §D 互指索引 ══════════════════════════════════════ -->
+<h2>§D 互指索引（图 ↔ 档案）</h2>
+<table>
+  <thead><tr><th>帧 id</th><th>画什么</th><th>任务号（04）</th><th>决策（04）</th><th>边缘项（02）</th></tr></thead>
+  <tbody>
+    <tr><td>f-current-1</td><td>A1 现状 单面板聚焦（环被盖死）</td><td>T1 / T2</td><td>D2</td><td>E1 E4 E5 E11</td></tr>
+    <tr><td>f-current-2</td><td>A2 现状 详情页含附图（局部盖住）</td><td>T1 / T2</td><td>D2</td><td>E2 E3</td></tr>
+    <tr><td>f-current-3</td><td>A3 现状 左右分屏（两栏连着）</td><td>T3 / T4</td><td>D3</td><td>E13 E14</td></tr>
+    <tr><td>f-current-4</td><td>A4 现状 环有角内容方角（8×）</td><td>T5</td><td>D4</td><td>E5 E6</td></tr>
+    <tr><td>f-current-5</td><td>A5 现状 分屏第二栏越界、外缘环被切</td><td>T3 / T4</td><td>D5</td><td>E21 E22</td></tr>
+    <tr><td>f-solution-1</td><td>B1 方案 环改覆盖层</td><td>T1 / T2</td><td>D2-甲</td><td>E1 E2 E3 E11</td></tr>
+    <tr><td>f-solution-2</td><td>B2 方案 分屏两栏各自成面</td><td>T3 / T4</td><td>D3-甲</td><td>E13 E14 E16 E17</td></tr>
+    <tr><td>f-solution-3</td><td>B3 方案 单面板＝零变化（基线）</td><td>T3</td><td>D3</td><td>E5 E15</td></tr>
+    <tr><td>f-solution-4</td><td>B4 方案 环与内容同形（8×）</td><td>T5</td><td>D4-乙</td><td>E6</td></tr>
+    <tr><td>f-solution-5</td><td>B5 方案 缝先扣再分，两栏都在容器内</td><td>T3 / T4</td><td>D5-甲</td><td>E13 E21 E22</td></tr>
+    <tr><td>f-decision-1</td><td>C1 决策 D1 两案并排</td><td>T6</td><td>D1</td><td>E9</td></tr>
+  </tbody>
+</table>
+
+<!-- ══════════════════════════════════════ §E 断言清单 ══════════════════════════════════════ -->
+<h2>§E 断言清单（I1–I16，由 <a href="校验-拟真度.cjs">mockups/校验-拟真度.cjs</a> 机械判）</h2>
+<ul class="lede muted" style="font-size: 12.5px;">
+  <li><b>I1</b> 真 token 同源：本图 <code>:root</code> / <code>[data-theme="light"]</code> 的每个 token 与 <code>src/index.css</code> 逐字节相等</li>
+  <li><b>I2</b> 零硬编码色：<code>&lt;style&gt;</code> 内除真源 token 块外无 <code>#hex</code></li>
+  <li><b>I3</b> 真类名：本图用到的每个 <code>ldk-*</code> 类名都能在真源找到，或已在 01/04 登记为**提案类名**</li>
+  <li><b>I4</b> 现状规则逐字：<code>.demo-current .ldk-group-pane-focused</code> 的声明集 = <code>src/index.css</code> 该规则声明集</li>
+  <li><b>I5</b> 拟改规则在位：<code>inset: 0</code> / <code>border: 1px solid var(--accent)</code> / <code>border-radius: inherit</code> / <code>z-index: 1</code> / <code>pointer-events: none</code> 全在</li>
+  <li><b>I6</b> 缝法则同源：本图滑杆的 <code>--surface-inset</code> 派生口径 = <code>tokens.ts:308-313</code>（0 → 0px；否则 2px）；<b>且实况台按真几何真源跑</b>——<code>HANDLE_PCT = 0.4%</code> 与 <code>(W - HP) / 2</code>（S5 修正态）两态都在</li>
+  <li><b>I7</b> 零手填 px：产品区（<code>ldk-*</code>）规则里 <code>border-radius</code> 一律走 token ／ <code>inherit</code> ／ <code>%</code>（把手圆点＝真源的 <code>50%</code>），⛔ 不写死 px</li>
+  <li><b>I8</b> 真铁律尺寸：标签栏 <code>calc(35px * var(--ui-scale))</code> ＋ 图标栏 42 ／ 顶栏 30 ／ 状态栏 22 在位</li>
+  <li><b>I9</b> 帧完备：11 个 <code>figure.frame</code> 各有 <code>frame-caption</code> ＋ <code>frame-note</code></li>
+  <li><b>I10</b> 帧号唯一：11 个帧 id 互不重复，且全部在 04 里被引用</li>
+  <li><b>I11</b> 图 → 档案：图上出现的每个 <code>T#／D#／E#</code> 号在 01/02/04 里存在</li>
+  <li><b>I12</b> 档案 → 图：04 里的每个 <code>T#</code>（T1–T6）与 <code>D#</code>（D1–D5）都在图上出现</li>
+  <li><b>I13</b> 窗口宽度：舞台窗口用 <code>min(1280px, calc(100vw - 30px))</code>（不越视口）</li>
+  <li><b>I14</b> 硬约束 16 声明在位 ＋「mockup 仅示意」注释在位</li>
+  <li><b>I15</b> 交互齐全：主题 / 模式 / 布局 / 内容透明度 / 几何 / <b>方向（横分·竖分）</b> 六个开关 ＋ 圆角滑杆都在</li>
+  <li><b>I16</b> 负控自证：<code>--self-test</code> 下每种篡改必须跑红（尺子不是在恒绿）</li>
+</ul>
+
+<p class="lede muted" style="font-size: 12px;">
+  依据：2026-10-06 用户判据「html 展示基本就是实机效果」；skill <code>html-blueprint</code> §八（frame-caption ＋ frame-note ＋ 任务号锚点）
+  与 §九（画完检查清单：几何读数对账，不靠肉眼）。改动本图后必跑拟真度门；红了就是漂了。
+</p>
+
+<script>
+/* ── 实况台：七个开关（几何与层级全走真机制，不造假象） ── */
+(function () {
+  var wb = document.getElementById('wb');
+  var zone = document.getElementById('wbZone');
+  var handle = document.getElementById('wbHandle');
+  var paneA = document.getElementById('wbPaneA');
+  var paneB = document.getElementById('wbPaneB');
+  var readout = document.getElementById('readout');
+  var btnTheme = document.getElementById('btnTheme');
+  var btnMode = document.getElementById('btnMode');
+  var btnLayout = document.getElementById('btnLayout');
+  var btnAlpha = document.getElementById('btnAlpha');
+  var btnGeo = document.getElementById('btnGeo');
+  var btnDir = document.getElementById('btnDir');
+  var range = document.getElementById('radiusRange');
+
+  var state = { theme: 'dark', mode: 'current', split: false, dir: 'row', alpha: 'opaque', radius: 8, geoFix: false };
+
+  function render() {
+    /* 主题 */
+    if (state.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+
+    /* 环的模式：current = 真源逐字（pane 自身 inset 阴影）／fix = 拟改（::after 覆盖层） */
+    wb.setAttribute('data-mode', state.mode === 'current' ? 'current' : 'fix');
+    wb.classList.toggle('demo-current', state.mode === 'current');
+    wb.classList.toggle('demo-fix', state.mode === 'fix');
+
+    /* 布局：单面板隐藏乙栏与把手；`ldk-group-pane-split` **只在分屏时挂**（D3-甲「只在分屏成面」）。
+       几何——真源 computeLayout(root, 0, 0, 100, 100)：现状 w0 = w1 = 50（第二栏落位 w0 + 0.4）
+       ⇒ 第二栏外缘 100.4%；修正（D5-甲）wEff = 100 − 0.4 ⇒ w0 = w1 = 49.8、外缘 = 49.8 + 0.4 + 49.8 = 100。
+       方向 `dir`：row = 横分（`layout.ts:62`）／col = 竖分（`:75`）——两者是**同一套算式换轴**，
+       故 `w0` 一个字不改地两用（它是「沿切分轴的百分比」，不是「宽度」）。 */
+    var W = 100, HP = 0.4;
+    var w0 = state.geoFix ? (W - HP) / 2 : W / 2;
+    var col = state.dir === 'col';
+    paneB.style.display = state.split ? 'flex' : 'none';
+    handle.style.display = state.split ? 'block' : 'none';
+    paneA.classList.toggle('ldk-group-pane-split', state.split);
+    paneB.classList.toggle('ldk-group-pane-split', state.split);
+    /* 清掉上一次方向的残留（两轴互斥：横分用 left/width，竖分用 top/height） */
+    [paneA, paneB, handle].forEach(function (el) {
+      el.style.left = ''; el.style.width = ''; el.style.top = ''; el.style.height = '';
+    });
+    handle.style.cursor = col ? 'row-resize' : 'col-resize';
+    if (col) {
+      paneA.style.left = '0%'; paneA.style.width = '100%';
+      paneA.style.top = '0%'; paneA.style.height = (state.split ? w0 : W) + '%';
+      handle.style.left = '0%'; handle.style.width = '100%';
+      handle.style.top = w0 + '%'; handle.style.height = HP + '%';
+      paneB.style.left = '0%'; paneB.style.width = '100%';
+      paneB.style.top = w0 + HP + '%'; paneB.style.height = w0 + '%';
+    } else {
+      paneA.style.top = '0%'; paneA.style.height = '100%';
+      paneA.style.left = '0%'; paneA.style.width = (state.split ? w0 : W) + '%';
+      handle.style.top = '0%'; handle.style.height = '100%';
+      handle.style.left = w0 + '%'; handle.style.width = HP + '%';
+      paneB.style.top = '0%'; paneB.style.height = '100%';
+      paneB.style.left = w0 + HP + '%'; paneB.style.width = w0 + '%';
+    }
+
+    /* 内容不透明度：opaque = 内置主题式（盖住环）／glass = 玻璃主题式（环偶然透出） */
+    ['wbContentA'].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.classList.toggle('content-opaque', state.alpha === 'opaque');
+      el.classList.toggle('content-glass', state.alpha === 'glass');
+    });
+
+    /* 分区圆角 + 缝法则（口径同 tokens.ts:308-313：0 → 0px，否则 2px） */
+    zone.style.setProperty('--surface-radius', state.radius + 'px');
+    zone.style.setProperty('--surface-inset', state.radius === 0 ? '0px' : '2px');
+
+    readout.textContent = '主题=' + state.theme + '｜环=' + state.mode +
+      '｜分屏=' + (state.split ? '是' : '否') +
+      '｜内容=' + state.alpha +
+      '｜--surface-radius=' + state.radius + 'px｜--surface-inset=' +
+      (state.radius === 0 ? '0px' : '2px') + '（缝法则）' +
+      '｜方向=' + (col ? '上下（竖分）' : '左右（横分）') +
+      '｜几何=' + (state.geoFix
+        ? '修正：wEff=' + (W - HP) + '% ⇒ 两栏各 ' + ((W - HP) / 2) + '%，第二栏外缘 100%'
+        : '现状：第二栏' + (col ? '下缘' : '右缘') + ' ' + (W + HP) + '% ⇒ 越界 ' + HP + '%（' + (HP * 10) + 'px @1000px）');
+  }
+
+  btnTheme.addEventListener('click', function () {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    btnTheme.setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false');
+    render();
+  });
+  btnMode.addEventListener('click', function () {
+    state.mode = state.mode === 'current' ? 'fix' : 'current';
+    btnMode.setAttribute('aria-pressed', state.mode === 'fix' ? 'true' : 'false');
+    render();
+  });
+  btnLayout.addEventListener('click', function () {
+    state.split = !state.split;
+    btnLayout.setAttribute('aria-pressed', state.split ? 'true' : 'false');
+    render();
+  });
+  btnAlpha.addEventListener('click', function () {
+    state.alpha = state.alpha === 'opaque' ? 'glass' : 'opaque';
+    btnAlpha.setAttribute('aria-pressed', state.alpha === 'glass' ? 'true' : 'false');
+    render();
+  });
+  btnGeo.addEventListener('click', function () {
+    state.geoFix = !state.geoFix;
+    btnGeo.setAttribute('aria-pressed', state.geoFix ? 'true' : 'false');
+    render();
+  });
+  btnDir.addEventListener('click', function () {
+    state.dir = state.dir === 'row' ? 'col' : 'row';
+    btnDir.setAttribute('aria-pressed', state.dir === 'col' ? 'true' : 'false');
+    render();
+  });
+  range.addEventListener('input', function () {
+    state.radius = Number(range.value);
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
