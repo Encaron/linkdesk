@@ -88,6 +88,10 @@ const HELPER_NAMES = new Set([
   "extractDeclaredExtensions",
   "extLabelHead",
   "EXT_LABEL_MAX",
+  // 默认打开方式管理器共享化 1.7（2026-10-06）：C5 卡内工具条的行序/过滤口径（同「一处实现」性质）
+  "orderRows",
+  "filterRows",
+  "hitKindOf",
 ]);
 
 const RE_DEFAULT = /^export\s*\{\s*default\s+as\s+([A-Za-z_$][\w$]*)\s*\}\s*from\s*["']([^"']+)["']/;

@@ -29,6 +29,10 @@
  * **R6（共享件零壳依赖）的人读证据**：本目录对宿主桥与壳内别名**零引用**——人工读数与机械腿
  * （`check-shared-components-zero-shell-deps`）的对账刻度都写在 05 交接表的 AI-1 行里。
  * 夹具一律假名（`plug-a`…），⛔ 不用真插件名、不用真文案。
+ *
+ * ⚠️ 唯一例外：C5 那节的行序/过滤样本**必须是真样本**（编辑器 45 类真实声明序 ＋ 真实类型名）
+ * ——E27/E5 的判据本身就是「与真数据一致」，假名夹具在这里证明不了任何东西。数据抄自
+ * 插件仓 `official/editor/plugin.json` 的 `contributes.fileAssociations`（45 项，逐项 `displayName`）。
  */
 
 import { describe, expect, it } from "vitest";
@@ -37,12 +41,15 @@ import {
   buildManagerModel,
   extLabelHead,
   extractDeclaredExtensions,
+  filterRows,
+  hitKindOf,
   normalizeExt,
   normalizeExtList,
+  orderRows,
   overrideKeyOf,
   readOverride,
 } from "./deriveModel";
-import type { BuildInput, DeclaredExtension, DeclaredPlugin, HandlerSnapshot } from "./types";
+import type { BuildInput, DeclaredExtension, DeclaredPlugin, ExtRowModel, HandlerSnapshot } from "./types";
 
 /* ── 夹具 ── */
 
@@ -435,5 +442,168 @@ describe("卡摘要、搜索与导航计数", () => {
     const split = build({ ...pair, overrideTable: { ".docx": "plug-b" } });
     expect(split.contested).toHaveLength(2); // 一类被单独设置 ⇒ 一行拆成两行
     expect(split.navCount).toBe(4); // 类型数不变 ⇒ 徽标不动
+  });
+});
+
+/* ══ C5 卡内行序与过滤（工具条两件控件的口径） ══
+ *
+ * 判据来源＝硬约束口径 04 §1.7 ＋ 02 边缘情况 E2–E7/E15/E27 ＋ 拟真度门 K2 段（那张图就是实机效果）。
+ * 样本＝**编辑器真声明**（45 类真实序 ＋ 真实类型名）——这几条判据本身就是「与真数据一致」，
+ * 假名夹具证明不了任何东西（本文件其余各节仍一律假名）。
+ */
+
+/** 编辑器 45 类**真实声明序**（`official/editor/plugin.json` → `contributes.fileAssociations`） */
+const EDITOR_ORDER = [
+  "ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "jsonc", "html", "htm",
+  "css", "scss", "less", "md", "mdx", "py", "rs", "c", "h", "cpp",
+  "hpp", "go", "java", "xml", "svg", "yaml", "yml", "toml", "sh", "bash",
+  "sql", "lua", "php", "rb", "swift", "kt", "dart", "diff", "patch", "bat",
+  "cmd", "ini", "cfg", "txt", "log",
+];
+
+/** 同清单的 `displayName`（**类型**显示名，不是插件名）——仅显示名命中就靠它 */
+const EDITOR_TYPE_LABEL: Record<string, string> = {
+  ts: "TypeScript", tsx: "TypeScript React", js: "JavaScript", jsx: "JavaScript React",
+  mjs: "JavaScript ES Module", cjs: "JavaScript CommonJS", json: "JSON", jsonc: "JSON with Comments",
+  html: "HTML", htm: "HTML", css: "CSS", scss: "SCSS", less: "Less", md: "Markdown", mdx: "MDX",
+  py: "Python", rs: "Rust", c: "C", h: "C Header", cpp: "C++", hpp: "C++ Header", go: "Go",
+  java: "Java", xml: "XML", svg: "SVG", yaml: "YAML", yml: "YAML", toml: "TOML", sh: "Shell",
+  bash: "Bash", sql: "SQL", lua: "Lua", php: "PHP", rb: "Ruby", swift: "Swift", kt: "Kotlin",
+  dart: "Dart", diff: "Diff", patch: "Patch", bat: "Batch", cmd: "Batch", ini: "INI",
+  cfg: "Config", txt: "Text", log: "Log",
+};
+
+const editorDeclared = (): DeclaredExtension[] =>
+  EDITOR_ORDER.map((e) => ({ ext: e, raw: e, typeLabel: EDITOR_TYPE_LABEL[e]! }));
+
+/** 编辑器那张卡的 45 行（无宿主候选 ⇒ 全 orphan；行序/过滤不看状态，正合适） */
+const editorRows = (): ExtRowModel[] =>
+  build({ plugins: [plugin("editor", editorDeclared())] }).cards[0]!.rows;
+
+const extsOf = (rows: readonly ExtRowModel[]): string[] => rows.map((r) => r.ext);
+/** 视图组装口径（两件控件的唯一正确用法） */
+const shownRows = (mode: "alpha" | "declared", q: string): ExtRowModel[] =>
+  filterRows(orderRows(editorRows(), mode), q);
+
+describe("卡内行序（C5）：alpha 默认 ／ declared 保序透传", () => {
+  it("🔴 E27 保序透传：declared 输出 === 模型输入序（45 类真实序，⛔ 不是字典序）", () => {
+    const input = editorRows();
+    const declared = orderRows(input, "declared");
+    expect(extsOf(declared)).toEqual(EDITOR_ORDER); // 与真清单逐项一致
+    expect(extsOf(declared)).toEqual(extsOf(input)); // 且 === 模型给的行序（聚合层没重排过）
+    // 反向防线：万一有人把 EDITOR_ORDER 抄成了排好序的样子，这条会红
+    expect(extsOf(declared)).not.toEqual([...EDITOR_ORDER].sort());
+  });
+
+  it("alpha（默认）＝按扩展名字母序——与 declared 是两个不同的序（样本没走运重合）", () => {
+    const sorted = extsOf(orderRows(editorRows(), "alpha"));
+    expect(sorted).toEqual([...EDITOR_ORDER].sort());
+    expect(sorted).not.toEqual(EDITOR_ORDER);
+  });
+
+  it("不改传入数组（纯函数：出参是新数组，入参序不动）", () => {
+    const input = editorRows();
+    const before = extsOf(input);
+    const out = orderRows(input, "alpha");
+    expect(out).not.toBe(input);
+    expect(extsOf(input)).toEqual(before); // sort 落在副本上
+  });
+});
+
+describe("命中分类（C5）：两源 ＋ 归一 ＋ ⛔ 无通配", () => {
+  it("E3 `.py` ／ `py` ／ `PY` 同一个词、同一结果（忽略大小写与前导点）", () => {
+    for (const q of [".py", "py", "PY", "  .Py  "]) {
+      expect(hitKindOf("py", "Python", q)).toBe("ext");
+    }
+  });
+
+  it("E4 仅显示名命中：`python` 靠类型名命中 `py`（显示名匹配删不得）", () => {
+    expect(hitKindOf("py", "Python", "python")).toBe("name");
+    expect(hitKindOf("py", undefined, "python")).toBe(""); // 没有类型名 ⇒ 不命中（⛔ 不编造）
+  });
+
+  it("E2 空词／纯空白／只有一个点 ⇒ `\"\"`（空词下「命中」无从谈起）", () => {
+    for (const q of ["", "   ", ".", "\t.\n"]) expect(hitKindOf("py", "Python", q)).toBe("");
+  });
+
+  it("E15 ⛔ 不做正则/通配：`t.tsx` 这类串按**子串**处理（不命中就是不命中）", () => {
+    expect(hitKindOf("tsx", "TypeScript React", "t.tsx")).toBe(""); // 通配读法才会命中
+    expect(hitKindOf("jsonc", "JSON with Comments", "jsonc")).toBe("ext"); // 含点的串照子串匹配
+    expect(hitKindOf("t", "Text", "t")).toBe("ext");
+  });
+});
+
+describe("卡内过滤（C5）：分档 ＋ 空词回全量 ＋ 分档不改排序语义", () => {
+  it("E2 空词／纯空白 ⇒ 回全量（45 行、序同输入）", () => {
+    for (const q of ["", "   "]) {
+      const out = filterRows(editorRows(), q);
+      expect(out).toHaveLength(45);
+      expect(extsOf(out)).toEqual(EDITOR_ORDER);
+    }
+  });
+
+  it("🔴 E5 输 `c` ⇒ 17 行分档：前 9 行扩展名命中（字母序）、沉底 8 行仅显示名命中", () => {
+    const rows = shownRows("alpha", "c");
+    expect(rows).toHaveLength(17);
+    // 前 9：扩展名命中，且**没有任何理由标注**（真扩展名命中不需要解释）
+    expect(extsOf(rows.slice(0, 9))).toEqual(
+      ["c", "cfg", "cjs", "cmd", "cpp", "css", "jsonc", "patch", "scss"],
+    );
+    expect(rows.slice(0, 9).every((r) => hitKindOf(r.ext, r.typeLabel, "c") === "ext")).toBe(true);
+    // 沉底 8：全是仅显示名命中（`c` 在类型名里，不在扩展名里）——「类型名 …」标注的数据面
+    expect(extsOf(rows.slice(9))).toEqual(["bat", "h", "hpp", "js", "jsx", "mjs", "ts", "tsx"]);
+    expect(rows.slice(9).every((r) => hitKindOf(r.ext, r.typeLabel, "c") === "name")).toBe(true);
+    // 首／末两行正是图上 K2 断言的那两条（图说：.bat 排头、TypeScript 收尾）
+    expect(rows[9]!.typeLabel).toBe("Batch");
+    expect(rows[16]!.typeLabel).toBe("TypeScript React");
+  });
+
+  it("E6 分档不改排序语义：换 declared 只换序不换集，17 行与两档边界都不动", () => {
+    const alpha = shownRows("alpha", "c");
+    const declared = shownRows("declared", "c");
+    expect(declared).toHaveLength(17);
+    expect(new Set(extsOf(declared))).toEqual(new Set(extsOf(alpha))); // 集不变
+    expect(extsOf(declared)).not.toEqual(extsOf(alpha)); // 序变了
+    // 档内继续服选定排序：declared 档首行＝声明序里第一个扩展名命中（cjs）
+    expect(extsOf(declared).slice(0, 9)[0]).toBe("cjs");
+    expect(extsOf(declared).slice(0, 9)).toEqual(["cjs", "jsonc", "css", "scss", "c", "cpp", "patch", "cmd", "cfg"]);
+    // 分档边界不动：前 9 全是 ext 命中、沉底 8 全是仅显示名命中
+    expect(declared.slice(0, 9).every((r) => hitKindOf(r.ext, r.typeLabel, "c") === "ext")).toBe(true);
+    expect(declared.slice(9).every((r) => hitKindOf(r.ext, r.typeLabel, "c") === "name")).toBe(true);
+  });
+
+  it("E4 输 `python` ⇒ 只出 1 行 `.py`（纯显示名命中——扩展名里没有 python）", () => {
+    for (const mode of ["alpha", "declared"] as const) {
+      const rows = shownRows(mode, "python");
+      expect(extsOf(rows)).toEqual(["py"]);
+      expect(hitKindOf(rows[0]!.ext, rows[0]!.typeLabel, "python")).toBe("name");
+    }
+  });
+
+  it("E3 `.py` ／ `py` ／ `PY` 过滤同一结果", () => {
+    const baseline = extsOf(shownRows("alpha", "py"));
+    expect(baseline).toEqual(["py"]);
+    for (const q of [".py", "PY", "  .Py  "]) expect(extsOf(shownRows("alpha", q))).toEqual(baseline);
+  });
+
+  it("命中数：随词收窄、随清空复原（视图「命中 N / 45」的分子）", () => {
+    expect(shownRows("alpha", "py")).toHaveLength(1);
+    expect(shownRows("alpha", "c")).toHaveLength(17);
+    expect(shownRows("alpha", "zzz")).toHaveLength(0);
+    expect(shownRows("alpha", "")).toHaveLength(45);
+  });
+
+  it("E15 无通配：`t.tsx` 不命中任何一行（子串口径，⛔ 不是正则）", () => {
+    expect(shownRows("alpha", "t.tsx")).toHaveLength(0);
+  });
+
+  it("不改行内容、不改传入数组长度（纯函数：只滤不写）", () => {
+    const input = editorRows();
+    const snapshot = input.map((r) => ({ ...r }));
+    const out = filterRows(input, "c");
+    expect(input).toHaveLength(45);
+    expect(input).toEqual(snapshot); // 行对象一个字段都没被改
+    expect(out[0]!.state).toBe("orphan"); // 出参就是原行对象（不是重造的残件）
+    expect(out[0]).toBe(input.find((r) => r.ext === out[0]!.ext));
   });
 });

@@ -70,6 +70,15 @@ export interface HandlerSnapshot {
  */
 export type RowState = "lock" | "override" | "auto" | "lost" | "sole" | "orphan";
 
+/**
+ * 卡内行序口径（C5 工具条的排序件）——`"alpha"`＝按扩展名字母序（**默认**）／
+ * `"declared"`＝**原样透传**模型序，即插件声明序（「按默认排序」）。
+ *
+ * 🔴 `declared` 能成立，全靠 `CardModel.rows` 是声明序透传（聚合层 ⛔ 不重排）——它是
+ * 「按默认排序」的唯一真源。口径**不持久化**（视图本地状态，E10：⛔ 不写进覆盖表）。
+ */
+export type RowSortMode = "alpha" | "declared";
+
 /** 行内下拉的候选（**不含**「自动」项——那一项是视图拼的 i18n 标签）。 */
 export interface RowOption {
   value: string;

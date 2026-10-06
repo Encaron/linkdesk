@@ -150,8 +150,14 @@
     "extractDeclaredExtensions": {
       "since": "0.2.52"
     },
+    "filterRows": {
+      "since": "0.2.52"
+    },
     "formatEffectiveValue": {
       "since": "0.2.40"
+    },
+    "hitKindOf": {
+      "since": "0.2.52"
     },
     "inferSliderStep": {
       "since": "0.2.13"
@@ -163,6 +169,9 @@
       "since": "0.2.52"
     },
     "normalizeExtList": {
+      "since": "0.2.52"
+    },
+    "orderRows": {
       "since": "0.2.52"
     },
     "overrideKeyOf": {
@@ -251,6 +260,9 @@
     "RowOption": {
       "since": "0.2.52"
     },
+    "RowSortMode": {
+      "since": "0.2.52"
+    },
     "RowState": {
       "since": "0.2.52"
     },
@@ -267,5 +279,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 86
+  "count": 90
 }

@@ -3,6 +3,9 @@
  * 零宿主桥、零 i18n）。判据全在这里，呈现件只做渲染与转发：聚合法则
  * （「候选集合签名 × 当前生效值」）与六态徽标是本案最容易出错的窄事实，埋在 JSX 里只能靠目视。
  *
+ * 另含 C5 卡内工具条的**行序／过滤纯函数**（`orderRows` / `filterRows` / `hitKindOf`，见文末
+ * 「卡内行序与过滤」节）——同一性质（口径错只在界面上给错答案），一处实现 ⇒ 第三方渲染方零重推导。
+ *
  * ⛔ **本件不自己算「谁是默认」**：一律消费宿主 `listHandlersFor(ext)` 给的 `isCurrent`
  * （宿主口径 = 覆盖 → 声明序 → 角色兜底）。管理器只负责「把宿主给的候选与生效值摆出来」。
  *
@@ -30,6 +33,7 @@ import type {
   HandlerSnapshot,
   ManagerModel,
   RowOption,
+  RowSortMode,
   RowState,
 } from "./types";
 
@@ -271,4 +275,77 @@ export function buildManagerModel(input: BuildInput): ManagerModel {
     navCount: extCount + cards.length,
     contestedExtCount: extCount,
   };
+}
+
+/* ── 卡内行序与过滤（C5 工具条两件控件的口径；纯函数，一处实现） ──
+ *
+ * 🔴 为什么这两件事住聚合层而不是呈现件：它们与六态/聚格同性质——**错了不报错、只在界面上给
+ * 错答案**（行序丢了看不出、分档错了像乱排），且第三方渲染方要能零重推导地复现同一口径（R4）。
+ * ⛔ 两件都不碰模型：`orderRows` 只换序、`filterRows` 只留子集——**行对象一个字段都不改**
+ * （改行内容＝聚合层的事，混在一起就没法单测了）。
+ */
+
+/**
+ * 过滤词归一（E3/E15）：去首尾空白 ＋ 小写 ＋ **去掉一个前导点**——`.py` / `py` / `PY` 同一个词。
+ * ⛔ 归一只有这一层：**子串**匹配，不做正则、不做通配（口径唯一，图 `qOf` 逐字同）。
+ */
+function normalizeQuery(q: string): string {
+  const v = q.trim().toLowerCase();
+  return v.charAt(0) === "." ? v.slice(1) : v;
+}
+
+/**
+ * 命中分类——`"ext"`＝**扩展名**命中 ／ `"name"`＝**仅显示名**（类型名）命中 ／ `""`＝不命中。
+ *
+ * 两源都留（**显示名匹配删不得**：`python` 只靠它命中 `.py`，E4）——分类存在的意义是让视图能
+ * **分档**（E5）与**标注命中理由**（E7「类型名 X」），而不是拿它当唯一判据。
+ *
+ * ⚠️ 与设计图的一处刻意差别：空词回 `""`（图上 `ext.includes("")` 恒真会回 `"ext"`）。空词下
+ * 「命中」无从谈起；该分支在图上永不被观察（空词走 `filterRows` 短路、视图也不标理由）。
+ */
+export function hitKindOf(
+  ext: string,
+  typeLabel: string | undefined,
+  q: string,
+): "ext" | "name" | "" {
+  const query = normalizeQuery(q);
+  if (!query) return "";
+  if (ext.includes(query)) return "ext";
+  return String(typeLabel ?? "").toLowerCase().includes(query) ? "name" : "";
+}
+
+/**
+ * 卡内行序（C5）——`"alpha"`（默认）按扩展名字母序 ／ `"declared"`＝**原样透传**模型序
+ * （＝插件声明序，「按默认排序」的唯一真源）。
+ *
+ * 🔴 保序纪律：排序**只在这里**按 mode 施加；聚合层（`buildCards`）⛔ 不得在内部重排卡内行——
+ * 声明序只有模型那一份，聚合层一旦重排，`declared` 就再也回不去。
+ * ⛔ 不改传入数组（先 `slice()`）；同扩展名不可能重复（声明面已去重）。
+ */
+export function orderRows(rows: readonly ExtRowModel[], mode: RowSortMode): ExtRowModel[] {
+  const copy = rows.slice();
+  return mode === "declared" ? copy : copy.sort((a, b) => a.ext.localeCompare(b.ext));
+}
+
+/**
+ * 卡内过滤（C5）——两源（扩展名 ＋ 显示名）、忽略大小写与前导点、子串匹配。
+ *
+ * 🔴 **分档**（E5/E6）：扩展名命中的行在上、**仅显示名**命中的行沉底并保持各自档内次序 ⇒
+ * 调用方传进来的 `rows` **必须先按选定 mode 排好**：`filterRows(orderRows(card.rows, mode), q)`。
+ * 分档 ⛔ 不改排序语义（档内继续服选定排序），它只回答「这行为什么在」。
+ *
+ * 空词 / 纯空白 ⇒ **回全量**（E2）。⚠️「不显示命中计数」是**视图**的空词判断，⛔ 不在这里表达
+ * （这里回了全量，视图无从区分「没过滤」与「全命中」——所以那条判据归视图）。
+ */
+export function filterRows(rows: readonly ExtRowModel[], q: string): ExtRowModel[] {
+  const query = normalizeQuery(q);
+  if (!query) return rows.slice();
+  const strong: ExtRowModel[] = [];
+  const weak: ExtRowModel[] = [];
+  for (const row of rows) {
+    const kind = hitKindOf(row.ext, row.typeLabel, query);
+    if (kind === "ext") strong.push(row);
+    else if (kind === "name") weak.push(row);
+  }
+  return [...strong, ...weak];
 }

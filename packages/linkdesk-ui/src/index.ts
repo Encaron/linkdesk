@@ -9,15 +9,16 @@
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
  *   - 35 组件（30 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
- *   - 19 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
+ *   - 22 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
  *       isSettingsUiHint / formatEffectiveValue / splitStringList /
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
- *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX）
- *   - 28 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
+ *       orderRows / filterRows / hitKindOf）
+ *   - 29 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
- *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowOption / ExtRowModel / CardModel /
+ *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
  *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
@@ -111,7 +112,9 @@ export { default as CardRow } from "@shared/file-associations-manager/pieces/Car
 export { default as ContestedRow } from "@shared/file-associations-manager/pieces/ContestedRow";
 // 聚合口径的**一处实现**（归一存储键 / 六态 / 聚格 / 失效判定）——⛔ 任何渲染方自推导 = 第二份实现（R4）
 export { buildManagerModel, normalizeExt, normalizeExtList, overrideKeyOf, readOverride, extractDeclaredExtensions, extLabelHead, EXT_LABEL_MAX } from "@shared/file-associations-manager/deriveModel";
-export type { DeclaredExtension, DeclaredPlugin, HandlerSnapshot, RowState, RowOption, ExtRowModel, CardModel, ContestedRowModel, ManagerModel, BuildInput } from "@shared/file-associations-manager/types";
+// C5 卡内工具条的行序／过滤口径（同性质：由聚合层一处实现，渲染方零重推导）——保序纪律见 orderRows 注释
+export { orderRows, filterRows, hitKindOf } from "@shared/file-associations-manager/deriveModel";
+export type { DeclaredExtension, DeclaredPlugin, HandlerSnapshot, RowState, RowSortMode, RowOption, ExtRowModel, CardModel, ContestedRowModel, ManagerModel, BuildInput } from "@shared/file-associations-manager/types";
 export type { ManagerViewProps } from "@shared/file-associations-manager/ManagerView";
 export type { CardRowProps } from "@shared/file-associations-manager/pieces/CardRow";
 export type { ContestedRowProps } from "@shared/file-associations-manager/pieces/ContestedRow";

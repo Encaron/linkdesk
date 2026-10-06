@@ -54,11 +54,14 @@
     "buildManagerModel": { "since": "0.2.52" },
     "extLabelHead": { "since": "0.2.52" },
     "extractDeclaredExtensions": { "since": "0.2.52" },
+    "filterRows": { "since": "0.2.52" },
     "formatEffectiveValue": { "since": "0.2.40" },
+    "hitKindOf": { "since": "0.2.52" },
     "inferSliderStep": { "since": "0.2.13" },
     "isSettingsUiHint": { "since": "0.2.40" },
     "normalizeExt": { "since": "0.2.52" },
     "normalizeExtList": { "since": "0.2.52" },
+    "orderRows": { "since": "0.2.52" },
     "overrideKeyOf": { "since": "0.2.52" },
     "pickIdentityArt": { "since": "0.2.13" },
     "readOverride": { "since": "0.2.52" },
@@ -89,11 +92,12 @@
     "OpenWithRequest": { "since": "0.2.48" },
     "ResolvedIcon": { "since": "0.2.13" },
     "RowOption": { "since": "0.2.52" },
+    "RowSortMode": { "since": "0.2.52" },
     "RowState": { "since": "0.2.52" },
     "RunStatusCommand": { "since": "0.2.40" },
     "SourceBadgeKind": { "since": "0.2.40" },
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 86
+  "count": 90
 }
