@@ -2,6 +2,8 @@
 # docs/02-Electron架构/插件生态与发布/05-文档与发布/02-发布流水线.md §一
 #
 # 触发：① push 到 electron 分支 → 构建 + 上传 artifact
+#          （🟢 2026-10-06 发版耗时压缩：纯 docs push——净 diff 只含 docs/** 与 *.md——
+#            跳过打包四步，Check 照跑；实测纯 docs 提交跑全量 = 9m26s 纯浪费。tag 运行永远全量。）
 #       ② push tag v*          → 构建 + 发 GitHub Release
 #       ③ 手动（workflow_dispatch）——**可在任意分支上跑**，用来在没有 tag、不惊动
 #          线上 Release 的前提下验证本流水线本身（Release 步骤只在 tag 上生效）。
@@ -47,6 +49,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # 🟢 2026-10-06 发版耗时压缩——纯 docs push 免打包。
+      #   判据：本次 push 的净 diff（github.event.before → 本提交）若**只含** docs/** 与 *.md
+      #   ⇒ 打包四步（Build / 断言安装包名 / 拼 Release 正文 / Upload artifact）跳过，Check 照跑
+      #   （docs 相关门禁全在 check 链里）。实测基线：纯 docs 提交跑全量 = 9m26s（run 37417095425）。
+      #   ⚠️ fail-safe 方向：tag 运行 / workflow_dispatch / 新分支（before 全零）/ diff 取不到 /
+      #   出现任何非 docs 文件 —— **一律照跑打包**。tag 运行永远全量：Release 产物必须真打出来。
+      #   （判据用 pathspec 计数、不用 grep -v 逐行匹配——中文文件名在部分 grep 实现上会误判，本机已验。）
+      - name: Detect docs-only push (skip packaging steps)
+        id: changes
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+        shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base="${BEFORE:-}"
+          total=$(git diff --name-only "$base" "$GITHUB_SHA" 2>/dev/null | wc -l)
+          if [[ -z "$base" || "$base" == 0000000000000000000000000000000000000000 || "$total" -eq 0 ]]; then
+            echo "新分支 / force-push / diff 取不到 ⇒ 不跳过（fail-safe）"
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          elif [ "$(git diff --name-only "$base" "$GITHUB_SHA" -- docs '*.md' | wc -l)" -eq "$total" ]; then
+            echo "本次 push 只动 docs/** 与 *.md ⇒ 打包四步跳过（Check 照跑）"
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -137,6 +165,7 @@ jobs:
         run: npm run check
 
       - name: Build
+        if: steps.changes.outputs.docs_only != 'true'
         # 🔴 订正 ③：`--publish never` **必须**（已写进 package.json 的 electron:build）。
         #   不写会出什么事——读 electron-builder 26.15.3 源码实证（PublishManager.js:45-58）：
         #   在 CI 里且没显式传 --publish 时，它**自己把 publishPolicy 设成 onTagOrDraft**，
@@ -157,6 +186,7 @@ jobs:
       # ⚠️ `npm run electron:build` 尾部已经跑过一次同一个门禁（断言部分）——这里是**再取一次真值**，
       #    只读、幂等，代价是一次数百毫秒的目录扫描，换来的是「路径不手抄」。
       - name: Assert installer filename and resolve its path
+        if: steps.changes.outputs.docs_only != 'true'
         id: installer
         shell: bash
         run: |
@@ -188,6 +218,7 @@ jobs:
       #   · 发布日期 ← CHANGELOG 段头（提取那一步顺手带出来，见 `steps.changelog.outputs.date`）
       # 手写第二个字符串 = 把 `asset-missing` 重造一遍。
       - name: Prepend download block to Release body
+        if: steps.changes.outputs.docs_only != 'true'
         shell: bash
         run: |
           version=$(node -p "require('./package.json').version")
@@ -228,6 +259,7 @@ jobs:
       #     signtool sign /fd SHA256 /a /f certificate.pfx /p ${{ secrets.CERT_PASSWORD }} "${{ steps.installer.outputs.path }}"
 
       - name: Upload artifact
+        if: steps.changes.outputs.docs_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: LinkDesk-Setup
