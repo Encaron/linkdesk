@@ -182,9 +182,16 @@ function main() {
   }
 
   const { red, reported } = judgeMenuRefs(refs, shellIds, ownership);
-  const { kept, passed, violations } = applyExceptions(EXCEPTIONS, red);
+  // 「过期例外」核对只在判定宇宙完整（容器在场）时有意义——本腿例外全指插件仓文件，
+  // 宇宙为空时全部显得「一条没放行」（2026-10-06 CI 实证假红；同 R1 的 judgeStale 口径）。
+  const { kept, passed, violations } = applyExceptions(EXCEPTIONS, red, { judgeStale: repos.length > 0 });
 
-  if (!present) console.log(`⚠️ 插件容器不在场（${container}）⇒ **插件域跳过**（壳域照判）。`);
+  if (!present) {
+    console.log(
+      `⚠️ 插件容器不在场（${container}）⇒ **插件域跳过**（壳域照判）；` +
+        "**例外账本的「过期例外」核对同跳**（例外全指插件仓文件，宇宙为空时核对无意义）。",
+    );
+  }
   if (reported.length) {
     console.log(`ℹ️ 第三方仓查无此命令 ${reported.length} 处（⛔ 只报不判红、不代改）：`);
     for (const h of reported.slice(0, 20)) console.log(`   · ${h.rel}:${h.line || "清单"}  "${h.id}"`);
