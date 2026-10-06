@@ -135,6 +135,9 @@
     "MIX_FOLLOW_THEME_SENTINEL": {
       "since": "0.2.40"
     },
+    "SETTINGS_HIDDEN_HINTS": {
+      "since": "0.2.52"
+    },
     "SETTINGS_RENDER_HINTS": {
       "since": "0.2.40"
     },
@@ -161,6 +164,9 @@
     },
     "inferSliderStep": {
       "since": "0.2.13"
+    },
+    "isSettingsHiddenHint": {
+      "since": "0.2.52"
     },
     "isSettingsUiHint": {
       "since": "0.2.40"
@@ -279,5 +285,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 90
+  "count": 92
 }

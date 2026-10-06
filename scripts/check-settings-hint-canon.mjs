@@ -18,6 +18,11 @@
  *    豁免：正典定义件本体（它就是定义处）＋ *.test.ts(x)（测试有意固定契约线值）。
  *    注释不判（先剥注释再搜）——文档/说明里提这个词是正常的。
  *
+ * ③ 隐藏位名单 ⊆ uiHint 正典（C2b「挂载键不画行」的名单，2026-10-06 加）。
+ *    `SETTINGS_HIDDEN_HINTS` 里的值若不在 `SETTINGS_UI_HINTS` 里，那条判定**永远为假**
+ *    ——挂载键就藏不住了，而症状是「多出一行只读垃圾」这种没人会当成 bug 的形态。
+ *    ⚠️ 只判「子集」一个方向：uiHint 里绝大多数值**本来就该画行**，⛔ 不要求反向相等。
+ *
  * 用法：node scripts/check-settings-hint-canon.mjs
  *       node scripts/check-settings-hint-canon.mjs --self-test
  */
@@ -41,9 +46,18 @@ const SENTINEL_LITERAL = "__none__";
 
 /* ────────────────────────── ① 正典 ↔ description ────────────────────────── */
 
-/** 从正典源码里现读某个 `readonly X[] = [...]` 的字面量项（⛔ 不手抄第二份名单） */
+/**
+ * 从正典源码里现读某个 `export const X: readonly T[] = [...]` 的字面量项（⛔ 不手抄第二份名单）。
+ * 🔴 两处讲究（② 是踩过的坑）：
+ *   ① **锚 `export const` ＋ `\b`**——防同前缀名互相命中。
+ *   ② **先剥注释**：正典文件里别的名单会在注释里被引用（`…见 SETTINGS_HIDDEN_HINTS`），
+ *      不剥注释时 `[^=]*` 会从那条提及一路吃到**下一个名单的 `= [`**，静默读出**别家那份名单**
+ *      （本门禁 v1 就这样把 `SETTINGS_UI_HINTS` 的 14 枚当成隐藏位名单读了出来，还印进成功行）。
+ *      E4「注释/文档不判」在这里同样适用。
+ */
 export function readCanonNames(src, constName) {
-  const m = src.match(new RegExp(constName + "[^=]*=\\s*\\[([\\s\\S]*?)\\]"));
+  const code = stripComments(src);
+  const m = code.match(new RegExp(`export const ${constName}\\b[^=]*=\\s*\\[([\\s\\S]*?)\\]`));
   if (!m) return null;
   return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
 }
@@ -85,6 +99,12 @@ export function diffNames(canon, listed) {
   };
 }
 
+/** 子集检查（③ 隐藏位 ⊆ uiHint 正典）——返回「不在超集里的项」；空数组＝通过 */
+export function subsetDiff(sub, sup) {
+  const s = new Set(sup ?? []);
+  return (sub ?? []).filter((x) => !s.has(x));
+}
+
 /* ────────────────────────── ② 哨兵字面量 ────────────────────────── */
 
 /** 剥注释（块注释 + 行注释）——E4「注释/文档不判」；块注释按等量空白替换，行号不漂 */
@@ -124,6 +144,7 @@ export function findSentinelLiterals(root, literal = SENTINEL_LITERAL) {
 
 function run() {
   const problems = [];
+  let hiddenCount = null;
 
   // ① 正典 ↔ description
   const canonSrc = readFileSync(join(ROOT, CANON_FILE), "utf8");
@@ -170,6 +191,22 @@ function run() {
     );
   }
 
+  // ③ 隐藏位名单 ⊆ uiHint 正典（C2b「挂载键不画行」的名单）
+  if (uiCanon) {
+    const hiddenCanon = readCanonNames(canonSrc, "SETTINGS_HIDDEN_HINTS");
+    if (!hiddenCanon) {
+      problems.push(`🔴 读不出 SETTINGS_HIDDEN_HINTS（${CANON_FILE}）——隐藏位名单是 C2b 的判定源，⛔ 不许缺`);
+    } else {
+      hiddenCount = hiddenCanon.length;
+      const stray = subsetDiff(hiddenCanon, uiCanon);
+      if (stray.length) {
+        problems.push(
+          `🔴 隐藏位名单里有 uiHint 正典不认识的值 ⇒ 该判定**永远为假**（藏不住那行）：${stray.join(", ")}`,
+        );
+      }
+    }
+  }
+
   if (problems.length) {
     console.error("\n" + problems.join("\n") + "\n");
     console.error("   修法：① 名单与 description 互相对齐（description 锚点＝「Known hints: a, b, c.」）");
@@ -179,7 +216,8 @@ function run() {
   }
   console.log(
     `✅ check-settings-hint-canon：正典 ${uiCanon?.length ?? "?"} 枚 uiHint／${renderCanon?.length ?? "?"} 枚 renderHint ↔ ` +
-      `${SCHEMA_COPIES.length} 份 schema description 对账一致；src/ 无残留 \`${SENTINEL_LITERAL}\` 字面量。`,
+      `${SCHEMA_COPIES.length} 份 schema description 对账一致；隐藏位名单 ${hiddenCount ?? "?"} 枚 ⊆ uiHint 正典；` +
+      `src/ 无残留 \`${SENTINEL_LITERAL}\` 字面量。`,
   );
   return 0;
 }
@@ -203,10 +241,43 @@ function selfTest() {
     JSON.stringify(readCanonNames('export const SETTINGS_RENDER_HINTS: readonly X[] = ["a", "b"];', "SETTINGS_RENDER_HINTS")) ===
       '["a","b"]',
   );
+  push(
+    "readCanonNames 同前缀名不互串（export const ＋ \\b 锚）",
+    JSON.stringify(
+      readCanonNames(
+        'export const SETTINGS_RENDER_HINTS_EXTRA: readonly X[] = ["zz"];\nexport const SETTINGS_RENDER_HINTS: readonly X[] = ["a"];',
+        "SETTINGS_RENDER_HINTS",
+      ),
+    ) === '["a"]',
+  );
   // ② 哨兵字面量
   push("stripComments 剥行注释", !stripComments('const a = 1; // "__none__"').includes("__none__"));
   push("stripComments 剥块注释", !stripComments('/* "__none__" */ const a = 1;').includes("__none__"));
   push("stripComments 保留代码", stripComments('const a = "__none__";').includes("__none__"));
+  // ③ 隐藏位 ⊆ uiHint 正典
+  push("subsetDiff 子集 → 空", subsetDiff(["a"], ["a", "b"]).length === 0);
+  push("subsetDiff 空子集 → 空", subsetDiff([], ["a"]).length === 0);
+  push("subsetDiff 漏登记正典 → 报出那项", subsetDiff(["a", "zz"], ["a"]).join(",") === "zz");
+  push(
+    "subsetDiff 不判反方向（uiHint 多出来的值不算错）",
+    subsetDiff(["a"], ["a", "b", "c"]).length === 0,
+  );
+  push(
+    "readCanonNames 能读隐藏位名单",
+    JSON.stringify(readCanonNames('export const SETTINGS_HIDDEN_HINTS: readonly X[] = ["fileAssociationsManager"];', "SETTINGS_HIDDEN_HINTS")) ===
+      '["fileAssociationsManager"]',
+  );
+  push(
+    "readCanonNames 不误抓注释里的提及（真形状：提及 → 别家名单 → 自家声明）",
+    JSON.stringify(
+      readCanonNames(
+        "/** 隐藏位语义见 SETTINGS_HIDDEN_HINTS 那条说明 */\n" +
+          'export const SETTINGS_UI_HINTS: readonly X[] = ["p", "q", "r"];\n' +
+          'export const SETTINGS_HIDDEN_HINTS: readonly X[] = ["h"];',
+        "SETTINGS_HIDDEN_HINTS",
+      ),
+    ) === '["h"]',
+  );
 
   // 真机对照（跑一次真的，正控必须绿）
   const real = run();

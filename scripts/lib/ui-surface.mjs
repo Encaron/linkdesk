@@ -92,6 +92,9 @@ const HELPER_NAMES = new Set([
   "orderRows",
   "filterRows",
   "hitKindOf",
+  // 默认打开方式管理器共享化 3.2（2026-10-06）：C2b 隐藏位名单与守卫（与上面那条 uiHint 正典同族同性质）
+  "SETTINGS_HIDDEN_HINTS",
+  "isSettingsHiddenHint",
 ]);
 
 const RE_DEFAULT = /^export\s*\{\s*default\s+as\s+([A-Za-z_$][\w$]*)\s*\}\s*from\s*["']([^"']+)["']/;

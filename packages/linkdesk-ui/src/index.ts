@@ -9,9 +9,9 @@
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
  *   - 35 组件（30 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
- *   - 22 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
+ *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
- *       isSettingsUiHint / formatEffectiveValue / splitStringList /
+ *       isSettingsUiHint / SETTINGS_HIDDEN_HINTS / isSettingsHiddenHint / formatEffectiveValue / splitStringList /
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
@@ -81,7 +81,7 @@ export { urlSourceKey } from "@shared/string-list-editor/urlSourceKey";
 
 // ── 设置控件词表正典与共享化（2026-10-03）——判据 A/B/C：宿主声明的消费方控件与语义原子进共享层 ──
 // 正典运行时值（哨兵/名单/类型守卫；类型在 @linkdesk/contracts，此处只管值）——任何声明者与渲染者都取得到
-export { CONFIG_NONE_SENTINEL, MIX_FOLLOW_THEME_SENTINEL, SETTINGS_UI_HINTS, SETTINGS_RENDER_HINTS, isSettingsUiHint } from "@shared/settings-hints/settingsHints";
+export { CONFIG_NONE_SENTINEL, MIX_FOLLOW_THEME_SENTINEL, SETTINGS_UI_HINTS, SETTINGS_RENDER_HINTS, isSettingsUiHint, SETTINGS_HIDDEN_HINTS, isSettingsHiddenHint } from "@shared/settings-hints/settingsHints";
 // 生效值展示格式化（判定住宿主，格式化住这里——设置插件/第三方面板/命令面板同一个答案）
 export { formatEffectiveValue } from "@shared/effective-badge/formatEffectiveValue";
 // stringList 前置计算（locked/editable 切分）
