@@ -31,7 +31,7 @@
 | 声明 | 作用 |
 |:--|:--|
 | `contributes.fileAssociations: [{ "extension": "pdf", "displayName": "PDF" }]` | **接管单击与 OS 打开方式**：文件树单击、Windows「打开方式→LinkDesk」都经壳的 `FileAssociationService` 解析到本插件。⚠️ 字段口径（role 是否填、displayName 必填否）以 T1 时现装 SDK `plugin.schema.json` 为准——`distribution` 是**废弃字段勿填**（03-插件制造 06 §对账） |
-| `contributes.commands` | `pdfReader.*` 命令族进命令面板——**AI 友好化是本插件硬要求**（见 §六-5），不是可选项；随 M1 功能同棒上（无死代码） |
+| `contributes.commands` | `pdf-reader.*` 命令族进命令面板——**AI 友好化是本插件硬要求**（见 §六-5），不是可选项；随 M1 功能同棒上（无死代码） |
 | `contributes.i18n` | 自有字典 `i18n/en.json`（谁的仓谁译文，E6#161 口径） |
 | `icon: "resources/icon.svg"` | **商城展示图标**——标签栏（`appearsIn.tabBar`）、市场列表、打开方式选择器、README 说明区多处展示；⛔ **无图标栏贡献**（不做 `appearsIn.iconBar`／侧栏视图——辅助型定位） |
 | 无菜单贡献 | 不往文件树右键加项（「打开方式」选择器是壳侧通用能力，不需要每家自己写） |

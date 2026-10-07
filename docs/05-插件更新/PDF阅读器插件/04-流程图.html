@@ -89,7 +89,7 @@
       <rect x="664" y="112" width="150" height="30" rx="6" fill="#fff" stroke="#b8432e"/>
       <text x="739" y="132" text-anchor="middle">缩略图/目录（T6）</text>
       <rect x="838" y="112" width="136" height="30" rx="6" fill="#fff" stroke="#b8432e"/>
-      <text x="906" y="132" text-anchor="middle">命令族 pdfReader.*</text>
+      <text x="906" y="132" text-anchor="middle">命令族 pdf-reader.*</text>
       <text x="645" y="166" text-anchor="middle" fill="#9a6b1f" font-size="12">阅读底色 = 插件自有固定配色（不跟壳主题）· 卸载即退回编辑器 · 默认裁决全在壳</text>
       <!-- 箭头 -->
       <line x1="194" y1="127" x2="310" y2="127" stroke="#b8432e" stroke-width="2.5" marker-end="url(#arr)"/>
@@ -119,7 +119,7 @@
     { tag:"T1", nm:"起仓与声明面", ms:"M1", dt:"脚手架 create-linkdesk-plugin 起仓 pdf-reader；pluginId、fileAssociations(pdf)、appearsIn 仅 tabBar、icon.svg 展示图标（标签栏/市场/打开方式选择器）、i18n 声明。判据：build 出包＋dev 壳装上标签页骨架出现。"},
     { tag:"T2", nm:"引擎引入", ms:"M1", dt:"pdfjs-dist 钉版本；worker 随 vite 打包走通（专项判据）；cmaps 随包；readBinaryFile→getDocument→单页 canvas。禁区：worker 打不通不许塞主线程凑合，上报拍板。"},
     { tag:"T3", nm:"M1 阅读器主体", ms:"M1", dt:"工具栏＋连续滚动＋虚拟化（只渲染可视页）；错误态两式；阅读底色固定不跟主题（自有自定义属性）。设计图先出请用户过目再写码。判据：切主题阅读区纹丝不动；大文件不卡。"},
-    { tag:"T4", nm:"命令化＋i18n", ms:"M1.5 · AI友好化", dt:"pdfReader.* 命令族全带 description＋params；结构化读数命令；en 字典全覆盖。没有的功能不立命令（无死代码）。判据：ci-verify ⑧段绿、命令面板可跑全部。"},
+    { tag:"T4", nm:"命令化＋i18n", ms:"M1.5 · AI友好化", dt:"pdf-reader.* 命令族全带 description＋params；结构化读数命令；en 字典全覆盖。没有的功能不立命令（无死代码）。判据：ci-verify ⑧段绿、命令面板可跑全部。"},
     { tag:"T5", nm:"M2 文本层", ms:"M2", dt:"getTextContent 文本层划选复制＋页内/全文搜索（findController 原语 vs 自绘当场评估并记录）；搜索高亮走 pdf- 命名空间。回归：不破坏缩放/虚拟化。"},
     { tag:"T6", nm:"M3 缩略图＋目录", ms:"M3", dt:"左缘缩略图侧栏懒渲染＋目录/书签树跳转；侧栏开合走命令（AI 可操作）。判据：不整本铺开、跳转准。"},
     { tag:"T7", nm:"测试门禁收口", ms:"机械检查", dt:"纯逻辑单测（页码/缩放/虚拟化窗口/搜索定位）＋组件测试；无死代码、CSS 命名空间、硬编码四项自查各出读数。三门 test/verify/build 全绿。禁区：不放宽判据凑绿。"},
