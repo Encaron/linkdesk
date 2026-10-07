@@ -1,19 +1,21 @@
 /**
- * linkdesk-api 存储域——「打开缓存目录」设置行（04-软件更新/已落地/设置页-打开缓存目录 3.3）。
- * 🔴 **壳侧独有**（池 preload 不注入——消费方 = 设置页 action/status 命令的 handler，跑在壳进程）
- *   ⇒ 命名空间面必须 `?` 可选（同 `bridge?` / `hotExit?` 的单侧独有惯例——写成必选
- *   等于谎称池里也注入，池侧代码会照着不存在的面写）。
- * 依赖方向：被聚合器交叉组装；实现 = electron/preload-shell.ts（storage 命名空间）。
+ * linkdesk-api storage domain — the "open cache directory" settings row (04-software-updates/shipped/settings-page-open-cache-directory 3.3).
+ * 🔴 **Shell-side only** (the pool preload does not inject it — consumers are the handlers of the settings page's action/status
+ * commands, which run in the shell process)
+ *   ⇒ the namespace surface must be optional with `?` (the same single-side-only convention as `bridge?` / `hotExit?` —
+ *   making it required would falsely claim the pool injects it too, and pool-side code would be written against a nonexistent surface).
+ * Dependency direction: cross-composed by the aggregator; implementation = electron/preload-shell.ts (storage namespace).
  */
 
-/** 存储命名空间面——当前生效缓存目录的读数口与打开口（解析单点在主进程 storage-handlers） */
+/** Storage namespace surface — the read port and open port for the currently effective cache directory (the single resolution point is in the main process storage-handlers) */
 export interface StorageAPI {
   storage?: {
-    /** 打开缓存目录（资源管理器窗口，非模态）——主进程解析当前生效路径，**先建目录再开**
-     *  （目录缺省也建——刚装完没跑过也有得开，绝不弹"找不到"）；openPath 失败抛错 fail-loud */
+    /** Open the cache directory (a file explorer window, non-modal) — the main process resolves the currently effective path and
+     *  **creates the directory before opening**
+     *  (a missing directory is created too — there is something to open even right after install, never a "not found" popup); an openPath failure throws fail-loud */
     revealCache(): Promise<void>;
-    /** 当前生效的缓存目录绝对路径——settings.json 的 `app.storage.cacheDir`（空/缺 = userData 默认位）；
-     *  🔴 解析唯一入口（落点契约铁律 3：任何地方不存第二份路径，取不抄） */
+    /** The absolute path of the currently effective cache directory — settings.json's `app.storage.cacheDir` (empty/missing = the userData default location);
+     *  🔴 the single resolution entry (placement contract iron rule 3: no second copy of the path is stored anywhere — take it, never copy it) */
     cacheDir(): Promise<string>;
   };
 }

@@ -73,14 +73,14 @@ function render() {
   out.push(BEGIN);
   out.push("");
   out.push(
-    `> 自动生成，**勿手改**——由 \`scripts/generate-api-cheatsheet.mjs\` 从 \`@linkdesk/contracts\` 的 \`linkdesk.d.ts\` 现读产出，`,
+    `> Auto-generated, **do not edit by hand**—produced live by \`scripts/generate-api-cheatsheet.mjs\` reading \`linkdesk.d.ts\` from \`@linkdesk/contracts\`;`,
   );
   out.push(
-    `> \`npm run check\` 机械盯漂。完整签名与逐方法说明见 \`linkdesk.d.ts\` 本体（IDE 里可直接跳转）。`,
+    `> \`npm run check\` mechanically watches for drift. For full signatures and per-method notes see \`linkdesk.d.ts\` itself (jump to it straight from the IDE).`,
   );
   out.push("");
   out.push(
-    `**${interfaces.length} 个域接口 → ${rows.length} 个命名空间 / ${total} 个方法**，全部经 \`window.linkdesk.<命名空间>.<方法>\` 调用。` +
+    `**${interfaces.length} domain interfaces → ${rows.length} namespaces / ${total} methods**, all invoked via \`window.linkdesk.<namespace>.<method>\`.` +
       (aliases.length ? ` (plus ${aliases.length} deprecated alias/es ${aliases.join(" ")}, not counted twice)` : ""),
   );
   out.push("");
@@ -89,7 +89,7 @@ function render() {
   for (const [name, v] of rows) {
     let cell;
     if (v.aliasOf) {
-      cell = `（废弃别名 → \`${v.aliasOf}\`）`;
+      cell = `(deprecated alias → \`${v.aliasOf}\`)`;
     } else if (v.methods.length) {
       // `°` = 契约标 `?` 的成员：仅一侧 preload 注入（多为壳侧独有），池里调用前先判存在
       cell = v.methods

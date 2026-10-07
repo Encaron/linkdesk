@@ -1,8 +1,8 @@
 /**
- * linkdesk-api 壳侧/池控制域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9d）。
- * bridge/pool/window/shell/hotExit/getFilePath 六命名空间面 verbatim（E5.8#22 审视 N1 修正：
- * 双端注入面 = 必选；唯一真壳独有 bridge + 唯一池侧独有 hotExit 保留 `?` 可选）。
- * 依赖方向：shell → types/ipc（bridge/poolActions）+ types/pool（poolLayout）；被聚合器交叉组装。
+ * linkdesk-api shell-side/pool control domain — split out of linkdesk-api.ts (E5.8#0d.10-9d).
+ * The bridge/pool/window/shell/hotExit/getFilePath six namespace surfaces verbatim (E5.8#22 review N1 fix:
+ * both-end-injected surfaces = required; only the true-shell-only bridge and the pool-side-only hotExit keep `?` optional).
+ * Dependency direction: shell → types/ipc (bridge/poolActions) + types/pool (poolLayout); cross-composed by the aggregator.
  */
 
 import type { BridgeRequestPayload } from "../../types/ipc/bridge";
@@ -12,9 +12,9 @@ import type { PoolTabAction, ShellTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
 import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, TabDragPositionPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../../types/ipc/poolActions";
 
-/** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
+/** Shell↔plugin relay / pool control / window / shell-level commands / hot-exit staging namespace surfaces — injected on both ends (bridge is true-shell-only / hotExit is pool-side-only) */
 export interface ShellAPI {
-  /** 壳↔插件通信中继——壳 preload 独有 */
+  /** Shell↔plugin communication relay — shell preload only */
   bridge?: {
     onRequest(cb: (req: BridgeRequestPayload) => void): () => void;
     respond(requestId: string, result?: unknown, error?: string): void;
@@ -22,135 +22,143 @@ export interface ShellAPI {
     notifyConfigChanged(key: string, value: unknown): void;
   };
 
-  /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
+  /** Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + sends actions. Each end implements its own half (method-level subset surface, surfaces.ts) */
   pool: {
-    // ── 壳侧（池 preload 无） ──
-    /** E5.8#43-2：windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
+    // ── Shell side (absent from the pool preload) ──
+    /** E5.8#43-2: optional targeted push by windowId (defaults to 'main') — the shell traverses its window registry to push each window's layout by id */
     pushLayout(layout: PoolLayout, windowId?: string): void;
-    /** E5.8#43-1 A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
+    /** E5.8#43-1 A3: the callback receives windowId (main pool='main', detached pool=shell-generated id) — the shell pushes that window's layout targeted by id */
     onReady(cb: (windowId: string) => void): () => void;
     toggleDevTools(): void;
     onSidebarAction(cb: (action: SidebarAction) => void): () => void;
-    // E5.8#44-B：壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——#43-4 权威窗口身份）
+    // E5.8#44-B: the shell side receives action = ShellTabAction (the main process injects sourceWindowId by sender — #43-4 authoritative window identity)
     onTabAction(cb: (action: ShellTabAction) => void): () => void;
-    // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
+    // E5.8#44-B: pool→shell TabBar viewport rects report (data source for dock/detach-merge hit testing) — windowId injected by the main process
     onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
-    // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程）——sourceWindowId 由主进程注入（壳排除源窗命中）
+    // E5.8#44-C: pool→shell drag position report (mousemove throughout while picked up) — sourceWindowId injected by the main process (the shell excludes the source window from hit testing)
     onDragPosition(cb: (pos: ShellTabDragPosition) => void): () => void;
-    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 插入指示/清除）——windowId 壳命中解析后定向推送（#46.10 载荷带 viewport 坐标）
+    // E5.8#44-C: shell→pool dock hint (target window TabBar insert indicator/clear) — windowId pushed targeted after the shell resolves the hit (#46.10 payload carries viewport coordinates)
     pushAdsorbHint(hint: AdsorbHintPayload, windowId: string): void;
-    // E5.8#46.10：池→壳 吸附插入缝隙回传（壳侧——windowId 由主进程注入，壳存吸附注册表供释放并窗精确落位）
+    // E5.8#46.10: pool→shell dock insertion gap report (shell side — windowId injected by the main process; the shell keeps a docking registry for precise placement on detach-merge)
     onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
     pushQuickPick(data: unknown): void;
     onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
     pushDialog(data: unknown): void;
     onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
-    // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
+    // E5.8#37 (Phase 8 type B): in-shell floating panel — pushPanel dumb render data + action callbacks back
     pushFloatingPanel(data: unknown): void;
     onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
     onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
-    // ── E5.8#43-1（A4）：多窗口底座——壳驱动创建/关闭池窗 + 监听 OS 关窗（主进程执行窗口生命周期）──
+    // ── E5.8#43-1 (A4): multi-window foundation — shell-driven create/close of pool windows + listening for OS window close (the main process owns the window lifecycle) ──
     createWindow(opts: CreatePoolWindowRequest): void;
     closeWindow(windowId: string): void;
     onWindowClosed(cb: (windowId: string) => void): () => void;
-    // ── E5.8#43-3：主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
+    // ── E5.8#43-3: main→shell pool window bounds changes (moved/resized reports) — shell registry update + persisting floating window positions (I9-14) ──
     onWindowBoundsChanged(cb: (payload: PoolWindowBoundsPayload) => void): () => void;
-    // ── 池侧（壳 preload 无） ──
+    // ── Pool side (absent from the shell preload) ──
     /**
-     * M1 `AI#4`：**按需读当前布局**——本窗最近一次收到的完整布局快照（树 `root` + 分组 `groups`）。
+     * M1 `AI#4`: **read the current layout on demand** — the full layout snapshot most recently received
+     * by this window (tree `root` + groups `groups`).
      *
-     * 🔴 与 `onLayout` 是**同一把尺**：返回的就是最近一次 `onLayout` 的载荷本体。
-     * 池按 whole-value 快照整帧渲染、**不缓存旧值合并**（`poolLayout.ts` 头注释两条铁律）——
-     * 本方法只为「不用等下一帧」而留一个读数口，**不参与渲染**。
+     * 🔴 The **same yardstick** as `onLayout`: what is returned is the very body of the most recent `onLayout` payload.
+     * The pool renders whole-value snapshot frames and **does not cache old values for merging** (the two iron rules in the
+     * `poolLayout.ts` header) — this method only leaves a read port for "not waiting for the next frame" and **does not participate in rendering**.
      *
-     * ⚠️ 未收到过任何一次推送（池刚起、壳尚未推 / 非就绪窗）→ `null`（**不编一份空布局**）。
-     * ⚠️ **脱出窗拿到的是策略子集**（`WINDOW_MODE_STRATEGIES`：detached = `titleBar`+`groups`；
-     * drift = `titleBar`+`panel`）⇒ 那些窗里 `statusBar`/`sidebar`/`iconBar` **不存在**——
-     * 这是窗口模式的正常结果，不是丢数据。要跨窗看全貌用 `tabs.list()`（问壳）。
-     * ⚠️ 分屏树深度上限 `MAX_TREE_DEPTH = 4`（`src/core/utils/splitTree.ts`）——树里不会出现更深层，
-     * 读取方不必按无限深度兜底，但**也别假设一定能到 4 层**（用户不一定分那么多）。
+     * ⚠️ No push has been received yet (pool just started, shell has not pushed / window not ready) → `null` (**no empty layout is fabricated**).
+     * ⚠️ **A detached window receives a policy subset** (`WINDOW_MODE_STRATEGIES`: detached = `titleBar`+`groups`;
+     * drift = `titleBar`+`panel`) ⇒ in those windows `statusBar`/`sidebar`/`iconBar` **do not exist** —
+     * this is a normal consequence of the window mode, not data loss. Use `tabs.list()` (ask the shell) to see the full picture across windows.
+     * ⚠️ Split-tree depth cap `MAX_TREE_DEPTH = 4` (`src/core/utils/splitTree.ts`) — deeper levels never appear in the tree;
+     * readers need not guard for infinite depth, but **do not assume 4 levels is always reachable** (users may not split that deep).
      */
     getLayout(): PoolLayout | null;
     onLayout(cb: (layout: PoolLayout) => void): () => void;
     ready(): void;
     sidebarAction(action: SidebarAction): void;
     tabAction(action: PoolTabAction): void;
-    // E5.8#44-B：池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
+    // E5.8#44-B: pool→shell TabBar viewport rects report (pool side — MainZone useTabDrag reports getBoundingClientRect)
     tabBarRects(rects: TabBarViewportRect[]): void;
-    // E5.8#44-C：池→壳 拖拽位置上报（池侧——useDragReorder 拎起后 mousemove 上报，壳吸附命中）
+    // E5.8#44-C: pool→shell drag position report (pool side — useDragReorder reports mousemove after pickup, shell does dock hit testing)
     dragPosition(pos: TabDragPositionPayload): void;
-    // E5.8#44-C：壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 插入指示/清除）
+    // E5.8#44-C: shell→pool dock hint subscription (pool side — MainZone subscribes for the target window's TabBar insert indicator/clear)
     onAdsorbHint(cb: (hint: AdsorbHintPayload) => void): () => void;
-    // E5.8#46.10：池→壳 吸附插入缝隙回传（池侧——目标池算竖线落点后上报，壳释放并窗精确落位）
+    // E5.8#46.10: pool→shell dock insertion gap report (pool side — the target pool computes the vertical-line drop point and reports; the shell places precisely on detach-merge)
     adsorbIndex(payload: { groupId: string; insertIndex: number }): void;
-    // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
-    // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
-    // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。
+    // ── E5.8#30.16 (P8): generic "cancelable beforeClose" channel (pool side) ──
+    // Plugins register a handler (their own logic: show a confirmation / clean up resources / return a boolean deciding whether closing the tab is allowed);
+    // the GroupTabBar close path `await beforeClose` — if the handler returns false (or Promise<false>), the close is canceled.
     registerBeforeClose(pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>): void;
     unregisterBeforeClose(pluginId: string): void;
     beforeClose(pluginId: string, tab: PoolTab): Promise<boolean>;
   };
 
-  /** 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） */
+  /** Window control — TitleBar button mapping, injected on both ends (11 methods on one channel, shared module electron/window-namespace.ts) */
   window: {
     minimize(): void;
     maximize(): void;
     unmaximize(): void;
     close(): void;
-    /** E5.7#79：缩放因子 → 主进程 setZoomFactor(池 WCV) */
+    /** E5.7#79: zoom factor → main process setZoomFactor (pool WCV) */
     setZoom(factor: number): void;
     toggleDevTools(): Promise<void>;
     isMaximized(): Promise<boolean>;
     onMaximizeChange(cb: (maximized: boolean) => void): () => void;
-    /** E5.8#46.18：OS 级置顶（盖过其他应用）——true 置顶 / false 解除；按 sender 路由宿主窗 */
+    /** E5.8#46.18: OS-level always-on-top (covers other apps) — true pins / false unpins; routed to the host window by sender */
     setAlwaysOnTop(pinned: boolean): void;
     isAlwaysOnTop(): Promise<boolean>;
     onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
   };
 
-  /** 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 */
+  /** Shell-level commands — revealInOS / openInTerminal / startDrag / relaunch, injected on both ends */
   shell: {
     showItemInFolder(p: string): Promise<void>;
     openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
-    /** E6#78：已装插件的磁盘位置——市场详情页「打开所在位置 / 数据位置」的**判据**数据源
-     *  （是否有数据目录决定那行画不画）。主进程解析（池内零安装路径知识）；盘上找不到该插件 → null。
-     *  ⚠️ 与 `shell.showItemInFolder(p)` 的分工：**那个要路径、这个给身份**——调用方（市场）拿不到也不该拼绝对路径。 */
+    /** E6#78: disk location of an installed plugin — the **criterion** data source for "open containing folder / data location"
+     *  on the marketplace detail page (whether a data directory exists decides whether that row is drawn).
+     *  Resolved by the main process (the pool has zero knowledge of install paths); plugin not found on disk → null.
+     *  ⚠️ Division of labor with `shell.showItemInFolder(p)`: **that one takes a path, this one takes an identity** —
+     *  the caller (marketplace) cannot and should not assemble absolute paths. */
     pluginLocation(pluginId: string): Promise<PluginDiskLocation | null>;
-    /** E6#78：资源管理器打开插件的安装目录 / 数据目录——主进程解析路径后 `shell.openPath`。
-     *  开的是目录**内容**（与 E5.8#153 `appearance.revealStorage`「打开存储位置」同一手感），
-     *  **不是** `showItemInFolder` 的「父目录 + 选中它」。目录不存在时：`install` 抛错（插件不在盘上，
-     *  不假装打开成功）；`data` 先建空目录再开（同 revealStorage——打开即见存储位置，空目录同样合法）。 */
+    /** E6#78: open the plugin's install directory / data directory in the file explorer — the main process resolves the path then `shell.openPath`.
+     *  Opens the directory **contents** (same feel as E5.8#153 `appearance.revealStorage` "open storage location"),
+     *  **not** `showItemInFolder`'s "parent folder with it selected". When the directory does not exist: `install` throws
+     *  (plugin not on disk — never pretend the open succeeded); `data` creates an empty directory first, then opens (same as revealStorage —
+     *  opening reveals the storage location; an empty directory is equally legitimate). */
     openPluginFolder(pluginId: string, kind: PluginFolderKind): Promise<void>;
     startDrag(filePath: string, iconPath?: string): void;
-    /** E6#73j（G4）：**真重启应用**（退出并重新启动进程）。
-     *  与 `window.location.reload()` 的区别是「池在不在」——池是独立的 WebContentsView，壳 reload 不重建它，
-     *  更新视图类插件后池里跑的仍是旧 bundle（界面看起来毫无变化）。
-     *  诚实边界：整个应用会退出再起——未保存的编辑器内容由热退出（hotExit）负责，工作区布局走持久化恢复。
-     *  壳 preload 独有（池不需要自己重启宿主）；调用后本进程随即终止，不要再依赖它的返回。 */
+    /** E6#73j (G4): **truly restart the app** (quit and start the process again).
+     *  The difference from `window.location.reload()` is whether the pool survives — the pool is an independent WebContentsView,
+     *  a shell reload does not rebuild it, so after updating view-type plugins the pool still runs the old bundle
+     *  (the UI looks completely unchanged).
+     *  Honest boundary: the whole app quits and starts again — unsaved editor content is handled by hot exit, and the workspace
+     *  layout goes through persisted restore.
+     *  Shell preload only (the pool has no need to restart its own host); once called, this process terminates soon after — do not rely on its return. */
     relaunch?(): Promise<void>;
     /**
-     * T4（2026-10-05，本案「文件打开方式与贡献点」）：**受控 openExternal**——请求宿主把 URL
-     * 交给系统默认程序打开（浏览器 / 邮件客户端 / 已注册协议的处理器，如 VS Code）。
+     * T4 (2026-10-05, the "file open-with and contribution points" case): **controlled openExternal** — asks the host to hand the URL
+     * to the system default handler (browser / mail client / handler registered for the protocol, e.g. VS Code).
      *
-     * 🔴 **白名单不是建议，是闸门**：只有 `http:` / `https:` / `mailto:` 与宿主常量登记过的协议
-     * （今日含 `vscode:`）放行；**其余一律拒**（`file:` / `javascript:` / `data:` 明确拒——插件的文件面
-     * 走 `workspace` / `filesystem`，不经 OS 壳；把外部输入当脚本执行更不是宿主该替谁做的事）。
-     * 被拒 = 这个 Promise **reject**（不静默），调用方应当接住并给用户一个说法。
+     * 🔴 **The whitelist is not advice, it is a gate**: only `http:` / `https:` / `mailto:` and protocols registered in the host
+     * constant (today including `vscode:`) pass; **everything else is rejected** (`file:` / `javascript:` / `data:` are explicitly
+     * rejected — plugin file access goes through `workspace` / `filesystem`, not the OS shell; and executing external input as a
+     * script is not something the host should do on anyone's behalf).
+     * Rejected = this Promise **rejects** (no silent failure); the caller should catch it and give the user an explanation.
      *
-     * ⚠️ 「转交系统」的诚实边界：宿主**不感知**目标程序装没装——`vscode://` 拉起的是 OS 的答复，
-     * 没装时由 Windows 自己弹「如何打开」。宿主只保证「协议在白名单内、URL 结构合法」。
-     * 白名单清单进宿主保留面账（家族 `externalProtocols`），改它 = 一次公共面决策。
+     * ⚠️ Honest boundary of "handing off to the system": the host **cannot sense** whether the target program is installed —
+     * `vscode://` brings up the OS's answer; when it is not installed, Windows itself pops "How do you want to open this?".
+     * The host only guarantees "the protocol is whitelisted and the URL is well-formed".
+     * The whitelist list belongs to the host-reserved surface ledger (family `externalProtocols`); changing it = one public-surface decision.
      */
     openExternal(url: string): Promise<void>;
   };
 
-  /** 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） */
+  /** Hot exit staging — persists unsaved editor content to disk (E5.7#53). `?`: pool-side only (the shell preload does not inject it) */
   hotExit?: {
     save(filePath: string, content: string): Promise<void>;
     load(filePath: string): Promise<string | null>;
     clear(filePath: string): Promise<void>;
   };
 
-  /** OS 拖入文件路径获取——双端注入 */
+  /** Get the paths of files dragged in from the OS — injected on both ends */
   getFilePath: (file: File) => string;
 }

@@ -7,14 +7,14 @@
 
 /* ── 类型 ── */
 
-/** 递归分裂树节点——要么是叶子（含一个 TabGroup），要么是分叉（含两个子树） */
+/** Recursive split-tree node—either a leaf (holding one TabGroup) or a fork (holding two subtrees) */
 export type SplitNode =
   | { type: "leaf"; groupId: string }
   | {
       type: "branch";
       direction: "horizontal" | "vertical";
       children: [SplitNode, SplitNode];
-      sizes: [number, number]; // 百分比，如 [50, 50]
+      sizes: [number, number]; // percentages, e.g. [50, 50]
     };
 
 // E5.8#2：LayoutDataV2 已删——零消费（migrateLayout 接受内联结构，树自身即持久化格式）

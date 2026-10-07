@@ -199,53 +199,53 @@
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
-| `app` | AppAPI | 1 | `getVersion` | app 命名空间——只读产品身份。版本号唯一运行时来源 = 主进程 app.getVersion()（package.json 单点，02 §2.3）。 |
-| `appearance` | AppearanceAPI | 2 | `importImage` `revealStorage` | 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
-| `bridge` ⚠️ | ShellAPI | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | 壳↔插件通信中继——壳 preload 独有 |
-| `clipboard` | DataAPI | 3 | `readText` `writeText` `writeFileList` | 剪贴板——读/写系统剪贴板 |
-| `commands` | CommandsAPI | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | 命令——对标 VS Code vscode.commands |
-| `config` | CommandsAPI | 15 | （`@deprecated` 别名 → `configuration`，方法面同上） | @deprecated 向后兼容别名，新代码用 configuration |
-| `configuration` | CommandsAPI | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | 配置—新名——对标 VS Code vscode.workspace.getConfiguration |
-| `contextKey` | UiAPI | 1 | `set` | ContextKey——插件 SET 状态供壳 when 子句读 |
-| `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 |
-| `dialog` | UiAPI | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | 弹窗——确认/提示/文件选择 |
-| `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost—— |
-| `encoding` | WorkspaceAPI | 4 | `detect` `decode` `encode` `isBinary` | 编码检测/转换（主进程 EncodingService） |
-| `env` | WorkspaceAPI | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
-| `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 |
+| `app` | AppAPI | 1 | `getVersion` | The app namespace — read-only product identity. The only runtime source of the version number = main-process app.getVer… |
+| `appearance` | AppearanceAPI | 2 | `importImage` `revealStorage` | appearance assets — locally picked images are copied into managed storage (controlled source — user-chosen paths cannot… |
+| `bridge` ⚠️ | ShellAPI | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | Shell↔plugin communication relay — shell preload only |
+| `clipboard` | DataAPI | 3 | `readText` `writeText` `writeFileList` | Clipboard — read/write the system clipboard |
+| `commands` | CommandsAPI | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | Commands — modeled after VS Code vscode.commands |
+| `config` | CommandsAPI | 15 | （`@deprecated` 别名 → `configuration`，方法面同上） | @deprecated — backward-compatibility alias; use configuration in new code |
+| `configuration` | CommandsAPI | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | Configuration — the new name — modeled after VS Code vscode.workspace.getConfiguration |
+| `contextKey` | UiAPI | 1 | `set` | ContextKey — plugins SET state for the shell's when clauses to read |
+| `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | file decorations — a local in-pool registry (zero IPC). Shape modeled after contract §3.24 |
+| `dialog` | UiAPI | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | Dialogs — confirm/alert/file selection |
+| `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's DialogHost (the shell preload has no such surface). Named dial… |
+| `encoding` | WorkspaceAPI | 4 | `detect` `decode` `encode` `isBinary` | encoding detection/conversion (main-process EncodingService) |
+| `env` | WorkspaceAPI | 1 | `get` | Environment info — modeled after VS Code ExtensionContext |
+| `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data pipeline. channel is a free-form string; payloads are typed p… |
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
-| `fileAssociation` | EditorAPI | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。 |
-| `filesystem` | WorkspaceAPI | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | 文件系统——插件读写（路径校验由主进程执行） |
-| `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。 |
-| `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
-| `hotExit` ⚠️ | ShellAPI | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘。`?`：池侧独有（壳 preload 不注入） |
+| `fileAssociation` | EditorAPI | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly by the main-process FileAssociationService). |
+| `filesystem` | WorkspaceAPI | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | Filesystem — plugin read/write (path validation is performed by the main process) |
+| `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | (type B): floating panel dumb-render subscription — consumed by the pool's FloatingPanelHost (the shell preload has no … |
+| `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | Get the paths of files dragged in from the OS — injected on both ends |
+| `hotExit` ⚠️ | ShellAPI | 3 | `save` `load` `clear` | Hot exit staging — persists unsaved editor content to disk (). `?`: pool-side only (the shell preload does not inject i… |
 | `keybindings` | KeybindingsAPI | 13 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `clearKeybindingForCommand` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
-| `langDef` | EditorAPI | 1 | `get` | langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） |
+| `langDef` | EditorAPI | 1 | `get` | langDef — language definition registry (answered directly by the main process). Returns only serializable fields (monar… |
 | `language` | AppearanceAPI | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
-| `lsp` | EditorAPI | 4 | `spawn` `write` `dispose` `onData` | LSP 桥——自动补全/F12/诊断/重命名 |
-| `menu` | UiAPI | 2 | `registerItems` `getItems` | 菜单——插件声明式读写 |
-| `notifications` | UiAPI | 3 | `show` `list` `subscribe` | 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage |
-| `p2p` | DataAPI | 2 | `send` `on` | p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
+| `lsp` | EditorAPI | 4 | `spawn` `write` `dispose` `onData` | LSP bridge — autocompletion/F12/diagnostics/rename |
+| `menu` | UiAPI | 2 | `registerItems` `getItems` | Menus — declarative read/write for plugins |
+| `notifications` | UiAPI | 3 | `show` `list` `subscribe` | Notifications — plugins raise notifications ( the only notification surface is the bell-wide notification panel; the bo… |
+| `p2p` | DataAPI | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.broadcast (fire-and-forget) |
 | `panel` | PanelAPI | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
-| `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（池侧补上——settings 插件池内解析 userData 路径） |
-| `pluginManager` | PluginsAPI | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 |
-| `pluginState` | DataAPI | 3 | `get` `set` `onChange` | 插件持久化存储——集中缓存 + 文件持久化 |
-| `plugins` | PluginsAPI | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） |
-| `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） |
-| `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） |
-| `quickPick` | UiAPI | 1 | `show` | 插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined |
-| `quickPickHost` | UiAPI | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
-| `search` | WorkspaceAPI | 1 | `searchFiles` | 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
-| `serial` | DataAPI | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
+| `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | Path utilities — injected on both shell/pool ends (in-pool plugins such as editor/file-tree consume normalize/join etc.… |
+| `pluginManager` | PluginsAPI | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), … |
+| `pluginState` | DataAPI | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persistence |
+| `plugins` | PluginsAPI | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
+| `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + se… |
+| `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main process). parseLine/detect are stripped before returning (J… |
+| `quickPick` | UiAPI | 1 | `show` | plugin quickPick picker — local bridge inside the pool (zero IPC, rendered by QuickPickHost). A settle of null → undefi… |
+| `quickPickHost` | UiAPI | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick host rendering bridge — consumed by the pool's QuickPickHost (the shell preload has no such surface) |
+| `search` | WorkspaceAPI | 1 | `searchFiles` | file search — full-text search/replace (executed via IPC in the shell/main process) |
+| `serial` | DataAPI | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | Serial — read/write/listen, modeled after VS Code SerialPort API |
 | `settings` | SettingsAPI | 3 | `list` `getActive` `setActive` | —— |
-| `shell` | ShellAPI | 7 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° `openExternal` | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 |
+| `shell` | ShellAPI | 7 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° `openExternal` | Shell-level commands — revealInOS / openInTerminal / startDrag / relaunch, injected on both ends |
 | `storage` ⚠️ | StorageAPI | 2 | `revealCache` `cacheDir` | —— |
 | `tabs` | TabsAPI | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `theme` | AppearanceAPI | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
-| `update` | UpdateAPI | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态）。 |
-| `viewContainer` | EditorAPI | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 |
-| `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） |
-| `workspace` | WorkspaceAPI | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | 工作区——池 preload 注入（壳侧经 WorkspaceService 直用）。池权威命名空间——插件必用面（file-tree），必选 |
+| `update` | UpdateAPI | 1 | `getState` | The update namespace — read-only update state (for "About"-type plugins to read the host version/update state). |
+| `viewContainer` | EditorAPI | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side registry). The DTO contains only serializable public fields |
+| `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | Window control — TitleBar button mapping, injected on both ends (11 methods on one channel, shared module electron/wind… |
+| `workspace` | WorkspaceAPI | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | Workspace — injected by the pool preload (the shell side uses WorkspaceService directly). Pool-authoritative namespace … |
 
 ⚠️ = 契约里的**可选命名空间**（只在一侧 preload 注入）：`bridge` `hotExit` `storage`——用前先判存在，另一侧是 `undefined`。
 ° = 契约标 `?` 的成员：只在一侧 preload 注入（几乎都是壳侧独有）。**插件跑在池侧** ⇒ 调用前先判存在。

@@ -1,21 +1,21 @@
 /**
- * 双面覆盖清单——E5.8#20。
+ * Dual-side exposure checklist — E5.8#20.
  *
- * 支撑清单（非签名真相源）：矩阵 §2 覆盖矩阵的类型化——每面「必须暴露哪些命名空间」。
- * preload-pool.ts expose 对象 `satisfies PoolExposed` / preload-shell.ts `satisfies ShellExposed`——
- * 纯 tsc 即门禁：契约加方法而双端漏暴露 → 编译红；双端补面必须同步加进清单（双向机械强制）。
+ * Supporting checklist (not the signature source of truth): the typed form of the coverage matrix's §2 — "which namespaces each side must expose".
+ * preload-pool.ts's expose object `satisfies PoolExposed` / preload-shell.ts `satisfies ShellExposed` —
+ * pure tsc as the gate: if the contract gains a method and one side misses the exposure → compile red; adding a surface on either side must be synced into this checklist (two-way mechanical enforcement).
  *
- * 面类型 = Pick 全显式列举——加面必须列、列了必须实现。桥面（pool/shell/window 等）从
- * 契约 `?` 壳独有语义改为双端必选（矩阵 N1 修正：唯一真壳独有 = bridge）。
+ * Surface types = Pick with fully explicit listing — adding a surface must list it, and listing it means it must be implemented. Bridge surfaces (pool/shell/window etc.) changed from
+ * the contract's `?` shell-only semantics to required on both sides (matrix N1 correction: the only true shell-only = bridge).
  *
- * 🔥 E5.8#20 satisfies 实证（设计 §3.2 边界）：commands/tabs/pool 三命名空间契约声明的是
- * 池侧（插件运行时）全方法，但池/壳各实现自己那半——namespace 级 Pick 在这些"分裂命名空间"
- * 上结构性失效（双方都满足不了对方的那半）。修正 = 这三面改方法级子集面（Pick/Omit 逐方法），
- * 其余命名空间维持 namespace 级 Pick。唯一真壳独有 = bridge；pool 四池侧方法（onLayout/ready/
- * sidebarAction/tabAction）唯一池独有。
+ * 🔥 E5.8#20 satisfies empirics (design §3.2 boundary): the commands/tabs/pool three namespace contracts declare the pool-side (plugin runtime) full method set,
+ * but pool/shell each implement their own half — namespace-level Pick structurally fails on these "split namespaces"
+ * (neither side can satisfy the other's half). Fix = these three surfaces become method-level subset surfaces (Pick/Omit per method);
+ * other namespaces keep namespace-level Pick. The only true shell-only = bridge; the pool's four pool-side methods (onLayout/ready/
+ * sidebarAction/tabAction) are the only pool-only ones.
  *
- * 设计出处：docs/02-Electron架构/归一化基建/契约生成/03-契约生成设计.md §3.2
- * 覆盖矩阵：docs/02-Electron架构/归一化基建/契约生成/命名空间矩阵.md §2
+ * Design source: the repo-internal contract-generation design dossier (Chinese docs tree), §3.2
+ * Coverage matrix: the repo-internal contract-generation namespace-matrix dossier (Chinese docs tree), §2
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
 import type { DownloadProgress, ReleaseNotes, UpdateState } from "../../types/ipc/update";
@@ -23,7 +23,7 @@ import type { ProductInfo } from "../../types/ipc/product";
 import type { AiManualPayload } from "../../types/ipc/aiManual";
 import type { AiBridgeInfo, AiBridgeInfoRequest } from "../../types/ipc/aiBridge";
 
-/** 池 preload 必暴露面（45 = 44 唯一 + config 别名；唯一缺 bridge；E6#72 删 toast 宿主桥面）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染）；E5.8#41.14 加 factorySlots（任意 role 候选枚举/切换，设置 UI 通用区数据源）；E5.8#50.11 加 appearance（外观资产——选择图片拷贝入库）；E6#57.2a 加 app（只读产品身份——市场 minAppVersion E6#30.8c 消费） */
+/** The pool preload's required exposure surface (45 = 44 unique + the config alias; the only omission is bridge; E6#72 removed the toast host bridge surface) — E5.8#34.5 added panel (the pool-side channel for plugins calling reveal); E5.8#37 added floatingPanelHost (the dumb-render bridge of the in-shell floating panel); E5.8#41.12 added settings (settings suite enum/switching, the settings UI renders inside the pool); E5.8#41.14 added factorySlots (candidate enum/switching for any role, the data source of the settings UI's general section); E5.8#50.11 added appearance (appearance assets — selected images copied into the store); E6#57.2a added app (read-only product identity — consumed by the marketplace's minAppVersion E6#30.8c) */
 export type PoolExposed = Pick<LinkDeskAPI,
   | "commands" | "configuration" | "config" | "theme" | "language" | "app" | "appearance"
   | "tabs" | "keybindings" | "notifications" | "menu" | "contextKey"
@@ -33,45 +33,45 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
   | "viewContainer" | "plugins" | "pluginManager" | "window"
   | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots" | "update"> & {
-  /** pool 命名空间——分裂面方法级子集：池侧 = 收布局 + 发动作 + beforeClose 通道（壳侧 pushLayout/onReady/… 12 方法为壳→池推送面，池内不存在）。
-   *  pool 契约必选（E5.8#22 审视 N1 修正后）——直接 Pick，无需 NonNullable
-   *  E5.8#30.16（P8）：beforeClose 三方法唯一池侧（插件注册 handler / GroupTabBar 关闭路径 await）
-   *  E5.8#44-B：tabBarRects 唯一池侧（MainZone 上报 TabBar rects——壳侧无发送面）
-   *  E5.8#44-C：dragPosition/onAdsorbHint 唯一池侧（池上报拖拽位置 + 订阅壳吸附提示——壳侧无发送/订阅面）
-   *  E5.8#46.10：adsorbIndex 唯一池侧（池回传插入缝隙——壳侧无发送面）
-   *  M1 AI#4：getLayout 唯一池侧（读本窗最近一次快照——壳是推送方，没有「读回自己刚推的东西」的需求） */
+  /** pool namespace — split-surface method-level subset: pool side = receive layout + send actions + the beforeClose channel (the shell-side pushLayout/onReady/… 12 methods are the shell→pool push surface and do not exist in the pool).
+   *  pool in the contract is required (after E5.8#22 review, N1 correction) — direct Pick, no NonNullable needed
+   *  E5.8#30.16 (P8): the three beforeClose methods are pool-only (the plugin registers the handler / GroupTabBar's close path awaits)
+   *  E5.8#44-B: tabBarRects is pool-only (MainZone reports TabBar rects — the shell side has no send surface)
+   *  E5.8#44-C: dragPosition/onAdsorbHint are pool-only (the pool reports drag position + subscribes to shell adsorb hints — the shell side has no send/subscribe surface)
+   *  E5.8#46.10: adsorbIndex is pool-only (the pool returns the insertion gap — the shell side has no send surface)
+   *  M1 AI#4: getLayout is pool-only (reads this window's most recent snapshot — the shell is the pusher and has no need to "read back what it just pushed") */
   pool: Pick<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };
 
-/** 壳 preload 必暴露面（26；bridge 真壳独有；storage 壳侧独有——池不注入，面本身 `?` 可选）。commands/tabs/pool/appearance 命名空间方法级子集：
- *  commands 壳 = 注册面（execute/executeCommand/unregisterCommands/getCommands 为池侧执行面，壳不实现）
- *  tabs 壳缺 onDidChangeActiveTab（池侧订阅面——壳是标签权威自身，无订阅需求）
- *    ＋ M1 AI#3 的 list（读取面——壳自己手上就是这份 state，不绕 IPC 问自己）
- *  pool 壳 = 推送面（onLayout/ready/sidebarAction/tabAction 为池侧发送面，壳不实现）
- *    ＋ M1 AI#4 的 getLayout（池侧读数面——同上）
- *  storage 壳 = 全部两方法（壳侧独有面——设置页 action/status 命令 handler 跑在壳进程；
- *    池不注入，故 LinkDeskAPI 里该命名空间 `?` 可选，这里 Pick 进来）
- *  appearance 壳 = 仅 revealStorage（E5.8#153：齿轮命令 handler 在壳进程执行，需壳侧触发主进程 openPath；
- *    importImage 池独有——选图拷贝入库只在池设置 UI 发生）
- *  update 壳 = getState 契约面 + 写命令三条与 onStateChanged 壳内私有扩展（E6#57.9c/d——见下方 update 段）
- *  app 壳 = getVersion 契约面（E6#57.2b 双 preload 同步暴露）+ getProductInfo 壳内私有扩展（关于页
- *    E6#57.14 数据源，不在契约）。⚠️ 超额暴露实现要点：satisfies 的 excess-property 检查达字面量每层，
- *    内联 getProductInfo 曾因「上下文类型里没有这个名字」编译红——preload-shell 用 buildShellApp()
- *    工厂构造绕过（返回值走结构兼容）。**E6#57.13 起这一条不再是必需的**：下方 `app:` 段已把
- *    getProductInfo 写进清单（类型上有了这个名字），工厂构造保留（既定写法 + 注释讲清了来由，
- *    为「现在可以不绕了」去改它属无谓改动）；池侧 buildApp() 只暴露契约面 getVersion */
+/** The shell preload's required exposure surface (26; bridge is truly shell-only; storage is shell-side-only — the pool does not inject it, and the surface itself is `?` optional). Method-level subsets of the commands/tabs/pool/appearance namespaces:
+ *  commands shell = the registration surface (execute/executeCommand/unregisterCommands/getCommands are the pool-side execution surface; the shell does not implement them)
+ *  tabs shell lacks onDidChangeActiveTab (a pool-side subscription surface — the shell is the tab authority itself and has no subscription need)
+ *    + M1 AI#3's list (a read surface — the shell already holds this very state and does not loop over IPC to ask itself)
+ *  pool shell = the push surface (onLayout/ready/sidebarAction/tabAction are the pool-side send surface; the shell does not implement them)
+ *    + M1 AI#4's getLayout (a pool-side read surface — same as above)
+ *  storage shell = both methods (a shell-side-only surface — the settings page's action/status command handlers run in the shell process;
+ *    the pool does not inject it, hence the namespace is `?` optional in LinkDeskAPI and picked in here)
+ *  appearance shell = only revealStorage (E5.8#153: the gear command handler runs in the shell process and needs the shell side to trigger the main process's openPath;
+ *    importImage is pool-only — image selection and copy-into-store happen only in the pool's settings UI)
+ *  update shell = the getState contract surface + three write commands and the in-shell private onStateChanged extension (E6#57.9c/d — see the update section below)
+ *  app shell = the getVersion contract surface (E6#57.2b exposed in sync by both preloads) + the in-shell private getProductInfo extension (the About page's
+ *    E6#57.14 data source, not in the contract). ⚠️ Excess-exposure implementation note: satisfies's excess-property check reaches every level of the literal;
+ *    the inlined getProductInfo once failed to compile with "no such name in the contextual type" — preload-shell bypassed it with the buildShellApp()
+ *    factory construction (the return value goes through structural compatibility). **Since E6#57.13 this is no longer required**: the `app:` section below has written
+ *    getProductInfo into the checklist (the type now has the name) and the factory construction is kept (an established pattern whose comment explains the history;
+ *    changing it for "we could skip the detour now" would be pointless churn); the pool-side buildApp() exposes only the contract surface getVersion */
 export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
   | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update" | "storage"> & {
   /**
-   * dialog 壳内私有扩展（04「工作区导入导出-布局恢复断线」）——照 update 段先例（契约面 &
-   * 壳私有扩展交叉）。文件选择必须走主进程 showOpenDialog：壳树 input.click() 的文件对话框
-   * 需要 user gesture，而菜单点击的手势在 pool 树（WebContents 隔离）⇒ Chromium 静默拒绝。
+   * In-shell private extension of dialog (04 "workspace import/export — layout restore disconnection") — following the update section's precedent (contract surface &
+   * shell private extensions interleaved). File selection must go through the main process's showOpenDialog: the file dialog of the shell tree's input.click()
+   * requires a user gesture, but the gesture of a menu click lives in the pool tree (WebContents isolation) ⇒ Chromium silently rejects.
    */
   dialog: LinkDeskAPI["dialog"] & {
-    /** 选 .linkdesk-workspace 并读回文本；null = 用户取消 / 文件读不出（渲染侧反馈） */
+    /** Pick a .linkdesk-workspace and read back its text; null = the user cancelled / the file could not be read (feedback on the renderer side) */
     openWorkspaceImport?: () => Promise<{ path: string; content: string } | null>;
   };
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
@@ -79,109 +79,109 @@ export type ShellExposed = Pick<LinkDeskAPI,
   pool: Omit<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
   appearance: Pick<LinkDeskAPI["appearance"], "revealStorage">;
   /**
-   * update 壳 = 契约只读面（`getState`）**＋ 壳内私有扩展**（E6#57.9c/d，06-主软件更新）。
+   * update shell = the contract's read-only surface (`getState`) **+ in-shell private extensions** (E6#57.9c/d, update dossier 06).
    *
-   * 🔴 为什么扩展声明在这里：契约的 update 面**只有 `getState`** 是**设计**（「第三方只读」落在
-   * **类型**上——池 preload 只注入契约面 ⇒ 插件侧根本没有写命令入口，见 linkdesk-api/update.ts 的
-   * 🔴 段）。壳侧那半（写命令 + 事件订阅）按 `buildShellApp()` 的既有先例用工厂函数**超额暴露**。
-   * 但「超额暴露」不等于「无类型」——把壳的完整面写进本清单，`preload-shell` 的
-   * `satisfies ShellExposed` 就把它纳入**tsc 门禁**：日后漏暴露一个方法 = 编译红，而不是
-   * 「类型上没有、运行时却有」的静默漂移。
+   * 🔴 Why the extension is declared here: the contract's update surface having **only `getState`** is **by design** ("third parties read-only" lands on the
+   * **type** — the pool preload injects only the contract surface ⇒ the plugin side has no entry to the write commands at all; see the
+   * 🔴 section in linkdesk-api/update.ts). The shell-side half (write commands + event subscription) is **over-exposed** via a factory function, per buildShellApp()'s established precedent.
+   * But "over-exposed" does not mean "untyped" — writing the shell's full surface into this checklist, `preload-shell`'s
+   * `satisfies ShellExposed` brings it under the **tsc gate**: missing one method later = compile red, instead of
+   * the silent drift of "absent in the type, present at runtime".
    *
-   * 消费者只有壳渲染进程的更新 hook（src/hooks/useUpdateState.ts 单点取用）。池侧**不注入**这几个
-   * 方法——`PoolExposed` 的 update 仍取自契约（只 getState）。
+   * The only consumer is the shell renderer's update hook (src/hooks/useUpdateState.ts, single point of access). The pool side **does not inject** these
+   * methods — `PoolExposed`'s update still comes from the contract (getState only).
    */
   update: LinkDeskAPI["update"] & {
     /**
-     * 发行说明取数（E6#57.13b）——**壳内私有扩展**，与 `buildShellApp()` 的 `getProductInfo`
-     * 同一先例同一理由：壳内视图的数据源属壳不属插件。而**壳内视图与第三方插件共用同一个
-     * `window.linkdesk`**（壳视图不是插件、没有 plugin.json），所以「给池开一个」等价于
-     * 「给所有插件开一个」——那是 05 §2.4 明文排除的（「发行说明是壳自己的面，第三方插件没有读它的理由」）。
-     * ⇒ 走「壳想、池画」：壳取好经 `pushLayout` 挂到标签页上，池哑渲染。
-     * 唯一消费者 = `src/hooks/useReleaseNotes.ts`（模块单例）。
+     * Release notes fetch (E6#57.13b) — an **in-shell private extension**, same precedent and same reason as `buildShellApp()`'s `getProductInfo`:
+     * the data source of an in-shell view belongs to the shell, not to plugins. And **in-shell views share the same
+     * `window.linkdesk` as third-party plugins** (shell views are not plugins and have no plugin.json), so "opening one for the pool" equals
+     * "opening one for all plugins" — that is exactly what dossier 05 §2.4 explicitly excludes ("release notes are the shell's own surface; third-party plugins have no reason to read it").
+     * ⇒ Go with "shell fetches, pool draws": the shell fetches and attaches it to the tab via `pushLayout`; the pool dumb-renders.
+     * The only consumer = `src/hooks/useReleaseNotes.ts` (module singleton).
      *
-     * @param force 忽略 24h 缓存现拉最新（04「发行说明刷新按钮」）——成功仍写缓存、失败仍走缓存兜底
-     *              （主进程铁律不变）；失败且无缓存照旧抛。
+     * @param force Bypass the 24h cache and fetch the latest now (04 "release notes refresh button") — on success the cache is still written, on failure the cache fallback is still used
+     *              (the main-process iron rule unchanged); on failure with no cache it still throws.
      */
     getReleaseNotes(version?: string, force?: boolean): Promise<ReleaseNotes>;
-    /** 手动（`context=true`）/ 后台（`false`）检查。**壳私事**：两条路都从壳发起（07 §一）。 */
+    /** Manual (`context=true`) / background (`false`) check. **Shell-private business**: both paths originate from the shell (07 §1). */
     checkForUpdates(context: boolean): Promise<UpdateState>;
     downloadUpdate(): Promise<UpdateState>;
-    /** 抛错面：无安装器 / 校验失败时上抛，壳收成用户可见提示（通知面板 #57.12）。 */
+    /** Throwing surface: throws when there is no installer / validation fails; the shell turns it into a user-visible notice (notification panel #57.12). */
     quitAndInstall(): Promise<void>;
-    /** 状态迁移广播订阅——preload 侧落地为 `events.on(IPC.update.stateChanged)`，返回退订函数。 */
+    /** State-transition broadcast subscription — implemented on the preload side as `events.on(IPC.update.stateChanged)`, returns an unsubscribe function. */
     onStateChanged(cb: (state: UpdateState) => void): () => void;
     /**
-     * 下载进度订阅（E6#57.12）——**与 `onStateChanged` 是两条不同的通道，缺一不可**。
+     * Download progress subscription (E6#57.12) — **a different channel from `onStateChanged`; both are needed**.
      *
-     * 🔴 为什么不能从 `onStateChanged` 里读进度：`reportProgress` 只把 `DownloadProgress` 写进
-     * `this.state`**原地**（服务内部 `getState()` 拿得到），**不发 `stateChanged`**——那条广播
-     * 按设计只在**迁移**时发一条（#57.4c）。所以渲染侧手上的 `downloading` 态永远停在
-     * 「刚进下载」的那一帧（0%），进度条会一路不动直到落 `downloaded`。
-     * （服务层的节流 ≤500ms 也在 `onProgress` 这一路上，见 `PROGRESS_THROTTLE_MS`。）
+     * 🔴 Why progress cannot be read from `onStateChanged`: `reportProgress` writes `DownloadProgress` into
+     * `this.state` **in place** (the service's internal `getState()` sees it), **not emitting `stateChanged`** — that broadcast
+     * by design fires only on **transitions** (#57.4c). So the `downloading` state on the renderer side stays frozen at
+     * the frame of "just entered download" (0%), and the progress bar would not move until it lands on `downloaded`.
+     * (The service layer's ≤500ms throttle is also on the `onProgress` path; see `PROGRESS_THROTTLE_MS`.)
      *
-     * ⚠️ **进度是瞬时量，不是真相**——`storeForReplay:false`（`update-handlers.ts`），新起的窗口
-     * 重放不到「刚才的 50%」，这是**有意**的（重放一个过期百分比 = 假进度）。消费方要拿当前值
-     * 应当读**状态里**的 `downloading.progress`（`getState()` / `useUpdateState()` 都能拿到，
-     * 它是被原地刷新过的最新值），本通道只负责**推进**。
+     * ⚠️ **Progress is an instantaneous reading, not the truth** — `storeForReplay:false` (`update-handlers.ts`), so a newly opened window
+     * cannot replay "the 50% from a moment ago"; this is **intentional** (replaying a stale percentage = fake progress). To get the current value
+     * consumers should read the `downloading.progress` **in the state** (available via both `getState()` / `useUpdateState()`,
+     * which is refreshed in place to the latest); this channel only exists to **advance** the bar.
      */
     onProgress(cb: (progress: DownloadProgress) => void): () => void;
   };
   /**
-   * app 壳 = 契约的 `getVersion` **＋ 壳内私有扩展** `getProductInfo` / `getAiManual`。
+   * app shell = the contract's `getVersion` **+ in-shell private extensions** `getProductInfo` / `getAiManual`.
    *
-   * 🔴 与上面 `update` 段**同一条规矩的另一个实例**（`preload-shell` 的 `buildShellApp()` 头注
-   * 已写「三格必须同形」）：契约的 app 面只有 `getVersion`（E6#57.2b），而产品身份全量
-   * （关于页 8 字段 = `#57.14` 的数据源）＋AI 操作手册（M3 `AI#16`）属**壳内视图的取数**，
-   * 不给池插件开（池 preload 只注入契约面 ⇒ 插件侧根本没有这两个入口）。
+   * 🔴 Another instance of the same rule as the `update` section above (`preload-shell`'s `buildShellApp()` header comment
+   * already says "the three slots must stay in the same shape"): the contract's app surface has only `getVersion` (E6#57.2b), while the full product identity
+   * (the About page's 8 fields = the `#57.14` data source) + the AI operations manual (M3 `AI#16`) are **fetching for in-shell views**,
+   * not opened to pool plugins (the pool preload injects only the contract surface ⇒ the plugin side has neither entry at all).
    *
-   * ⚠️ **本段是 `#57.13` 补的，不是新暴露**——`getProductInfo` 运行时一直在
-   * （`buildShellApp()` 工厂构造），只是**类型上缺这一行**：不补，壳侧消费它就会
-   * 「运行时能调到、tsc 说没有」。把这个差额补进清单 = 纳入 tsc 门禁（漏暴露 = 编译红）。
-   * 发行说明的「所有版本」链接正是第一个真实消费者（`useReleaseNotes.listPageUrl()`
-   * 从 `product.updateUrl` 推页面端点，见 `types/ipc/product.ts` 该字段的注释）。
+   * ⚠️ **This section was added by `#57.13`, not a new exposure** — `getProductInfo` has existed at runtime all along
+   * (the `buildShellApp()` factory construction); only the **type lacked this line**: without it, shell-side consumers would hit
+   * "callable at runtime, tsc says it does not exist". Filling this gap into the checklist = bringing it under the tsc gate (missing exposure = compile red).
+   * The release notes' "all versions" link was the first real consumer (`useReleaseNotes.listPageUrl()`
+   * derives the page endpoint from `product.updateUrl`; see the comment on that field in `types/ipc/product.ts`).
    */
   app: LinkDeskAPI["app"] & {
-    /** 产品身份全量（`electron/product.ts` 的 `productInfo()`）——**壳内私有**，池侧不暴露 */
+    /** Full product identity (`electron/product.ts`'s `productInfo()`) — **in-shell private**, not exposed to the pool */
     getProductInfo(): Promise<ProductInfo>;
     /**
-     * AI 操作手册全量（M3 `AI#16`）——**壳内私有扩展第三例**（`getProductInfo` 之后的同款：
-     * 壳内视图的数据源，属壳不属插件）。唯一消费者 = `src/hooks/useAiManual.ts`（模块单例）。
+     * Full AI operations manual (M3 `AI#16`) — the **third in-shell private extension** (same as `getProductInfo`:
+     * a data source of an in-shell view; belongs to the shell, not to plugins). The only consumer = `src/hooks/useAiManual.ts` (module singleton).
      *
-     * 🔴 为什么不开给池：手册讲的是**本软件怎么被 AI 操作**（命令面/契约面/CLI+MCP），
-     * 是宿主的知识；而壳内视图与第三方插件共用同一个 `window.linkdesk` ⇒ 开给池 = 开给所有插件
-     * （同 `update.getReleaseNotes` 的边界论证，见该段）。数据走「壳想、池画」。
+     * 🔴 Why it is not opened to the pool: the manual is about **how this software is operated by AI** (command surface / contract surface / CLI+MCP),
+     * which is host knowledge; and in-shell views share the same `window.linkdesk` as third-party plugins ⇒ opening it to the pool = opening it to all plugins
+     * (same boundary argument as `update.getReleaseNotes`; see that section). Data travels via "shell fetches, pool draws".
      *
-     * ⚠️ `chapters: []` 是**合法回包**（这个构建没带手册），不是错误——消费方画空态，别当异常。
+     * ⚠️ `chapters: []` is a **legitimate response** (this build ships without the manual), not an error — consumers render an empty state, do not treat it as exceptional.
      */
     getAiManual(): Promise<AiManualPayload>;
     /**
-     * AI 接入状态（M4 `AI#38.4`）——**壳内私有扩展第四例**（`getAiManual` 同款同形：main 直答、
-     * 池 preload 不注入 ⇒ 插件调不到）。**只出数据不出话术**：状态行的「运行中/已关闭」等显示文字
-     * 由壳命令拼装（t()）。`{action:"regenerateToken"}` = 重新生成凭据（`AI#38.9`，旧凭据立即失效）。
+     * AI integration status (M4 `AI#38.4`) — the **fourth in-shell private extension** (same shape as `getAiManual`: answered directly by main,
+     * the pool preload does not inject it ⇒ plugins cannot call it). **Data only, no wording**: the status row's display text such as "running/shut down"
+     * is assembled by the shell command (t()). `{action:"regenerateToken"}` = regenerate the credential (`AI#38.9`; the old credential is invalidated immediately).
      */
     getAiBridge(action?: AiBridgeInfoRequest): Promise<AiBridgeInfo>;
   };
   /**
-   * shell 壳 = 契约面 **＋ 壳内私有扩展** `onOpenPath`（E6#46b，`buildShellUpdate` 同先例同理由）：
-   * 命令行/文件关联打开文件的消费者只有壳 App 顶层 hook（壳级功能不进插件——B79），
-   * 第三方插件没有「接收命令行文件」的理由 ⇒ 池 preload 不注入（不进契约 `LinkDeskAPI`）。
-   * 传输 = `workspace:openPath` 直发（非 plugin:push 分发）+ `IpcRelay` 缓冲回放（硬约束 20）。
-   * ⚠️ 落点为什么是 shell 面：命名空间矩阵门禁只认契约已定义命名空间（新开顶层命名空间会红），
-   *    而壳侧没有 workspace 面（那是池的）——shell 是壳自有能力面，天然合适。
+   * shell shell = the contract surface **+ the in-shell private extension** `onOpenPath` (E6#46b, same precedent and reason as `buildShellUpdate`):
+   * the only consumer of files opened via the command line / file associations is the shell App's top-level hook (shell-level features stay out of plugins — B79),
+   * and third-party plugins have no reason to "receive command-line files" ⇒ the pool preload does not inject it (not in the contract `LinkDeskAPI`).
+   * Transport = `workspace:openPath` direct send (not the plugin:push distribution) + `IpcRelay` buffered replay (hard constraint 20).
+   * ⚠️ Why the landing spot is the shell surface: the namespace-matrix gate only accepts namespaces already defined in the contract (a new top-level namespace turns red),
+   *    and the shell side has no workspace surface (that one is the pool's) — shell is the shell's own capability surface, a natural fit.
    */
   shell: LinkDeskAPI["shell"] & {
     /**
-     * 订阅 intake 文件批（主进程 launch-args 路由的文件半）。载荷 = 本次到达的路径数组。
-     * 首次订阅先 FIFO 回放订阅前缓冲的批次，此后实时投递；返回退订函数。
+     * Subscribe to intake file batches (the file half routed by the main process's launch-args). Payload = the array of paths arrived this time.
+     * The first subscription FIFO-replays batches buffered before subscribing; thereafter real-time delivery; returns an unsubscribe function.
      */
     onOpenPath(cb: (paths: string[]) => void): () => void;
-    /** E6#47f：上报本窗活跃工程（主进程按窗记录 → windows-state.json → 冷启动恢复最后活跃窗） */
+    /** E6#47f: report this window's active workspace (the main process records per window → windows-state.json → cold start restores the last active window) */
     reportActiveWorkspace(folder: string | null): void;
     /**
-     * E6#45f：OS 集成开关（右键菜单/文件类型关联）——**真相源是注册表**（安装器 `installer.nsh`
-     * 与软件内写的是同一批键）。消费者 = 壳 startup 的「通用」组配置（onApply 写注册表 +
-     * 启动时按注册表同步配置值），所以只走壳侧、池不暴露（设置 UI 通过 configuration 消费）。
+     * E6#45f: OS integration switches (context menus / file type associations) — **the source of truth is the registry** (the installer's `installer.nsh`
+     * and the in-app writes touch the same set of keys). The consumer = the shell startup's "General" group config (onApply writes the registry +
+     * at startup config values are synced from the registry), so it travels shell-side only and is not exposed to the pool (the settings UI consumes it via configuration).
      */
     getIntegrationState(): Promise<{ fileMenu: boolean; dirMenu: boolean; fileAssoc: boolean }>;
     setIntegrationEnabled(
@@ -192,19 +192,19 @@ export type ShellExposed = Pick<LinkDeskAPI,
 };
 
 /**
- * 壳侧私有面的**唯一运行时转型点**——本文件是类型清单，运行时的取用口只此一个。
+ * The **sole runtime casting point** of shell-side private surfaces — this file is the type checklist; the only runtime access port lives here.
  *
- * 🔴 为什么需要它：`window.linkdesk` 的静态类型是**插件契约** `LinkDeskAPI`
- * （`src/types/global.d.ts`），而壳渲染进程里跑的对象其实是 `preload-shell` 的**超额暴露体**
- * （= 上面的 `ShellExposed`，由 `satisfies` 用 tsc 兜住形状）。契约面是壳面的**真子集**，
- * 差额（`app.getProductInfo` / `update` 的写命令与订阅）在契约类型上**根本不存在** ⇒
- * 壳侧消费方直接 `window.linkdesk.app.getProductInfo()` 会「运行时调得到、tsc 说没有」。
- * 本函数把那层差额**一次收窄**，消费方零 `any`、零第二处转型。
+ * 🔴 Why it is needed: `window.linkdesk`'s static type is the **plugin contract** `LinkDeskAPI`
+ * (`src/types/global.d.ts`), while the object actually running in the shell renderer is `preload-shell`'s **over-exposed body**
+ * (= the `ShellExposed` above, its shape pinned down by `satisfies` via tsc). The contract surface is a **proper subset** of the shell surface;
+ * the difference (`app.getProductInfo` / the update write commands and subscriptions) **does not exist at all** on the contract type ⇒
+ * a shell-side consumer calling `window.linkdesk.app.getProductInfo()` directly would hit "callable at runtime, tsc says it does not exist".
+ * This function narrows that difference **once**; consumers get zero `any` and zero second cast sites.
  *
- * ⚠️ **不要在各消费方各写一处 `as`**——那正是本函数存在的原因（转型点一多，
- * 「运行时面」与「声明面」之间的差额就没人能一眼看全了）。
+ * ⚠️ **Do not write an `as` at each consumer** — that is exactly why this function exists (with many cast sites,
+ * the difference between the "runtime surface" and the "declared surface" becomes impossible to see at a glance).
  *
- * 非壳环境（vitest 无 preload / 纯前端预览）返回 `undefined`，消费方各自决定怎么退化。
+ * In non-shell environments (vitest without preload / pure frontend preview) it returns `undefined`; each consumer decides how to degrade.
  */
 export function getShellExposed(): ShellExposed | undefined {
   return window.linkdesk as unknown as ShellExposed | undefined;

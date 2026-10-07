@@ -1,20 +1,20 @@
 /**
- * KeybindingRegistry 类型层——自 KeybindingRegistry.ts 拆出（E5.8#0d.10-8a）。
- * 纯类型零逻辑。依赖方向：无（被 normalization / registry / chord / persistence / dispatch 消费）。
+ * KeybindingRegistry type layer—split out of KeybindingRegistry.ts (E5.8#0d.10-8a).
+ * Pure types, zero logic. Dependency direction: none (consumed by normalization / registry / chord / persistence / dispatch).
  */
 
 export interface Keybinding {
-  /** 命令 ID */
+  /** Command ID */
   command: string;
-  /** 快捷键字符串——如 "ctrl+k" / "ctrl+shift+b" */
+  /** Keybinding string—e.g. "ctrl+k" / "ctrl+shift+b" */
   key: string;
-  /** context key when 条件 */
+  /** context key `when` condition */
   when?: string;
-  /** 来源：user / plugin / builtin——同 key 时 user 优先 */
+  /** Source: user / plugin / builtin—on the same key, user wins */
   source: "user" | "plugin" | "builtin";
-  /** 插件 ID——卸载时精确匹配（B3 fix：原实现 source === "plugin" 会误删所有插件快捷键） */
+  /** Plugin ID—exact-matched on uninstall (B3 fix: the original `source === "plugin"` check wrongly removed every plugin keybinding) */
   pluginId?: string;
-  /** E3f #59-F：执行时透传给 executeCommand 的额外参数 */
+  /** E3f #59-F: extra args passed through to executeCommand at dispatch time */
   args?: unknown[];
 }
 

@@ -22,11 +22,11 @@ import { getShellExposed } from "../../api/linkdesk-api/surfaces"; // E6#47f：�
 /* ── 类型 ── */
 
 export interface WorkspaceFolder {
-  /** 文件夹完整路径（file:// URI） */
+  /** Full folder path (file:// URI) */
   uri: string;
-  /** 文件夹名——路径最后一段 */
+  /** Folder name—the last path segment */
   name: string;
-  /** 索引——第一个打开的文件夹 index=0 */
+  /** Index—the first opened folder is index=0 */
   index: number;
 }
 

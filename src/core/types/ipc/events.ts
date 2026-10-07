@@ -1,87 +1,87 @@
 /**
- * 壳→池事件中继载荷契约——E5.7#97。
+ * Shell→pool event relay payload contract—E5.7#97.
  *
- * 以下载荷全部走同一中继管道（壳 emit → 主进程 IpcBridge.broadcast → plugin:push 分发
- * → 池 events.on），此前每端各自写裸字面量 + `as any` 拆包。union literal 一处定义，
- * 壳 emit 侧 / 池 preload 订阅侧 import type——字段名改动 tsc 双端报错。
+ * All payloads below travel the same relay pipeline (shell emit → main-process IpcBridge.broadcast → plugin:push dispatch
+ * → pool events.on); previously each end wrote bare literals + `as any` unwrapping on its own. The union literal is defined in one place,
+ * and the shell emit side / pool preload subscription side import type—renaming a field makes tsc fail on both ends.
  */
 
 import type { ThemeDomain } from "../theme";
 
-/** 配置变更——config:changed / plugin:push(config.changed) 载荷 */
+/** Config change—config:changed / plugin:push(config.changed) payload */
 export interface ConfigurationChangedPayload {
   key: string;
   value: unknown;
 }
 
-/** @font-face 规格（E5.8#50.17 资产字体）——壳注册后广播给池复刻（池是独立文档，@font-face 不跨文档继承） */
+/** @font-face spec (E5.8#50.17 asset fonts)—the shell registers it and broadcasts to pools for replication (a pool is a separate document; @font-face does not inherit across documents) */
 export interface FontFaceSpec {
-  /** 注册的族名（引擎派生 `__ld_{pluginId}_{stem}`）——font-family 写这个，两步机制第一链 */
+  /** Registered family name (engine-derived `__ld_{pluginId}_{stem}`)—font-family references this; the first link of the two-step mechanism */
   family: string;
-  /** 字体资产 URL（linkdesk://{pluginId}/{path} 或作者写的绝对 URL） */
+  /** Font asset URL (linkdesk://{pluginId}/{path} or an absolute URL written by the author) */
   url: string;
-  /** src format 提示（woff2/woff/ttf/otf 按扩展名推断） */
+  /** src format hint (woff2/woff/ttf/otf inferred from the extension) */
   format?: string;
 }
 
-/** 主题切换——theme:changed 载荷（themeType + CSS 变量表 + 资产字族复刻表）。
- *  E5.8#50.18：追加 recipeId/colorwayId/domains——applyRecipe 提交才带；
- *  flat applyTheme（旧格式桥）缺省——既有消费者（pool events.ts 读 themeType/variables/fontFaces）零改动。 */
+/** Theme change—the theme:changed payload (themeType + CSS variables table + asset font-family replication table).
+ *  E5.8#50.18: recipeId/colorwayId/domains appended—only present when applyRecipe commits;
+ *  flat applyTheme (legacy-format bridge) omits them—existing consumers (pool events.ts reads themeType/variables/fontFaces) need zero changes. */
 export interface ThemeChangedPayload {
   themeType: string;
   variables: Record<string, string>;
-  /** 当前配方涉及的全部 @font-face——池侧复刻注入；配方无资产字体 → 缺省（池清空上次注入） */
+  /** All @font-face involved in the current recipe—replicated and injected pool-side; a recipe without asset fonts → omitted (the pool clears the previous injection) */
   fontFaces?: FontFaceSpec[];
-  /** 当前活动配方 id——applyRecipe 提交带；flat applyTheme 态缺省 */
+  /** Currently active recipe id—present when applyRecipe commits; omitted in flat applyTheme state */
   recipeId?: string;
-  /** 当前活动配色变体 id——applyRecipe 提交带；flat applyTheme 态缺省 */
+  /** Currently active colorway id—present when applyRecipe commits; omitted in flat applyTheme state */
   colorwayId?: string;
-  /** 当前生效域列表——细粒度消费（混搭预览按域刷新，06 §6.2）；flat applyTheme 态 = 全六域 */
+  /** List of currently effective domains—fine-grained consumption (mix-and-match preview refreshes per domain, 06 §6.2); in flat applyTheme state = all six domains */
   domains?: ThemeDomain[];
 }
 
-/** 强调色变更——accent:changed 载荷（仅 CSS 变量表） */
+/** Accent color change—the accent:changed payload (CSS variables table only) */
 export interface AccentChangedPayload {
   variables: Record<string, string>;
 }
 
-/** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
+/** Plugin state change—the plugin-state:changed payload (cross-WebView state sync primitive) */
 export interface PluginStateChangedPayload {
   pluginId: string;
   key: string;
   value: unknown;
 }
 
-/** 标签页激活——tab:activated 载荷 */
+/** Tab activated—the tab:activated payload */
 export interface TabActivatedPayload {
   tabId: string;
   pluginId: string;
   filePath?: string;
 }
 
-/** 工作区激活变更——workspace:activeChanged 载荷 */
+/** Active workspace change—the workspace:activeChanged payload */
 export interface WorkspaceActiveChangedPayload {
   uri: string;
 }
 
-/** 设置页导航——settings:requestGroup 载荷 */
+/** Settings navigation—the settings:requestGroup payload */
 export interface SettingsRequestGroupPayload {
   pluginId: string;
 }
 
-/** 设置页滚动定位——settings:scrollTo 载荷 */
+/** Settings scroll positioning—the settings:scrollTo payload */
 export interface SettingsScrollToPayload {
   key: string;
 }
 
-/** 设置页切快捷键 tab——settings:requestOpenKeybindings 载荷（E5.8#41.14 契约通道替代错配 window 事件死路由） */
+/** Settings switch to the keybindings tab—the settings:requestOpenKeybindings payload (E5.8#41.14 contract channel replacing the mismatched dead route via window events) */
 export interface SettingsOpenKeybindingsPayload {
-  /** 搜索框预填命令名（"打开快捷键设置"命令 opts.query） */
+  /** Pre-fills the search box with a command name (the "Open Keyboard Shortcuts" command's opts.query) */
   query?: string;
 }
 
-/** plugin:push 中继信封——主进程 broadcast 包装（channel + 载荷）。
- *  原为 electron/event-system.ts 本地 PluginPushData——E5.7#97 归口此处。 */
+/** plugin:push relay envelope—the main process's broadcast wrapper (channel + payload).
+ *  Originally the local PluginPushData in electron/event-system.ts—consolidated here in E5.7#97. */
 export interface PluginPushEnvelope {
   channel: string;
   payload: unknown;

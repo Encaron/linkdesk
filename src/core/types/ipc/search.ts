@@ -1,11 +1,11 @@
 /**
- * 文件搜索 wire 契约——E5.7#97 同款：跨堆协议值归口。
- * 曾三份声明（FileSearcher.SearchOptions / linkdesk-api/workspace.search / preload-pool buildSearch）——
- * signal 是渲染侧专属（IPC 不传，调用方拿到结果后检查 AbortSignal.aborted 自行丢弃），wire 版裁剪。
- * E5.8#1c 归口本文件——linkdesk-api/workspace + preload-pool 双端 import type。
+ * File search wire contract—same as E5.7#97: cross-stack protocol values consolidated.
+ * Once declared three times (FileSearcher.SearchOptions / linkdesk-api/workspace.search / preload-pool buildSearch)—
+ * signal is renderer-only (not passed over IPC; the caller checks AbortSignal.aborted after getting results and discards them itself), trimmed in the wire version.
+ * E5.8#1c consolidated into this file—linkdesk-api/workspace and preload-pool both import type.
  */
 
-/** IPC search:searchFiles 载荷——FileSearcher.SearchOptions 的 wire 子集（无 signal） */
+/** IPC search:searchFiles payload—the wire subset of FileSearcher.SearchOptions (no signal) */
 export interface SearchWireOptions {
   roots: string[];
   query: string;
@@ -17,7 +17,7 @@ export interface SearchWireOptions {
   maxResults?: number;
 }
 
-/** 单个匹配——1-based lineNumber；matchStart/matchEnd 为该行内 0-based 列区间（不含 end） */
+/** A single match—lineNumber is 1-based; matchStart/matchEnd are 0-based column ranges within the line (end exclusive) */
 interface SearchWireMatch {
   filePath: string;
   lineNumber: number;
@@ -26,5 +26,5 @@ interface SearchWireMatch {
   matchEnd: number;
 }
 
-/** IPC search:searchFiles 返回——FileSearchResult 的 wire 形状 */
+/** IPC search:searchFiles return—the wire shape of FileSearchResult */
 export type SearchWireResult = Array<{ filePath: string; matches: SearchWireMatch[] }>;

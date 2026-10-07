@@ -1,59 +1,59 @@
 /**
- * linkdesk-api 外观域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9b）。
- * theme + language + appearance 三命名空间面。
- * 依赖方向：appearance → ./types（LinkDeskTheme/LinkDeskLanguage）；被聚合器交叉组装。
+ * linkdesk-api appearance domain — split out of linkdesk-api.ts (E5.8#0d.10-9b).
+ * The theme + language + appearance three namespace surfaces.
+ * Dependency direction: appearance → ./types (LinkDeskTheme/LinkDeskLanguage); cross-composed by the aggregator.
  */
 
 import type { LinkDeskTheme, LinkDeskLanguage, RecipeMeta } from "./types";
 
-/** 主题 + 语言 + 外观资产命名空间面——对标 VS Code 外观面 */
+/** Theme + language + appearance asset namespace surfaces — modeled after the VS Code appearance surface */
 export interface AppearanceAPI {
   theme: {
-    /** 获取当前主题 ID */
+    /** Get the current theme ID */
     getCurrent(): Promise<string>;
-    /** 获取所有可用主题列表 */
+    /** Get all available themes */
     getAvailable(): Promise<LinkDeskTheme[]>;
-    /** 应用主题 */
+    /** Apply a theme */
     apply(themeId: string): Promise<void>;
-    // ── E5.8#50.18：配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
-    /** 全部可用配方（含各配色变体 + 预览色）——ThemePicker 卡片 / 配色与混搭动态 SelectBox 数据源 */
+    // ── E5.8#50.18: recipe/colorway 06 §2 six methods — listing goes through the API (data), selection goes through configuration (persisted app.*) ──
+    /** All available recipes (including colorway variants + preview colors) — ThemePicker cards / data source for the colorway and mix-and-match dynamic SelectBox */
     listRecipes(): Promise<RecipeMeta[]>;
-    /** 当前活动配方/配色——合并配置计算（getActiveRecipe + app.theme/app.themeColor 回退） */
+    /** Current active recipe/colorway — computed from merged configuration (getActiveRecipe + app.theme/app.themeColor fallback) */
     getActive(): Promise<{ recipeId: string; colorwayId: string } | null>;
-    /** 当前生效 token 集（合并后）——appearanceMode→custom 播种、混搭预览 */
+    /** Currently effective token set (after merging) — seeds appearanceMode→custom, mix-and-match preview */
     getEffectiveTokens(): Promise<Record<string, string>>;
-    /** 应用配方——落 app.theme（配色随配方自动跟随） */
+    /** Apply a recipe — persisted to app.theme (the colorway follows the recipe automatically) */
     setRecipe(recipeId: string): Promise<void>;
-    /** 应用配色变体——落 app.themeColor */
+    /** Apply a colorway variant — persisted to app.themeColor */
     setColorway(colorwayId: string): Promise<void>;
-    /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，E5.8#90 合并） */
+    /** Reset appearance — aligned with the shell command: app.appearanceMode→followTheme (onApply cascades to clear 9 overrides + 6 domain origins + accent color back to the theme baseline, E5.8#90 merged) */
     resetAppearance(): Promise<void>;
-    /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，E5.8#90 app.mixMode 已删、#132 surface 域删） */
+    /** Reset mix-and-match — aligned with the shell command: batch resets the 3 origin keys back to follow theme (custom mode preserved; app.mixMode removed in E5.8#90, surface domain removed in #132) */
     resetMix(): Promise<void>;
-    /** E5.8#88：外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
+    /** E5.8#88: appearance override keys → the full set of baseline seed values for theme/mix-and-match (baseline for the settings page "Modified" badge; no active recipe → null) */
     getBaselineSeeds(): Promise<Record<string, unknown> | null>;
   };
 
   language: {
-    /** 获取当前语言 ID */
+    /** Get the current language ID */
     getCurrent(): Promise<string>;
-    /** 获取所有可用语言列表 */
+    /** Get all available languages */
     getAvailable(): Promise<LinkDeskLanguage[]>;
-    /** 切换语言 */
+    /** Switch the language */
     set(langId: string): Promise<void>;
-    /** 获取初始语言数据（WebView 加载时壳已推送） */
+    /** Get the initial language data (pushed by the shell when the WebView loads) */
     getInitial(): { lang: string; resources: Record<string, unknown> } | null;
-    /** 订阅语言变更——返回 unsubscribe */
+    /** Subscribe to language changes — returns unsubscribe */
     onChange(cb: (data: { lang: string; resources: Record<string, unknown> }) => void): () => void;
   };
 
-  /** E5.8#50.11：外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+  /** E5.8#50.11: appearance assets — locally picked images are copied into managed storage (controlled source — user-chosen paths cannot be read directly via file://) */
   appearance: {
-    /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…，E5.8#64），
-     *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
+    /** Import an image into userData/appearance/ (deduplicated by name) — returns a controlled-protocol URL (linkdesk-userdata://…, E5.8#64),
+     *  for app.backgroundImage persistence; the sandbox loads it via the privileged protocol (plain absolute paths are intercepted) */
     importImage(sourcePath: string): Promise<string>;
-    /** E5.8#153：打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
-     *  内容（非高亮单文件）；目录缺省也建（打开即见存储位置），openPath 失败抛错 fail-loud。 */
+    /** E5.8#153: open the appearance storage directory (userData/appearance) — the main process resolves the path and uses shell.openPath to open the file explorer
+     *  at the directory contents (not highlighting a single file); a missing directory is created too (opening reveals the storage location); an openPath failure throws fail-loud. */
     revealStorage(): Promise<void>;
   };
 }

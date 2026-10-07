@@ -1,40 +1,46 @@
 /**
- * linkdesk-api 底部面板域——E5.8#34.5 自建（通用 API 壳先行建设不等消费方——新铁律）。
- * panel 命名空间面 verbatim。零外部类型依赖；被聚合器交叉组装。
+ * linkdesk-api bottom panel domain — created in E5.8#34.5 (build the generic API shell ahead of consumers — the new iron rule).
+ * The panel namespace surface verbatim. Zero external type dependencies; cross-composed by the aggregator.
  *
- * 语义（I7-8 reveal）：插件聚焦其底部面板视图——面板隐藏 → 展开并切到该视图（Ctrl+J 同机制）；
- * 已显示 → 切换聚焦到该视图。声明寻址 = contributes.views location:"panel"
- * （#63.7 同源，零新注册面）。无贡献插件时 no-op 不崩。
+ * Semantics (I7-8 reveal): a plugin focuses its bottom panel view — if the panel is hidden, it expands and switches to that view
+ * (same mechanism as Ctrl+J); if shown, focus switches to that view. Declarative addressing =
+ * contributes.views location:"panel"
+ * (#63.7 same origin, zero new registration surface). No-op without crashing when no contributing plugin exists.
  *
- * 语义（I8-2 revealFloating）：壳内悬浮面板（类型 B）——按声明弹出某视图为悬浮面板（E5.8#39.5）。
- * 声明寻址 = ViewContainerService 全局视图索引（contributes.views 已注册任意视图，不限 panel 容器）。
- * 身份开关键：无面板 → 开 / 同视图 → 关（toggle）/ 他面板 → 替换。未声明视图时 no-op 不崩。
+ * Semantics (I8-2 revealFloating): in-shell floating panel (type B) — pops a declared view out as a floating panel (E5.8#39.5).
+ * Declarative addressing = the ViewContainerService global view index (any view registered via contributes.views,
+ * not limited to the panel container). Identity toggle: no panel → open / same view → close (toggle) / another panel → replace.
+ * No-op without crashing when the view is undeclared.
  *
- * 语义（M2 `AI#20` setFloatingBounds）：悬浮面板**几何**（位置/高度）可精确设定——补上「只能靠拖」
- * 这一「唯一鼠标路径」（A 类里唯一够不着且无替代的自家功能）。部分字段精确设定，null = 回默认；
- * 与拖拽/调高共用同一套隐藏边界（最小高 300 / 最高 = 窗口高 - 80 / 6px 壳内钳制）——API 绕不过限位。
+ * Semantics (M2 `AI#20` setFloatingBounds): floating panel **geometry** (position/height) can be set precisely —
+ * closing the "drag only" gap, the "only mouse path" (the only self-owned feature in class A that is out of reach with no
+ * alternative). Fields are set precisely; null = back to defaults; shares the same hidden bounds as dragging/resizing
+ * (min height 300 / max = window height - 80 / 6px in-shell clamping) — the API cannot bypass the limits.
  */
 
 import type { FloatingPanelBounds } from "../../types/pool/poolFloatingPanel";
 
-/** 底部面板命名空间面——对标 VS Code vscode.window.createTreeView 后 focus / 视图提升语义 */
+/** Bottom panel namespace surface — modeled after VS Code vscode.window.createTreeView focus / view-promotion semantics */
 export interface PanelAPI {
   panel: {
-    /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
+    /** Focus a bottom panel view — if the panel is hidden, it expands and switches to that view; if shown, focus switches. No-op when viewId is not in the panel container */
     reveal(viewId: string): Promise<void>;
-    /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op。
-     *  E5.8#41.18：可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
-     *  pluginId 精确命中目标套（壳侧路径 Ctrl+,/右键已带；裸 viewId 多命中 fail-loud no-op） */
+    /** In-shell floating panel (type B) — pops a declared view out (I8-2 identity toggle). No-op when viewId is an undeclared view.
+     *  E5.8#41.18: optional pluginId compound addressing — when two plugins share the same viewId (dual settings suites coexisting), the plugin side
+     *  carries pluginId to hit the target suite precisely (the shell-side Ctrl+, / context menu path already does; a bare viewId with multiple
+     *  hits fails loud as a no-op) */
     revealFloating(viewId: string, pluginId?: string): Promise<void>;
     /**
-     * M2 `AI#20`：设定当前悬浮面板的几何（**非鼠标路径**——不与拖拽抢，两条路并存）。
+     * M2 `AI#20`: set the geometry of the current floating panel (**non-mouse path** — does not fight dragging; the two paths coexist).
      *
-     * `bounds` 只带想改的字段（如只 `{ top, left }` 只挪位置，`height` 不动）；`null` = 回默认居中大卡
-     * （I8-5/I8-7 拖拽前那一态）。面板**未开**时 no-op（本 API 只改几何，⛔ 不开面板——开面板归 `revealFloating`）。
+     * `bounds` only carries the fields to change (e.g. only `{ top, left }` moves the position, leaving `height` untouched); `null` = back to
+     * the default centered large card (the state before I8-5/I8-7 dragging). No-op when the panel is **not open** (this API only changes
+     * geometry; ⛔ it does not open the panel — opening belongs to `revealFloating`).
      *
-     * ⚠️ 越界值按**拖拽同一套边界**钳制（不是拒绝）：`height < 300` → 300；`height > 窗口高 - 80` → 钳到上限；
-     * `top/left` 被钳进 6px 壳内边界；`width` 只设上限（窗口宽 - 12）。想读回**实际生效**的几何，用
-     * `floatingPanelHost.getBounds()`（池内同步直答）或壳命令 `workbench.action.getFloatingPanelBounds`。
+     * ⚠️ Out-of-range values are clamped by **the same bounds as dragging** (not rejected): `height < 300` → 300;
+     * `height > window height - 80` → clamped to the cap; `top/left` clamped into the 6px in-shell margin; `width` is capped only
+     * (window width - 12). To read back the **actually effective** geometry, use `floatingPanelHost.getBounds()` (synchronous in-pool
+     * answer) or the shell command `workbench.action.getFloatingPanelBounds`.
      */
     setFloatingBounds(bounds: Partial<FloatingPanelBounds> | null): Promise<void>;
   };

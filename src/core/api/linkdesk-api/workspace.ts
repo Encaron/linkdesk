@@ -1,7 +1,7 @@
 /**
- * linkdesk-api 工作区/文件域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9c）。
- * workspace/filesystem/path/env/search/encoding 六命名空间面 verbatim。
- * 依赖方向：workspace → ./types（EnvInfo）+ types/fileEntry + FileService + WorkspaceService；被聚合器交叉组装。
+ * linkdesk-api workspace/files domain — split out of linkdesk-api.ts (E5.8#0d.10-9c).
+ * The workspace/filesystem/path/env/search/encoding six namespace surfaces verbatim.
+ * Dependency direction: workspace → ./types (EnvInfo) + types/fileEntry + FileService + WorkspaceService; cross-composed by the aggregator.
  */
 
 import type { EnvInfo } from "./types";
@@ -10,9 +10,9 @@ import type { FileChangeEvent } from "../../services/files/FileService";
 import type { WorkspaceFolder } from "../../services/layout/WorkspaceService";
 import type { SearchWireOptions, SearchWireResult } from "../../types/ipc/search";
 
-/** 工作区/文件系统/路径/环境/搜索/编码命名空间面——对标 VS Code vscode.workspace + env + ExtensionContext */
+/** Workspace / filesystem / path / environment / search / encoding namespace surfaces — modeled after VS Code vscode.workspace + env + ExtensionContext */
 export interface WorkspaceAPI {
-  /** 工作区——池 preload 注入（壳侧经 WorkspaceService 直用）。池权威命名空间——插件必用面（file-tree），必选 */
+  /** Workspace — injected by the pool preload (the shell side uses WorkspaceService directly). Pool-authoritative namespace — a must-use plugin surface (file-tree), required */
   workspace: {
     getFolders(): Promise<WorkspaceFolder[]>;
     getActive(): Promise<string | undefined>;
@@ -24,26 +24,26 @@ export interface WorkspaceAPI {
     onDidChangeActiveWorkspace(cb: (uri: string | null) => void): () => void;
   };
 
-  /** 文件系统——插件读写（路径校验由主进程执行） */
+  /** Filesystem — plugin read/write (path validation is performed by the main process) */
   filesystem: {
     readTextFile(p: string): Promise<string>;
     writeTextFile(p: string, d: string): Promise<void>;
     exists(p: string): Promise<boolean>;
     createDir(p: string): Promise<void>;
     copy(src: string, dest: string): Promise<void>;
-    /** E5.8#25.2：重命名/移动文件或目录（主进程 fs.rename 原子；对标 POSIX rename / VS Code fs.rename） */
+    /** E5.8#25.2: rename/move a file or directory (atomic fs.rename in the main process; modeled after POSIX rename / VS Code fs.rename) */
     rename(src: string, dest: string): Promise<void>;
     remove(p: string): Promise<void>;
     listDir(p: string): Promise<FileEntry[]>;
     readBinaryFile(p: string): Promise<Uint8Array>;
     writeBinaryFile(p: string, d: Uint8Array): Promise<void>;
-    /** 监听目录变更——返回 unsubscribe（内部走 filesystem:changed:<watcherId> 通道） */
+    /** Watch a directory for changes — returns unsubscribe (internally uses the filesystem:changed:<watcherId> channel) */
     watch(dirPath: string, onEvent: (e: FileChangeEvent) => void): Promise<() => void>;
-    /** 列出条目名——壳 preload 独有（池侧请用 listDir） */
+    /** List entry names — shell preload only (the pool side should use listDir) */
     readdir?(p: string): Promise<string[]>;
   };
 
-  /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（E5.8#0d.5：池侧补上——settings 插件池内解析 userData 路径） */
+  /** Path utilities — injected on both shell/pool ends (in-pool plugins such as editor/file-tree consume normalize/join etc.); appDataDir is identical on both ends (E5.8#0d.5: added on the pool side — settings plugins resolve userData paths in the pool) */
   path: {
     appDataDir?(): Promise<string>;
     normalize(p: string): string;
@@ -53,23 +53,23 @@ export interface WorkspaceAPI {
     extname(p: string): string;
   };
 
-  /** 环境信息——对标 VS Code ExtensionContext */
+  /** Environment info — modeled after VS Code ExtensionContext */
   env: {
     get(pluginId?: string): Promise<EnvInfo>;
   };
 
-  /** E5.6#11.5a：文件搜索——全文搜索/替换（IPC 到壳/主进程执行） */
+  /** E5.6#11.5a: file search — full-text search/replace (executed via IPC in the shell/main process) */
   search: {
-    // E5.8#1c：wire 契约归口 src/core/types/ipc/search.ts——与 preload-pool buildSearch 双端同源
+    // E5.8#1c: the wire contract's canonical home is src/core/types/ipc/search.ts — same origin on both ends with preload-pool buildSearch
     searchFiles(opts: SearchWireOptions): Promise<SearchWireResult>;
   };
 
-  /** E5.6#11.5a：编码检测/转换（主进程 EncodingService） */
+  /** E5.6#11.5a: encoding detection/conversion (main-process EncodingService) */
   encoding: {
     detect(buffer: Uint8Array): Promise<string>;
     decode(buffer: Uint8Array, encoding: string): Promise<string>;
     encode(text: string, encoding: string): Promise<Uint8Array>;
-    /** T1 二进制守卫：纯启发式判定（判定归壳，一处真相源；旧壳无此方法 ⇒ 插件须特性探测降级） */
+    /** T1 binary guard: purely heuristic determination (the shell owns the decision — one source of truth; older shells lack this method ⇒ plugins must feature-detect and degrade) */
     isBinary(buffer: Uint8Array): Promise<boolean>;
   };
 }

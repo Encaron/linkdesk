@@ -1,29 +1,29 @@
 /**
- * 对话框 wire 契约——E5.7#97。
+ * Dialog wire contract—E5.7#97.
  *
- * 曾双份定义：linkdesk-api.ts（E5.7#73 插件侧）与 dialog-handlers.ts 内联结构体
- * 手工对齐——一边改另一边静默失效。本模块一处定义：
- * 插件 API re-export（保持既有 import 路径）+ preload + 主进程三端 import type。
+ * Once defined twice: linkdesk-api.ts (plugin side, E5.7#73) and an inline struct in dialog-handlers.ts
+ * manually aligned—changing one side silently broke the other. This module defines it in one place:
+ * plugin API re-export (keeping the existing import path) + preload + main process, three ends import type.
  */
 
 export interface DialogOpenOptions {
   title?: string;
-  /** true = 选目录，默认选文件 */
+  /** true = pick a directory; defaults to picking a file */
   directory?: boolean;
   filters?: { name: string; extensions: string[] }[];
 }
 
-/** E6#71c 富内容确认打开参数——池插件 → 壳 DialogService（content 视图声明寻址）。
- *  title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。 */
+/** E6#71c rich-content confirm dialog open params—pool plugin → shell DialogService (addressed by content view declaration).
+ *  title/message are fallbacks—when the content view fails to resolve, the shell falls back to a plain-text confirm (the dialog still shows; it does not silently die). */
 export interface DialogContentOpenOptions {
-  /** 兜底标题——content 解析失败回落用；池侧已 t() 解析 */
+  /** Fallback title—used when content resolution fails; the pool side has already resolved it via t() */
   title?: string;
-  /** 兜底正文——同上 */
+  /** Fallback body—same as above */
   message?: string;
-  /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址） */
+  /** Owning plugin of the content (the shell resolves the composite address via ViewContainerService.getView) */
   pluginId: string;
-  /** 内容视图声明 id（contributes.views 注册） */
+  /** Content view declaration id (registered in contributes.views) */
   viewId: string;
-  /** 不透明载荷——结构克隆过 IPC，壳不解释，内容视图经 dialogHost.current() 读 */
+  /** Opaque payload—structured-cloned over IPC; the shell does not interpret it; the content view reads it via dialogHost.current() */
   payload?: unknown;
 }

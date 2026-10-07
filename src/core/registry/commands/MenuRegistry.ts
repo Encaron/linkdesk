@@ -72,7 +72,7 @@ export interface MenuItem {
   children?: MenuItem[];
 }
 
-/** 插件在 plugin.json 里声明的菜单项——command 或 submenu 二选一 */
+/** A menu item declared by a plugin in plugin.json—either a command or a submenu, never both */
 export type ManifestMenuItem =
   | string
   | {
@@ -80,9 +80,9 @@ export type ManifestMenuItem =
       label?: string;
       when?: string;
       group?: string;
-      /** E5.8#33：排序权重——同 group 内越小越靠前（壳招牌用于菜单栏组序） */
+      /** E5.8#33: sort weight—lower sorts first within a group (the shell menu bar uses it for group order) */
       order?: number;
-      /** E3f #52a：嵌套子菜单——有 children 时 command 可为空 */
+      /** E3f #52a: nested submenu—when children exist, command may be empty */
       children?: ManifestMenuItem[];
     };
 

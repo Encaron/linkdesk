@@ -1,23 +1,25 @@
 /**
- * linkdesk-api update 域——主软件更新**只读**面（E6#57.8，06-主软件更新）。
- * 自 linkdesk-api.ts 拆出（E6#57.8）——第 15 个命名空间域接口。
- * 依赖方向：update → src/core/types/ipc/update（跨堆 wire 载荷类型，决策点 1）；被聚合器交叉组装。
+ * linkdesk-api update domain — the **read-only** surface of main-software updates (E6#57.8, 06-main-software-updates).
+ * Split out of linkdesk-api.ts (E6#57.8) — the 15th namespace domain interface.
+ * Dependency direction: update → src/core/types/ipc/update (cross-stack wire payload types, decision point 1); cross-composed by the aggregator.
  *
- * 暴露边界（07-数据流通格式 §一/§六，2026-09-11 定案）——**只读一法，写命令不在此面**：
- * 检查 / 下载 / 重启安装是**壳私事**，第三方插件不得触发（重启安装会关掉用户正在用的软件，
- * 不是插件能替用户决定的事）；发行说明取数（`getReleaseNotes`）同样不开放。
+ * Exposure boundary (07-data-flow format §1/§6, decided 2026-09-11) — **read-only is the only mode; write commands are not on this surface**:
+ * check / download / restart-and-install are **the shell's private affair**; third-party plugins must not trigger them
+ * (restart-and-install closes software the user is actively using — not a decision a plugin may make on the user's behalf);
+ * release notes fetching (`getReleaseNotes`) is likewise not opened up.
  *
- * 🔴 **为什么契约面只写 `getState` 是设计而非疏漏**：「第三方只读」这条约束的落点是**类型**，
- * 不是文档——池 preload 只注入本面 ⇒ 插件侧**根本没有写命令的入口**（`satisfies PoolExposed`
- * 编译期即门禁）。壳侧那半（写命令）由 preload-shell 用工厂函数**超额暴露**，对标
- * `buildShellApp()` 暴露 `getProductInfo` 的既有先例，不进本契约。
+ * 🔴 **Why the contract surface declares only `getState` — that is design, not an omission**: the landing point of the
+ * "third parties are read-only" constraint is **types**, not documentation — the pool preload injects only this surface ⇒
+ * plugin code has **no entry point to write commands at all** (`satisfies PoolExposed` is the compile-time gate).
+ * The shell-side half (write commands) is **over-exposed** by preload-shell with a factory function, modeled after the
+ * existing precedent of `buildShellApp()` exposing `getProductInfo`, and stays out of this contract.
  */
 import type { UpdateState } from "../../types/ipc/update";
 
 export interface UpdateAPI {
-  /** update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态）。 */
+  /** The update namespace — read-only update state (for "About"-type plugins to read the host version/update state). */
   update: {
-    /** 读当前状态机全量态（07 §4.1：永不抛——服务必然有态）。 */
+    /** Read the full state-machine state (07 §4.1: never throws — the service always has a state). */
     getState(): Promise<UpdateState>;
   };
 }

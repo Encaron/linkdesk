@@ -1,34 +1,34 @@
 /**
- * linkdesk-api 系统插槽域——E5.8#41.14（Phase 8.2 方案 A）：factorySlots 通用枚举面。
- * #41.12 建 settings 命名空间（settings 角色专用面 list/getActive/setActive）——本面槽位无关，
- * 收 role 参数：串口/市场/设置任何 factoryRole ≥2 候选都可枚举/切换。
- * 用途：设置插件「通用区」列出全部 N 套设置 UI（含自身）+ 切换激活套（#41.13 切换按钮 UI）。
- * 落位：池 preload 注入（设置 UI 在池内渲染）——壳侧 IpcBridgeHandler/factory-slots 域实现。
- * 依赖方向：factory-slots → types 基座；被聚合器交叉组装。域接口零互依赖。
+ * linkdesk-api system slot domain — E5.8#41.14 (Phase 8.2 plan A): the factorySlots generic enumeration surface.
+ * #41.12 built the settings namespace (a settings-role-only surface: list/getActive/setActive) — this surface is slot-agnostic
+ * and takes a role parameter: serial/marketplace/settings, any factoryRole with ≥2 candidates can be enumerated/switched.
+ * Purpose: the settings plugin's "generic area" lists all N settings UIs (including itself) + switches the active suite (#41.13 switch button UI).
+ * Placement: injected by the pool preload (the settings UI renders in the pool) — implemented on the shell side by the IpcBridgeHandler/factory-slots domain.
+ * Dependency direction: factory-slots → the types base; cross-composed by the aggregator. Zero mutual dependencies among domain interfaces.
  */
 
-/** 插槽条目——factorySlots.list(role) 返回的一行。
- * 非导出（模块内接口）——契约生成器经 list 传递引用自动收集并 emit export；
- * 壳内无第三方消费方，导出会被 knip 报未用（linkdesk-api.ts 排除域不算消费）。 */
+/** Slot entry — one row returned by factorySlots.list(role).
+ * Not exported (module-local interface) — the contract generator collects it automatically via list's transitive reference and emits the export;
+ * there is no third-party consumer inside the shell, so exporting it would be reported as unused by knip (excluded domains in linkdesk-api.ts do not count as consumers). */
 interface FactorySlotEntry {
-  /** 插件 ID——getActive/setActive 的句柄 */
+  /** Plugin ID — the handle for getActive/setActive */
   pluginId: string;
-  /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
+  /** Plugin display name (raw manifest.name; consumers do their own i18n) */
   title: string;
-  /** E5.8#41.18：该插件 contributes.floatingPanel.viewId（无声明 = undefined）——切换/打开候选悬浮面板用 */
+  /** E5.8#41.18: this plugin's contributes.floatingPanel.viewId (undeclared = undefined) — used for switching/opening the candidate floating panel */
   viewId?: string;
 }
 
-/** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */
+/** factorySlots namespace surface — injected on both ends (the in-pool renderer side implements it via the IPC bridge) */
 export interface FactorySlotsAPI {
   factorySlots: {
-    /** 全部已填充角色的名字（注册序）——设置页「任何 factoryRole ≥2 候选 → 该角色名组出现」先枚举角色再 list(role) 判候选数 */
+    /** Names of all filled roles (registration order) — for the settings page's "any factoryRole with ≥2 candidates → that role name group appears": enumerate roles first, then list(role) to judge the candidate count */
     listRoles(): Promise<string[]>;
-    /** 全部声明指定 factoryRole 的候选插件 [{pluginId, title}]，注册序 */
+    /** All candidate plugins declaring the given factoryRole [{pluginId, title}], in registration order */
     list(role: string): Promise<FactorySlotEntry[]>;
-    /** 指定角色的活动插件 ID——读持久化激活（#41.12 落盘），无记录/已卸载回退默认（内置） */
+    /** The active plugin ID for the given role — reads the persisted activation (#41.12 on-disk record); falls back to the default (built-in) when there is no record or the plugin is uninstalled */
     getActive(role: string): Promise<string | undefined>;
-    /** 切换指定角色活动插件——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
+    /** Switch the active plugin for the given role — validates the candidate, then persists (survives restart). Throws fail-loud for non-candidates */
     setActive(role: string, pluginId: string): Promise<void>;
   };
 }

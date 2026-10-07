@@ -1,112 +1,112 @@
 /**
- * linkdesk-api UI 域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9c）。
- * notifications/menu/contextKey/dialog/quickPick/quickPickHost/dialogHost/floatingPanelHost 八命名空间面 verbatim。
- * 依赖方向：ui → ./types（MenuItemDescriptor/NotificationHandle）+ types/ipc|pool + MenuRegistry；被聚合器交叉组装。
+ * linkdesk-api UI domain — split out of linkdesk-api.ts (E5.8#0d.10-9c).
+ * The eight namespace surfaces notifications/menu/contextKey/dialog/quickPick/quickPickHost/dialogHost/floatingPanelHost verbatim.
+ * Dependency direction: ui → ./types (MenuItemDescriptor/NotificationHandle) + types/ipc|pool + MenuRegistry; cross-assembled by the aggregator.
  */
 
 import type { MenuItemDescriptor, NotificationHandle, PluginToastAction } from "./types";
-import type { DialogOpenOptions, DialogContentOpenOptions } from "../../types/ipc/dialogs"; // E6#71c 富内容确认参数
+import type { DialogOpenOptions, DialogContentOpenOptions } from "../../types/ipc/dialogs"; // E6#71c rich-content confirm parameters
 import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../../types/pool/poolQuickPick";
 import type { PoolDialogData, PoolPendingDialog } from "../../types/pool/poolDialog";
 import type { PoolFloatingPanelData, FloatingPanelBoundsHostRequest, PoolFloatingPanelGeometry } from "../../types/pool/poolFloatingPanel";
-import type { NotifLayout } from "../../types/pool/poolLayout"; // M1 AI#1：读取面返回 = 面板 DTO 本身
+import type { NotifLayout } from "../../types/pool/poolLayout"; // M1 AI#1: the read surface returns the panel DTO itself
 
-/** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
+/** UI overlays/menu/notification namespace surface — Modeled after VS Code vscode.window + ContextKey + the in-pool QuickPick/Dialog/FloatingPanel host bridges */
 export interface UiAPI {
-  /** 通知——插件弹通知（E6#72：唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
+  /** Notifications — plugins raise notifications (E6#72: the only notification surface is the bell-wide notification panel; the bottom-right narrow-card path was removed wholesale), Modeled after VS Code vscode.window.showInformationMessage */
   notifications: {
-    /** 弹出通知，**一律返回句柄**（含 update/finish/cancel）——E6#73f（S6）句柄隔离：
-     *  此前只在 progress:true 时返回句柄 ⇒ persistent 的失败通知（带 [重试]）撤不下来，
-     *  用户手动重试成功后那条「安装失败」仍长驻，面板变成失败墙（18 档 A3/E4）。
-     *  ⇒ 一条通知只能被**创建它的那个句柄**更新/删除，不管它是不是进度条。
-     *  E6#13.5：options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
-     *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。
-     *  E6#71j：options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
-     *  常驻上限**按来源分桶**各 5 条（E6#73f S3），超出顶掉同来源最老的并给汇总提示 */
+    /** Raises a notification, **always returns a handle** (with update/finish/cancel) — E6#73f (S6) handle isolation:
+     *  previously a handle was returned only when progress:true ⇒ a persistent failure notification (with [Retry]) could not be dismissed,
+     *  and after the user's manual retry succeeded, that "install failed" entry kept living on, the panel turning into a wall of failures (archive 18 A3/E4).
+     *  ⇒ A notification can only be updated/removed by **the handle that created it**, whether or not it is a progress bar.
+     *  E6#13.5: options.actions carries primary action buttons — clicking runs the shell's executeCommand(action.command, action.args),
+     *  the command handler registered by the plugin itself. No actions → no buttons (status quo). Error kinds auto-stay 8s.
+     *  E6#71j: options.persistent=true long-lived notification — does not auto-dismiss, waits for the user to click × (for error diagnostics);
+     *  the long-lived cap is **bucketed by source**, 5 each (E6#73f S3); over the cap, evict the oldest of the same source and show a summary notice */
     show(message: string, options?: {
       type?: "info" | "warning" | "error";
-      /** true → 进度通知：update 可带 0-100 百分比驱动真进度条（E6#71i） */
+      /** true → progress notification: update can carry a 0-100 percent to drive a real progress bar (E6#71i) */
       progress?: boolean;
-      /** true → 长驻通知：不自动消失（E6#71j）；错误诊断/需用户决定的场景用 */
+      /** true → long-lived notification: does not auto-dismiss (E6#71j); for error-diagnosis / needs-user-decision scenarios */
       persistent?: boolean;
       actions?: PluginToastAction[];
-      /** E6#73g（S5）生产者身份 id——**机器读的归属键，不含人类文案**（人类可读名由壳解析）。
-       *  面板**按来源分组**、每组各 5 条常驻配额都以此为键；不传 → 全落「其他」组。
-       *  插件传自己的插件 id；壳自身域用 `app.<域>`（如 `app.update`）。
-       *  ⚠️ **做不到自动注入**——池是单进程共享 realm，所有插件共用同一个 `window.linkdesk`，
-       *  preload 无从知道「这次 show() 是哪个插件的树发的」⇒ **只能作者显式报**。
-       *  ⚠️ 老插件不填就仍然全落「其他」组：这是**新契约**，要作者重新发布才生效。 */
+      /** E6#73g (S5) producer identity id — **a machine-read attribution key with no human copy** (the human-readable name is resolved by the shell).
+       *  The panel **groups by source** and each group's 5-entry long-lived quota keys off this; omitted → all fall into the "Other" group.
+       *  Plugins pass their own plugin id; the shell's own domains use `app.<domain>` (e.g. `app.update`).
+       *  ⚠️ **Auto-injection is impossible** — the pool is a single shared-realm process where all plugins share the same `window.linkdesk`,
+       *  and the preload cannot know "which plugin's tree issued this show()" ⇒ **only the author can declare it explicitly**.
+       *  ⚠️ Old plugins that omit it still all fall into the "Other" group: this is a **new contract** and takes effect only after authors re-release. */
       source?: string;
     }): Promise<NotificationHandle>;
 
     /**
-     * M1 `AI#1`：**只读列举**——面板里现在有什么（条数 / 未读 / 每条内容与按钮 / 唤醒与存活判据）。
+     * M1 `AI#1`: **read-only listing** — what the panel currently holds (counts / unread / each entry's content and buttons / wake and liveness criteria).
      *
-     * 🔴 为什么必须是这一个形状：返回的就是**铃铛宽面板的 DTO 本体**（`NotifLayout`，与
-     * `pool.onLayout` 的 `statusBar.notif` 同一个 `buildNotif(t)` 产出）——**不是**另算一份摘要。
-     * 两把尺子必然打架：AI 读到的分组/未读/文案若与屏幕上画的不同，读取面就成了假信息源。
-     * 设计原文（M1 路线 B）也承认布局快照里**已在推**这份数据，只是「没开门」；本方法就是那扇门，
-     * 而门后接的仍是同一份实现（⛔ 不 fork 第二把尺）。
+     * 🔴 Why it must be exactly this shape: what is returned is the **bell-wide panel's DTO itself** (`NotifLayout`, the same `buildNotif(t)` output as
+     * `pool.onLayout`'s `statusBar.notif`) — **not** a separately computed summary. Two rulers would inevitably clash: if the grouping/unread/copy the AI reads
+     * differed from what is drawn on screen, the read surface would become a source of false information.
+     * The design text (M1 route B) also concedes that the layout snapshot **is already pushing** this data and just "hadn't opened the door"; this method is that door,
+     * and behind the door it is still the same implementation (⛔ do not fork a second ruler).
      *
-     * ⚠️ **脱出窗也拿得到**：本方法经 `plugins:call` 问**壳**（壳持全量状态），不读本窗那份布局子集
-     * ——脱出窗的 `statusBar` 是策略表裁掉的，走布局就会答「没有通知」。
+     * ⚠️ **Escaped windows get it too**: this method asks the **shell** via `plugins:call` (the shell holds the full state) and does not read this window's layout subset
+     * — an escaped window's `statusBar` is cut off by the policy table, so going through layout would answer "no notifications".
      *
-     * ⚠️ 文案类字段（`bellTitle`/`panelTitle`/分组 label/`timeLabel`…）**已由壳按当前语言 `t()` 解析**，
-     * 调用方原样显示即可（显示文本铁律）。
+     * ⚠️ Copy-type fields (`bellTitle`/`panelTitle`/group labels/`timeLabel`…) are **already resolved by the shell's `t()` in the current language**;
+     * callers display them verbatim (display-text iron rule).
      */
     list(): Promise<NotifLayout>;
 
     /**
-     * M1 `AI#1`：**变更订阅**——通知面（新增/更新/收掉/认账/面板开合）有变化就回调。
+     * M1 `AI#1`: **change subscription** — calls back whenever the notification surface changes (added/updated/dismissed/acknowledged/panel open-close).
      *
-     * 🔴 **信号无载荷**：回调**不带**快照——带了就等于把「数据」从第二条路推一遍，池侧便会有人直接
-     * 用信号里的数据、而不去问权威（`list()`），于是又长出第二把尺。本订阅只回答
-     * 「**现在变了**」，要答案请 `list()`（与 `watchFile`/`events.on` 那套「状态推流 + 按需拉」
-     * 的分工一致）。
+     * 🔴 **The signal carries no payload**: the callback does **not** include a snapshot — including one would push the "data" through a second path,
+     * and someone on the pool side would then use the signal's data instead of asking the authority (`list()`), growing a second ruler again. This subscription only answers
+     * "**it changed just now**"; for answers call `list()` (consistent with the "status push + pull on demand"
+     * division of `watchFile`/`events.on`).
      *
-     * 传输 = 壳 `events.emit("notif:changed")` → 主进程广播 → 池 `events.on`（**无新增 IPC 通道**，
-     * 命名空间矩阵 §3 通道计数不动）。⚠️ 广播默认存 payload 供新池重放 ⇒ 新起的池可能收到一条
-     * 「陈旧的变更信号」——本订阅是幂等重取语义（收到就 `list()`），无害。
+     * Transport = the shell's `events.emit("notif:changed")` → main-process broadcast → the pool's `events.on` (**no new IPC channel**;
+     * the namespace matrix §3 channel count unchanged). ⚠️ The broadcast stores its payload by default for new pools to replay ⇒ a newly started pool may receive
+     * a "stale change signal" — this subscription has idempotent re-fetch semantics (on receipt, call `list()`), so it is harmless.
      *
-     * @returns 退订函数
+     * @returns unsubscribe function
      */
     subscribe(cb: () => void): () => void;
   };
 
-  /** E5#69：菜单——插件声明式读写 */
+  /** E5#69: Menus — declarative read/write for plugins */
   menu: {
     registerItems(menuId: string, pluginId: string, items: ManifestMenuItem[]): Promise<void>;
     getItems(menuId: string, context?: Record<string, unknown>): Promise<MenuItemDescriptor[]>;
   };
 
-  /** E5#70：ContextKey——插件 SET 状态供壳 when 子句读 */
+  /** E5#70: ContextKey — plugins SET state for the shell's when clauses to read */
   contextKey: {
     set(key: string, value: unknown): Promise<void>;
     _getValue?(key: string): unknown;
   };
 
-  /** E5#67：弹窗——确认/提示/文件选择 */
+  /** E5#67: Dialogs — confirm/alert/file selection */
   dialog: {
     confirm(message: string): Promise<boolean>;
     alert(message: string): Promise<void>;
-    /** 文件/目录选择器——对标 Tauri dialog.open（E5.7#73：openFile 为插件侧规范名，本方法保留给既有消费方） */
+    /** File/directory picker — Modeled after Tauri dialog.open (E5.7#73: openFile is the canonical plugin-side name; this method is kept for existing consumers) */
     open(opts?: DialogOpenOptions): Promise<string | null>;
-    /** 打开文件选择器——返回用户选中路径，取消 → null。安全由主进程控制 */
+    /** Opens the file picker — returns the user-selected path; cancel → null. Security is controlled by the main process */
     openFile(opts?: DialogOpenOptions): Promise<string | null>;
-    /** E6#71c：富内容确认——确认框内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
-     *  弹窗机制同 confirm（居中/遮罩/Esc/焦点锁/点遮罩取消）；内容排版与按钮由插件视图自画
-     *  （对标 VS Code「对话框是壳、内容插件定」）。title/message 兜底——content 视图解析
-     *  失败时壳回落纯文字确认（弹窗仍出，不静默死）。返回 true = 确认，false = 取消/关闭。 */
+    /** E6#71c: rich-content confirm — the dialog's content = a plugin self-drawn view (content view declarative addressing + opaque payload).
+     *  Dialog mechanics match confirm (centered/mask/Esc/focus lock/click-mask-to-cancel); content layout and buttons are drawn by the plugin view
+     *  (Modeled after VS Code's "the dialog is the shell's, the content is the plugin's"). title/message as fallback — if the content view fails to resolve,
+     *  the shell falls back to a plain-text confirm (the dialog still appears, no silent death). Returns true = confirmed, false = cancelled/closed. */
     confirmContent(options: DialogContentOpenOptions): Promise<boolean>;
   };
 
-  /** E5.7#63：插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined */
+  /** E5.7#63: plugin quickPick picker — local bridge inside the pool (zero IPC, rendered by QuickPickHost). A settle of null → undefined */
   quickPick: {
     show(opts: PluginQuickPickOptions): Promise<unknown>;
   };
 
-  /** E5.7#63：QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） */
+  /** E5.7#63: QuickPick host rendering bridge — consumed by the pool's QuickPickHost (the shell preload has no such surface) */
   quickPickHost: {
     registerHost(fn: (req: PluginQuickPickRequest, settle: (key: string | null) => void) => void): () => void;
     onShow(cb: (data: PoolQuickPickData) => void): () => void;
@@ -116,58 +116,58 @@ export interface UiAPI {
     itemAction(key: string, actionId: string): void;
   };
 
-  /** E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost——
-   * dialog 命名空间已是插件侧 confirm/alert/open API */
+  /** E5.7#17: Dialog dumb-render subscription — consumed by the pool's DialogHost (the shell preload has no such surface). Named dialogHost —
+   * the dialog namespace is already the plugin-side confirm/alert/open API */
   dialogHost: {
     onShow(cb: (data: PoolDialogData) => void): () => void;
-    /** E6#71c：当前打开的 Dialog 数据——富内容视图挂载后经 dialogHost.current()?.content?.payload
-     *  取数（content 模式才可读；无打开/已关闭 → null）。壳 preload 无此面（池内本地读）。 */
+    /** E6#71c: data of the currently open dialog — after the rich-content view mounts, read via dialogHost.current()?.content?.payload
+     *  (readable in content mode only; none open / already closed → null). The shell preload has no such surface (a local read inside the pool). */
     current(): PoolDialogData | null;
     /**
-     * M1 `AI#5`：**在途弹窗清单**——「有没有 confirm/alert 正弹着、在等什么」。
+     * M1 `AI#5`: **the in-flight dialog list** — "is a confirm/alert currently up, and what is it waiting for".
      *
-     * 与 `current()` 的分工：`current()` 读的是**本进程收到的哑渲染数据**（`open:false` 即已关；
-     * 内容已按池要画的形态给全）；`pending()` 读的是**壳侧 DialogService 的在途请求**
-     * （`options` 原形 + `kind` + 按钮文案）——两个面问的是同一件事的不同切面，
-     * 故**都留着**：`pending()` 多给出「这是谁问的 / 富内容视图的 pluginId+viewId / 按钮有几条」。
+     * Division of labor with `current()`: `current()` reads **the dumb-render data received by this process** (`open:false` means closed;
+     * content already given in full in the form the pool will draw); `pending()` reads **the shell-side DialogService's in-flight requests**
+     * (the raw `options` + `kind` + button copy) — the two surfaces ask different facets of the same thing,
+     * hence **both are kept**: `pending()` additionally gives "who asked / the rich-content view's pluginId+viewId / how many buttons".
      *
-     * 🔴 **单槽是现状的诚实描述，不是设计目标**：壳→池弹窗链路（`src/App/bridges.ts` 的 `pending`）
-     * 同一时刻只承载一条，第二次 `confirm` 会覆盖前一条的 settle 闭包（那条 Promise 永不结算——
-     * **既有缺陷**）。M1 只做「读得到」，**不改 Promise 语义** ⇒ 本方法如实报「最后打开的那一条」。
-     * 空数组 = 此刻没有弹窗。
+     * 🔴 **The single slot is an honest description of the status quo, not a design goal**: the shell→pool dialog path (`pending` in `src/App/bridges.ts`)
+     * carries only one entry at a time; a second `confirm` overwrites the previous settle closure (that Promise never settles —
+     * a **pre-existing defect**). M1 only makes it "readable", **without changing Promise semantics** ⇒ this method truthfully reports "the last one opened".
+     * An empty array = no dialog up right now.
      *
-     * ⚠️ 富内容确认（E6#71c）模式下**按钮由插件视图自画**，壳不知道有几条 ⇒
-     * `buttons` 为空数组、`content` 给出视图身份——⛔ 不要拿「确定/取消」去猜（编数据）。
+     * ⚠️ In rich-content confirm mode (E6#71c) **the buttons are drawn by the plugin view** and the shell does not know how many there are ⇒
+     * `buttons` is an empty array and `content` gives the view identity — ⛔ do not guess "OK/Cancel" (fabricating data).
      *
-     * ⚠️ `buttons` 的**序 = 声明序**（`resolveDialogButtons` 恒为 `[确认, 取消]`），**不是屏幕上的左右位**
-     * ——2026-09-28 CDP 实证：屏幕上次按钮画左、主按钮画右，本数组恒确认在前。
-     * 想动手就按序号调 `confirm()` / `cancel()`，⛔ 别拿视觉位置对号入座。
+     * ⚠️ `buttons`' **order = declaration order** (`resolveDialogButtons` always yields `[confirm, cancel]`), **not the left/right positions on screen**
+     * — proven by CDP on 2026-09-28: on screen the secondary button is drawn left and the primary right, while this array always has confirm first.
+     * To act, call `confirm()` / `cancel()` by index; ⛔ do not map by visual position.
      */
     pending(): Promise<PoolPendingDialog[]>;
     confirm(): void;
     cancel(): void;
   };
 
-  /** E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。
-   * 命名 floatingPanelHost——面板请求 API（panel.revealFloating）归 PanelAPI，宿主渲染桥归本面 */
+  /** E5.8#37 (Phase 8 type B): floating panel dumb-render subscription — consumed by the pool's FloatingPanelHost (the shell preload has no such surface).
+   * Named floatingPanelHost — the panel request API (panel.revealFloating) belongs to PanelAPI; the host rendering bridge belongs to this surface */
   floatingPanelHost: {
     onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
-    /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
+    /** Action return — open-in (open in the main window) / close; settled on the shell side (business semantics re-resolved on the shell side) */
     action(actionId: string): void;
     /**
-     * M2 `AI#20`：注册几何宿主（池 FloatingPanelHost mount 时调）。主世界函数经 contextBridge
-     * 代理进隔离世界存储，同 `quickPickHost.registerHost` 先例。返回 unsubscribe。
-     * ⚠️ 面板渲染在池 ⇒ **几何真相源在池**：拖拽 / 调高 / `panel.setFloatingBounds` 这条 API 路径
-     * 最终都落在本宿主上（壳不存几何、不做几何计算）。
+     * M2 `AI#20`: register the geometry host (called when the pool's FloatingPanelHost mounts). The main-world function is proxied via contextBridge
+     * into isolated-world storage, per the `quickPickHost.registerHost` precedent. Returns unsubscribe.
+     * ⚠️ The panel renders in the pool ⇒ **the geometry source of truth is in the pool**: dragging / resizing / the `panel.setFloatingBounds` API path
+     * all ultimately land on this host (the shell stores no geometry and does no geometry math).
      */
     registerBoundsHost(fn: (req: FloatingPanelBoundsHostRequest) => boolean | PoolFloatingPanelGeometry | null): () => void;
     /**
-     * M2 `AI#20`：读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
-     * 返回**实际生效**的几何（钳制 / 最大化后的真实结果，非调用方意图值）；**无面板** → `null`。
+     * M2 `AI#20`: read the current floating panel geometry (**synchronous** — answered directly in the pool with zero IPC, per the `dialogHost.current()` precedent).
+     * Returns the **actually effective** geometry (the real result after clamping / maximizing, not the caller's intended value); **no panel** → `null`.
      *
-     * 判据用法：`panel.setFloatingBounds({ top: 100, left: 80 })` 后调本函数对账——`top/left` 应等于
-     * 100/80（越界时等于被钳后的值）。⚠️ 壳侧 / CLI 的读数出口不是本函数（那是池内面），而是池上报的
-     * 壳镜像：命令 `workbench.action.getFloatingPanelBounds`。
+     * Criterion usage: after `panel.setFloatingBounds({ top: 100, left: 80 })`, call this function to reconcile — `top/left` should equal
+     * 100/80 (equal to the clamped values when out of bounds). ⚠️ The shell-side / CLI read outlet is not this function (that is an in-pool surface) but the pool-reported
+     * shell mirror: the command `workbench.action.getFloatingPanelBounds`.
      */
     getBounds(): PoolFloatingPanelGeometry | null;
   };

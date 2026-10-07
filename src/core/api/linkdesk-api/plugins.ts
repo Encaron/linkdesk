@@ -1,7 +1,7 @@
 /**
- * linkdesk-api 插件管理域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9d）。
- * plugins + pluginManager 二命名空间面 verbatim。
- * 依赖方向：plugins → ./types（PluginListEntry/PluginInstallResult/PluginInfoEntry）；被聚合器交叉组装。
+ * linkdesk-api plugin management domain — split out of linkdesk-api.ts (E5.8#0d.10-9d).
+ * The plugins + pluginManager two namespace surfaces verbatim.
+ * Dependency direction: plugins → ./types (PluginListEntry/PluginInstallResult/PluginInfoEntry); cross-composed by the aggregator.
  */
 
 import type {
@@ -19,69 +19,69 @@ import type {
 } from "./types";
 import type { PluginManifest } from "../types";
 
-/** 插件发现/管理命名空间面——桥接 IpcBridgeHandler → loader 函数 */
+/** Plugin discovery/management namespace surfaces — bridges IpcBridgeHandler → loader functions */
 export interface PluginsAPI {
-  /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
+  /** Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/readAllManifests/listDisabledDirs/readManifest) is shell preload only (the loader runs only in the shell) */
   plugins: {
     resolvePath(id: string): Promise<string>;
-    /** E6#7（1.2-4）：resolvePath 的兄弟（discovery 族）——返回 { root, entry, bundle }（bundle 入口恒 index.bundle.js）。
-     *  可选——保 state.ts 守卫与两 preload 面（壳/池）编译不裂；调用方先判存在再调用。 */
+    /** E6#7 (1.2-4): sibling of resolvePath (discovery family) — returns { root, entry, bundle } (the bundle entry is always index.bundle.js).
+     *  Optional — keeps the state.ts guard and both preload surfaces (shell/pool) compiling; callers check for existence before calling. */
     resolveEntry?(id: string): Promise<PluginEntryInfo>;
-    /** E6#117：兼容读数（只读）——「这份插件跟当前版本搭不搭」由壳单点算出（状态算法
-     *  `src/core/compat/compatibility.ts`；用户面五词与读数的对应表住该文件头注）。
-     *  可选——同 resolveEntry 先例（保 mock 与既有实现面编译不裂；调用方先判存在）。 */
+    /** E6#117: compatibility reading (read-only) — "does this plugin match the current version" is computed at a single point by the shell
+     *  (state algorithm `src/core/compat/compatibility.ts`; the mapping table between the five user-facing words and the readings lives in that file's header comment).
+     *  Optional — same precedent as resolveEntry (keeps the mock and the existing implementation surface compiling; callers check for existence first). */
     getCompatibility?(req: PluginCompatibilityRequest): Promise<PluginCompatibilityReading>;
     listDirs?(): Promise<string[]>;
-    /** E6#9a：全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
+    /** E6#9a: full discovery — [{ pluginId, entry, manifest }] (replaces import.meta.glob; packaged plugins live outside the source tree, so reading disk in the main process is the only source of truth) */
     listAll?(): Promise<PluginDiscoveryEntry[]>;
     listDisabledDirs?(): Promise<string[]>;
-    /** 返回 plugin.json 原始 JSON 文本——消费方自行 JSON.parse */
+    /** Returns the raw plugin.json JSON text — consumers JSON.parse it themselves */
     readManifest?(id: string): Promise<string>;
-    /** E6#9c：全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
+    /** E6#9c: all manifests — Record<pluginId, PluginManifest> (the IPC replacement for the pluginManifests eager glob) */
     readAllManifests?(): Promise<Record<string, PluginManifest>>;
-    /** E6#11/#13（1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调）。
-     *  E6#73c：可带 job 身份——主进程段的进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份，N=1 时归活跃会话） */
+    /** E6#11/#13 (1.2-5): the main-process real download stage — fetches the .linkdesk-plugin package → {userData}/tmp/<original package name> (shell preload only; called by the loader's install flow packageOps).
+     *  E6#73c: may carry a job identity — progress events from the main-process stage backfill jobId/pluginId accordingly (absent = events carry no identity; with N=1 attributed to the active session) */
     packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{ zipPath: string; sizeBytes?: number }>;
-    /** E6#11/#13（1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
-     *  E6#73c：job 同 packageDownload——解压段进度事件回填身份 */
+    /** E6#11/#13 (1.2-5): the main-process real extract stage — shared bundle-zip semantics → {userData}/plugins/<id>/ (2026-09-05 flattened single root; shell preload only; rejects if the target already exists).
+     *  E6#73c: job same as packageDownload — extract-stage progress events backfill the identity */
     packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{ pluginId: string; version: string; targetDir: string }>;
-    /** E6#73d：按 jobId 中止在途下载——面板「取消安装」的唯一落点。
-     *  AbortSignal 不可跨 IPC（结构化克隆拒绝），只能发这条**定向消息**；主进程只持
-     *  jobId → AbortController 登记表，不解释语义。返回 false = 该 job 当前没有在途下载
-     *  （已下完/未开始/非下载段）——调用方按「取消已受理，等终态」理解，不当失败。 */
+    /** E6#73d: abort an in-flight download by jobId — the single landing point for the panel's "Cancel install".
+     *  An AbortSignal cannot cross IPC (structured clone rejects it), so only this **targeted message** can be sent; the main process only keeps
+     *  a jobId → AbortController registry and does not interpret semantics. Returns false = that job currently has no in-flight download
+     *  (already finished / not started / not in the download stage) — callers should read this as "cancel accepted, wait for the terminal state", not as a failure. */
     packageCancel?(jobId: string): Promise<boolean>;
-    /** E6#13b（段 B）：主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
+    /** E6#13b (stage B): the main-process real network stage — fetches marketplace.json → version comparison (does not touch the ledger — current is passed in by the shell). Prereleases are ignored by default. */
     packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
-    /** E6#13b/c（段 B）：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
-     *  E6#33c（锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
-     *  E6#73j（G1）：job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
+    /** E6#13b/c (stage B): the main-process real download+extract stage — downloads to tmp → extracts to {userData}/tmp/.stage-<id> (id consistency + version direction validation; the old directory is untouched).
+     *  E6#33c (anchor ①): allowOlder explicitly true admits a downgrade where "package version < current" (version dropdown picks an older version + passed after F2 confirm); the default still rejects <=; the same version is always rejected.
+     *  E6#73j (G1): job same as packageDownload — update download-stage progress is attributed by jobId, and can be truly aborted by jobId. */
     packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef): Promise<{ pluginId: string; newVersion: string; stagedDir: string }>;
-    /** E6#13c（段 B）：主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版）。
-     *  0.2.48：`deferred: true` = 旧版目录被占用（dev 轨道 Vite 句柄主场景，磁盘未动、暂存原样）——
-     *  调用方提示「重启后自动替换」，启动时 `commitPendingStagedUpdates` 补提交；version = 暂存的新版号。 */
+    /** E6#13c (stage B): the main-process atomic replacement stage — same-volume rename: target→.bak→staged→target→rm .bak (restores the old version on failure).
+     *  0.2.48: `deferred: true` = the old directory is occupied (dev-track Vite handles being the main scenario; disk untouched, staging kept as-is) —
+     *  the caller shows "will be replaced automatically after restart", and `commitPendingStagedUpdates` commits it on startup; version = the staged new version number. */
     packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{ pluginId: string; version: string; deferred?: boolean }>;
   };
 
-  /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
+  /** Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), required */
   pluginManager: {
     list(): Promise<PluginListEntry[]>;
     enable(id: string): Promise<unknown>;
     disable(id: string): Promise<unknown>;
     uninstall(id: string): Promise<unknown>;
-    /** E6#73q：opts 携带请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名 */
+    /** E6#73q: opts carries the requester-side identity (pluginId/displayName/origin) — job table dedup + job row display name */
     install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
-    /** E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
+    /** E6#13 (1.2-5): the explicit name for the url/.linkdesk-plugin package install flow (installPlugin routing alias; identical on both the shell and pool preloads — the pool proxies via plugins:call). Progress goes through the plugin:installProgress channel */
     installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
     reinstall(id: string): Promise<unknown>;
     getDisabled(): Promise<PluginInfoEntry[]>;
     getUninstalled(): Promise<PluginInfoEntry[]>;
     isDisabled(id: string): Promise<boolean>;
-    /** E6#11c（段 B）：安全更新（#11c 原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） }。
-     *  E6#33c（锚①）：allowOlder 显式 true 放行降级（版本下拉选旧版 + F2 确认后传）；默认拒 <=。 */
+    /** E6#11c (stage B): safe update (#11c atomic + unload mechanical path) — opts: { catalogUrl? (check picks the latest) | url? (update package given directly) }.
+     *  E6#33c (anchor ①): allowOlder explicitly true admits a downgrade (version dropdown picks an older version + passed after F2 confirm); the default rejects <=. */
     update?(pluginId: string, opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean }): Promise<PluginUpdateResult>;
-    /** E6#13b（段 B）：只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
+    /** E6#13b (stage B): read-only update check — returns downloadUrl when a new version exists (data source for the UI badge; the update action goes through update) */
     checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
-    /** E5.7#48：装/卸/重装成功 → 通知主进程全量重扫三表 */
+    /** E5.7#48: install/uninstall/reinstall success → notify the main process to fully rescan the three tables */
     notifyManifestChanged?(): void;
   };
 }

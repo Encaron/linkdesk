@@ -1,12 +1,12 @@
 /**
- * `app:getAiBridge` 的回包形状（M4 `AI#38.4`）——与 `electron/services/aiBridge/info.ts` 的
- * `AiBridgeInfo` 逐字段同形（那里是权威；⛔ 两处只许结构对齐，不许渲染进程 import 主进程模块）。
+ * The reply shape of `app:getAiBridge` (M4 `AI#38.4`)—field-for-field identical to the
+ * `AiBridgeInfo` in `electron/services/aiBridge/info.ts` (that one is authoritative; ⛔ the two may only stay structurally aligned; the renderer must not import main-process modules).
  *
- * 🔴 这里只有**数据**没有话术：「运行中」「已关闭」等人话由壳命令拼装（t()）——状态行的显示
- * 文字不进主进程（硬约束 2 的分工）。
+ * 🔴 Here there is only **data**, no phrasing: human-readable strings like "running" or "closed" are assembled by shell commands (t())—
+ * the status line's display text does not enter the main process (division of labor per hard constraint 2).
  */
 
-/** 白名单操作条目（`opCatalog()` 原样；`kind` = 开放范围「读/做」两栏的派生源） */
+/** Whitelisted operation entry (verbatim from `opCatalog()`; `kind` is what the "read/do" open-scope columns derive from) */
 export interface AiBridgeOpDesc {
   name: string;
   kind: 'read' | 'write';
@@ -14,7 +14,7 @@ export interface AiBridgeOpDesc {
   params: Array<{ name: string; type: string; required?: boolean; description?: string }>;
 }
 
-/** 操作账条目（与内核 LedgerEntry 同形；仅供本文件 AiBridgeInfo 引用，不单独导出） */
+/** Operation ledger entry (same shape as the kernel's LedgerEntry; referenced only by AiBridgeInfo in this file, not exported separately) */
 interface AiBridgeLedgerEntry {
   ts: string;
   op: string;
@@ -25,10 +25,10 @@ interface AiBridgeLedgerEntry {
 }
 
 export interface AiBridgeInfo {
-  /** 本进程是否初始化过内核（未持锁的第二只 = false，其余字段无意义） */
+  /** Whether this process has initialized the kernel (a second contender that failed to take the lock = false; the other fields are then meaningless) */
   present: boolean;
   pid: number;
-  /** 开关合上没（内核启动时的配置结果） */
+  /** Whether the switch is on (the config result at kernel startup) */
   enabled: boolean;
   listening: boolean;
   mode: 'pipe' | 'tcp' | 'off';
@@ -36,20 +36,20 @@ export interface AiBridgeInfo {
   lastError: string | null;
   startedAt: string | null;
   uptimeMs: number;
-  /** CDP 调试端口实况（argv 唯一真相；null = 没开） */
+  /** CDP debug port live state (argv is the single source of truth; null = not open) */
   debugPort: number | null;
-  /** 操作日志落盘开关配置值（`ai.auditLog.enabled`） */
+  /** Audit-log-to-disk switch config value (`ai.auditLog.enabled`) */
   auditLogEnabled: boolean;
   logFileExists: boolean;
-  /** 白名单操作表（`ai.scope.summary` / 完整清单的数据源） */
+  /** Whitelisted operations table (the data source for `ai.scope.summary` / the full list) */
   ops: AiBridgeOpDesc[];
   ledger: AiBridgeLedgerEntry[];
-  /** 凭据文件名（只给名字，明文永不出主进程） */
+  /** Credential file name (name only; the plaintext never leaves the main process) */
   tokenFile: string;
   userData: string;
 }
 
-/** `app:getAiBridge` 请求动作（缺省 = get） */
+/** `app:getAiBridge` request action (omitted = get) */
 export interface AiBridgeInfoRequest {
   action?: 'get' | 'regenerateToken';
 }

@@ -1,122 +1,122 @@
 /**
- * 主题数据模型纯类型——05 schema（Recipe + Colorway）落地。
- * 壳目录规范 §1：types/ 放跨模块共享纯类型（src / electron / contracts 三端同引）。
+ * Pure types for the theme data model—the 05 schema (Recipe + Colorway) implementation.
+ * Shell directory convention §1: types/ holds cross-module shared pure types (imported by all three of src / electron / contracts).
  *
- * 设计依据：docs/02-Electron架构/归一化基建/外观主题化/05-主题数据模型.md（决策 A-F 冻结）。
- * 一句话：主题文件 = 一个配方 Recipe = 风格域 appearance（单值稀疏）+ 配色变体 colorways[]（颜色域多值）；
- * 稀疏覆盖，缺的域继承 :root 壳默认。新主题一律 colorways[]（决策 F 单写法）。
+ * Design basis: doc 05 of the appearance-theming series in the Chinese docs tree (theme data model dossier; decisions A-F frozen).
+ * In one sentence: a theme file = one recipe Recipe = the style domain appearance (single-value, sparse) + colorway variants colorways[] (multi-value color domains);
+ * sparse overriding; missing domains inherit the :root shell defaults. New themes always use colorways[] (decision F: single authoring form).
  */
 
-/** 颜色 token 集——键 = 变量契约 token 名去 `--`（--bg-window → "bg-window"） */
+/** Color token set—keys = variable-contract token names minus `--` (--bg-window → "bg-window") */
 export interface ThemeColors {
   [key: string]: string;
 }
 
-/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮）。
- * 纹理 texture 与 glass 正交（⑬ 纸纹分区不带玻璃也能用 per-surface 纹理）。 */
+/** E5.8#50.6: glass + floating panel texture fields—theme JSON `surface` (omitted = no glass, no floating).
+ * Texture is orthogonal to glass (⑬ paper-texture zones work without glass via per-surface textures). */
 export interface ThemeSurface {
-  /** 玻璃配方——缺省 = 无玻璃 */
+  /** Glass recipe—omitted = no glass */
   type?: "glass";
-  /** backdrop blur px——0 = 关 */
+  /** Backdrop blur px—0 = off */
   blur?: number;
-  /** 饱和度增强——1 = 关 */
+  /** Saturation boost—1 = off */
   saturate?: number;
-  /** 玻璃面叠加色 */
+  /** Color layered over the glass surface */
   tint?: string;
-  /** 玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景。写 --glass-opacity token（tint 盖片
-   *  opacity 消费）+ 播种反推进合成 alpha（#112：配方面基线，用户 app.glassOpacity 覆盖时优先） */
+  /** Glass surface opacity (the compositing-layer baseline)—1 = opaque / 0 = fully see-through to the background. Writes the --glass-opacity token (consumed by the tint overlay's
+   *  opacity) + seeds a back-computed compositing alpha (#112: the recipe's surface baseline; takes priority when the user's app.glassOpacity overrides) */
   opacity?: number;
-  /** 液态玻璃顶部高光强度——0 = 关 */
+  /** Liquid-glass top highlight intensity—0 = off */
   specular?: number;
-  /** E5.8#63：顶部高光基色（发丝光边颜色）——缺省 = 白；alpha 仍走 specular */
+  /** E5.8#63: top highlight base color (the hairline-light edge color)—omitted = white; alpha still goes through specular */
   specularColor?: string;
-  /** 形变过渡 ms——0 = 关 */
+  /** Morph transition ms—0 = off */
   morph?: number;
-  /** 悬浮圆角 px——0 = 直角贴边 */
+  /** Floating corner radius px—0 = square, flush to the edge */
   radius?: number;
-  /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
+  /** Lifted drop shadow—true = floating shadow (the engine maps --shadow-lift) */
   shadow?: boolean;
-  /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
+  /** E5.8#50.28: tileable texture image asset path (⑬ paper-texture zones)—applied to all 5 zone surfaces; independent of glass, takes effect on its own */
   texture?: string;
-  /** 纹理不透明度——1 = 不透明 */
+  /** Texture opacity—1 = opaque */
   textureOpacity?: number;
 }
 
-/** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
+/** E5.8#50.6: image background texture fields—theme JSON `background` (omitted = no image) */
 export interface ThemeBackground {
-  /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
+  /** Image path—the author provides a resolvable URL; the engine wraps it in url() when writing `--bg-image` */
   image?: string;
-  /** 图片层不透明度——1 = 不透明。引擎写 `--bg-opacity`（.background-layer 清晰底图）+ `--surface-bg-opacity`
-   *  （镜像/纹理/切片 ::after 图像层）；用户 app.backgroundOpacity 覆盖时双 token 齐写（#115：图与底统一淡出，避免底图淡而镜像恒显） */
+  /** Image layer opacity—1 = opaque. The engine writes `--bg-opacity` (the .background-layer crisp base image) + `--surface-bg-opacity`
+   *  (the mirror/texture/slice ::after image layers); when the user's app.backgroundOpacity overrides, both tokens are written together (#115: the image and base fade out uniformly, avoiding a faded base image while the mirror stays fully visible) */
   opacity?: number;
-  /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
+  /** Image mask lightness/darkness (0-1 rgba alpha)—0 = no mask */
   mask?: number;
-  /** E5.8#63：遮罩基色（暗化层颜色）——缺省 = 黑；alpha 仍走 mask。仅 panorama 生效（同 mask） */
+  /** E5.8#63: mask base color (the darkening layer's color)—omitted = black; alpha still goes through mask. Only effective in panorama (same as mask) */
   maskColor?: string;
-  /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
+  /** E5.8#50.29: slicing mode—"panorama" (default) = full-window semantics unchanged; "zones" = the same image sliced continuously across the 5 zone surfaces (⑭ imagery zones) */
   mode?: "panorama" | "zones";
 }
 
-/** 字体域——系统字体族名字符串 or 资产相对路径（#50.17 两步机制：资产 → @font-face → 族名） */
+/** Font domain—a system font family name string or an asset relative path (#50.17 two-step mechanism: asset → @font-face → family name) */
 interface ThemeFont {
-  /** UI 字体（--font-ui） */
+  /** UI font (--font-ui) */
   ui?: string;
-  /** 等宽字体（--font-mono） */
+  /** Monospace font (--font-mono) */
   mono?: string;
 }
 
-/** 圆角六档相对档名单一权威——schema 档名（xs..2xl）与引擎 token 键（radius-xs..radius-2xl）同一概念两层
- *  表达；ThemeEngine/constants.ts RADIUS_SCALE_KEYS 从此派生（`radius-${s}`），防两份清单漂移（E5.8#122）。 */
+/** Single authority for the six-step relative radius scale names—the schema step names (xs..2xl) and the engine token keys (radius-xs..radius-2xl) are two expressions of the same concept;
+ *  ThemeEngine/constants.ts RADIUS_SCALE_KEYS derives from this (`radius-${s}`), preventing the two lists from drifting (E5.8#122). */
 export const RADIUS_SCALE_STEPS = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
 
-/** 圆角六档相对档名联合类型——从 RADIUS_SCALE_STEPS 派生（单一源） */
+/** Six-step relative radius scale name union type—derived from RADIUS_SCALE_STEPS (single source) */
 export type RadiusScaleStep = (typeof RADIUS_SCALE_STEPS)[number];
 
-/** 圆角域——八档语义 token 名（02 §2.2，偏门值归并就近档；六档派生 + 形态值 pill/full 补位） */
+/** Radius domain—eight semantic token names (02 §2.2; off-beat values merge into the nearest step; the six derived steps plus the shape values pill/full) */
 type RadiusTokenKey = RadiusScaleStep | "pill" | "full";
 
 /**
- * 05 schema appearance 域——风格域（单值，稀疏覆盖，缺的域/键继承 :root 壳默认）。
- * 键 = 变量契约 token 名去 `--`；值 = 裸值（引擎写入 :root 时拼回）。
- * glass 复用 ThemeSurface 全字段（材质 + 悬浮形态 + 纹理）——与 #50.6 引擎 surfaceVariables 语义一致。
+ * The 05 schema appearance domain—style domain (single-value, sparse overriding; missing domains/keys inherit the :root shell defaults).
+ * Keys = variable-contract token names minus `--`; values = bare values (the engine concatenates them back when writing :root).
+ * glass reuses all ThemeSurface fields (material + floating shape + texture)—semantically consistent with the #50.6 engine surfaceVariables.
  */
 export interface ThemeAppearance {
-  /** 圆角八档（键 = 档位名，值 = px） */
+  /** Radius eight steps (keys = step names, values = px) */
   radius?: Partial<Record<RadiusTokenKey, number>>;
-  /** 玻璃 + 悬浮面板 + 纹理——05 §2 appearance.glass */
+  /** Glass + floating panels + texture—05 §2 appearance.glass */
   glass?: ThemeSurface;
-  /** 字体域 */
+  /** Font domain */
   font?: ThemeFont;
-  /** 背景域（panorama 全窗 / zones 切片） */
+  /** Background domain (panorama full-window / zones sliced) */
   background?: ThemeBackground;
 }
 
-/** 05 schema 配色变体——颜色域一组具体取值（稀疏，未写的颜色 token 继承 :root） */
+/** The 05 schema colorway—one concrete set of values for the color domain (sparse; unwritten color tokens inherit :root) */
 export interface ThemeColorway {
-  /** 配色变体 id——全局唯一（app.themeColor 动态 enum 存此） */
+  /** Colorway id—globally unique (the app.themeColor dynamic enum stores this) */
   id: string;
-  /** 配色显示名 */
+  /** Colorway display name */
   name: string;
-  /** 颜色 token 集（--bg-* / --text-* / --accent 等，键去 -- 前缀） */
+  /** Color token set (--bg-* / --text-* / --accent etc., keys minus the -- prefix) */
   colors?: ThemeColors;
 }
 
 /**
- * 05 schema 配方 = 一个主题文件 = 风格域共享 + 配色变体列表。
- * id 全局唯一（惯例 = 插件短名）——app.theme 存这个；name = 主题选择器标题。
- * 新主题一律 colorways[]（决策 F：单写法，引擎只读新格式）。
+ * The 05 schema recipe = one theme file = shared style domain + colorway list.
+ * id is globally unique (convention = the plugin's short name)—app.theme stores this; name = the theme picker title.
+ * New themes always use colorways[] (decision F: single authoring form; the engine only reads the new format).
  */
 export interface ThemeRecipe {
   id: string;
   name: string;
   type: "light" | "dark";
-  /** 风格域（单值稀疏）——缺的域继承 :root 壳默认 */
+  /** Style domain (single-value, sparse)—missing domains inherit the :root shell defaults */
   appearance?: ThemeAppearance;
-  /** 配色变体列表（至少 1 项；颜色域多值） */
+  /** Colorway list (at least 1 item; multi-value color domain) */
   colorways: ThemeColorway[];
 }
 
-/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
- *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
- *  E5.8#132：surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
+/** Recipe contribution domains—shared by theme metadata domains (mix-and-match source filtering) and the theme:changed payload (domain-level fine-grained refresh) (06 §2/§6.2).
+ *  Five domains: colors (colorways always contribute) + the four appearance style domains (radius/glass/font/background).
+ *  E5.8#132: the surface domain removed—per-surface fine-tuning keys are dead (decision A removal); the glass surface shape tokens (--surface-*) belong to the glass domain. */
 export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background";

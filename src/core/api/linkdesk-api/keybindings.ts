@@ -1,13 +1,13 @@
 /**
- * linkdesk-api 快捷键域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9b）。
- * keybindings 命名空间面 verbatim。
- * 依赖方向：keybindings → KeybindingRegistry（Keybinding type）+ types/ipc/keyboard；被聚合器交叉组装。
+ * linkdesk-api keybindings domain — split out of linkdesk-api.ts (E5.8#0d.10-9b).
+ * The keybindings namespace surface verbatim.
+ * Dependency direction: keybindings → KeybindingRegistry (Keybinding type) + types/ipc/keyboard; cross-composed by the aggregator.
  */
 
 import type { Keybinding } from "../../registry/commands/KeybindingRegistry";
 import type { ForwardedKeyboardInput, KeybindingSyncData } from "../../types/ipc/keyboard";
 
-/** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有）。池插件消费 setKeybindingCaptureActive（file-tree），必选 */
+/** Keybindings — injected on both shell/pool ends (syncToMainProcess/onForwardedEvent are shell-side only). Consumed by pool plugins via setKeybindingCaptureActive (file-tree), required */
 export interface KeybindingsAPI {
   keybindings: {
     getKeybindings(): Promise<Keybinding[]>;
@@ -16,19 +16,20 @@ export interface KeybindingsAPI {
     saveUserKeybindings(): Promise<void>;
     removeKeybindingForCommand(commandId: string): Promise<void>;
     resetKeybindingToDefault(commandId: string): Promise<void>;
-    /** 清空该命令的绑定——「这条命令不要键」：删现存全部 ＋ 抑制内置/插件默认（重启后仍无键），
-     *  直到用户重新绑定或「恢复为默认」。⚠️ 与 resetKeybindingToDefault 的区别＝「作者声明过键」时
-     *  reset 会把那个键顶回来（回退），本方法不会。需 LinkDesk 0.2.46+（旧壳上无此方法 ⇒ 调用方先探测） */
+    /** Clear a command's bindings — "this command wants no key": deletes all existing bindings + suppresses built-in/plugin
+     *  defaults (still keyless after restart), until the user rebinds or "Restore default". ⚠️ Difference from resetKeybindingToDefault =
+     *  when "the author declared a key", reset pushes that key back (a rollback); this method does not. Requires LinkDesk 0.2.46+
+     *  (absent on older shells ⇒ callers feature-detect first) */
     clearKeybindingForCommand(commandId: string): Promise<void>;
     findKeybindingForCommand(commandId: string): Promise<Keybinding | undefined>;
     setKeybindingCaptureActive(active: boolean): Promise<void>;
-    // 纯数据形参——contextBridge 结构化克隆丢 KeyboardEvent 原生属性（.key/.code 是 C++ getter），
-    // 调用方先提取字段再传（KeybindingSettingsView 同款）。真实 KeyboardEvent 天然满足此形状。
+    // Pure-data parameter — contextBridge structured clone drops KeyboardEvent native properties (.key/.code are C++ getters);
+    // callers extract the fields first, then pass them (same as KeybindingSettingsView). A real KeyboardEvent naturally satisfies this shape.
     keyboardEventToKeyString(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "shiftKey" | "altKey" | "metaKey">): string;
     onChange(cb: () => void): () => void;
-    /** 壳→主进程同步快捷键表（chord 状态机查表） */
+    /** Shell→main process keybinding table sync (chord state-machine lookup) */
     syncToMainProcess?(data: KeybindingSyncData): Promise<void>;
-    /** 接收主进程 before-input-event 转发的拦截事件（E5.8#46.8：载荷含 sourceWindowId——按聚焦窗裁决） */
+    /** Receive intercepted events forwarded from the main process's before-input-event (E5.8#46.8: the payload carries sourceWindowId — adjudicated per focused window) */
     onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
   };
 }

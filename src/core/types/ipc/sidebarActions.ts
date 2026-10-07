@@ -1,19 +1,19 @@
 /**
- * 池→壳侧栏动作 wire 契约——E5.7#97。
+ * Pool→shell sidebar action wire contract—E5.7#97.
  *
- * 原定义在 PoolSectionStack.tsx（池组件内部类型），但走 IPC pool.sidebarAction 到壳
- * （preload-shell → usePoolSync → ViewContainerService）——跨堆协议，归口本目录。
+ * Originally defined in PoolSectionStack.tsx (an internal pool component type), but travels over IPC pool.sidebarAction to the shell
+ * (preload-shell → usePoolSync → ViewContainerService)—a cross-stack protocol, consolidated into this directory.
  */
 
 export interface SidebarAction {
   action: "reorder" | "setCollapsed" | "setVisible" | "toggleSidebarCollapse" | "setSidebarWidth";
   containerId?: string;
   viewId?: string;
-  /** E5.8#41.9.2：setCollapsed 复合键持久化——池侧 view 自带 pluginId（SidebarViewMeta），壳侧精确寻址同名视图 */
+  /** E5.8#41.9.2: setCollapsed composite-key persistence—the pool-side view carries its own pluginId (SidebarViewMeta), so the shell addresses the same-named view precisely */
   pluginId?: string;
   newIndex?: number;
   collapsed?: boolean;
   visible?: boolean;
-  /** E5.7#13：分隔线拖拽 commit——resizeZone("sidebar", width)。E5.7#97 补入（原契约漏此变体） */
+  /** E5.7#13: divider drag commit—resizeZone("sidebar", width). Added in E5.7#97 (the original contract missed this variant) */
   width?: number;
 }

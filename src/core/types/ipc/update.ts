@@ -1,190 +1,190 @@
 /**
- * 主软件更新 wire 契约——E6#57.4（设计：[06-主软件更新/07-数据流通格式.md](../../../../docs/02-Electron架构/插件生态与发布/06-主软件更新/07-数据流通格式.md) §三）。
+ * Main-software update wire contract — E6#57.4 (design: §3 of the repo-internal design dossier on main-software update data flow formats, Chinese docs tree).
  *
- * 主进程 UpdateService（`electron/services/update-service.ts`）产出、壳渲染 `useUpdateState` 消费——
- * 跨堆协议，按 serial 先例（E5.7#97）归口本目录：`electron/` 与 `src/` 双端 import 同一份类型，
- * 字段改名 tsc 双端报错，不再各写一份。
+ * Produced by the main process UpdateService (`electron/services/update-service.ts`), consumed by the shell renderer `useUpdateState` —
+ * a cross-stack protocol; per the serial precedent (E5.7#97) it is homed in this directory: `electron/` and `src/` import the same types,
+ * a field rename turns red on both ends under tsc, instead of each side keeping its own copy.
  *
- * 🔴 **归因不许塌成「未知错误」**（07 §三 / 01 §2.3-§2.4）：`UpdateErrorCode` 逐类列全——
- * 「明明只是私有仓库」报成 `not-found`、「asset 命名漂移」报成 `network` 这类错向归因，
- * 会让用户和排查的人都找不到真因（第 3.5 层教训）。
+ * 🔴 **Attribution must not collapse into "unknown error"** (07 §3 / 01 §2.3-§2.4): `UpdateErrorCode` enumerates every class —
+ * mis-attributing "it is merely a private repository" as `not-found`, or "asset naming drift" as `network`,
+ * would leave both the user and the troubleshooter unable to find the real cause (the layer-3.5 lesson).
  */
 
-/** 有可用更新时的全量描述——`UpdateState.available` 起各态携带 */
+/** Full description when an update is available — carried by every state from `UpdateState.available` onward */
 export interface UpdateInfo {
-  /** 新版本（SemVer，无 v 前缀） */
+  /** New version (SemVer, no v prefix) */
   version: string;
-  /** 当前运行版本（`app.getVersion()`——02 §2.3 唯一运行时来源） */
+  /** Currently running version (`app.getVersion()` — 02 §2.3, the sole runtime source) */
   currentVersion: string;
-  /** ISO 发布日期（Release `published_at`） */
+  /** ISO release date (Release `published_at`) */
   publishedAt: string;
-  /** 发行说明页 URL（GitHub release `html_url`） */
+  /** Release notes page URL (GitHub release `html_url`) */
   releaseNotesUrl: string;
-  /** 安装器直链（`available` 之后才有——检查腿就能拿到，下载才消费） */
+  /** Direct installer link (present only after `available` — the check leg can already fetch it; only the download consumes it) */
   downloadUrl?: string;
   /**
-   * 安装包 sha256（64 位小写 hex，**已剥 `sha256:` 前缀**）。
-   * 🔴 **源 = Release asset 的 `digest` 字段**（GitHub 服务端自动算）——API 里**没有** `checksum` 字段，
-   * 照名字取恒 `undefined` ⇒ 每次都走「未附 ⇒ 降级放行」⇒ 校验静默失效（05-文档与发布/02-发布流水线.md §1.5.1）。
+   * Installer sha256 (64-char lowercase hex, **the `sha256:` prefix already stripped**).
+   * 🔴 **Source = the Release asset's `digest` field** (computed server-side by GitHub) — the API has **no** `checksum` field;
+   * reading it by that name is always `undefined` ⇒ every run takes the "absent ⇒ degrade and allow" path ⇒ validation silently fails (release-pipeline dossier §1.5.1).
    */
   checksum?: string;
-  /** 安装包字节数（Release asset `size`） */
+  /** Installer size in bytes (Release asset `size`) */
   size?: number;
 }
 
-/** 下载进度——`UpdateState.downloading` 携带，节流 ≤500ms 一条（07 §4.2） */
+/** Download progress — carried by `UpdateState.downloading`, throttled to ≤500ms per message (07 §4.2) */
 export interface DownloadProgress {
-  /** 已下载字节 */
+  /** Bytes downloaded */
   transferred: number;
-  /** 总字节 */
+  /** Total bytes */
   total: number;
-  /** 0-100 整数 */
+  /** 0-100 integer */
   percent: number;
 }
 
 /**
- * 检查腿六类 + 下载腿五类 + 启动复位一类（01 §2.3 / §2.4 / §2.5）。
- * 文案必须互不相同——「当前已是最新版本」和「tag 不是 SemVer」是两件事，不许各归一半。
+ * Six classes for the check leg + five for the download leg + one startup-reset class (01 §2.3 / §2.4 / §2.5).
+ * The copy must be mutually distinct — "you are already on the latest version" and "the tag is not SemVer" are two different things; no half-and-half attribution.
  *
- * ⚠️ 暂不单独 `export`：当前唯一消费方是本文件的 `UpdateError.code`，knip 门禁不许空导出。
- * 壳侧要做「错误码 → 文案」映射时（#57.12）取 `UpdateError["code"]`，或届时把它升回具名导出。
+ * ⚠️ Not separately `export`ed for now: the only current consumer is this file's `UpdateError.code`, and the knip gate forbids empty exports.
+ * When the shell side needs an "error code → copy" mapping (#57.12), take `UpdateError["code"]`, or promote it back to a named export then.
  */
 type UpdateErrorCode =
-  // —— 检查腿（六类） ——
-  /** 不可达/超时/代理未生效（本腿必走 main-fetch.ts，E6#76） */
+  // —— Check leg (six classes) ——
+  /** Unreachable/timeout/proxy not in effect (this leg always goes through main-fetch.ts, E6#76) */
   | 'network'
-  /** GitHub 403/429（`x-ratelimit-remaining: 0`）→「稍后自动重试」，不说成网络故障 */
+  /** GitHub 403/429 (`x-ratelimit-remaining: 0`) → "auto-retry later"; not to be reported as a network failure */
   | 'rate-limited'
-  /** 仓库不存在 / 无 Release（404） */
+  /** Repository does not exist / no Release (404) */
   | 'not-found'
-  /** JSON 结构非法 / 缺 `tag_name`/`published_at` */
+  /** Malformed JSON structure / missing `tag_name`/`published_at` */
   | 'invalid-response'
-  /** 🔴 Release 到手但匹配不到 asset（命名漂移）——**不许报成 network** */
+  /** 🔴 Release fetched but no asset matches (naming drift) — **must not be reported as network** */
   | 'asset-missing'
-  /** 🔴 `tag_name` 非合法 SemVer——**与「无更新」分开报**，静默忽略会让发布事故隐形 */
+  /** 🔴 `tag_name` is not valid SemVer — **report separately from "no update"**; silently ignoring it would make release incidents invisible */
   | 'version-unparsable'
-  // —— 下载腿（五类） ——
-  /** sha256 不符 → 删文件 + 报错 */
+  // —— Download leg (five classes) ——
+  /** sha256 mismatch → delete the file + report an error */
   | 'checksum-mismatch'
-  /** 🔴 Release 未附校验值 → 记一笔 + 降级放行（不拦更新，01 §2.4） */
+  /** 🔴 Release carries no checksum → log it + degrade and allow (do not block the update, 01 §2.4) */
   | 'checksum-unavailable'
-  /** 落盘失败（磁盘满/无权限） */
+  /** Write to disk failed (disk full / no permission) */
   | 'write-error'
   /**
-   * 🔴 传输中断——两种子情形共用一个码：① 进程中途退出留下的下载 → 重启后归 `idle + interrupted`，
-   * **不复活 `downloading`**（#57.6f）；② 本次下载**收了一半就断**（已收 < Content-Length，#57.6a）。
-   * 两者的用户语义与处置完全相同（这次没下成，重下），拆两码只会让壳多写一条一模一样的文案。
-   * ⚠️ 与 `network` 的分界：**连接阶段**就连不上 / 挂死超时 = `network`；**已经在下、半路断** = 本码。
+   * 🔴 Transfer interrupted — two sub-cases share one code: ① a download left behind by a process exiting mid-run → after restart attributed `idle + interrupted`,
+   * **not reviving `downloading`** (#57.6f); ② this download **broke off halfway** (received < Content-Length, #57.6a).
+   * Their user semantics and handling are identical (this attempt failed; download again); splitting into two codes would only make the shell write one identical line of copy twice.
+   * ⚠️ Boundary with `network`: cannot connect / hangs until timeout during the **connection phase** = `network`; **already downloading and broke mid-way** = this code.
    */
   | 'interrupted'
-  /** 用户/系统取消 */
+  /** Cancelled by the user/system */
   | 'canceled'
-  // —— 启动复位（一类，非腿产出） ——
+  // —— Startup reset (one class, not produced by a leg) ——
   /**
-   * 🔴 上次更新**没装成，且安装器已不在盘上**（启动复位 #57.7a 算出，`update-install.ts` 的
-   * `resolveStartupInstall`）——落 `idle + 本码`，`update` 保留。
+   * 🔴 The last update **failed to install, and the installer is no longer on disk** (computed by the startup reset #57.7a, `update-install.ts`'s
+   * `resolveStartupInstall`) — lands on `idle + this code`, `update` preserved.
    *
-   * **为什么不复用 `interrupted`**（2026-09-12 拆码，超本格顺手修）：两者在腿内确实同义（都是
-   * 「这次没下成，重下」），但**壳侧的处置不同**——本码是**启动时从盘上读回来的**，没有任何发起方，
-   * 于是「谁发起谁出声」那条路（`checkForUpdatesAndReport`）根本走不到它 ⇒ 换成 `interrupted`
-   * 时用户**下次启动零通知**（#57.12 实测：`initUpdateService` 丢弃 `resolution.outcome`，
-   * 而生产者对 `idle` 一律闭嘴）。壳的迁移驱动那条路**只认本码**才出声（`useUpdateNotifications`），
-   * 于是「下载腿的断流」与「启动时的未完成」在机器上可分辨，不再靠「`update` 在不在」这种
-   * 会随实现漂移的间接不变式。
+   * **Why not reuse `interrupted`** (codes split 2026-09-12, fixed in passing beyond this entry's scope): within a leg the two are indeed synonymous (both
+   * "this attempt failed; download again"), but **the shell-side handling differs** — this code is **read back from disk at startup** with no initiator,
+   * so the "whoever initiates reports" path (`checkForUpdatesAndReport`) can never reach it ⇒ if it were `interrupted`,
+   * the user would get **zero notification on next startup** (#57.12 empirically: `initUpdateService` discards `resolution.outcome`,
+   * and producers stay silent on `idle` across the board). The shell's transition-driven path **only reports on this code** (`useUpdateNotifications`),
+   * so "the download leg's broken stream" and "an unfinished update at startup" are machine-distinguishable, no longer relying on an indirect invariant
+   * like "whether `update` is present" that drifts with the implementation.
    */
   | 'install-interrupted';
 
-/** 一次失败的结构化记账——态内 `lastError`（不抛错，07 §4.1） */
+/** Structured record of one failure — the in-state `lastError` (no throwing, 07 §4.1) */
 export interface UpdateError {
   code: UpdateErrorCode;
   /**
-   * 人类可读 = **i18n key 形态**（= 中文原文，硬约束 2）。
+   * Human-readable = **i18n key form** (= the original Chinese text, hard constraint 2).
    *
-   * 🔴 **带运行时数值的句子必须写成词条 + `{{占位}}`，值走 `params`**——直接拼进 `message`
-   * （`下载超时——30 秒无数据`）会让整句**永远不可能成为词条**（一个字都不一样），`t()` 只能
-   * 原样吐出中文原文 ⇒ 那类句子在所有语言下都是中文（2026-09-12 修，超本格顺手修）。
-   * 分界线：**句子骨架（可翻译）进 `message`，只进不出的运行时值（秒数/字节数/系统错误原文）
-   * 进 `params`**。插值语法与壳侧 `t()` 一致（i18next 的 `{{name}}`）。
+   * 🔴 **Sentences carrying runtime values must be written as lexicon entries + `{{placeholders}}`, with values going through `params`** — concatenating them directly into `message`
+   * (e.g. `Download timed out — 30 seconds without data`) makes the whole sentence **forever impossible to become a lexicon entry** (not one character identical), and `t()` can only
+   * emit the original Chinese text verbatim ⇒ such sentences stay Chinese in every language (fixed 2026-09-12, fixed in passing beyond this entry's scope).
+   * The dividing line: **the sentence skeleton (translatable) goes into `message`; runtime values that only flow in and never out (seconds/byte counts/raw system errors) go into `params`**.
+   * Interpolation syntax matches the shell's `t()` (i18next's `{{name}}`).
    */
   message: string;
   /**
-   * 词条占位符的实值（`{ seconds: 30 }` 对应词条里的 `{{seconds}}`）。
-   * 值**本身不再翻译**——系统错误原文（`msg(e)`）与 HTTP 状态文本天然无语言，故当**不透明值**传。
-   * 缺省（不传）= 该词条没有占位符，壳侧照旧 `t(message)`。
+   * Actual values for the lexicon entry's placeholders (`{ seconds: 30 }` corresponds to `{{seconds}}` in the entry).
+   * Values themselves are **never translated** — raw system errors (`msg(e)`) and HTTP status texts are language-neutral by nature, so pass them as **opaque values**.
+   * Omitted (not passed) = the entry has no placeholders; the shell still calls `t(message)` as usual.
    */
   params?: Record<string, string | number>;
 }
 
 /**
- * 这一份发行说明数据是**刚在网拉的**还是**本地缓存兜的**（E6#57.8e）。
+ * Whether this release-notes payload was **just fetched from the network** or **backed by the local cache** (E6#57.8e).
  *
- * 为什么要一个字段而不是「调用方自己知道」：**断网兜底这条路只有靠它才可断言**——
- * 没有它，「网挂了有没有真的用上缓存」就只能靠数网络桩被调了几次来间接猜。
- * 顺带：渲染侧将来若要标一句「离线数据」也有据可依（05 §2.4 的三态里暂时没有这一态）。
+ * Why a field instead of "the caller already knows": **the offline-fallback path is only assertable with it** —
+ * without it, whether "the cache was really used when the network died" could only be guessed indirectly by counting how many times the network stub was called.
+ * Incidentally: if the renderer later wants to label an "offline data" note, it now has grounds to (the three states of 05 §2.4 have no such state yet).
  */
 type ReleaseNotesSource = 'network' | 'cache';
 
-/** 左窄栏版本历史的一条——**只有标头，没有正文**（正文按需选中那一版才给，见下）。
- *  ⚠️ **不导出**（同文件 `UpdateErrorCode` / `WindowBounds` 先例）：唯一消费方就是下面 `ReleaseNotes`
- *  的 `historical`——knip 门禁把「导出却无人 import」判红，而那个红是对的（渲染侧真要单独命名它，
- *  用 `ReleaseNotes["historical"][number]` 即可，届时要导出再加，两字的事）。 */
+/** One entry of the left column's version history — **header only, no body** (the body is given only when that version is selected on demand; see below).
+ *  ⚠️ **Not exported** (same-file precedent of `UpdateErrorCode` / `WindowBounds`): the only consumer is `ReleaseNotes`'s `historical` below —
+ *  the knip gate flags "exported but never imported" red, and that red is correct (if the renderer ever needs to name it separately,
+ *  use `ReleaseNotes["historical"][number]`; exporting it then is a two-word change). */
 interface ReleaseNotesSummary {
-  /** 版本号（SemVer，无 v 前缀；⚠️ 发布侧打了不合规范的 tag 时原样给，见 `update-release-notes.ts` 文件头 ⑤） */
+  /** Version number (SemVer, no v prefix; ⚠️ if the release side pushed a non-conforming tag, given verbatim — see `update-release-notes.ts` file header ⑤) */
   version: string;
-  /** ISO 发布日期 */
+  /** ISO release date */
   publishedAt: string;
 }
 
 /**
- * 发行说明一次取数的全量返回——E6#57.8e（07 §三 定死形状 ＋ `source` 见上）。
+ * The full return of one release-notes fetch — E6#57.8e (07 §3 pins the shape + `source` as above).
  *
- * 🔴 **只带被选中那一版的正文**（`body`），历史列表只给标头（`historical`）：30 条正文一起传
- * 是纯浪费（GitHub 的 body 动辄几千字），而用户一次只看一版。这不影响「切换版本」的体验——
- * 列表已全在手上，换一版**不需要再出网**（正文都在同一次响应里，只是没往回传）。
+ * 🔴 **Only the selected version's body is carried** (`body`); the history list gives headers only (`historical`): shipping 30 bodies together
+ * is pure waste (GitHub bodies run to thousands of characters) while the user reads one version at a time. This does not hurt the "switch version" experience —
+ * the list is already fully in hand; switching versions **does not need another network round** (the bodies were in the same response, just not sent back).
  */
 export interface ReleaseNotes {
-  /** 这份数据从哪来（见 `ReleaseNotesSource`） */
+  /** Where this data came from (see `ReleaseNotesSource`) */
   source: ReleaseNotesSource;
-  /** 选中版本的版本号；⚠️ 与请求的 `version` 不一致 = **请求的那一版不在列表里，已回落到最近一版** */
+  /** The selected version's number; ⚠️ mismatch with the requested `version` = **the requested version was not in the list and we fell back to the most recent one** */
   version: string;
-  /** ISO 发布日期 */
+  /** ISO release date */
   publishedAt: string;
-  /** Release body（GFM 原文）——渲染侧过 MarkdownView + sanitize（05 §2.4，与插件详情页同一条路） */
+  /** Release body (raw GFM) — the renderer runs it through MarkdownView + sanitize (05 §2.4, the same path as the plugin detail page) */
   body: string;
-  /** 「在 GitHub 上查看」链接（Release `html_url`） */
+  /** "View on GitHub" link (Release `html_url`) */
   htmlUrl: string;
-  /** 左窄栏版本历史（倒序；最多 30 条，05 §2.4） */
+  /** Left column's version history (newest first; at most 30 entries, 05 §2.4) */
   historical: ReleaseNotesSummary[];
 }
 
 /**
- * 更新状态机判别联合（01 §2.1 九态）。
+ * Update state machine discriminated union (01 §2.1, nine states).
  *
  * ```
- * uninitialized → disabled（更新源不可用）/ idle
- * idle ──check──▶ checking ──新版本──▶ available（无更新/出错 → idle）
- * available ──download──▶ downloading ──完成──▶ downloaded（失败 → idle + lastError）
- * downloaded ──「重启并更新」──▶ updating ──quitAndInstall──▶ 进程退出
- * ready = downloaded 的提示态（toast「重启并更新」已出）
+ * uninitialized → disabled (update source unavailable) / idle
+ * idle ──check──▶ checking ──new version──▶ available (no update / error → idle)
+ * available ──download──▶ downloading ──done──▶ downloaded (failure → idle + lastError)
+ * downloaded ──"restart and update"──▶ updating ──quitAndInstall──▶ process exits
+ * ready = downloaded's notification state (the "restart and update" toast has been shown)
  * ```
  *
- * 🔴 **`downloaded` 没有「回 idle」的边**（E6#57.12，2026-09-12 用户拍板；本文档旧版图里的
- * `downloaded ──「稍后」──▶ idle` 是**错的**，已删）。通知面上的「稍后」**只收起那一条提示**，
- * 状态原地不动——安装器已经在盘上等着装了，把态降回 `idle` 只会让用户重下一遍。
- * 两个出口：`updating`（点「重启并更新」），或进程退出后由启动复位还原（#57.7a）。
- * 由此推出 #57.12g（已在 `electron/services/update-service.ts` 落地）：这两个态**免疫检查**——
- * 检查腿比的是 `latest > current`，已下好的版本必然还大于当前版本 ⇒ 一查必判 `available`，
- * 界面就从「重新启动」退回「下载更新」。
+ * 🔴 **`downloaded` has no edge back to idle** (E6#57.12, decided by the user 2026-09-12; the old diagram's
+ * `downloaded ──"later"──▶ idle` was **wrong** and has been deleted). The notification's "later" **only dismisses that one notice**;
+ * the state stays put — the installer is already on disk waiting to run, and downgrading the state to `idle` would only make the user download again.
+ * Two exits: `updating` (clicking "restart and update"), or the startup reset restores it after the process exits (#57.7a).
+ * From this follows #57.12g (already landed in `electron/services/update-service.ts`): these two states are **check-immune** —
+ * the check leg compares `latest > current`, and a version already downloaded is necessarily still greater than the current one ⇒ every check judges `available`,
+ * and the UI would regress from "restart" back to "download update".
  *
- * 🔴 **`downloaded`/`ready` 带 `warning` 槽（2026-09-12 用户拍板 ⇒ 选 (a)「给状态加 warning 槽」）**：
- * 降级放行（`checksum-unavailable` 等「照常安装、但要记一笔」的情形）**必须落在这个槽里**。
- * 此前只有一个 `idle.lastError` 槽，而**降级放行时状态走的是 `downloaded`** ⇒ 照旧类型实现这笔账
- * 必然被无声丢掉（发布侧永远看不见自己漏附了校验值，拍板想要的效果归零；同属
- * [[snapshot-shadows-truth-bug-class]] ④「只有一次机会 + 失败不出声」）。
+ * 🔴 **`downloaded`/`ready` carry a `warning` slot (decided by the user 2026-09-12 ⇒ option (a) "add a warning slot to the state")**:
+ * degrade-and-allow cases (`checksum-unavailable` etc. "install as usual, but log it") **must land in this slot**.
+ * Previously there was only one `idle.lastError` slot, and **on degrade-and-allow the state goes to `downloaded`** ⇒ implementing the old type as-is
+ * would silently drop this record (the release side would never see that it omitted a checksum, zeroing out the intended effect; also an instance of
+ * [[snapshot-shadows-truth-bug-class]] ④ "one chance only + failures stay silent").
  *
- * ⚠️ `warning` ≠ `lastError` 的复本：**`lastError` = 这次没成**（回 `idle`，有出口等用户重试）；
- * **`warning` = 成了，但有一件发布侧该知道的事**（态照常往下走）。所以它只出现在「成功那条路」上，
- * 且**跨态传递**：`downloaded.warning` →（壳出提示时）→ `ready.warning`。
+ * ⚠️ `warning` is not a copy of `lastError`: **`lastError` = this attempt failed** (back to `idle`, with an exit waiting for the user to retry);
+ * **`warning` = it succeeded, but there is something the release side should know** (the state proceeds as usual). So it appears only on the "success path",
+ * and it **propagates across states**: `downloaded.warning` → (when the shell raises the notice) → `ready.warning`.
  */
 export type UpdateState =
   | { type: 'uninitialized' }
@@ -193,8 +193,8 @@ export type UpdateState =
   | { type: 'checking' }
   | { type: 'available'; update: UpdateInfo }
   | { type: 'downloading'; update: UpdateInfo; progress: DownloadProgress }
-  /** `warning` = 降级放行的记账（如 `checksum-unavailable`）——见上方 🔴，不是失败 */
+  /** `warning` = the degrade-and-allow record (e.g. `checksum-unavailable`) — see the 🔴 above, not a failure */
   | { type: 'downloaded'; update: UpdateInfo; warning?: UpdateError }
   | { type: 'updating'; update: UpdateInfo }
-  /** `downloaded` 的提示态——`warning` 由 `downloaded` 传递而来（消费者是壳，#57.9/#57.12） */
+  /** The notification state of `downloaded` — `warning` is carried over from `downloaded` (the consumer is the shell, #57.9/#57.12) */
   | { type: 'ready'; update: UpdateInfo; warning?: UpdateError };

@@ -1,31 +1,31 @@
 /**
- * 🔥 linkdesk.d.ts——window.linkdesk 插件 API 契约（自动生成，勿手改）
+ * 🔥 linkdesk.d.ts—the window.linkdesk plugin API contract (auto-generated, do not edit by hand)
  *
- * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（15 域接口 + types.ts）
- *         + src/core/types/ipc/* + src/core/types/pool/*（wire 载荷类型）
- * 生成器：scripts/generate-contract.mjs（Route C——契约类型文件为源，纯类型打包）
- * 改契约源 → 跑 `node scripts/generate-contract.mjs`（npm run check 里 check-contracts 强制）
+ * Generated from: src/core/api/linkdesk-api.ts + linkdesk-api/ (15 domain interfaces + types.ts)
+ *                 + src/core/types/ipc/* + src/core/types/pool/* (wire payload types)
+ * Generator: scripts/generate-contract.mjs (Route C—contract type files are the source, pure-type bundling)
+ * After changing a contract source, run `node scripts/generate-contract.mjs` (enforced by check-contracts in npm run check)
  *
- * 用法（第三方插件作者）：
- * 拷贝本文件进项目 + tsconfig 引用，或 `npm i -D @linkdesk/contracts`
+ * Usage (third-party plugin authors):
+ * Copy this file into your project + reference it from tsconfig, or `npm i -D @linkdesk/contracts` ()
  *   import type { PluginListEntry } from "linkdesk";
- *   window.linkdesk.filesystem.readFile(...)   // ambient 类型直出
+ *   window.linkdesk.filesystem.readFile(...)   // ambient types work directly
  */
 
-// ── 契约类型 ──
+// ── Contract types ──
 /**
- * 命令参数结构——命令**自带参数说明**，随 `commands.getCommands()` 一并返回。
- * 位置语义：`params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名写，⛔ 别另起名）——
- * 消费方（菜单/插件/自动化）照它拼 `executeCommand(id, ...params)` 即可，不必读源码猜。
+ * Command parameter descriptor —  commands **carry their own parameter descriptions**, returned together with `commands.getCommands()`.
+ * Positional semantics: `params[i]` maps **one-to-one by position** to handler arguments (`name` follows the handler's argument name, ⛔ do not invent another) —
+ * consumers (menus/plugins/automation) can assemble `executeCommand(id, ...params)` from it without reading source code.
  */
 export interface LinkDeskCommandParam {
-    /** 参数名——照 handler 实参名（如 `tabId` / `settingKey` / `groupId`） */
+    /** Parameter name — follows the handler argument name (e.g. `tabId` / `settingKey` / `groupId`) */
     name: string;
-    /** 参数类型——四值收敛（对象 = 结构化载荷，字段明细写在 description） */
+    /** Parameter type — converged to four values (object = structured payload; field details go in description) */
     type: "string" | "number" | "boolean" | "object";
-    /** 是否必填——缺省 `false`（可选） */
+    /** Whether required — defaults to `false` (optional) */
     required?: boolean;
-    /** 一句话说明这个参数是什么（省略 = 名字已自明） */
+    /** One-sentence description of what this parameter is (omitted = the name is self-explanatory) */
     description?: string;
 }
 export interface LinkDeskCommand {
@@ -33,112 +33,113 @@ export interface LinkDeskCommand {
     title: string;
     category?: string;
     /**
-     * 这条命令**干什么**——用户/AI 视角的意图（i18n key = 中文原文，与 title 同款），
-     * ⛔ 不复述命令 id（id 由字段本身给出）。可选、纯加法——存量命令不填即缺省。
+     * what this command **does** — the intent from the user/AI perspective (i18n key = original Chinese text, same convention as title),
+     * ⛔ do not restate the command id (the id is already given by the field itself). Optional, purely additive — existing commands may omit it.
      */
     description?: string;
-    /** 参数结构（逐位对应 handler 实参）。可选、纯加法；无参数命令不填。 */
+    /** parameter structure (positionally mapped to handler arguments). Optional, purely additive; omit for commands without parameters. */
     params?: LinkDeskCommandParam[];
 }
-/** 配方贡献域——theme 元数据 domains（混搭来源过滤）+ theme:changed 载荷（域级细粒度刷新）共用（06 §2/§6.2）。
- *  五域：colors（配色，colorways 恒贡献） + appearance 四风格域（radius/glass/font/background）。
- * surface 域删——per-surface 精调死键（A 删拍板），玻璃表面形态 token（--surface-*）归 glass 域。 */
+/** Recipe contribution domains—shared by theme metadata domains (mix-and-match source filtering) and the theme:changed payload (domain-level fine-grained refresh) (06 §2/§6.2).
+ *  Five domains: colors (colorways always contribute) + the four appearance style domains (radius/glass/font/background).
+ * the surface domain removed—per-surface fine-tuning keys are dead (decision A removal); the glass surface shape tokens (--surface-*) belong to the glass domain. */
 export type ThemeDomain = "colors" | "font" | "radius" | "glass" | "background";
-/** 配置 schema 中的单个属性定义——🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
- * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
+/** A single property definition in a config schema —  🛤 completes uiHint/minimum/maximum/renderHint/dependsOn
+ * (the shell's SettingsView renderControl/SettingRow official control switching + dependency show/hide fields, aligned with SettingsView/types ConfigProperty) */
 export interface LinkDeskConfigProperty {
     type: string;
     default?: unknown;
     description?: string;
-    /** 🆕 配置项短名（D1/D2，2026-10-04）：行级显示名——设置页行名与市场功能页上行取它渲染（optional）。
-     *  值域惯例同 description：中文原文 = i18n key，en 译名由声明方供给（插件仓 i18n/en.json／壳侧 lang-defaults）；
-     * 未声明 = 渲染回退显配置键（D2/——第三方存量零影响，导出面只加不删）。 */
+    /** 🆕 Config item short name (D1/D2, 2026-10-04): row-level display name — the settings page row name and the marketplace feature page row render from it (optional).
+     *  Value convention same as description: original Chinese text = i18n key; the en translation is supplied by the declarer (plugin repo i18n/en.json / shell-side lang-defaults);
+     * undeclared = render falls back to showing the config key (D2/— zero impact on existing third-party plugins; the export surface only grows). */
     title?: string;
     enum?: string[];
     enumDescriptions?: string[];
-    /** 控件提示——uiHint 优先：plugin.json 声明式控件选择（renderControl 读它切控件）。
-     *  已知值清单见 `SettingsUiHint`（正典）；**开放 string**——第三方可声明自定义 hint。 */
+    /** Control hint — uiHint takes priority: the declarative control choice in plugin.json (renderControl reads it to switch controls).
+     *  For the list of known values see `SettingsUiHint` (canonical); **open string** — third parties may declare custom hints. */
     uiHint?: string;
-    /** 数值下限——uiHint 数值控件 min 校验 */
+    /** Numeric lower bound — min validation for numeric uiHint controls */
     minimum?: number;
-    /** 数值上限——uiHint 数值控件 max 校验 */
+    /** Numeric upper bound — max validation for numeric uiHint controls */
     maximum?: number;
-    /** 渲染提示——renderControl 第二判据（已知值见 `SettingsRenderHint`：action 操作按钮 / readonly 只读状态行
-     *  / color 色块预览）。**开放 string**——未知值降级为只读展示。 */
+    /** Render hint — renderControl's second criterion (known values see `SettingsRenderHint`: action action button / readonly read-only status row
+     *  / color swatch preview). **Open string** — unknown values degrade to read-only display. */
     renderHint?: string;
-    /** 等宽限定——仅 uiHint "fontFamily" 有意义。true/缺省 = 只列等宽族（编辑器字体）；false = 全字族（UI 字体）。 */
+    /** Monospace restriction — only meaningful for uiHint "fontFamily". true/omitted = list monospace families only (editor fonts); false = all font families (UI fonts).  */
     monoOnly?: boolean;
-    /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
+    /** Dependency condition — this item shows only when the config value of dependsOn.key === value (SettingRow reads it to show/hide the whole row) */
     dependsOn?: {
         key: string;
         value: unknown;
     };
-    /** 动态下拉数据源——uiHint "select" 时读取（渲染时调 theme.listRecipes() 动态取）。
-     *  "theme.colorways" = 活动配方（app.theme）配色变体（选项带预览色块）；
-     *  "theme.sources" = 混搭来源（按 optionsFromDomain 过滤 RecipeMeta.domains）。 */
+    /** Dynamic dropdown data source — read when uiHint is "select" (calls theme.listRecipes() at render time, ).
+     *  "theme.colorways" = colorways of the active recipe (app.theme) (options carry preview swatches);
+     *  "theme.sources" = mash-up sources (filtered by optionsFromDomain over RecipeMeta.domains). */
     optionsFrom?: string;
-    /** 混搭来源域过滤——optionsFrom "theme.sources" 时按此域过滤 RecipeMeta.domains（10 §2 六域） */
+    /** Mash-up source domain filter — when optionsFrom is "theme.sources", filters RecipeMeta.domains by this domain (the six domains of spec 10 §2) */
     optionsFromDomain?: ThemeDomain;
-    /** 按钮动作——点击执行此壳命令（第三方设置 UI 经 commands.executeCommand 触发）。
-     * 设置行案 2.1：**伴生声明**——与任何主控件共存 ⇒ 主控件右侧的伴生按钮（文案 = `description`）。 */
+    /** Button action — runs this shell command on click (triggered by third-party settings UIs via commands.executeCommand).
+     * Settings row case 2.1: **companion declaration** — coexists with any primary control ⇒ the companion button to the right of the primary control (label = `description`).  */
     actionCommand?: string;
-    /** 只读状态的运行时数据源——渲染时执行此壳命令取值
-     *  （返回 string；显示话术由命令侧拼装）。值来自命令、不来自配置存储——通用能力，任何插件可用。
-     *  设置行案 2.1：**伴生声明**——与任何主控件共存 ⇒ 主控件右侧的伴生只读（复用只读底座轮询）。 */
+    /** (P-2 decision A): runtime data source for read-only status — runs this shell command at render time to fetch the value
+     *  (returns a string; the display wording is assembled on the command side). The value comes from the command, not from config storage — a general capability any plugin can use.
+     *  Settings row case 2.1: **companion declaration** — coexists with any primary control ⇒ the companion read-only to the right of the primary control (reuses the read-only base's polling). */
     statusCommand?: string;
-    /** renderHint "action" 按钮禁用条件——全部 {key,value} 匹配当前配置值时禁用 */
+    /** disable condition for renderHint "action" buttons — disabled when all {key,value} pairs match the current config values */
     actionDisabledAll?: Array<{
         key: string;
         value: unknown;
     }>;
-    /** 组内二级标题——SettingsView 把同 group 的 key 归到子标题下渲染；无 group 保持平铺（零侵入） */
+    /** secondary heading within a group — SettingsView groups keys with the same group under a subheading; without group it stays flat (zero intrusion) */
     group?: string;
-    /** 数值单位——uiHint "slider" 值标签单位（"×" / "px"；空 = 裸数值） */
+    /** numeric unit — value-label unit for uiHint "slider" ("×" / "px"; empty = bare number) */
     unit?: string;
 }
-/** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
+/** Config schema — key → property definition (index signature kept for existing consumers) */
 export interface LinkDeskConfigSchema {
     [key: string]: LinkDeskConfigProperty;
 }
-/** 配置贡献条目——configuration.getConfigurationContributions() 返回形状（🛤 命名）。
- * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, subtitle?, groupDescriptions?, properties }] 对齐——第三方设置 UI 不再 need cast */
+/** Configuration contribution entry — the shape returned by configuration.getConfigurationContributions() (🛤 naming).
+ * Aligned with the [pluginId, { title, subtitle?, groupDescriptions?, properties }] assembled by the shell's ConfigurationRegistry — third-party settings UIs no longer need casts */
 export type LinkDeskConfigurationContribution = [
     string,
     {
         title: string;
-        /** 分区大标题下的一行副标题（可选；未声明 = 不渲染，零侵入） */
+        /** (P-3 decision A): one-line subtitle under the section's main title (optional; undeclared = not rendered, zero intrusion) */
         subtitle?: string;
-        /** 各分节（group）标题下的一行小字——键 = group 原文（可选，零侵入） */
+        /** (P-3 decision A): one-line small text under each group heading — key = the group's original text (optional, zero intrusion) */
         groupDescriptions?: Record<string, string>;
         properties: Record<string, unknown>;
     }
 ];
-/** 命令 + 配置命名空间面——对标 VS Code vscode.commands + workspace.getConfiguration */
+/** Commands + configuration namespace surfaces — modeled after VS Code vscode.commands + workspace.getConfiguration */
 export interface CommandsAPI {
-    /** 命令——对标 VS Code vscode.commands */
+    /** Commands — modeled after VS Code vscode.commands */
     commands: {
-        /** @deprecated 向后兼容别名，新代码用 executeCommand */
+        /** @deprecated  — backward-compatibility alias; use executeCommand in new code */
         execute<T = void>(commandId: string, ...args: any[]): Promise<T>;
-        /** 执行壳侧命令 */
+        /** Execute a shell-side command */
         executeCommand<T = void>(commandId: string, ...args: any[]): Promise<T>;
         /**
-         * 注册池内命令——handler 只存在于池渲染进程（视图 mount 时注册）。
-         * meta 同步到壳注册表：title 显示名（命令面板/右键菜单，重注册即动态更新——
-         * toggle 命令标题随状态翻转）、category 命令面板分组、when context key 过滤
-         * （传 "false" = 纯程序化命令，不进命令面板，仅供插件 API 调用）。
-         * plugin.json contributes.commands 未声明的命令经 meta 注册后同样可见/可执行。
-         * 真相源分工：壳 CommandRegistry = 显示真相源（title/category/when 唯一权威），
-         * 池 = 执行真相源（handler 唯一权威，永不跨进程）——meta 只同步显示面。
-         * 🔴 **`meta.pluginId` = 注册方显式申报的真身份**（可选，只做加法）。
-         *   命令归属解析优先级 = ① plugin.json 声明面 → ② 本字段 → ③ 名字第一段推定。
-         *   声明过的命令**不必填**（① 已权威）；只有「声明里没有、名字又不带自己前缀」的命令需要它，
-         *   否则该命令会被算到名字第一段那个属主头上（借他人前缀 ⇒ 归属错、且异归属顶替拦不住）。
-         *   照 `notifications.source` 先例（`ui.ts:26-32`）：池是单进程共享 realm，
-         *   所有插件共用同一个 `window.linkdesk` ⇒ **无从自动注入，只能作者显式报**。
-         * `meta.description` / `meta.params` = 命令说明与参数结构（可选、只做加法）——
-         *   与 `title`/`category` 同路同步进壳注册表，随 `getCommands()` 出契约
-         *   （`LinkDeskCommand.description` / `LinkDeskCommand.params`）。
-         *   `params[i]` 与 handler 实参**逐位对应**（`name` 照 handler 实参名）。
+         * Register a pool-resident command — the handler exists only in the pool renderer (registered when the view mounts).
+         * meta is synced to the shell registry: title display name (command palette / context menu; re-registering updates it
+         * dynamically — a toggle command's title flips with state), category command-palette grouping, when context key filtering
+         * (pass "false" = a purely programmatic command, not shown in the command palette, only callable via the plugin API).
+         * Commands not declared in plugin.json contributes.commands become visible/executable once registered via meta.
+         * Source-of-truth division: the shell CommandRegistry = display source of truth (title/category/when are the only authority),
+         * the pool = execution source of truth (the handler is the only authority and never crosses processes) — meta syncs only the display surface.
+         * 🔴 ** `meta.pluginId` = the true identity explicitly declared by the registrant** (optional, additive only).
+         *   Command ownership resolution priority = ① the plugin.json declaration → ② this field → ③ inferred from the first segment of the name.
+         *   Declared commands **need not fill it** (① is already authoritative); only commands that are "absent from the declaration
+         *   and whose name does not carry their own prefix" need it — otherwise the command gets attributed to the owner of the
+         *   name's first segment (borrowing someone else's prefix ⇒ wrong ownership, and cross-ownership takeover cannot be blocked).
+         *   Following the `notifications.source` precedent (`ui.ts:26-32`): the pool is a single-process shared realm,
+         *   all plugins share the same `window.linkdesk` ⇒ **there is no way to inject it automatically; the author must declare it**.
+         * `meta.description` / `meta.params` = command description and parameter structure (optional, additive only) —
+         *   synced the same way as `title`/`category` into the shell registry, and surfaced in the contract via `getCommands()`
+         *   (`LinkDeskCommand.description` / `LinkDeskCommand.params`).
+         *   `params[i]` corresponds **positionally** to handler arguments (`name` follows the handler argument name).
          */
         registerCommand(commandId: string,
         handler: (...args: any[]) => Promise<unknown> | unknown, meta?: {
@@ -149,29 +150,29 @@ export interface CommandsAPI {
             description?: string;
             params?: LinkDeskCommandParam[];
         }): void;
-        /** 注销插件的池内命令（约定：命令 ID 格式为 "pluginId.commandName"）——随视图 unmount 调用 */
+        /** Unregister a plugin's pool-resident commands (convention: command ID format "pluginId.commandName") — called on view unmount */
         unregisterCommands(pluginId: string): void;
-        /** 获取所有已注册命令列表 */
+        /** Get the list of all registered commands */
         getCommands(): Promise<LinkDeskCommand[]>;
-        /** 壳侧插件入口模块级注册（双进程执行壳侧半程）——壳 preload 独有 */
+        /** Shell-side plugin entry module-level registration (the shell-side half, executed across both processes) — shell preload only */
         _executeShellLocal?(id: string, ...args: unknown[]): Promise<unknown>;
-        /** 池 preload 独有内部钩——池 renderer 注册 on-command 激活回调（命令 miss → import 属主插件入口）。
-         *  underscore 内部面（对标 _executeShellLocal），非插件作者 API——纯命令插件按需激活的接线位。 */
+        /** pool-preload-only internal hook — the pool renderer registers the on-command activation callback (command miss → import the owning plugin entry).
+         *  Underscore internal surface (modeled after _executeShellLocal), not a plugin-author API — the wiring point for on-demand activation of pure command plugins. */
         _setCommandMissHandler?(handler: (pluginId: string) => Promise<boolean>): void;
     };
-    /** 配置—新名——对标 VS Code vscode.workspace.getConfiguration */
+    /** Configuration — the new name — modeled after VS Code vscode.workspace.getConfiguration */
     configuration: {
-        /** 读取配置值——运行时动态值，无类型参数默认 unknown；调用方显式 get<number>("k") 窄化或自行收窄 */
+        /** Read a configuration value — a runtime dynamic value; defaults to unknown without a type parameter; callers narrow via explicit get<number>("k") or their own narrowing */
         get<T = unknown>(key: string): Promise<T>;
-        /** 写入配置值 */
+        /** Write a configuration value */
         set(key: string, value: unknown): Promise<void>;
-        /** 获取配置 schema */
+        /** Get the configuration schema */
         getSchema(key?: string): Promise<LinkDeskConfigSchema>;
-        /** 订阅配置变更——返回 unsubscribe 函数。值运行时动态，T 由订阅方 cb 推断（events.on 同款泛型，防逆变报错） */
+        /** Subscribe to configuration changes — returns an unsubscribe function. The value is dynamic at runtime; T is inferred from the subscriber's cb (same generic as events.on, to avoid contravariance errors) */
         onChange<T = unknown>(key: string, cb: (value: T) => void): () => void;
-        // ══ 以下 9 个方法为设置页专用（SettingsView 渲染/实时刷新/跳转）。
-        // 池 preload 注入（SettingsView 在池渲染）——required，壳 preload 无此面。
-        // 通用插件请用上面的 get/set/getSchema/onChange。 ══
+        // ══  the following 9 methods are settings-page only (SettingsView rendering / live refresh / navigation).
+        // Injected by the pool preload (SettingsView renders in the pool) — required; the shell preload has no such surface.
+        // General plugins should use get/set/getSchema/onChange above. ══
         getConfigurationContributions(): Promise<LinkDeskConfigurationContribution[]>;
         inspectConfiguration(key: string): Promise<unknown>;
         getUserSettings(): Promise<Record<string, unknown>>;
@@ -181,86 +182,86 @@ export interface CommandsAPI {
         onRequestSettingsGroup(cb: (pluginId: string) => void): () => void;
         consumeScrollToSetting(): Promise<string | null>;
         onRequestScrollToSetting(cb: (key: string) => void): () => void;
-        /** 🔴 修复：切快捷键 tab——同款双通道（替代错配 window 事件死路由）。
-         *  mount 时消费 pending（未打开时"打开快捷键设置"命令的请求）；无请求返回 null */
+        /** 🔴 fix: switch to the keybindings tab — the same dual channel as  (replaces the mismatched window-event dead route).
+         *  On mount, consumes the pending request (the "open keybindings settings" command issued while not open); returns null when there is no request */
         consumeOpenKeybindings(): Promise<{
             query?: string;
         } | null>;
-        /** 实时订阅——设置已打开时"打开快捷键设置"命令即时切 tab */
+        /** live subscription — when the settings page is already open, the "open keybindings settings" command switches the tab immediately */
         onRequestOpenKeybindings(cb: (payload: {
             query?: string;
         }) => void): () => void;
     };
-    /** @deprecated 向后兼容别名，新代码用 configuration */
+    /** @deprecated  — backward-compatibility alias; use configuration in new code */
     config: CommandsAPI["configuration"];
 }
-/** 玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮）。
- * 纹理 texture 与 glass 正交（⑬ 纸纹分区不带玻璃也能用 per-surface 纹理）。 */
+/** glass + floating panel texture fields—theme JSON `surface` (omitted = no glass, no floating).
+ * Texture is orthogonal to glass (⑬ paper-texture zones work without glass via per-surface textures). */
 export interface ThemeSurface {
-    /** 玻璃配方——缺省 = 无玻璃 */
+    /** Glass recipe—omitted = no glass */
     type?: "glass";
-    /** backdrop blur px——0 = 关 */
+    /** Backdrop blur px—0 = off */
     blur?: number;
-    /** 饱和度增强——1 = 关 */
+    /** Saturation boost—1 = off */
     saturate?: number;
-    /** 玻璃面叠加色 */
+    /** Color layered over the glass surface */
     tint?: string;
-    /** 玻璃面不透明度（合成层基线）——1 = 不透明 / 0 = 全透见背景。写 --glass-opacity token（tint 盖片
-     * opacity 消费）+ 播种反推进合成 alpha（配方面基线，用户 app.glassOpacity 覆盖时优先） */
+    /** Glass surface opacity (the compositing-layer baseline)—1 = opaque / 0 = fully see-through to the background. Writes the --glass-opacity token (consumed by the tint overlay's
+     * opacity) + seeds a back-computed compositing alpha ( the recipe's surface baseline; takes priority when the user's app.glassOpacity overrides) */
     opacity?: number;
-    /** 液态玻璃顶部高光强度——0 = 关 */
+    /** Liquid-glass top highlight intensity—0 = off */
     specular?: number;
-    /** 顶部高光基色（发丝光边颜色）——缺省 = 白；alpha 仍走 specular */
+    /** top highlight base color (the hairline-light edge color)—omitted = white; alpha still goes through specular */
     specularColor?: string;
-    /** 形变过渡 ms——0 = 关 */
+    /** Morph transition ms—0 = off */
     morph?: number;
-    /** 悬浮圆角 px——0 = 直角贴边 */
+    /** Floating corner radius px—0 = square, flush to the edge */
     radius?: number;
-    /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
+    /** Lifted drop shadow—true = floating shadow (the engine maps --shadow-lift) */
     shadow?: boolean;
-    /** 可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
+    /** tileable texture image asset path (⑬ paper-texture zones)—applied to all 5 zone surfaces; independent of glass, takes effect on its own */
     texture?: string;
-    /** 纹理不透明度——1 = 不透明 */
+    /** Texture opacity—1 = opaque */
     textureOpacity?: number;
 }
-/** 图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
+/** image background texture fields—theme JSON `background` (omitted = no image) */
 export interface ThemeBackground {
-    /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
+    /** Image path—the author provides a resolvable URL; the engine wraps it in url() when writing `--bg-image` */
     image?: string;
-    /** 图片层不透明度——1 = 不透明。引擎写 `--bg-opacity`（.background-layer 清晰底图）+ `--surface-bg-opacity`
-     * （镜像/纹理/切片 ::after 图像层）；用户 app.backgroundOpacity 覆盖时双 token 齐写（图与底统一淡出，避免底图淡而镜像恒显） */
+    /** Image layer opacity—1 = opaque. The engine writes `--bg-opacity` (the .background-layer crisp base image) + `--surface-bg-opacity`
+     * (the mirror/texture/slice ::after image layers); when the user's app.backgroundOpacity overrides, both tokens are written together ( the image and base fade out uniformly, avoiding a faded base image while the mirror stays fully visible) */
     opacity?: number;
-    /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
+    /** Image mask lightness/darkness (0-1 rgba alpha)—0 = no mask */
     mask?: number;
-    /** 遮罩基色（暗化层颜色）——缺省 = 黑；alpha 仍走 mask。仅 panorama 生效（同 mask） */
+    /** mask base color (the darkening layer's color)—omitted = black; alpha still goes through mask. Only effective in panorama (same as mask) */
     maskColor?: string;
-    /** 切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
+    /** slicing mode—"panorama" (default) = full-window semantics unchanged; "zones" = the same image sliced continuously across the 5 zone surfaces (⑭ imagery zones) */
     mode?: "panorama" | "zones";
 }
 export interface LinkDeskTheme {
     name: string;
     type: "dark" | "light";
-    /** 玻璃/悬浮质感——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+    /** glass/floating texture — theme JSON `surface` (omitted = no glass, no floating) */
     surface?: ThemeSurface;
-    /** 图片背景——主题 JSON `background`（缺省 = 无图） */
+    /** image background — theme JSON `background` (omitted = no image) */
     background?: ThemeBackground;
     pluginId?: string;
 }
-/** 配色变体元数据——theme.listRecipes() 返回（colorways[] 元素，06 §2）。
- *  预览色供 ThemePicker 卡片取色；单配色配方 = 1 项。 */
+/** colorway metadata — returned by theme.listRecipes() (elements of colorways[], spec 06 §2).
+ *  Preview colors feed the ThemePicker cards; a single-colorway recipe = 1 entry. */
 export interface ColorwayMeta {
-    /** 配色变体 id——全局唯一（theme.setColorway 入参；app.themeColor 动态 enum 存此） */
+    /** Colorway id — globally unique (input to theme.setColorway; the app.themeColor dynamic enum stores this) */
     id: string;
-    /** 配色显示名 */
+    /** Colorway display name */
     name: string;
-    /** 预览色——强调色 + 窗口背景（卡片徽标取色用；缺省配色无该 token → 空串） */
+    /** Preview colors — accent + window background (used to color card badges; the default colorway lacks this token → empty string) */
     preview: {
         accent: string;
         bgWindow: string;
     };
 }
-/** 配方元数据——theme.listRecipes() 返回（全部可用配方 + 配色变体 + 预览色，06 §2）。
- *  domains = 该配方贡献哪些域（混搭来源过滤依据，10 §2）；type = 明暗类别。 */
+/** recipe metadata — returned by theme.listRecipes() (all available recipes + colorways + preview colors, spec 06 §2).
+ *  domains = which domains the recipe contributes (basis for mash-up source filtering, spec 10 §2); type = light/dark category. */
 export interface RecipeMeta {
     id: string;
     name: string;
@@ -273,145 +274,146 @@ export interface LinkDeskLanguage {
     label: string;
     pluginId: string;
 }
-/** 主题 + 语言 + 外观资产命名空间面——对标 VS Code 外观面 */
+/** Theme + language + appearance asset namespace surfaces — modeled after the VS Code appearance surface */
 export interface AppearanceAPI {
     theme: {
-        /** 获取当前主题 ID */
+        /** Get the current theme ID */
         getCurrent(): Promise<string>;
-        /** 获取所有可用主题列表 */
+        /** Get all available themes */
         getAvailable(): Promise<LinkDeskTheme[]>;
-        /** 应用主题 */
+        /** Apply a theme */
         apply(themeId: string): Promise<void>;
-        // ── 配方/配色 06 §2 六方法——列表走 API（数据），选中走配置（持久化 app.*）──
-        /** 全部可用配方（含各配色变体 + 预览色）——ThemePicker 卡片 / 配色与混搭动态 SelectBox 数据源 */
+        // ──  recipe/colorway 06 §2 six methods — listing goes through the API (data), selection goes through configuration (persisted app.*) ──
+        /** All available recipes (including colorway variants + preview colors) — ThemePicker cards / data source for the colorway and mix-and-match dynamic SelectBox */
         listRecipes(): Promise<RecipeMeta[]>;
-        /** 当前活动配方/配色——合并配置计算（getActiveRecipe + app.theme/app.themeColor 回退） */
+        /** Current active recipe/colorway — computed from merged configuration (getActiveRecipe + app.theme/app.themeColor fallback) */
         getActive(): Promise<{
             recipeId: string;
             colorwayId: string;
         } | null>;
-        /** 当前生效 token 集（合并后）——appearanceMode→custom 播种、混搭预览 */
+        /** Currently effective token set (after merging) — seeds appearanceMode→custom, mix-and-match preview */
         getEffectiveTokens(): Promise<Record<string, string>>;
-        /** 应用配方——落 app.theme（配色随配方自动跟随） */
+        /** Apply a recipe — persisted to app.theme (the colorway follows the recipe automatically) */
         setRecipe(recipeId: string): Promise<void>;
-        /** 应用配色变体——落 app.themeColor */
+        /** Apply a colorway variant — persisted to app.themeColor */
         setColorway(colorwayId: string): Promise<void>;
-        /** 复位外观——对齐壳命令：app.appearanceMode→followTheme（onApply 级联清 9 覆盖 + 6 域来源 + 强调色回主题基线，合并） */
+        /** Reset appearance — aligned with the shell command: app.appearanceMode→followTheme (onApply cascades to clear 9 overrides + 6 domain origins + accent color back to the theme baseline,  merged) */
         resetAppearance(): Promise<void>;
-        /** 复位混搭——对齐壳命令：批复位 3 来源键回跟随主题（保持自定义模式，app.mixMode 已删、surface 域删） */
+        /** Reset mix-and-match — aligned with the shell command: batch resets the 3 origin keys back to follow theme (custom mode preserved; app.mixMode removed in , surface domain removed in ) */
         resetMix(): Promise<void>;
-        /** 外观覆盖键 → 主题/混搭基准种子值全集（设置页「已修改」徽标基准；无活动配方 → null） */
+        /** appearance override keys → the full set of baseline seed values for theme/mix-and-match (baseline for the settings page "Modified" badge; no active recipe → null) */
         getBaselineSeeds(): Promise<Record<string, unknown> | null>;
     };
     language: {
-        /** 获取当前语言 ID */
+        /** Get the current language ID */
         getCurrent(): Promise<string>;
-        /** 获取所有可用语言列表 */
+        /** Get all available languages */
         getAvailable(): Promise<LinkDeskLanguage[]>;
-        /** 切换语言 */
+        /** Switch the language */
         set(langId: string): Promise<void>;
-        /** 获取初始语言数据（WebView 加载时壳已推送） */
+        /** Get the initial language data (pushed by the shell when the WebView loads) */
         getInitial(): {
             lang: string;
             resources: Record<string, unknown>;
         } | null;
-        /** 订阅语言变更——返回 unsubscribe */
+        /** Subscribe to language changes — returns unsubscribe */
         onChange(cb: (data: {
             lang: string;
             resources: Record<string, unknown>;
         }) => void): () => void;
     };
-    /** 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） */
+    /** appearance assets — locally picked images are copied into managed storage (controlled source — user-chosen paths cannot be read directly via file://) */
     appearance: {
-        /** 导入图片到 userData/appearance/（重名去重）——返回受控协议 URL（linkdesk-userdata://…），
-         *  供 app.backgroundImage 持久化；沙箱经特权协议加载（plain 绝对路径被拦截） */
+        /** Import an image into userData/appearance/ (deduplicated by name) — returns a controlled-protocol URL (linkdesk-userdata://…, ),
+         *  for app.backgroundImage persistence; the sandbox loads it via the privileged protocol (plain absolute paths are intercepted) */
         importImage(sourcePath: string): Promise<string>;
-        /** 打开外观存储目录（userData/appearance）——主进程解析路径并 shell.openPath 开资源管理器
-         *  内容（非高亮单文件）；目录缺省也建（打开即见存储位置），openPath 失败抛错 fail-loud。 */
+        /** open the appearance storage directory (userData/appearance) — the main process resolves the path and uses shell.openPath to open the file explorer
+         *  at the directory contents (not highlighting a single file); a missing directory is created too (opening reveals the storage location); an openPath failure throws fail-loud. */
         revealStorage(): Promise<void>;
     };
 }
-/** 存储命名空间面——当前生效缓存目录的读数口与打开口（解析单点在主进程 storage-handlers） */
+/** Storage namespace surface — the read port and open port for the currently effective cache directory (the single resolution point is in the main process storage-handlers) */
 export interface StorageAPI {
     storage?: {
-        /** 打开缓存目录（资源管理器窗口，非模态）——主进程解析当前生效路径，**先建目录再开**
-         *  （目录缺省也建——刚装完没跑过也有得开，绝不弹"找不到"）；openPath 失败抛错 fail-loud */
+        /** Open the cache directory (a file explorer window, non-modal) — the main process resolves the currently effective path and
+         *  **creates the directory before opening**
+         *  (a missing directory is created too — there is something to open even right after install, never a "not found" popup); an openPath failure throws fail-loud */
         revealCache(): Promise<void>;
-        /** 当前生效的缓存目录绝对路径——settings.json 的 `app.storage.cacheDir`（空/缺 = userData 默认位）；
-         *  🔴 解析唯一入口（落点契约铁律 3：任何地方不存第二份路径，取不抄） */
+        /** The absolute path of the currently effective cache directory — settings.json's `app.storage.cacheDir` (empty/missing = the userData default location);
+         *  🔴 the single resolution entry (placement contract iron rule 3: no second copy of the path is stored anywhere — take it, never copy it) */
         cacheDir(): Promise<string>;
     };
 }
 /**
- * 跨模块共享窗口类型。core/types = 跨模块共享 type（壳目录规范：只放类型）。
+ * Cross-module shared window types—core/types = cross-module shared types (shell directory convention: types only).
  *
- * WindowMode 同时被壳策略层（src/App/windows.ts WINDOW_MODE_STRATEGIES 键 + WindowShellState.mode）
- * 与 core 回调契约（CoreCallbacks.findTabWindow）引用——core 不 import App，故类型下沉此处，
- * App 侧 import + re-export（消费方仍 `./windows` 引入，零改动）。
+ * WindowMode is referenced by both the shell policy layer (src/App/windows.ts WINDOW_MODE_STRATEGIES keys + WindowShellState.mode)
+ * and the core callback contract (CoreCallbacks.findTabWindow)—core does not import App, so the type sinks here,
+ * and App imports + re-exports it (consumers still import from `./windows`; zero changes).
  *
- * 语义
- *   main     主窗——全 zone；面板常驻；关窗=应用退出
- *   detached 脱出窗——tab 随窗；关窗=壳移除窗口状态（tab 随窗关闭，非回归）
- * drift    漂移面板窗——面板专用窗（恒空 groups，主区空占位 I9-13）；
- *            关窗=关闭面板（I9-13 拍板 A）
+ * Semantics ():
+ *   main     main window—all zones; panels resident; closing the window = the app quits
+ *   detached detached window—tabs follow the window; closing the window = the shell removes the window state (tabs close with the window; they do not return)
+ * drift    drift panel window ()—a panel-only window (always empty groups, empty main-area placeholder I9-13);
+ *            closing the window = closing the panel (I9-13 decision A)
  */
 export type WindowMode = "main" | "detached" | "drift";
-/** 菜单项——壳侧已解析（显示文本铁律：label 已 t()，池哑渲染）。titlebar 下拉与 ☰ 汉堡共用。 */
+/** Menu item — already resolved on the shell side (display-text iron law: label already t()'d; the pool renders dumbly). Shared by the titlebar dropdown and the ☰ hamburger. */
 export interface PoolMenuItem {
-    /** 显示标签——壳 t(label ?? command.title ?? command) */
+    /** Display label — shell t(label ?? command.title ?? command) */
     label: string;
-    /** 点击执行的命令 ID——无 command 父项为 ""（汉堡不展平父项，点击 no-op） */
+    /** Command ID executed on click — "" for parent items without a command (the hamburger does not flatten parent items; clicking is a no-op) */
     command: string;
     /**
-     * 菜单内二级分组名——渲染层按它切分隔线（ContextMenu 语义：相邻不同 group 之间出一条线）。
-     * 有值才序列化（无分组 = 兜底 `__default` 一组，不画线）。显示文本铁律：池只比字符串，不解释语义。
-     * ⚠️ 子菜单 children 上的 group 会被 ContextMenu 换成父项 group（mapChildren 语义）——分组只在**顶层菜单项**生效。
+     * secondary group name within the menu — the render layer cuts separators by it (ContextMenu semantics: a line between adjacent items of different groups).
+     * Only serialized when present (no grouping = a single fallback `__default` group, no lines). Display-text iron law: the pool only compares strings, never interprets semantics.
+     * ⚠️ A group on a submenu's children is replaced by the parent item's group by ContextMenu (mapChildren semantics) — grouping only takes effect on **top-level menu items**.
      */
     group?: string;
-    /** 快捷键文本（formatKeyLabel 后）——顶栏与汉堡**都**显示（2026-10-04 恢复顶栏键帽）；无绑定不带此字段 */
+    /** Shortcut text (after formatKeyLabel) — shown by **both** the top bar and the hamburger (2026-10-04 restored top-bar keycaps); absent when unbound */
     shortcut?: string;
-    /** 当前项 √（显隐勾选菜单）——壳 buildTitleBarMenuGroups/汉堡经 resolveVisibilityChecked
-     *  序列化（zone 可见 = ✓）。显示文本铁律：池哑渲染原文，壳只推布尔。 */
+    /** checked state of the current item (√ in visibility menus) — the shell's buildTitleBarMenuGroups/hamburger serialize via resolveVisibilityChecked
+     *  (zone visible = ✓). Display-text iron law: the pool renders the raw value dumbly; the shell only pushes a boolean. */
     checked?: boolean;
-    /** 子菜单——titlebar 仅 command+children 父项携带；汉堡：组标签容器保留为父项，同组成员折进它（2026-10-04） */
+    /** Submenu — titlebar: only parent items with command+children carry it; hamburger: group label containers are kept as parent items with members folded in (2026-10-04) */
     children?: PoolMenuItem[];
 }
-/** 菜单组——titlebar 每个 group = 顶栏一个按钮（如"文件""查看"）；汉堡 = 分组区块 */
+/** Menu group — titlebar: each group = one top-bar button (e.g. "File", "View"); hamburger: a grouped section */
 export interface PoolMenuGroup {
-    /** group 名——排序/定位键 */
+    /** Group name — sorting/addressing key */
     group: string;
-    /** 组显示标签——壳 t(首项 label ?? group) */
+    /** Group display label — shell t(first item's label ?? group) */
     label: string;
     items: PoolMenuItem[];
 }
-/** 标题栏槽位按钮——插件 contributes.titleBar 声明（when 已由壳过滤） */
+/** Title bar slot button — declared by plugin contributes.titleBar (when-clauses already filtered by the shell) */
 export interface TitleBarSlotButton {
     command: string;
-    /** codicon 类名或图片路径——**与 `label` 互斥**：有 label 时池渲染文字按钮，本字段被忽略 */
+    /** codicon class name or image path — **mutually exclusive with `label`**: when a label is present the pool renders a text button and this field is ignored */
     icon?: string;
-    /** tooltip——壳侧已 t()（命令自报 title，回退 command id） */
+    /** Tooltip — already t()'d on the shell side (the command reports its own title, falling back to the command id) */
     title: string;
     /**
-     * 按钮文字——**壳侧已解析完的最终字符串**（`$` context key 引用已取值、
-     * 静态字面量已过 `t()`）。池是哑渲染：拿到什么画什么，不评估、不翻译、不认 `$`。
-     * 有这个字段 ⇒ 渲染全文字按钮；没有 ⇒ 走 icon 那支。
+     * button text — **the final string already resolved on the shell side** (`$` context key references have been substituted,
+     * static literals have been through `t()`). The pool is a dumb renderer: it renders what it gets — no evaluation, no translation, no `$` recognition.
+     * Present ⇒ render a full-text button; absent ⇒ take the icon branch.
      */
     label?: string;
 }
-/** 标题栏布局——TitleBarZone 消费 */
+/** Title bar layout — consumed by  TitleBarZone */
 export interface TitleBarLayout {
     title: string;
-    /** Logo 资源 URL——壳 getAssetPath 解析（Path B：池不 import core） */
+    /** Logo asset URL — resolved by the shell's getAssetPath (Path B: the pool does not import core) */
     logoUrl: string;
     menuBarVisible: boolean;
-    /** 菜单栏数据——壳分组/展平/翻译后推送 */
+    /** Menu bar data — pushed after the shell groups/flattens/translates */
     menuGroups: PoolMenuGroup[];
-    /** 插件贡献槽位按钮（left/right） */
+    /** Plugin-contributed slot buttons (left/right) */
     slots: {
         left: TitleBarSlotButton[];
         right: TitleBarSlotButton[];
     };
-    /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送（pin/unpin 置顶两态） */
+    /** Window control tooltips — display-text iron law: pushed after shell t() resolution ( pin/unpin sticky two states) */
     windowControls: {
         minimize: string;
         maximize: string;
@@ -421,457 +423,457 @@ export interface TitleBarLayout {
         unpin: string;
     };
 }
-/** 池侧图标——壳序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染）；图标栏与标签栏共用 */
+/** Pool-side icon — serialized by the shell (the pool does not import pluginLoader; Lucide names are mapped to components by the pool); shared by the icon bar and the tab bar */
 export type IconBarIcon = {
     kind: "lucide";
     name: string;
-} //  Lucide 优先
+} //  Lucide first
  | {
     kind: "codicon";
     name: string;
     color?: string;
-} // codicon CSS 类（可选每图标色）
+} // codicon CSS class (optional per-icon color, )
  | {
     kind: "img";
     src: string;
-} // linkdesk:// 协议 URL / data URI
+} // linkdesk:// protocol URL / data URI
  | {
     kind: "emoji";
     text: string;
-}; // 回退 emoji
+}; // fallback emoji
 
-/** 图标栏条目——序列化自壳 viewRegistry（pluginId + 图标 + 名称 + 位置） */
+/** Icon bar entry — serialized from the shell's viewRegistry (pluginId + icon + name + location) */
 export interface IconBarItem {
     pluginId: string;
     icon: IconBarIcon;
-    /** tooltip / aria-label——壳 t(manifest.name) */
+    /** tooltip / aria-label — shell t(manifest.name) */
     label: string;
-    location: "top" | "bottom"; // 主列 / 底部固定组——纯几何，⛔ 与「是不是齿轮」无关（齿轮见 owned）
+    location: "top" | "bottom"; // main column / bottom fixed group — purely geometric; ⛔ has nothing to do with "is it the gear" (see owned for the gear)
 }
-/** 壳自带按钮——归属壳，不来自任何插件（今天只有齿轮）。 */
+/** Shell-owned buttons — belong to the shell, from no plugin (today only the gear). */
 export interface IconBarOwnedButton {
-    id: string; // 稳定身份——池渲染成 data-owned-id（⛔ 不是 data-plugin-id，那会被当拖拽落点）
-    icon: IconBarIcon; // 壳自带资产（壳 getAssetPath 解析后下发）
-    label: string; // tooltip / aria-label——壳 t() 解析
+    id: string; // stable identity — the pool renders it as data-owned-id (⛔ not data-plugin-id, which would be treated as a drop target)
+    icon: IconBarIcon; // shell-owned asset (pushed down after shell getAssetPath resolution)
+    label: string; // tooltip / aria-label — resolved by shell t()
     location: "bottom";
-    menuId: string; // 点击要弹的菜单槽位 id（池哑渲染，菜单项仍由壳 MenuRegistry 推送）
+    menuId: string; // id of the menu slot to pop up on click (the pool renders dumbly; menu items are still pushed by the shell's MenuRegistry)
 }
-/** 图标栏布局——IconBarZone 消费 */
+/** Icon bar layout — consumed by  IconBarZone */
 export interface IconBarLayout {
     icons: IconBarItem[];
-    /** 壳自带按钮——池在底部组末位渲染，恒可见/不可拖/不进 iconOrder。⛔ 别塞进 `icons`（那条数组整条在拖拽与持久化路径上，子夹 01-设计 §四）；必填：漏补即 tsc 红 */
+    /** Shell-owned buttons — rendered by the pool at the end of the bottom group, always visible/undraggable/excluded from iconOrder. ⛔ never stuff them into `icons` (that whole array is on the drag and persistence paths; sub-folder 01-design §4); required: omitting it fails tsc */
     owned: IconBarOwnedButton[];
-    /** 激活图标——当前侧栏容器所属插件（侧栏折叠/无容器时不亮，壳 isActive 同款双重守卫） */
+    /** Active icon — the plugin owning the current sidebar container (not lit when the sidebar is collapsed/has no container; same double guard as the shell's isActive) */
     activePluginId?: string;
-    /** ☰ 汉堡可见——menuStyle hamburger/both */
+    /** ☰ hamburger visible — menuStyle hamburger/both */
     hamburgerVisible: boolean;
-    /** 导航 aria-label——壳 t("导航")（显示文本铁律） */
+    /** Navigation aria-label — shell t("Navigate") (display-text iron law) */
     navLabel: string;
-    /** ☰ 下拉——壳 MenuRenderer showGroups+showKeybindings+checkWhen 语义：组标签容器保留为父项、同组成员折进它（2026-10-04）；仅 hamburgerVisible 时推 */
+    /** ☰ dropdown — shell MenuRenderer showGroups+showKeybindings+checkWhen semantics: group label containers are kept as parent items with members folded in (2026-10-04); pushed only when hamburgerVisible */
     hamburger?: {
-        /** ☰ tooltip——壳 t("菜单") */
+        /** ☰ tooltip — shell t("Menu") */
         title: string;
         groups: PoolMenuGroup[];
     };
 }
-/** 动作区下拉条目——label 显示文本（i18n key），command 执行，args 作为单个位置参数透传 */
+/** Action-area dropdown entry — label is the display text (i18n key), command is executed, args passes through as a single positional argument */
 export interface TitleActionItem {
-    /** 显示文本——i18n key（中文原文；池 t() 解析——显示文本铁律） */
+    /** Display text — i18n key (original Chinese text; resolved by the pool's t() — display-text iron rule) */
     label: string;
-    /** 点击执行的命令 ID */
+    /** Command id executed on click */
     command: string;
-    /** 命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化，无则省略） */
+    /** Command argument — passed through as a single positional argument of executeCommand(command, args) (JSON-serializable; omit if none) */
     args?: unknown;
 }
-/** 动作区 widget——三形态：icon 按钮 / 下拉菜单 / 主按钮+下拉复合（VS Code 终端 [+] + [▾] 同款）。
- *  widget 是通用件不是给终端造的——谁声明谁用（通用 API 壳先行建设不等消费方，插件独立铁律）。 */
+/** Action-area widget — three forms: icon button / dropdown menu / split primary button + dropdown (same as the VS Code terminal [+] + [▾]).
+ *  The widget is a general-purpose piece, not built for the terminal — whoever declares it uses it (general APIs are built by the shell first, never waiting for a consumer — plugin-independence iron rule). */
 export type TitleActionWidget =
-/** 单图标按钮——点击执行 command */
+/** Single icon button — click runs the command */
 {
     type: "icon";
     id: string;
     command: string;
-    /** codicon 类名（如 "codicon-add"）——池渲染 `<span className={`codicon ${icon}`} />` */
+    /** codicon class name (e.g. "codicon-add") — the pool renders `<span className={`codicon ${icon}`} />` */
     icon: string;
-    /** tooltip / aria-label——i18n key */
+    /** tooltip / aria-label — i18n key */
     title: string;
     args?: unknown;
 }
-/** 纯下拉——chevron 按钮展开 items 列表 */
+/** Pure dropdown — the chevron button expands the items list */
  | {
     type: "dropdown";
     id: string;
     items: TitleActionItem[];
-    /** chevron tooltip——i18n key */
+    /** chevron tooltip — i18n key */
     title?: string;
 }
-/** 主按钮+下拉复合——主按钮执行 command（默认动作），右侧 chevron 展开 items 备选 */
+/** Split primary button + dropdown — the primary button runs the command (default action); the chevron on the right expands the items alternatives */
  | {
     type: "split";
     id: string;
     command: string;
-    /** 主按钮图标——无 icon 时用 title（t() 后）作文本按钮 */
+    /** Primary button icon — when there is no icon, the title (after t()) is used as a text button */
     icon?: string;
-    /** 主按钮 tooltip / aria-label / 无 icon 时的文本——i18n key */
+    /** Primary button tooltip / aria-label / text when there is no icon — i18n key */
     title: string;
     items: TitleActionItem[];
     args?: unknown;
 };
-/** 侧栏 view 元数据——从 ViewContainerService 序列化，经 PoolLayout 推送到 SidebarPool */
+/** Sidebar view metadata — serialized from ViewContainerService and pushed to SidebarPool via PoolLayout */
 export interface SidebarViewMeta {
-    id: string; // view ID（"folders" / "search" / "installed"）
-    title: string; // 显示标题
-    pluginId: string; // _pluginId——PluginComponent 用它定位插件根（resolvePath IPC）
-    renderPath: string; // _renderPath 归一化 URL（dev /@fs | prod linkdesk://）——池直动态 import
-    role?: "toolbar" | "section"; // 默认 "section"
+    id: string; // view ID ("folders" / "search" / "installed")
+    title: string; // display title
+    pluginId: string; // _pluginId — PluginComponent uses it to locate the plugin root (resolvePath IPC)
+    renderPath: string; // normalized URL of _renderPath (dev /@fs | prod linkdesk://) — the pool dynamic-imports it directly ()
+    role?: "toolbar" | "section"; // defaults to "section"
     order?: number;
-    collapsed?: boolean; // 插件声明的初始折叠态（collapsed: true）
+    collapsed?: boolean; // initial collapsed state declared by the plugin (collapsed: true)
     badge?: string | number;
     titleDescription?: string;
     titleTooltip?: string;
-    singleViewPaneContainerTitle?: string; // mergeHeaderWhenSingle 时替代 containerTitle
-    minHeight?: number; // 声明最小高度——PaneSash effectiveMinHeight
-    /** 视图动作区声明透传——侧栏 section header 右侧（同一声明，两处消费） */
+    singleViewPaneContainerTitle?: string; // replaces containerTitle when mergeHeaderWhenSingle
+    minHeight?: number; // declared minimum height — PaneSash effectiveMinHeight
+    /** view action-area declaration passed through — right side of the sidebar section header (same declaration as , consumed in two places) */
     titleActions?: TitleActionWidget[];
 }
-/** 单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
+/** pool render data for a single sidebar container — element of SidebarLayout.containers[] (keep-alive container list) */
 export interface SidebarContainerLayout {
     containerId: string;
     containerTitle: string;
     mergeHeaderWhenSingle?: boolean;
     views: SidebarViewMeta[];
 }
-/** 侧栏布局——仅 SidebarPool 接收 */
+/** Sidebar layout — received only by SidebarPool */
 export interface SidebarLayout {
     visible: boolean;
     width: number;
-    /** 🆕 侧栏所在边——dockTo("sidebar", ...) 消费方（swap 规则：与 rightSidebar 恒占对边）。
-     * 池 grid据此决定 sidebar 落左槽还是右槽。缺省 "left"。 */
+    /** 🆕  which edge the sidebar sits on — consumer of  dockTo("sidebar", ...) (swap rule: it and rightSidebar always occupy opposite edges).
+     * The pool grid () decides from this whether the sidebar lands in the left or right slot. Defaults to "left". */
     edge?: "left" | "right";
-    // ── 容器元数据 ──
+    // ──  container metadata ──
     containerId: string | null; // "file-explorer" / "marketplace" / "serial-monitor"
-    containerTitle: string; // "资源管理器" / "插件市场" / "串口监视器"
+    containerTitle: string; // "Explorer" / "Plugin Marketplace" / "Serial Monitor"
     mergeHeaderWhenSingle?: boolean;
     views: SidebarViewMeta[];
-    /** keep-alive 容器清单——全部侧栏容器（非仅活动）序列化。
-     *  池按 containerId 常驻挂载、display:none 切换——切容器不卸载视图，插件组件状态不丢。
-     *  容器随插件卸载从清单消失 → 池自然卸载（真相源在壳，池零缓存）。旧布局（无此字段）回退单容器渲染。 */
+    /** keep-alive container list — all sidebar containers (not just the active one) are serialized.
+     *  The pool mounts them persistently by containerId and toggles display:none — switching containers never unloads views, so plugin component state is preserved.
+     *  A container disappears from the list when its plugin unloads → the pool unloads it naturally (source of truth lives in the shell; the pool caches nothing). Old layouts without this field fall back to single-container rendering. */
     containers?: SidebarContainerLayout[];
-    collapsedViews?: string[]; // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
-    /** 壳通知池侧栏是否折叠——折叠=真消失（无窄条/▶，grid auto 列 0 宽） */
+    collapsedViews?: string[]; // set of persistently collapsed view IDs — shell loadCollapsedState()
+    /** shell tells the pool whether the sidebar is collapsed — collapsed = truly gone ( no slim strip/▶, grid auto column 0 width) */
     collapsed?: boolean;
-    // ── 侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
-    emptyText?: string; // 空状态主文案——"此容器没有已注册的视图"
-    emptyHint?: string; // 空状态提示——"安装插件以添加视图"
-    // ── 拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
-    minWidth?: number; // 拖拽最小宽——壳 dock.minWidth（170）
-    maxWidth?: number; // 拖拽最大宽——壳 dock.maxWidth（600）
-    // ── 向后兼容 ──
-    /** @deprecated 被 views[] 取代——保留给未迁移的代码 */
+    // ──  sidebar UI text pushed with shell-side t() (display-text iron law — the pool renders zero self-produced text) ──
+    emptyText?: string; // empty-state primary text — "No registered views in this container"
+    emptyHint?: string; // empty-state hint — "Install a plugin to add views"
+    // ──  drag clamp bounds — shell LayoutEngine dock declarations pushed (the pool clamps locally to match the shell's resizeZone, zero hardcoding) ──
+    minWidth?: number; // drag minimum width — shell dock.minWidth (170)
+    maxWidth?: number; // drag maximum width — shell dock.maxWidth (600)
+    // ── backward compatibility ──
+    /** @deprecated superseded by views[] — kept for unmigrated code */
     viewId?: string | null;
 }
-/** 🆕 右侧栏布局——右侧栏真 zone（决策 6，addZone("rightSidebar") 消费方）。
- *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
- * 恒占对边，右栏 edge = sidebar 对边（池 grid  推导，防两处字面量）。
- * RightSidebarZone 真渲染：文案壳 t() 推送（显示文本铁律）。无 ◀/▶ 折叠按钮——与左栏同款。 */
+/** 🆕  right sidebar layout — a real zone for the right sidebar (decision 6, consumer of  addZone("rightSidebar")).
+ *  Mirrors SidebarLayout (same set of consumed fields) but carries **no edge of its own** — the swap rule guarantees sidebar ↔ rightSidebar
+ * always occupy opposite edges, so rightSidebar's edge = the opposite of the sidebar's (derived by the pool grid , avoiding duplicated literals).
+ * RightSidebarZone real rendering: copy pushed with shell t() (display-text iron law).  no ◀/▶ collapse buttons — same as the left sidebar. */
 export interface RightSidebarLayout {
     visible: boolean;
     width: number;
-    // ── 容器元数据（与 SidebarLayout 同语义）──
+    // ── container metadata (same semantics as SidebarLayout) ──
     containerId: string | null;
     containerTitle: string;
     mergeHeaderWhenSingle?: boolean;
     views: SidebarViewMeta[];
     containers?: SidebarContainerLayout[];
     collapsedViews?: string[];
-    /** 🆕 右栏折叠态——宽度 ≤48 派生（池），折叠=整个 zone 消失（与左栏  同源，
-     *  无窄条/▶——折叠/展开仅走图标栏 toggle + 界面勾选菜单） */
+    /** 🆕  right sidebar collapsed state — derived from width ≤48 (pool); collapsed = the whole zone disappears (same origin as the left sidebar's ,
+     *  no slim strip/▶ — collapse/expand only via the icon bar toggle + the visibility checkbox menu) */
     collapsed?: boolean;
-    // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
+    // ── drag clamp bounds + empty-state copy (same semantics as SidebarLayout) ──
     minWidth?: number;
     maxWidth?: number;
     emptyText?: string;
     emptyHint?: string;
 }
-/** 左窄栏版本历史的一条——**显示文本已由壳格式化**（显示文本铁律：池拿到什么画什么） */
+/** One entry of the left slim-column version history — **display text already formatted by the shell** (display-text iron law: the pool renders exactly what it receives) */
 export interface PoolReleaseNotesHistoryItem {
-    /** 版本号（无 v 前缀；显示时的 "v" 是格式不是文案，由池加） */
+    /** Version number (no v prefix; the "v" shown at display time is formatting, not copy — added by the pool) */
     version: string;
-    /** 短日期 `MM-DD`（壳按 ISO 切出，**不走 locale**——mockup 03 就是这么画的，切换语言不该改它） */
+    /** Short date `MM-DD` (sliced from ISO by the shell, **no locale involved** — mockup 03 renders it exactly this way; switching languages must not change it) */
     dateLabel: string;
 }
 /**
- * 发行说明标签页的壳→池数据——**三态判别联合**（05 §2.4：态由拉取结果唯一决定，没有第四种）。
+ * Shell→pool data for the release-notes tab — **three-state discriminated union** (05 §2.4: the state is uniquely decided by the fetch result; there is no fourth).
  *
- * 🔴 **池不做任何判定**：`state` 是什么就画什么分支。连「加载中还是已就绪」这种判断也不许池自己做
- * （那是壳的结论）——的 context key 推送是同一条规矩的另一处落点。
+ * 🔴 **The pool makes no decisions of its own**: whatever `state` says, it renders that branch. Not even "loading or ready" may the pool judge by itself
+ * (that conclusion belongs to the shell) — the context key push in  is another landing point of the same rule.
  *
- * 🔴 **缓存命中不经过加载态**（05 §2.4）：壳在渲染进程持有内存缓存（`useReleaseNotes` 的模块单例），
- * 所以「本次会话第二次打开」与「切换历史版本」都**直接落 `content`**，池的第一帧就有内容——不需要
- * 骨架闪一下。骨架只在**真的一次冷拉取**（本会话第一次，且主进程缓存也没命中）时出现。
+ * 🔴 **Cache hits never pass through the loading state** (05 §2.4): the shell holds an in-memory cache in the renderer (the module singleton of `useReleaseNotes`),
+ * so both "opening it a second time in this session" and "switching to a historical version" land **directly on `content`** and the pool's first frame already has content — no
+ * skeleton flash. The skeleton only appears on a **genuinely cold fetch** (first time in this session, and the main-process cache missed too).
  *
- * ⚠️ **三帧对照** = `06-主软件更新/mockups/03-发行说明标签页.html` 的 Frame 3（loading）/
- * Frame 1（content）/ Frame 2（empty）。
+ * ⚠️ **Three-frame correspondence** = Frame 3 (loading) / Frame 1 (content) / Frame 2 (empty) of
+ * `06-main-software-updates/mockups/03-release-notes-tab.html`.
  */
 export type PoolReleaseNotesData = {
     state: "loading";
 } | {
     state: "content";
-    /** 选中版本（无 v 前缀）——与请求值不一致即「请求的那版不在列表里，已回落最近一版」 */
+    /** Selected version (no v prefix) — if it differs from the requested value, it means "the requested version is not in the list; fell back to the closest one" */
     version: string;
-    /** 头部小标题（壳 `t()` 完）——如「2026 年 8 月 30 日 · 稳定通道」 */
+    /** Header subtitle (finished by the shell's `t()`) — e.g. "August 30, 2026 · Stable channel" */
     subtitle: string;
-    /** 通道徽标文字（壳 `t()` 完）——「稳定版」。
-     *  ⚠️ 数据源是 `/releases/latest`，该端点**按 GitHub 定义不含预发布** ⇒ 恒稳定通道；
-     *  将来真加预览通道（改端点）时**这里必须跟着变**，否则徽标开始撒谎。 */
+    /** Channel badge text (finished by the shell's `t()`) — "Stable".
+     *  ⚠️ The data source is `/releases/latest`, which by GitHub's definition excludes pre-releases ⇒ always the stable channel;
+     *  if a preview channel is ever truly added (endpoint change) **this must change with it**, otherwise the badge starts lying. */
     channelLabel: string;
-    /** Release body（GFM 原文）——池过 `MarkdownView`（与插件详情页同一条路） */
+    /** Release body (raw GFM) — the pool renders it through `MarkdownView` (same path as the plugin detail page) */
     body: string;
     /**
-     * 「在 GitHub 查看全部」/「所有版本」的目标——**发行版列表页**（`github.com/O/R/releases`），
-     * 不是本次那一版的页面。
+     * Target of "View all on GitHub" / "All versions" — the **releases list page** (`github.com/O/R/releases`),
+     * not the page of this particular release.
      *
-     * 🔴 为什么不是 `htmlUrl`（主进程 `ReleaseNotes.htmlUrl` 是单版页）：mockup 03 的**三处**链接
-     * （Frame 1 头部 `.rn-actions`「在 GitHub 查看全部 →」、`.rn-all`「所有版本 → GitHub ↗」、
-     * Frame 2 `.rn-empty-link`「在 GitHub 上查看 →」）**指的都是列表页**——单版 URL 一个都用不上。
-     * 故壳侧改从 `product.updateUrl` 推列表页（`useReleaseNotes.ts` 的 `listPageUrl`），
-     * 不往下推 `htmlUrl`。
+     * 🔴 Why not `htmlUrl` (the main process's `ReleaseNotes.htmlUrl` is the single-release page): all **three** links in mockup 03
+     * (Frame 1 header `.rn-actions` "View all on GitHub →", `.rn-all` "All versions → GitHub ↗",
+     * Frame 2 `.rn-empty-link` "View on GitHub →") **point to the list page** — the single-release URL is useless for any of them.
+     * So the shell pushes the list page derived from `product.updateUrl` (the `listPageUrl` of `useReleaseNotes.ts`)
+     * instead of pushing `htmlUrl` down.
      *
-     * **可选**：拿不到 `updateUrl`（dev 无 `product.json`）⇒ 字段缺席 ⇒ 池**不画**这些链接
-     * （空链接比没有链接更糟）。
+     * **Optional**: when `updateUrl` is unavailable (dev has no `product.json`) ⇒ the field is absent ⇒ the pool **does not render** these links
+     * (an empty link is worse than no link).
      */
     listUrl?: string;
-    /** 左窄栏历史（倒序，含选中那版） */
+    /** Left slim-column history (descending, including the selected version) */
     historical: PoolReleaseNotesHistoryItem[];
     /**
-     * 「刷新中」相位（04「发行说明刷新按钮」）——壳推下来，**池不自己判**（同 `state` 规矩）：
-     * `true` = 刷新在途 ⇒ 头部按钮转圈 + 禁用 + `aria-busy`，**正文保持旧内容**（不回骨架）。
-     * `undefined` = 不在刷新中。
+     * "Refreshing" phase (04 "release-notes refresh button") — pushed down by the shell; **the pool does not judge it itself** (same rule as `state`):
+     * `true` = a refresh is in flight ⇒ the header button spins + is disabled + `aria-busy`, and **the body keeps the old content** (no return to the skeleton).
+     * `undefined` = not refreshing.
      */
     refreshing?: boolean;
     /**
-     * 刷新结果注记（壳 `t()` 完整句，含数据的文本归壳）——`undefined` = 不画。
-     * 三种：「已是最新」/「已发现新版本 {{version}}…」/「刷新失败 · 正在显示本地缓存」。
-     * 只在 force 那一趟组装 ⇒ 普通取数（切版本/重试）不残留。
+     * Refresh-result note (a complete sentence finished by the shell's `t()`; data-bearing text belongs to the shell) — `undefined` = not rendered.
+     * Three variants: "Already up to date" / "Found a new version {{version}}…" / "Refresh failed · Showing local cache".
+     * Assembled only on the forced pass ⇒ ordinary fetches (version switches/retries) leave no residue.
      */
     refreshNote?: string;
     /**
-     * 首启自动弹横幅的**整句文案**（壳 `t()` 完，含版本号）——`undefined` = 不画横幅。
+     * The **full sentence** for the first-launch auto banner (finished by the shell's `t()`, version number included) — `undefined` = no banner.
      *
-     * 为什么是「一句话」而不是 `banner: boolean` + 池自己 `t("检测到新版本 {{version}}…")`：
-     * 池自产文本这条线在壳视图这里是**不画**的（对标欢迎页——`WelcomePoolView` 的 `t()` 只用于
-     * 自己那几张写死的标签）。横幅句子里有版本号 = 有数据，数据文本归壳（同 `subtitle` /
-     * `channelLabel`）。顺带：这句话只有壳知道该不该出现（「首启自动弹那一次」是壳的账）。
+     * Why a "single sentence" instead of `banner: boolean` + the pool doing its own `t("New version {{version}} detected…")`:
+     * the pool's self-produced-text line is **not drawn** here for shell views (modeled after the welcome page — `WelcomePoolView` uses `t()` only
+     * for its own few hardcoded labels). A banner sentence containing a version number = data-bearing, and data-bearing text belongs to the shell (same as `subtitle` /
+     * `channelLabel`). Incidentally: only the shell knows whether this sentence should appear at all ("the one automatic first-launch show" is the shell's account).
      */
     banner?: string;
 } | {
     state: "empty";
     /**
-     * 🔴 **本态只有一个字段**——不是漏写，是**空态无话可传**。
+     * 🔴 **This state has exactly one field** — not an omission; the **empty state has nothing to convey**.
      *
-     * mockup 03 Frame 2 上所有的字（副标题「无法连接 GitHub」、左窄栏占位「无本地缓存 /
-     * 联网后自动拉取」、正文「无法加载发行说明」＋描述、「重试」）都是**纯静态文案**——
-     * 不含任何数据、不随版本/日期/语言之外的东西变，所以按硬约束 2「所有 UI 文字走 `t()`」
-     * 归**池侧自己的 `t()`**（池有自己的 i18n 上下文，`WelcomePoolView` 同款）。
-     * 壳往下推一份静态中文串，等于把「翻译发生在壳还是池」这件事变成两处。
+     * Every word on mockup 03 Frame 2 (the subtitle "Cannot connect to GitHub", the left slim-column placeholder "No local cache /
+     * fetched automatically once online", the body "Failed to load release notes" plus its description, "Retry") is **pure static copy** —
+     * it contains no data and varies with nothing beyond version/date/language, so under hard constraint 2 "all UI text goes through `t()`"
+     * it belongs to **the pool's own `t()`** (the pool has its own i18n context, same as `WelcomePoolView`).
+     * Pushing a static string down from the shell would turn "where translation happens — shell or pool" into a two-place decision.
      *
-     * ⚠️ 为什么连「原因」也没有：`ReleaseNotes` 的失败**只有一条**——主进程把错误换成
-     * `Error(message)` 上抛，`UpdateLegError.detail.code`（`network` / `rate-limited` /
-     * `not-found`）**跨不过 IPC**（`invoke-log.ts` 的 `loggedHandle` 原样 rethrow，Electron 只
-     * 序列化 `message`）。所以要分「网络断了」和「GitHub 限流」得先让错误**结构化过 IPC**，
-     * 那是主进程/契约侧的事，**不是渲染侧能补的**。本格按 mockup 保留唯一那句通用文案。
-     * （同类一条：不画「离线」标注，理由见本文件末尾的 🔴 段。）
+     * ⚠️ Why not even the "reason": `ReleaseNotes` failure has **only one channel** — the main process converts the error into
+     * an `Error(message)` and rethrows; `UpdateLegError.detail.code` (`network` / `rate-limited` /
+     * `not-found`) **cannot cross IPC** (`invoke-log.ts`'s `loggedHandle` rethrows as-is; Electron only
+     * serializes `message`). So telling "network down" from "GitHub rate-limited" would first require making errors **structured across IPC**,
+     * which is main-process/contract-side work, **not something the renderer can patch in**. This field keeps the single generic copy from the mockup.
+     * (A related note: no "offline" badge is rendered either — see the 🔴 paragraph at the end of this file.)
      */
     listUrl?: string;
 };
 /**
- * 关于页字段表的一行。
+ * One row of the about-page field table.
  *
- * 🔴 **`label` 也归壳 `t()`**——这是本格与 `PoolReleaseNotesData` 唯一的形制差别，理由不是「一致好看」：
- * 关于页的八个标签（版本/提交/日期/Electron/Chromium/Node.js/V8/OS）**没有一个是不依赖数据的框架文字**
- * ——每一行都是「这条数据的名字」，与 `channelLabel`（「稳定版」＝数据所在通道的名字）同类。
- * 而池的界线是**「含数据的文本壳推，纯框架文字池写」**（`ReleaseNotesPoolView` 头注）：
- * 池自产的应当是 `t("复制")`/`t("检查更新…")` 这种**不含任何字段名**的 chrome。
+ * 🔴 **`label` also goes through the shell's `t()`** — the only structural difference between this entry and `PoolReleaseNotesData`, and the reason is not "consistency for looks":
+ * of the eight labels on the about page (version/commit/date/Electron/Chromium/Node.js/V8/OS), **not one is framework text independent of data**
+ * — every row is "the name of this piece of data", the same kind as `channelLabel` ("Stable" = the name of the channel the data came from).
+ * The pool's boundary is **"data-bearing text is pushed by the shell; pure framework text is written by the pool"** (header note of `ReleaseNotesPoolView`):
+ * what the pool produces itself should be chrome like `t("Copy")` / `t("Check for updates…")` that **contains no field names**.
  *
- * 附带收益（06 §4.2 承诺的「字段可扩展 = 零架构改动」由此成真）：加一个字段 = 壳侧数组加一项，
- * **池侧一个字都不用改**——池只知道「给我几行就画几行」，不知道也不需知道「版本」是什么意思。
- * 反之若池自持标签表，加字段就得壳池两处同改，且两处的顺序随时可能漂移。
+ * Side benefit (this is where the "fields are extensible = zero architecture change" promised by 06 §4.2 comes true): adding a field = adding one item to the shell-side array,
+ * and **the pool side needs not change a single word** — the pool only knows "render as many rows as you are given" and neither knows nor needs to know what "version" means.
+ * Conversely, if the pool kept its own label table, adding a field would require synchronized changes in both shell and pool, and the order of the two could drift at any time.
  */
 export interface PoolAboutField {
-    /** 字段名（壳 `t()` 完）——如「提交」「Electron」「邮箱」 */
+    /** Field name (finished by the shell's `t()`) — e.g. "Commit", "Electron", "Email" */
     label: string;
-    /** 字段值——原样展示，壳不加工（`app.getVersion()` 的**纯**版本号，不带 VS Code 那种 `(user setup)` 后缀） */
+    /** Field value — displayed as-is, unprocessed by the shell (the **pure** version number from `app.getVersion()`, without a VS Code-style `(user setup)` suffix) */
     value: string;
     /**
-     * 存在 = 该值是**链接**（04「关于页重设计」②原则「身份/联系方式/出处一律可点」）：
-     * `mailto:` → 池画 `<a href>`（全局外链路由 `EXTERNAL_PROTOCOLS` 含 mailto → openEmail）；
-     * `https` → 外链（`target="_blank"`，同一路由转系统浏览器，软件本身不导航离开）。
-     * `undefined` = 纯文本（提交哈希 / 版本串这类机器产出值，不可点也不该点）。
+     * Presence = the value is a **link** (04 "about page redesign" principle ② "identity/contact/provenance are always clickable"):
+     * `mailto:` → the pool renders `<a href>` (the global external-link route `EXTERNAL_PROTOCOLS` includes mailto → openEmail);
+     * `https` → external link (`target="_blank"`, the same route hands off to the system browser; the app itself does not navigate away).
+     * `undefined` = plain text (machine-produced values like commit hashes / version strings — not clickable, and should not be).
      */
     href?: string;
     /**
-     * true = 值降一档色（`--text-secondary`）——作者卡**备用邮箱**行用（04 设计 §三②：主走链接色、
-     * 备降一档，主次靠顺序 + 颜色双表达；mockup 的 `.mail--secondary` 同款）。`undefined` = 正常档。
+     * true = the value is rendered one shade dimmer (`--text-secondary`) — used by the author card's **secondary email** row (04 design §3②: the primary
+     * uses link color, the secondary drops a shade; hierarchy expressed by both order and color; same as the mockup's `.mail--secondary`). `undefined` = normal shade.
      */
     secondary?: boolean;
 }
-/** 关于页卡片区的一张卡（04 设计 §四.1 ③：本版本 / 运行环境 / 作者——版心 640 内齐宽） */
+/** One card in the about-page card area (04 design §4.1 ③: this version / runtime / author — equal width within the 640 content column) */
 export interface PoolAboutCard {
-    /** 卡标题（壳 `t()` 完）——如「本版本」「运行环境」「作者」 */
+    /** Card title (finished by the shell's `t()`) — e.g. "This version", "Runtime", "Author" */
     title: string;
-    /** 卡内行——卡内文本**左对齐**（04 拍板①：版心居中 ≠ 每行居中，key: value 要竖线） */
+    /** Rows in the card — text in the card is **left-aligned** (04 decision ①: centered content column ≠ centered rows; key: value pairs must align vertically) */
     rows: PoolAboutField[];
 }
 /**
- * 关于标签页的壳→池数据——**两态判别联合**（06 §4.2 的布局无第三态）。
+ * Shell→pool data for the about tab — **two-state discriminated union** (the 06 §4.2 layout has no third state).
  *
- * 🔴 **池不做任何判定**（同 `PoolReleaseNotesData`）：`state` 是什么就画什么分支。
+ * 🔴 **The pool makes no decisions of its own** (same as `PoolReleaseNotesData`): whatever `state` says, it renders that branch.
  *
- * ⚠️ **为什么没有 `empty`/`error` 态**：关于页的数据来自**本机主进程**（`app:getProductInfo` 读
- * `product.json` + `process.versions`），不是网络——`electron/product.ts` 的 `loadProduct()` 缺失即
- * 兜底、**永不抛**（commit/date 落 `—`，06 §4.4）。所以「取不到」这一态在主进程侧已被消化成
- * 「值为 `—` 的 content」，渲染侧不需要第二个降级面。壳侧只在 `getShellExposed()` 拿不到
- * （非 Electron 环境，池视图本就不会被渲染）时兜底成同一形状的 `content`，**不让池停在骨架**。
+ * ⚠️ **Why there is no `empty`/`error` state**: the about page's data comes from the **local main process** (`app:getProductInfo` reads
+ * `product.json` + `process.versions`), not the network — `electron/product.ts`'s `loadProduct()` falls back on missing values and **never throws**
+ * (commit/date fall back to `—`, 06 §4.4). So the "fetch failed" state is already absorbed on the main-process side into
+ * a content state whose values are `—`; the renderer needs no second degradation surface. The shell only falls back to a same-shaped `content` when
+ * `getShellExposed()` is unavailable (non-Electron environment, where the pool view would not be rendered anyway), so the pool is never left on a skeleton.
  *
- * ⚠️ **两帧对照** = `06-主软件更新/mockups/02-更新通知与关于.html` 的 Frame 6（content）；
- * `loading` 无 mockup 帧——它是**一帧的过渡**（数据来自本机 IPC，非网络），骨架形状照 content 画
- * 以免跳位（`ReleaseNotesPoolView.LoadingFrame` 同款取舍）。
+ * ⚠️ **Two-frame correspondence** = Frame 6 (content) of `06-main-software-updates/mockups/02-update-notification-and-about.html`;
+ * `loading` has no mockup frame — it is a **single-frame transition** (data comes from local IPC, not the network); the skeleton is drawn in the content shape
+ * to avoid layout jumps (same trade-off as `ReleaseNotesPoolView.LoadingFrame`).
  */
 export type PoolAboutData = {
     state: "loading";
 } | {
     state: "content";
-    /** 品牌名——`product.nameLong`（唯一真相源在 `electron/product.json`，不写死在视图里） */
+    /** Brand name — `product.nameLong` (the single source of truth is `electron/product.json`; not hardcoded in the view) */
     name: string;
     /**
-     * 品牌标 URL——壳 `getAssetPath("assets/logo.svg")` 解析后推下来（**与 `titleBar.logoUrl`
-     * 同一个资产、同一条规矩**：池不 import core，资产路径一律壳解析）。
+     * Brand logo URL — resolved by the shell's `getAssetPath("assets/logo.svg")` and pushed down (**the same asset and the same rule as `titleBar.logoUrl`**:
+     * the pool does not import core; asset paths are always resolved by the shell).
      *
-     * 🔴 **本字段是「照验收图实现」时的一处有据偏离**：mockup Frame 6 的 `.about-logo` 手画了一个
-     * 圆角蓝方块 + 白方块（纯示意）。真资产 `public/assets/logo.svg` 是圆角蓝方块 + 「LD」，
-     * 且该文件自己的头注写着「**替换此文件即可更换 logo，无需改代码**」——
-     * 若此处手画一个方块，那句注释对本页就是假话，且同一个软件里会出现两个互相矛盾的「LinkDesk 标志」
-     * （标题栏一个、关于页一个）。故改用真资产：**品牌标全仓只有一个文件、一处规则**。
+     * 🔴 **This field is a documented deviation made while "implementing from the acceptance image"**: mockup Frame 6's `.about-logo` hand-drew a
+     * rounded blue square + white square (pure placeholder). The real asset `public/assets/logo.svg` is a rounded blue square + "LD",
+     * and that file's own header comment says "**replace this file to change the logo — no code changes needed**" —
+     * hand-drawing a square here would make that comment a lie for this page, and the same app would end up with two contradictory "LinkDesk logos"
+     * (one in the title bar, one on the about page). So the real asset is used: **one file, one rule for the brand logo across the whole repo**.
      */
     logoUrl: string;
-    /** HERO 版本药丸（04 设计 §四.1：版本从字段表提到名字旁——这一页被打开的原因要一眼看到） */
+    /** HERO version pill (04 design §4.1: the version was moved from the field table next to the name — why this page was opened should be visible at a glance) */
     version: string;
-    /** HERO 定位句（壳 `t()` 完整句——拍板⑤文案「一个容器，装下你所有的工作方式」；它是标签、要翻译） */
+    /** HERO tagline (a complete sentence finished by the shell's `t()` — decision ⑤ copy "one container for all the ways you work"; it is a label and must be translatable) */
     tagline: string;
     /**
-     * 卡片区（04 设计 §四.1 ③：版心 640 内齐宽的三张卡）——壳组好、池只 `map`。
-     * 作者卡**整块缺席** = `product.author` 形状不合法（保底：不画整卡，不是画一屏 `—`）⇒ 2 或 3 张。
+     * Card area (04 design §4.1 ③: three equal-width cards inside the 640 content column) — assembled by the shell; the pool only `map`s.
+     * The author card being **entirely absent** = `product.author` has an invalid shape (fallback: skip the whole card, not render a screen of `—`) ⇒ 2 or 3 cards.
      */
     cards: PoolAboutCard[];
     /**
-     * 页脚版权行（壳侧组装的完整句——`© ${年份} ${product.author.copyrightHolder} · MIT License`）。
-     * `undefined` = 不画（author 块缺席 ⇒ 版权行没有署名主体，与作者卡同生共死）。
+     * Footer copyright line (a complete sentence assembled on the shell side — `© ${year} ${product.author.copyrightHolder} · MIT License`).
+     * `undefined` = not rendered (author block absent ⇒ the copyright line has no named holder; it lives and dies with the author card).
      */
     footerCopyright?: string;
     /**
-     * 页脚「在 GitHub 查看源码」目标——由 `updateUrl` 推（owner/repo 段 → `github.com/O/R`，
-     * **不写死仓库地址**，`useReleaseNotes.listPageUrl()` 同源推导）；`undefined` = 不画（同「空链接比没有链接更糟」）。
+     * Target of the footer's "View source on GitHub" — derived from `updateUrl` (owner/repo segments → `github.com/O/R`,
+     * **never hardcoding the repo URL**; same derivation as `useReleaseNotes.listPageUrl()`); `undefined` = not rendered (same "an empty link is worse than no link").
      */
     repoUrl?: string;
 };
-/** 手册一章——**字段与 `src/core/types/ipc/aiManual.ts` 的 `AiManualChapter` 同形**。
- *  ⚠️ 为什么不直接 import 那个类型：池视图活在**渲染期**，而 `types/ipc/aiManual.ts` 是
- *  **跨堆 wire 契约**（主进程 ↔ 壳 preload 双端 import）。池与它之间还隔着壳的一次转手
- *  （`useAiManual` 组 DTO）——沿用 `PoolReleaseNotesHistoryItem` 对 `ReleaseNotes` 的既有做法：
- *  壳把 wire 形状**原样搬**成池形状，两岸各一份、各自可独立演进（不是重复定义，是两岸各自的类型面）。 */
+/** One manual chapter — **fields mirror `AiManualChapter` in `src/core/types/ipc/aiManual.ts`**.
+ *  ⚠️ Why not import that type directly: the pool view lives at **render time**, while `types/ipc/aiManual.ts` is a
+ *  **cross-context wire contract** (imported by both the main process ↔ shell preload ends). Between the pool and it there is also one handoff by the shell
+ *  (`useAiManual` assembles the DTO) — following the existing practice of `PoolReleaseNotesHistoryItem` toward `ReleaseNotes`:
+ *  the shell **copies the wire shape as-is** into a pool shape; two banks, each evolving independently (not duplicate definitions but each bank's own type surface). */
 export interface PoolAiManualChapter {
-    /** 章 id——文件名去 `.md`（`03-按任务操作`）。**稳定标识**，导航选中态与 key 认它，⛔ 不用标题当 id
-     *  （标题会改，改了选中态就丢）。 */
+    /** Chapter id — filename minus `.md` (`03-by-task`). **Stable identifier**: navigation selection state and keys use it; ⛔ never use the title as the id
+     *  (titles change, and selection state would be lost). */
     id: string;
-    /** 章标题——壳从正文首个 `# ` 解析（解析不到回落 id）。**是数据不是文案**：手册正文只有中文一种，
-     *  ⛔ 不进 `t()`（切语言不该改手册内容——手册是文档，随包发货的原文）。 */
+    /** Chapter title — the shell parses it from the first `# ` in the body (falls back to the id when parsing fails). **Data, not copy**: the manual body exists only in Chinese,
+     *  ⛔ never passed through `t()` (switching languages must not change the manual's content — the manual is a document, shipped as-is with the package). */
     title: string;
-    /** 章正文 markdown（GFM）——交给**唯一 md 渲染件** `MarkdownView`，池不自己解析。 */
+    /** Chapter body markdown (GFM) — handed to the **sole md renderer** `MarkdownView`; the pool does not parse it itself. */
     markdown: string;
 }
 /**
- * AI 操作手册标签页的壳→池数据——**三态判别联合**（与 `PoolReleaseNotesData` 同形）。
+ * Shell→pool data for the AI operation-manual tab — **three-state discriminated union** (same shape as `PoolReleaseNotesData`).
  *
- * 🔴 **池不做任何判定**（同族铁律）：`state` 是什么就画什么分支。
+ * 🔴 **The pool makes no decisions of its own** (family iron law): whatever `state` says, it renders that branch.
  *
- * ⚠️ **`empty` 覆盖两种来源，是**有意**的**：「这个构建没带手册」（`chapters: []`，主进程侧
- * `ai-manual.ts` 不抛）与「非壳环境取不到」（vitest / 纯预览 ⇒ `getShellExposed()` 为 undefined）。
- * 对读者是同一件事：**这里没有内容可看**，下面一行给出手册**应当**所在的目录让人自查。
- * 差别只在 `dir`：主进程回包里带着真路径，取不到时是空串 ⇒ 视图少画那一行（不是画一个空路径）。
+ * ⚠️ **`empty` covers two origins, deliberately**: "this build ships without the manual" (`chapters: []`; the main-process side
+ * `ai-manual.ts` does not throw) and "unavailable outside the shell" (vitest / pure preview ⇒ `getShellExposed()` is undefined).
+ * To the reader they are the same thing: **there is nothing to read here**, and the line below gives the directory where the manual **should** live for self-inspection.
+ * The only difference is `dir`: the main process's reply carries the real path; when unavailable it is an empty string ⇒ the view skips that line (not rendering an empty path).
  */
 export type PoolAiManualData = {
     state: "loading";
 } | {
     state: "content";
     /**
-     * `app.getVersion()`——**「这本手册属于这一版」的唯一凭据**（判据②：安装版里点得到手册
-     * **且内容是当前版本**）。壳在标题旁显式画出来，用户/维护者据此对账。
-     * 🔴 它来自**主进程的 `app.getVersion()`**，不是手册正文里的版本号——正文里的是给人读的叙述，会滞后。
+     * `app.getVersion()` — **the sole proof that "this manual belongs to this version"** (criterion ②: in the installed build the manual is reachable
+     * **and its content matches the current version**). The shell renders it explicitly next to the title so users/maintainers can verify.
+     * 🔴 It comes from **the main process's `app.getVersion()`**, not the version number inside the manual body — the body's is human-readable narrative and lags behind.
      */
     version: string;
-    /** 全部章节，**按文件名升序**（`00-`/`01-` 前缀即阅读顺序，主进程已排好，池不再排） */
+    /** All chapters, **sorted ascending by filename** (`00-`/`01-` prefixes are the reading order; the main process has already sorted them; the pool does not re-sort) */
     chapters: PoolAiManualChapter[];
 } | {
     state: "empty";
-    /** 手册**应当**所在的绝对路径（主进程解析结果）——空态指路用；空串 = 路径都不知道 ⇒ 不画那一行 */
+    /** Absolute path where the manual **should** live (main-process resolution) — used to point the way in the empty state; empty string = even the path is unknown ⇒ skip that line */
     dir: string;
 };
-/** 标签页在池中的表示——壳 pushLayout 时序列化 */
+/** A tab's representation in the pool — serialized when the shell pushes layout */
 export interface PoolTab {
     id: string;
     pluginId: string;
     title: string;
     sourceId?: string;
-    /** 标签 tooltip 文案——**只给人看**（有才用；无 ⇒ 池侧回落 `title` ＋「双击固定」后缀）。
-     *  🔴 2026-09-27：⛔ 别拿 `sourceId` 当文案——它是跨组移动/事件寻址/插件绑数据的**功能键**
-     *  （插件 API `tabs.closeBySourceId` 认的就是它），插件标签上常是 `settings-2`、`serial-monitor-49`
-     *  这类内部 id，收编 HintTip 时曾被原样印在 tooltip 上。壳 serializeGroups 现场解析：
-     * 文件标签 → 完整路径（原意），其余 → `undefined`。 */
+    /** Tab tooltip copy — **for humans only** (used when present; when absent the pool falls back to `title` + a "double-click to pin" suffix).
+     *  🔴 2026-09-27: ⛔ never use `sourceId` as copy — it is the **functional key** for cross-group moves / event addressing / plugin-bound data
+     *  (the plugin API `tabs.closeBySourceId` matches on it), and on plugin tabs it is often an internal id like `settings-2` or `serial-monitor-49`;
+     *  when HintTip was consolidated it was once printed verbatim into the tooltip. The shell's serializeGroups resolves it on the spot:
+     * file tabs → full path (the original intent of ); everything else → `undefined`. */
     hint?: string;
     dirty?: boolean;
-    // 🆕 TabBar 渲染所需元数据
-    /** 标签图标——IconBarIcon 判别联合（视图标签 = Type-2 身份图 img；文件标签 = 文件类型图标
-     *  codicon/img。壳 serializeGroups 现场解析，池哑渲染——此前仅 emoji/img string，codicon/lucide 标签落空） */
+    // 🆕  metadata required for TabBar rendering
+    /** Tab icon — IconBarIcon discriminated union ( view tabs = Type-2 identity img; file tabs = file-type icon
+     *  codicon/img. The shell's serializeGroups resolves it on the spot; the pool renders dumbly — previously only emoji/img strings existed, so codicon/lucide tabs fell through) */
     icon?: IconBarIcon;
-    /** 固定标签页（对标 VS Code pinned tabs） */
+    /** Pinned tab (Modeled after VS Code pinned tabs) */
     pinned?: boolean;
-    /** 标签页关闭行为——from plugin.json tabBehavior.closeBehavior */
+    /** Tab close behavior — from plugin.json tabBehavior.closeBehavior */
     closeBehavior?: "normal" | "confirm" | "blocked";
-    /** 单例插件（settings/marketplace 等）——TabBar 不显示 [×] 关闭按钮 */
+    /** Singleton plugins (settings/marketplace etc.) — TabBar shows no [×] close button */
     singleton?: boolean;
-    /** 壳内部视图（欢迎页/插件详情/发行说明/关于/AI 手册）——MainPool 内容区不渲染 PluginComponent */
+    /** Shell-internal views (welcome/plugin details/release notes/about/AI manual) — MainPool content area does not render PluginComponent */
     shellRendered?: boolean;
-    /** 壳内部视图类型——"welcome" | "plugin-detail"，池侧路由到对应组件 */
+    /** Shell-internal view type — "welcome" | "plugin-detail"; the pool routes to the corresponding component */
     shellType?: string;
-    /** plugin-detail 视图的目标插件 ID（哪个插件的详情页） */
+    /** Target plugin ID of the plugin-detail view (whose detail page it is) */
     detailPluginId?: string;
-    /** plugin-detail 主区贡献视图的宿主插件 ID（factorySlots 活跃 marketplace 插件——贡献
-     *  渲染面的是它，≠ detailPluginId）。壳 serializeGroups 现场解析盖章，池宿主加载贡献模块用（resolvePath
-     *  要贡献插件根）；无活跃市场插件 → undefined = 无贡献。 */
+    /** host plugin ID contributing views to the plugin-detail main area (the active marketplace plugin in factorySlots — it is the one
+     *  contributing the render surface, ≠ detailPluginId). The shell's serializeGroups resolves and stamps it on the spot; consumed by the pool host to load contributed modules (resolvePath
+     *  needs the contributing plugin's root); no active marketplace plugin → undefined = no contribution. */
     detailContributorId?: string;
-    /** plugin-detail 主区贡献视图 renderPath——活跃 marketplace 插件 contributes.views.main[]
-     *  "plugin-detail" 声明的 _renderPath。壳 serializeGroups 现场解析盖章；池 ShellViewRenderer 消费：
-     *  有 → 动态 import 市场 DetailView，缺/加载失败 → 壳 PluginDetailPoolView 保底。 */
+    /** renderPath of the view contributed to the plugin-detail main area — the _renderPath declared by the active marketplace plugin's contributes.views.main[]
+     *  "plugin-detail" entry. Resolved and stamped on the spot by the shell's serializeGroups; consumed by the pool's ShellViewRenderer:
+     *  present → dynamic import of the marketplace DetailView; missing/failed to load → the shell's PluginDetailPoolView is the fallback. */
     detailViewRenderPath?: string;
-    /** 发行说明标签页的壳→池数据（**壳想、池画**——壳取好挂在这里推下来，池只画）。
-     *  ⚠️ 与 `detailPluginId`/`detailViewRenderPath` 同型（壳视图的 per-tab 载荷）——**不是新范式**。
-     *  只有 `shellType === "release-notes"` 那一个标签页携带（全窗最多一份）。 */
+    /** shell→pool data for the release-notes tab (**the shell thinks, the pool draws** — the shell fetches, attaches here and pushes down; the pool only draws).
+     *  ⚠️ Same shape as `detailPluginId`/`detailViewRenderPath` (per-tab payload for shell views) — **not a new paradigm**.
+     *  Only the one tab with `shellType === "release-notes"` carries it (at most one per window). */
     releaseNotes?: PoolReleaseNotesData;
-    /** 关于标签页的壳→池数据——与 `releaseNotes` **同一条规矩的第二个实例**
-     *  （壳视图的 per-tab 载荷，**不是新范式**）。只有 `shellType === "about"` 那个标签页携带。 */
+    /** shell→pool data for the about tab — the **second instance of the same rule** as `releaseNotes`
+     *  (per-tab payload for shell views, **not a new paradigm**). Only the tab with `shellType === "about"` carries it. */
     about?: PoolAboutData;
-    /** AI 操作手册标签页的壳→池数据——同一条规矩的**第三个实例**
-     *  （壳视图的 per-tab 载荷）。只有 `shellType === "ai-manual"` 那个标签页携带（全窗最多一份）。 */
+    /** shell→pool data for the AI operation-manual tab — the **third instance** of the same rule
+     *  (per-tab payload for shell views). Only the tab with `shellType === "ai-manual"` carries it (at most one per window). */
     aiManual?: PoolAiManualData;
 }
-/** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */
+/** Split group — each group occupies one flex area containing N keep-alive tabs */
 export interface PoolGroup {
     id: string;
     flex: number;
     activeTabId: string;
     tabs: PoolTab[];
 }
-/** 递归分裂树节点——要么是叶子（含一个 TabGroup），要么是分叉（含两个子树） */
+/** Recursive split-tree node—either a leaf (holding one TabGroup) or a fork (holding two subtrees) */
 export type SplitNode = {
     type: "leaf";
     groupId: string;
@@ -885,246 +887,246 @@ export type SplitNode = {
     sizes: [
         number,
         number
-    ]; // 百分比，如 [50, 50]
+    ]; // percentages, e.g. [50, 50]
 };
-/** [+] 可创建的视图类型——壳 pushLayout 时从 getTabCreatableViews() 计算；W1：icon/iconSource = 壳 pickIdentityArt() 预解析（与标签栏/市场同源），undefined ⇒ 池 emoji 兜底 */
+/** View types creatable via [+] — computed by the shell from getTabCreatableViews() at pushLayout; W1: icon/iconSource = pre-resolved by the shell's pickIdentityArt() (same source as the tab bar/marketplace); undefined ⇒ the pool falls back to emoji */
 export interface CreatableViewMeta {
     pluginId: string;
     label: string;
     icon?: string;
-    iconSource?: "codicon" | "svg" | "url" | "lucide"; // 联合同 plugin.schema.json iconSource（契约生成源）
+    iconSource?: "codicon" | "svg" | "url" | "lucide"; // union identical to plugin.schema.json iconSource (contract generation source)
 }
-/** 底部面板 view 元数据——面板视图注册序列化 */
+/** Bottom panel view metadata — serialized from the panel view registry */
 export interface PanelViewMeta {
     id: string;
     title: string;
     pluginId: string;
-    /** 视图渲染入口路径——loader 解析（_renderPath），池 PluginComponent 动态 import。
-     *  ShellViewMeta 同款（sidebar 贡献），面板视图零特殊通道。 */
+    /** view render entry path — resolved by the loader (_renderPath); the pool's PluginComponent dynamic-imports it.
+     *  Same as ShellViewMeta (sidebar contribution); panel views have zero special channel. */
     renderPath: string;
-    /** 视图动作区声明透传——PanelZone 标签栏右侧按活动视图渲染（无声明 → 右侧空白） */
+    /** view action-area declaration passed through — rendered to the right of the PanelZone tab bar for the active view (no declaration → blank right side) */
     titleActions?: TitleActionWidget[];
 }
-/** 容器切换器下拉 item——含隐藏视图 + 显隐/激活标记（mockup 帧 2 拍板） */
+/** container switcher dropdown item — includes hidden views + visibility/active markers (mockup frame 2 decision) */
 export interface PanelSwitcherItem {
     viewId: string;
-    /** 视图名——壳 t() 已解析（显示文本铁律） */
+    /** View name — already resolved by shell t() (display-text iron law) */
     title: string;
-    /** 所属插件 ID——sub 标签（如 "demo-plugin"） */
+    /** Owning plugin ID — sub label (e.g. "demo-plugin") */
     pluginId: string;
-    /** 当前可见性——✓ 勾选 = 可见 */
+    /** Current visibility — ✓ checked = visible */
     visible: boolean;
-    /** 是否激活视图 */
+    /** Whether this is the active view */
     active: boolean;
 }
-/** 容器切换器下拉分组——dd-group 容器标题 + dd-item 列表 */
+/** container switcher dropdown group — dd-group container title + dd-item list */
 export interface PanelSwitcherGroup {
     containerId: string;
-    /** 容器标题——壳 t() 已解析 */
+    /** Container title — already resolved by shell t() */
     containerTitle: string;
     items: PanelSwitcherItem[];
 }
-/** 底部面板布局——PanelZone 消费 */
+/** Bottom panel layout — consumed by  PanelZone */
 export interface PanelLayout {
     visible: boolean;
     height: number;
-    /** 🆕 面板 dock 边——dockTo 消费方（面板位置）。顶/底=横带（align 控列跨度）；
-     *  左/右=主区与对应侧栏间竖条（5 带排布）。缺省 "bottom"。 */
+    /** 🆕  panel dock edge — consumer of  dockTo (panel position). Top/bottom = horizontal band (align controls column span);
+     *  left/right = vertical strip between the main area and the corresponding sidebar (5-band layout). Defaults to "bottom". */
     edge?: "bottom" | "top" | "left" | "right";
-    /** 🆕 面板横向对齐——setAlign 消费方。几何由池 grid 推导，壳只推配置。
-     *  center=主栏宽 / left=延伸到左侧栏之下 / right=延伸到右侧栏之下 / justify=全宽。缺省 "center"。 */
+    /** 🆕  panel horizontal alignment — consumer of  setAlign. Geometry is derived by the pool grid (); the shell only pushes config.
+     *  center=main-column width / left=extends under the left sidebar / right=extends under the right sidebar / justify=full width. Defaults to "center". */
     align?: "left" | "center" | "right" | "justify";
-    /** 🆕 面板宽——edge∈{left,right} 时使用（竖条宽）；顶/底仍用 height。缺省 300。 */
+    /** 🆕  panel width — used when edge∈{left,right} (strip width); top/bottom still use height. Defaults to 300. */
     width?: number;
     activeViewId: string;
     views: PanelViewMeta[];
-    // ── 拖拽钳制界——同款（壳 LayoutEngine dock 声明推送，池零硬编码）。
-    //   轴感知：横带（edge∈{bottom,top}）用 minHeight/maxHeight；竖条（edge∈{left,right}）用 minWidth/maxWidth。 ──
+    // ──  drag clamp bounds — same as  (shell LayoutEngine dock declarations pushed; zero hardcoding in the pool).
+    //   Axis-aware: horizontal bands (edge∈{bottom,top}) use minHeight/maxHeight; vertical strips (edge∈{left,right}) use minWidth/maxWidth. ──
     minHeight?: number;
     maxHeight?: number;
-    /** 🆕 竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
+    /** 🆕  drag min/max width for vertical-strip panels (left/right) — pushed from shell dock.minWidth/maxWidth */
     minWidth?: number;
     maxWidth?: number;
-    /** [+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；壳无 panel:createView 监听 = 安全 no-op） */
+    /** [+] button tooltip — pushed as shell t("New panel view") (display-text iron law; no panel:createView listener in the shell = safe no-op) */
     createTooltip?: string;
-    /** 容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
+    /** container switcher dropdown DTO — lists all views per container (including hidden), mockup frame 2 */
     switcher?: PanelSwitcherGroup[];
-    /** 空态占位主文本——全隐藏 / 无贡献视图时壳 t() 推送 */
+    /** empty-state primary text — pushed as shell t() when all views are hidden / none contributed */
     emptyText?: string;
-    /** 空态占位指路——同 emptyText 壳 t() 推送 */
+    /** empty-state guidance — pushed as shell t() like emptyText */
     emptyHint?: string;
-    /** 🆕 面板可脱出（PanelZone ⤢ 按钮显隐）——true 时渲染脱出按钮，点击 emit "panel:detach"（壳 detachPanel 接）
-     *  ——脱出后漂移面板窗独占渲染本面板（主区空占位 I9-13），drift 窗内置 false（面板已在外，无需再脱出） */
+    /** 🆕  panel can detach (PanelZone ⤢ button visibility) — when true, render the detach button; clicking emits "panel:detach" (handled by the shell's detachPanel)
+     *  — after detaching, the drift window renders this panel exclusively (main area gets an empty placeholder I9-13); built-in false for the drift window (the panel is already outside; no need to detach again) */
     detachable?: boolean;
-    /** 🆕 ⤢ 按钮 tooltip——壳 t("面板独立窗口") 推送（显示文本铁律） */
+    /** 🆕  ⤢ button tooltip — pushed as shell t("Panel in its own window") (display-text iron law) */
     detachTooltip?: string;
 }
-/** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。
- * 改名 PoolStatusBarItem——与 api/types.ts StatusBarItem（manifest 贡献型）同名，
- *  契约平铺进单文件会声明合并成幽灵复合型（pluginId 变必选）；池线用 Pool 前缀消歧。 */
+/** Status bar entry — serialized from the shell StatusBar's three sources (contributed/dynamic/event) + shell fixed items (display-text iron law: already resolved by shell t()).
+ * renamed to PoolStatusBarItem — same name as api/types.ts's StatusBarItem (manifest contribution type);
+ *  flattening the contract into one file would declaration-merge them into a ghost composite type (pluginId would become required); the pool line uses the Pool prefix for disambiguation. */
 export interface PoolStatusBarItem {
     id: string;
     pluginId: string;
-    /** codicon 图标名（不带 codicon- 前缀——池补） */
+    /** codicon icon name (no codicon- prefix — the pool adds it) */
     icon?: string;
     label: string;
     title?: string;
     align: "left" | "right";
-    /** 点击执行的命令 ID */
+    /** Command ID executed on click */
     onClick?: string;
-    /** 自绘状态栏组件 marker——插件声明 appearsIn.statusBar 的归一化 URL（loader 注册时
-     *  算 ViewPluginEntry.statusBarRenderPath，壳读此发 marker）→ 池按 URL 直动态 import（serial-monitor 连接灯）。
-     *  有值 = 自绘组件取代该插件全部静态项；无 = 普通条目。 */
+    /** Custom-drawn status bar component marker — the normalized URL ( computed as ViewPluginEntry.statusBarRenderPath at loader registration;
+     *  the shell reads it and sends the marker) of plugins declaring appearsIn.statusBar → the pool dynamic-imports directly by URL (serial-monitor connection light).
+     *  Present = the custom component replaces all static entries of that plugin; absent = a normal entry. */
     componentRenderPath?: string;
-    /** 前导分隔线——壳 StatusBar 渲染语义（左区每项除首个；右区组内除首个） */
+    /** Leading divider — shell StatusBar render semantics (every item except the first in the left zone; except the first within a group in the right zone) */
     dividerBefore?: boolean;
 }
 /**
- * 安装 job 的行——面板「进行中 / 等待安装中」两段的**唯一**行形状。
+ * a row for an install job — the **only** row shape of the panel's "In progress / Waiting to install" two sections (dossier 18 §5 I.4).
  *
- * **为什么结果区不在这里**：安装终态（成功 / 失败 / 已安装但缺依赖）由既有的 toast 发声
- * （成功 = lifecycle 消费端唯一口，失败 = settle 失败 toast 带 [重试]，见 73h/73e），
- * 结果区仍按来源分组（`NotifGroup`）。job 行只在「还没有结果」的两段里出现——
- * 一条安装永远只在一处可见，不会「装了两遍」。
+ * **Why the results area is not here**: install terminal states (success / failure / installed but missing dependencies) are announced by the existing toasts
+ * (success = the sole outlet of the lifecycle consumer; failure = the settle failure toast with [Retry], see 73h/73e);
+ * the results area is still grouped by source (`NotifGroup`). Job rows appear only in the two sections "not yet resulted" —
+ * one install is always visible in exactly one place, never "installed twice".
  */
 export interface NotifJobRow {
-    /** 行 key——jobId（**不是**显示名：同名不同插件要能区分，18 档 §七 73d 行）。 */
+    /** Row key — jobId (**not** the display name: same-named plugins must stay distinguishable, dossier 18 §7 73d row). */
     id: string;
     pluginId: string;
-    /** 显示名（壳侧解析：调用方带入，或解压后从包内 manifest 回填） */
+    /** Display name (resolved shell-side: brought in by the caller, or backfilled from the package manifest after extraction) */
     name: string;
-    /** 状态字形 codicon 类串（⟳ 进行中 / ○ 等待中） */
+    /** Status glyph codicon class string (⟳ in progress / ○ waiting) */
     iconClass: string;
-    /** 右端状态短语（壳 t() 已解析，如「下载中 62%」「等待安装中」）——池哑渲染 */
+    /** Status phrase at the right end (already resolved by shell t(), e.g. "Downloading 62%", "Waiting to install") — rendered dumbly by the pool */
     statusLabel: string;
-    /** 下载段有真值才有 → 池画 3px 确定态进度条；缺省不画（同 NotifItem.percent 语义）。 */
+    /** Present only when the download section has a real value → the pool draws a 3px determinate progress bar; absent, nothing drawn (same semantics as NotifItem.percent). */
     percent?: number;
-    /** 本行能不能取消——true 时池渲染 [取消安装] 按钮 */
+    /** Whether this row can be cancelled — when true the pool renders a [Cancel install] button */
     cancellable?: boolean;
-    /** [取消安装] 按钮文案（壳 t()） */
+    /** [Cancel install] button copy (shell t()) */
     cancelLabel?: string;
 }
-/** 安装 job 段——面板固定三段里前两段的容器（顺序永不重排，§五 I.4） */
+/** install job sections — the container of the first two of the panel's three fixed sections (order never re-sorted, §5 I.4) */
 export interface NotifSection {
-    /** "running" | "queued"——段身份（池不做判别，只当 key 用） */
+    /** "running" | "queued" — section identity (the pool does not discriminate; used only as a key) */
     key: string;
-    /** 段标题（壳 t()，如「3 项进行中」「另有 4 项等待安装中」） */
+    /** Section title (shell t(), e.g. "3 in progress", "4 more waiting to install") */
     label: string;
     items: NotifJobRow[];
-    /** 段内超出「每段 5 条」被折叠的说明（壳 t()）——缺省 = 没折叠过 */
+    /** Explanation for entries folded for exceeding "5 per section" (shell t()) — absent = nothing folded */
     foldedLabel?: string;
 }
-/** 通知动作——壳 ToastAction 序列化（onClick 是壳侧闭包——池点击回传壳执行） */
+/** Notification action — serialized from the shell's ToastAction (onClick is a shell-side closure — the pool sends the click back for the shell to execute) */
 export interface NotifAction {
     label: string;
     isPrimary?: boolean;
     /**
-     * 按下去会执行的命令 + 参数（壳 `executeCommand(command, ...args)`）。
+     * the command + arguments executed on press (the shell's `executeCommand(command, ...args)`).
      *
-     * 读取面用——AI 经契约读 DTO 就能答「按钮里有什么 / 该执行哪个 / 执行后做什么」，
-     * 并**照它调 `commands.executeCommand` 真执行**（与手点按钮同一条命令路径）。
-     * ⚠️ 池**点击路径零改动**：面板仍回传位置序号、由壳侧闭包执行（闭包不可序列化）。
-     * 缺省 = 该按钮无命令（点击仅关闭通知）——与契约 `PluginToastAction.command` 可选同源。
+     * Read surface — an AI reading the DTO via the contract can answer "what is in the button / which command to run / what happens after running",
+     * and **actually run it by calling `commands.executeCommand` accordingly** (the same command path as a manual click).
+     * ⚠️ The pool's **click path is unchanged**: the panel still sends back the positional index and the shell-side closure executes it (closures are not serializable).
+     * Absent = this button has no command (clicking only closes the notification) — same origin as the optional `PluginToastAction.command` in the contract.
      */
     command?: string;
-    /** 命令参数——与 `command` 成对；`command` 缺省时本字段无意义 */
+    /** Command arguments — paired with `command`; meaningless when `command` is absent */
     args?: unknown[];
 }
-/** 通知条目——壳侧已解析（icon 类/时间/来源标签/动作全部壳侧完成） */
+/** Notification entry — already resolved on the shell side (icon class/time/source label/actions all done shell-side) */
 export interface NotifItem {
     id: string;
-    /** 完整 codicon 类串（如 "codicon codicon-error notif-severity-error"） */
+    /** Full codicon class string (e.g. "codicon codicon-error notif-severity-error") */
     iconClass: string;
     message: string;
-    /** 壳 formatTimeAgo（i18n t()） */
+    /** Shell formatTimeAgo (i18n t()) */
     timeLabel: string;
-    /** 壳 t("来源: {{source}}")——无 source 则缺省 */
+    /** Shell t("Source: {{source}}") — absent when there is no source */
     sourceLabel?: string;
     actions: NotifAction[];
-    /** 进度类通知——池据此画 3px 进度行（缺省 = 非进度通知，不画）。
-     *  progress 由壳 toast 存储直通（pushToast/updateToast 的 progress 旗标）。 */
+    /** progress-type notification — the pool draws a 3px progress line from this (absent = not a progress notification, nothing drawn).
+     *  progress is passed straight through the shell's toast store (the progress flag of pushToast/updateToast). */
     progress?: boolean;
-    /** 确定态百分比 0-100——有值画定宽填充，无值画不定态扫动（对标  原版语义）。
-     *  池侧渲染时自行钳位（壳不作保证——契约宽容，畸形值不撑破布局）。 */
+    /** determinate percentage 0-100 — when present, draws a fixed-width fill; when absent, an indeterminate sweep (same semantics as the original ).
+     *  The pool clamps on its own when rendering (the shell makes no guarantees — the contract is lenient; malformed values must not break the layout). */
     percent?: number;
     /**
-     * 唤醒旗标（白名单的**只读透传**）——本条通知是否**允许**把面板弹出来。
+     * wake flag (**read-only passthrough** of the  whitelist) — whether this notification is **allowed** to pop the panel out.
      *
-     * 🔴 **恒在**（`false` 也有信息量：它就是「这条没弹」的答案，见 R5-4 的取舍）。AI 据此答
-     * toast 六问之「**因为什么**弹出」：`wake:true` = 进白名单的四类之一（用户点击发起的安装 job /
-     * job 终态 / 插件自发的非进度通知 / 壳自产该弹级条目），`wake:false` = 明令静默（进度类等）。
-     * ⚠️ 判据只有壳侧 `notif.ts` 的 `shouldWake` 一处**（`wake === true`）——本字段是它的读数出口，
-     * **不是**第二个判据；⛔ 不得因此回退成 `isImportantNotif` 一把梭（18 档 ㉓）。
-     * ⚠️ 「最小化」**不带静音权力**——唤回判据里没有「且未最小化」（加了等于终态唤不回，违反 R5-5）。
+     * 🔴 **Always present** (`false` also carries information: it is the answer to "this one did not pop", see the R5-4 trade-off). From it an AI answers
+     * the "because of what" question of the toast six questions: `wake:true` = one of the four whitelist categories (a user-initiated install job /
+     * a job terminal state / a plugin-initiated non-progress notification / a shell-produced entry that should pop), `wake:false` = explicitly silenced (progress types, etc.).
+     * ⚠️ The sole criterion is the shell-side `notif.ts` `shouldWake` (`wake === true`) — this field is its readout outlet,
+     * **not** a second criterion; ⛔ never regress this into an `isImportantNotif` catch-all (dossier 18, item ㉓).
+     * ⚠️ "Minimized" **carries no mute authority** — the wake-back criterion has no "and not minimized" clause (adding one would make terminal states unwakeable, violating R5-5).
      */
     wake: boolean;
     /**
-     * 自动消失时长（ms，`0` = 不自动消失）。壳 toast 存储直通——`pushToast` 恒填。
-     * 与 `persistent` 同源判据（`ttl <= 0` ⇒ 常驻，见 toast.ts 的 `derivePersistent`）。
+     * auto-dismiss duration (ms, `0` = never auto-dismiss). Passed straight through the shell's toast store — `pushToast` always fills it.
+     * Same-source criterion as `persistent` (`ttl <= 0` ⇒ persistent, see `derivePersistent` in toast.ts).
      */
     ttl?: number;
-    /** 长驻（不自动消失、等用户手动点 ×）。只在 true 时带字段——同 `progress` 的缺省约定。 */
+    /** long-lived (never auto-dismisses; waits for a manual × click). Field present only when true — same default convention as `progress`. */
     persistent?: boolean;
 }
-/** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */
+/** Notification group — the shell NotificationCenter's buildSourceGroups (grouped by the first segment of source + unread sorting) */
 export interface NotifGroup {
     key: string;
-    /** source 第一段或 t("其他") */
+    /** First segment of source, or t("Other") */
     label: string;
     unread: number;
     items: NotifItem[];
-    /** 本组因超过「每来源 5 条」上限被淘汰折叠掉的**说明文案**（壳侧 t() 已解析，
-     *  池哑渲染——同 timeLabel/sourceLabel/clearLabel 的「显示文本铁律」）。
-     *  缺省 = 没折叠过（契约宽容——旧快照/测试替身不填此字段时行为不变，不渲染该行）。 */
+    /** (S3/A6): explanation copy for entries folded away because this group exceeded the "5 per source" cap (already resolved by shell-side t(),
+     *  rendered dumbly by the pool — same "display-text iron law" as timeLabel/sourceLabel/clearLabel).
+     *  Absent = nothing was ever folded (contract leniency — behavior unchanged when old snapshots/test doubles omit this field; the line is not rendered). */
     foldedLabel?: string;
 }
-/** 通知中心数据——壳侧序列化（未读计数/文案/分组全壳侧完成） */
+/** Notification center data — serialized on the shell side (unread count/copy/grouping all done shell-side) */
 export interface NotifLayout {
     unread: number;
-    /** 铃铛 tooltip——t("{{count}} 条通知") / t("通知") */
+    /** Bell tooltip — t("{{count}} notifications") / t("Notifications") */
     bellTitle: string;
     panelTitle: string;
-    /** 头部「清除已完成」按钮文案——只清**已出结果且已读**的旧消息，面板不关、进行中的一条不碰。 */
+    /** header "Clear completed" button copy — clears only old messages that **have results and are read**; the panel stays open and in-progress items are untouched. */
     clearLabel: string;
-    /** 头部「最小化」按钮文案——关闭面板的**唯一**动作（语义 = 收起，什么都不丢）。 */
+    /** header "Minimize" button copy — the **only** action that closes the panel (semantics = collapse; nothing is lost). */
     minimizeLabel: string;
     emptyLabel: string;
     dismissTitle: string;
-    /** 头部摘要（「3 项进行中 · 另有 4 项等待安装中」）——**没有安装 job 时缺省不渲染**。
-     *  ⚠️ 只报**进行中 / 等待中**两个数：不写「已完成 N/M」——装了没有不由进度条消失来判定
-     *  （18 档 §七 73d 行明令）。 */
+    /** header summary ("3 in progress · 4 more waiting to install") — **absent when there are no install jobs**.
+     *  ⚠️ Reports only the **in progress / waiting** two numbers: never "N/M completed" — whether something got installed is not judged by a progress bar disappearing
+     *  (explicitly forbidden in dossier 18 §7 73d row). */
     summaryLabel?: string;
-    /** 安装 job 两段（进行中 → 等待安装中），固定序排在结果区之前。缺省 = 没有在途安装（不渲染这两段）。 */
+    /** the two install-job sections (in progress → waiting to install), fixed-ordered before the results area. Absent = no installs in flight (these two sections are not rendered). */
     sections?: NotifSection[];
-    /** 第三段固定标题「已有结果」（§五 I.4 三段永不重排）。
-     *  结果**行**不在这里——它们是既有的按来源分组的 toast（见 NotifJobRow 注释）；
-     *  本字段只提供那一区上方的固定标题。缺省 = 没有安装活动（不渲染该标题，避免纯通知场景凭空多一行）。 */
+    /** fixed title of the third section "Results" (§5 I.4: the three sections never re-sort).
+     *  Result **rows** are not here — they are the existing toasts grouped by source (see the NotifJobRow comment);
+     *  this field only provides the fixed title above that area. Absent = no install activity (the title is not rendered, avoiding a spurious extra line in pure-notification scenarios). */
     resultLabel?: string;
-    /** 第三段标题右端的计数（「1 项失败 · 3 项已完成」）——数**安装 job 的终态**，不是数面板上的行：
-     *  行会被 TTL 收走/被来源折叠，用它计数会让摘要随无关动作跳变（18 档 §五 I.4 的样例即此计数）。 */
+    /** Count at the right end of the third section's title ("1 failed · 3 completed") — counts **install job terminal states**, not rows on the panel:
+     *  rows get TTL-collected/folded by source; counting them would make the summary jump with unrelated actions (the sample in dossier 18 §5 I.4 is exactly this count). */
     resultSummary?: string;
     groups: NotifGroup[];
-    /** 自动展开请求——壳判定「存在重要且未读的通知，且面板当前是关着的」时为 true。
-     *  池侧只做 **false→true 边沿触发**（置面板为开），true 持续期间不反复动作；
-     *  缺省 = 不自动展开（契约宽容——旧快照/测试替身不填此字段时行为不变）。 */
+    /** auto-expand request — true when the shell decides "an important unread notification exists and the panel is currently closed".
+     *  The pool only does a **false→true edge trigger** (opens the panel); it does not re-act while true persists;
+     *  absent = no auto-expand (contract leniency — behavior unchanged when old snapshots/test doubles omit this field). */
     autoOpen?: boolean;
 }
-/** 状态栏布局——StatusBarZone 消费 */
+/** Status bar layout — consumed by  StatusBarZone */
 export interface StatusBarLayout {
     items: PoolStatusBarItem[];
-    /** Chord 提示——壳 CHORD_CHANGED 构建的完整字符串（按键名是技术标识符，不走 i18n） */
+    /** Chord hint — complete string built by the shell's CHORD_CHANGED (key names are technical identifiers, not i18n) */
     chordLabel?: string;
-    /** 通知中心——壳 toast 存储序列化（面板开闭/清除/动作回传壳执行） */
+    /** Notification center — serialized from the shell's toast store (panel open/close/clear/actions sent back for the shell to execute) */
     notif: NotifLayout;
 }
 /**
- * 04「悬停提示系统」件 1：命令表——`commandId → { title, keybinding }`，供 `data-hint-command` 自动补文案与快捷键。
+ * 04 "hover hint system" piece 1: command table — `commandId → { title, keybinding }`, feeding `data-hint-command`'s automatic copy and shortcut completion.
  *
- * **必须与菜单同源**：菜单今天读的是 `usePoolSync/titlebar.ts` 的「注册表 + formatKeyLabel」，
- * 提示条若另拉一份（池侧再查一次注册表）⇒ 同一命令在两处显示不同快捷键
- * （memory `two-rulers-one-caliber`：同一判断实现两遍 = 假红让真红失效）。
- * ⇒ 壳侧 `usePoolSync/hints.ts` 一次算好推下来，池**哑渲染**（显示文本铁律）。
- * `keybinding` 是**壳已格式化**的串（`"Ctrl+K Ctrl+T"`）——池不 import `src/core/*`（Path B）。
+ * **Must share a source with the menu**: today the menu reads "registry + formatKeyLabel" from `usePoolSync/titlebar.ts`;
+ * if the hint bar pulled its own copy (the pool querying the registry again) ⇒ the same command would show different shortcuts in two places
+ * (memory `two-rulers-one-caliber`: implementing the same judgment twice = false reds invalidate true reds).
+ * ⇒ the shell's `usePoolSync/hints.ts` computes it once and pushes it down; the pool **renders dumbly** (display-text iron law).
+ * `keybinding` is a **shell-formatted** string (`"Ctrl+K Ctrl+T"`) — the pool does not import `src/core/*` (Path B).
  */
 export type PoolCommandHints = Record<string, {
     title: string;
@@ -1133,59 +1135,60 @@ export type PoolCommandHints = Record<string, {
 export interface PoolLayout {
     version: 2;
     titleBar: TitleBarLayout;
-    /** 图标栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    /** Icon bar — absent = the pool does not render the zone (detached-window subset; the main pool always pushes) */
     iconBar?: IconBarLayout;
-    /** 侧栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    /** Sidebar — absent = the pool does not render the zone (detached-window subset; the main pool always pushes) */
     sidebar?: SidebarLayout;
-    /** 右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
+    /** right sidebar real-zone layout — RightSidebarLayout (edge derived as the opposite of the sidebar's; carries no edge of its own) */
     rightSidebar?: RightSidebarLayout;
     groups: PoolGroup[];
-    /** 聚焦面板 id——点面板空白/点标签设置（壳 reduceFocusGroup/FocusTab）。
-     *  池侧消费：accent 聚焦环 + isActive 单聚焦判定（tab.id === activeTabId && group.id === activeGroupId）。 */
+    /** (P5): focused panel id — clicking panel blank space / set via tabs (the shell's reduceFocusGroup/FocusTab).
+     *  Pool-side consumption: accent focus ring + isActive single-focus judgment (tab.id === activeTabId && group.id === activeGroupId). */
     activeGroupId?: string;
-    /** 递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
-     *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
+    /** recursive split tree — rendered recursively by MainRenderer, replacing the flat groups.map.
+     *  leaf = a single GroupPane, branch = a horizontal/vertical flex container. */
     root?: SplitNode;
-    /** 可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单。
-     *  空数组 = [+] 不提供创建菜单（脱出窗 I9-6）；缺省 = 池兜底欢迎页 */
+    /** list of views creatable as tabs — the dynamic menu of the pool GroupTabBar [+] button.
+     *  Empty array = [+] offers no creation menu (detached window I9-6); absent = the pool falls back to the welcome page */
     creatableViews?: CreatableViewMeta[];
     panel?: PanelLayout;
-    /** 状态栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    /** Status bar — absent = the pool does not render the zone (detached-window subset; the main pool always pushes) */
     statusBar?: StatusBarLayout;
-    /** 04「悬停提示系统」件 1：提示条总开关（`app.hint.enabled` 的镜像）。
-     *  缺省/undefined = **开**——脱出窗或未推送时不该「因为没这个字段」就全软件没提示。 */
+    /** 04 "hover hint system" piece 1: master switch for the hint bar (mirror of `app.hint.enabled`).
+     *  Absent/undefined = **on** — a detached window or a missing push must not mean "no hints anywhere in the app just because this field is missing". */
     hintEnabled?: boolean;
-    /** 04「悬停提示系统」件 1：命令表——`data-hint-command` 的自动补文案与快捷键来源。窗口无关 ⇒ 恒推。 */
+    /** 04 "hover hint system" piece 1: command table — source of the automatic copy and shortcuts for `data-hint-command`. Window-agnostic ⇒ always pushed. */
     commands?: PoolCommandHints;
 }
 /**
- * 单窗标签清单——`groups` 与推给池的布局树**同一个序列化器**（`serializeGroups`）产出，
- * 故「清单里的 label/icon/title」与「屏幕上画的那一条」必然一致。
+ * per-window tab list — produced by **the same serializer** (`serializeGroups`) as the layout tree pushed to the pool,
+ * so "the label/icon/title in the list" necessarily matches "the row drawn on screen".
  */
 export interface TabsSnapshotWindow {
-    /** 壳生成（主池 = `"main"`，脱出窗壳自生成 id） */
+    /** Shell-generated (main pool = `"main"`, detached windows get a shell-generated id) */
     windowId: string;
     mode: WindowMode;
-    /** 池 React 是否已挂载就绪（未就绪的窗壳仍会推布局——preload 缓冲回放，故清单照样有内容） */
+    /** Whether the pool React has mounted and is ready (the shell still pushes layouts for unready windows — the preload buffers and replays, so the list still has content) */
     ready: boolean;
-    /** 该窗当前聚焦组（壳 `tabState.activeGroupId` 直通——不是池侧推导） */
+    /** The window's currently focused group (passed straight through from the shell's `tabState.activeGroupId` — not derived on the pool side) */
     activeGroupId: string;
-    /** 该窗分屏根树（与 `PoolLayout["root"]` 同类型；单组无嵌套时缺省） */
+    /** The window's split root tree (same type as `PoolLayout["root"]`; omitted for a single group with no nesting) */
     root?: PoolLayout["root"];
-    /** 每组标签清单（含每组的 `activeTabId` = 该组活跃标签） */
+    /** Per-group tab list (including each group's `activeTabId` = the group's active tab) */
     groups: PoolGroup[];
 }
 /**
- * `tabs.list()` 的返回——**全部窗口一次给全**（含活跃位）。
+ * the return of `tabs.list()` — **all windows in one shot** (including active positions).
  *
- * 🔴 为什么是全窗而不是「当前窗」：壳侧**没有**「当前窗」这个真相源（全仓 grep `activeWindowId` 零命中，
- * 窗口注册表里只有逐窗 mode/ready/tabState）——凭空造一个"当前窗"就是编数据。
- * 调用方（插件/AI）要哪一窗，自己按 `windowId` 筛。
+ * 🔴 Why all windows instead of "the current window": the shell has **no** "current window" source of truth
+ * (a repo-wide grep for `activeWindowId` returns zero hits; the window registry only holds per-window mode/ready/tabState) —
+ * inventing a "current window" out of thin air would be fabricating data.
+ * Callers (plugins/AI) filter by `windowId` for whichever window they want.
  */
 export interface TabsSnapshot {
     windows: TabsSnapshotWindow[];
 }
-/** 标签页命名空间面——对标 VS Code vscode.window.createTerminal() */
+/** Tab namespace surface — modeled after VS Code vscode.window.createTerminal() */
 export interface TabsAPI {
     tabs: {
         create(type: string, opts?: Record<string, unknown>): Promise<unknown>;
@@ -1195,50 +1198,53 @@ export interface TabsAPI {
         focusBySourceId(sourceId: string): Promise<void>;
         updateLabelBySourceId(sourceId: string, label: string): Promise<void>;
         closeBySourceId(sourceId: string): Promise<void>;
-        /** 标签页激活订阅——文件树 autoReveal 消费（preload-pool 实有面，补录契约） */
+        /** tab activation subscription — consumed by file-tree autoReveal (actually present on preload-pool; the contract was backfilled in ) */
         onDidChangeActiveTab(cb: (data: {
             tabId: string;
             pluginId?: string;
             filePath?: string;
         }) => void): () => void;
         /**
-         * **只读列举**——开了哪几个标签、各属哪个插件、哪个是活跃的（每组 `activeTabId`）。
+         * **read-only enumeration** — which tabs are open, which plugin each belongs to, which is active
+         * (each group's `activeTabId`).
          *
-         * 🔴 为什么必须有它：布局真相源是壳的 `useTabManager`（React state），**壳侧无任何 getter**
-         * （池侧只能被动等下一帧 `pool.onLayout`，而「现在有什么」不该靠等）。本方法 = 壳侧权威按需自曝。
-         * 🔴 **池侧独有**：壳自己是标签权威、手上就是这份 state，不需要绕 IPC 问自己 ⇒ `preload-shell` 不实现
-         * （`surfaces.ts` 的 `ShellExposed.tabs` Omit 已剔除 `list`——同 `onDidChangeActiveTab` 的理由）。
+         * 🔴 Why it must exist: the layout source of truth is the shell's `useTabManager` (React state), and **the shell exposes no
+         * getter whatsoever** (the pool can only passively wait for the next `pool.onLayout` frame, but "what is there right now"
+         * should not depend on waiting). This method = the shell-side authority exposing itself on demand.
+         * 🔴 **Pool-side only**: the shell is itself the tab authority and already holds this state, so it need not round-trip IPC to
+         * ask itself ⇒ `preload-shell` does not implement it (the `ShellExposed.tabs` Omit in `surfaces.ts` already removes `list` —
+         * same reasoning as `onDidChangeActiveTab`).
          *
-         * @returns 全部窗口的清单（见 `TabsSnapshot`；与  的布局树**同源**——同一 `serializeGroups`）
+         * @returns the list for all windows (see `TabsSnapshot`; **same origin** as 's layout tree — the same `serializeGroups`)
          */
         list(): Promise<TabsSnapshot>;
     };
 }
 /**
- * KeybindingRegistry 类型层——自 KeybindingRegistry.ts 拆出。
- * 纯类型零逻辑。依赖方向：无（被 normalization / registry / chord / persistence / dispatch 消费）。
+ * KeybindingRegistry type layer—split out of KeybindingRegistry.ts ().
+ * Pure types, zero logic. Dependency direction: none (consumed by normalization / registry / chord / persistence / dispatch).
  */
 export interface Keybinding {
-    /** 命令 ID */
+    /** Command ID */
     command: string;
-    /** 快捷键字符串——如 "ctrl+k" / "ctrl+shift+b" */
+    /** Keybinding string—e.g. "ctrl+k" / "ctrl+shift+b" */
     key: string;
-    /** context key when 条件 */
+    /** context key `when` condition */
     when?: string;
-    /** 来源：user / plugin / builtin——同 key 时 user 优先 */
+    /** Source: user / plugin / builtin—on the same key, user wins */
     source: "user" | "plugin" | "builtin";
-    /** 插件 ID——卸载时精确匹配（B3 fix：原实现 source === "plugin" 会误删所有插件快捷键） */
+    /** Plugin ID—exact-matched on uninstall (B3 fix: the original `source === "plugin"` check wrongly removed every plugin keybinding) */
     pluginId?: string;
-    /** 执行时透传给 executeCommand 的额外参数 */
+    /** extra args passed through to executeCommand at dispatch time */
     args?: unknown[];
 }
-/** 壳→主进程快捷键表同步载荷（KeybindingRegistry.getKeybindingSyncData 输出） */
+/** Shell→main-process shortcut table sync payload (KeybindingRegistry.getKeybindingSyncData output) */
 export interface KeybindingSyncData {
     shortcuts: string[];
     chordPrefixes: string[];
     chordCombos: string[];
 }
-/** 键盘输入快照——主进程 before-input-event 归一化后转发的 executeShortcut 载荷 */
+/** Keyboard input snapshot—the executeShortcut payload forwarded after the main process normalizes before-input-event */
 export interface KeyboardInput {
     ctrlKey: boolean;
     shiftKey: boolean;
@@ -1248,14 +1254,14 @@ export interface KeyboardInput {
     code: string;
 }
 /**
- * 主进程 before-input-event 转发的 executeShortcut 载荷——键盘快照 + 来源窗标注。
- * KeyboardInput 保持纯净（纯键盘字段）；来源作为组合类型必选字段（attachKeyboardRouting 恒有 windowId）。
- * 壳 dispatch 据此按聚焦窗裁决快捷键（Ctrl+W 关本窗 tab）——与 ShellTabAction 顶层 sourceWindowId 同构（归一化）。
+ * the executeShortcut payload forwarded by the main process's before-input-event—keyboard snapshot + source-window stamp.
+ * KeyboardInput stays pure (keyboard fields only); the source is a required field on the composed type (attachKeyboardRouting always has windowId).
+ * The shell dispatch uses it to arbitrate shortcuts by the focused window (Ctrl+W closes this window's tab)—isomorphic to ShellTabAction's top-level sourceWindowId (normalization).
  */
 export interface ForwardedKeyboardInput extends KeyboardInput {
     sourceWindowId: string;
 }
-/** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有）。池插件消费 setKeybindingCaptureActive（file-tree），必选 */
+/** Keybindings — injected on both shell/pool ends (syncToMainProcess/onForwardedEvent are shell-side only). Consumed by pool plugins via setKeybindingCaptureActive (file-tree), required */
 export interface KeybindingsAPI {
     keybindings: {
         getKeybindings(): Promise<Keybinding[]>;
@@ -1264,165 +1270,166 @@ export interface KeybindingsAPI {
         saveUserKeybindings(): Promise<void>;
         removeKeybindingForCommand(commandId: string): Promise<void>;
         resetKeybindingToDefault(commandId: string): Promise<void>;
-        /** 清空该命令的绑定——「这条命令不要键」：删现存全部 ＋ 抑制内置/插件默认（重启后仍无键），
-         *  直到用户重新绑定或「恢复为默认」。⚠️ 与 resetKeybindingToDefault 的区别＝「作者声明过键」时
-         *  reset 会把那个键顶回来（回退），本方法不会。需 LinkDesk 0.2.46+（旧壳上无此方法 ⇒ 调用方先探测） */
+        /** Clear a command's bindings — "this command wants no key": deletes all existing bindings + suppresses built-in/plugin
+         *  defaults (still keyless after restart), until the user rebinds or "Restore default". ⚠️ Difference from resetKeybindingToDefault =
+         *  when "the author declared a key", reset pushes that key back (a rollback); this method does not. Requires LinkDesk 0.2.46+
+         *  (absent on older shells ⇒ callers feature-detect first) */
         clearKeybindingForCommand(commandId: string): Promise<void>;
         findKeybindingForCommand(commandId: string): Promise<Keybinding | undefined>;
         setKeybindingCaptureActive(active: boolean): Promise<void>;
-        // 纯数据形参——contextBridge 结构化克隆丢 KeyboardEvent 原生属性（.key/.code 是 C++ getter），
-        // 调用方先提取字段再传（KeybindingSettingsView 同款）。真实 KeyboardEvent 天然满足此形状。
+        // Pure-data parameter — contextBridge structured clone drops KeyboardEvent native properties (.key/.code are C++ getters);
+        // callers extract the fields first, then pass them (same as KeybindingSettingsView). A real KeyboardEvent naturally satisfies this shape.
         keyboardEventToKeyString(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "shiftKey" | "altKey" | "metaKey">): string;
         onChange(cb: () => void): () => void;
-        /** 壳→主进程同步快捷键表（chord 状态机查表） */
+        /** Shell→main process keybinding table sync (chord state-machine lookup) */
         syncToMainProcess?(data: KeybindingSyncData): Promise<void>;
-        /** 接收主进程 before-input-event 转发的拦截事件（载荷含 sourceWindowId——按聚焦窗裁决） */
+        /** Receive intercepted events forwarded from the main process's before-input-event ( the payload carries sourceWindowId — adjudicated per focused window) */
         onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
     };
 }
-/** 通知主动作按钮描述（缝隙 K1）——插件 notifications.show 传 actions，
- *  经 IPC 序列化到壳；点击时壳 executeCommand(command, args) 真执行。
- *  对标 VS Code `INotificationAction`（命令面）。按钮文案 = 最终显示文本，壳不二次翻译。 */
+/** Notification primary-action button descriptor (gap K1) — plugins pass actions to notifications.show,
+ *  serialized over IPC to the shell; on click the shell executeCommand(command, args) actually runs.
+ *  Modeled after VS Code `INotificationAction` (command surface). The button label = the final display text; the shell does not translate again. */
 export interface PluginToastAction {
-    /** 动作 id——插件侧标识（同一通知内唯一）；点击回执按位置序号，id 仅供调试/日志 */
+    /** Action id — the plugin-side identifier (unique within one notification); click receipts are by position index; id is for debugging/logs only */
     id?: string;
-    /** 按钮文案（最终显示文本） */
+    /** Button label (final display text) */
     label: string;
-    /** true → 主按钮（accent 色）；false/未设 → 次级文本按钮 */
+    /** true → primary button (accent color); false/unset → secondary text button */
     isPrimary?: boolean;
-    /** 点击执行的命令 id——壳 executeCommand(command, args)。命令 handler 由插件自注册
-     *  （window.linkdesk.commands.registerCommand）。无 command → 按钮点击仅关闭 toast（无副作用） */
+    /** Command id to run on click — the shell's executeCommand(command, args). The command handler is registered by the plugin itself
+     *  (window.linkdesk.commands.registerCommand). No command → clicking the button only closes the toast (no side effects) */
     command?: string;
-    /** 透传给命令 handler 的 ...args */
+    /** ...args passed through to the command handler */
     args?: unknown[];
 }
-/** 进度通知句柄——progress=true 时 show() 返回 */
+/** Progress notification handle — returned by show() when progress=true */
 export interface NotificationHandle {
-    /** 更新进度消息 + 可选进度百分比（0-100 确定条；不传 = 不定态动画照常推消息） */
+    /** Update the progress message + optional progress percent ( 0-100 determinate bar; omitted = indeterminate animation keeps pushing messages) */
     update(message: string, percent?: number): Promise<void>;
-    /** 完成——关闭进度通知，可选弹完成 toast */
+    /** Finish — closes the progress notification, optionally shows a completion toast */
     finish(message?: string): Promise<void>;
-    /** 取消——直接关闭，不弹完成 toast */
+    /** Cancel — closes directly, no completion toast */
     cancel(): Promise<void>;
 }
-/** 插件在 plugin.json 里声明的菜单项——command 或 submenu 二选一 */
+/** A menu item declared by a plugin in plugin.json—either a command or a submenu, never both */
 export type ManifestMenuItem = string | {
     command: string;
     label?: string;
     when?: string;
     group?: string;
-    /** 排序权重——同 group 内越小越靠前（壳招牌用于菜单栏组序） */
+    /** sort weight—lower sorts first within a group (the shell menu bar uses it for group order) */
     order?: number;
-    /** 嵌套子菜单——有 children 时 command 可为空 */
+    /** nested submenu—when children exist, command may be empty */
     children?: ManifestMenuItem[];
 };
-/** 菜单项描述——menu.getItems() 返回（壳侧 when 过滤 + t() 翻译 + 快捷键解析后） */
+/** Menu item descriptor — returned by menu.getItems() (after shell-side when filtering + t() translation + shortcut resolution) */
 export interface MenuItemDescriptor {
     command: string;
     label?: string;
     group?: string;
     order?: number;
     when?: string;
-    /** 壳侧解析后的命令标题（显示文本铁律） */
+    /** The command title resolved by the shell (display-text iron rule) */
     title?: string;
-    /** 显示串——formatKeyLabel 后的形态（如 "Ctrl+K Ctrl+T"）；⛔ 非注册表原串（归一化夹 01 案，显示文本铁律） */
+    /** Display string — the form after formatKeyLabel (e.g. "Ctrl+K Ctrl+T"); ⛔ not the registry's raw string (normalization wedge of case 01, display-text iron rule) */
     shortcut?: string;
-    /** 当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
-     * 位置/对齐子菜单（当前 edge/align 命中项）+ .1 视图显隐列表（visible 视图项）共用。 */
+    /** the current item's √ mark (single-selection semantics — resolved dynamically by the shell's getItems, same as VS Code's menu current item).
+     * Shared by the position/alignment submenu (the current item of edge/align) and the .1 view visibility list (visible view items). */
     checked?: boolean;
     /**
-     * 每项命令载荷——动态菜单项（如面板视图显隐清单）携带数据传给命令 handler。
-     * ContextMenu 的 context 是整菜单共享的（非 per-item），per-item 身份（如 containerId+viewId）
-     * 必须走命令载荷：executeCommand(id, undefined, ...commandArgs, context) → 壳 handler 收 args
-     * = [...commandArgs, context]。池哑渲染原文透传，不解释内容。
+     * per-item command payload — dynamic menu items (e.g. the panel view visibility list) carry data to the command handler.
+     * ContextMenu's context is shared by the whole menu (not per-item); per-item identity (e.g. containerId+viewId)
+     * must go through the command payload: executeCommand(id, undefined, ...commandArgs, context) → the shell handler receives args
+     * = [...commandArgs, context]. The pool dumb-renders verbatim without interpreting content.
      *
-     * 🔴 菜单载荷律：`context` 是**整菜单共享**的，每一项的身份**只能**走本字段。共享件（如 `PluginCard`）
-     * 会固定送**它自己的** `context` ⇒ 消费共享件菜单的 handler 必须容忍「`args[0]` 是自己的载荷、
-     * **末尾**是共享件的 context」，⛔ 不要假设 `args[0]` 一定是你的数据（除非该槽位无共享 context）。
+     * 🔴 Menu payload law: `context` is **shared by the whole menu**; an item's identity can **only** travel through this field. Shared components (e.g. `PluginCard`)
+     * will always send **their own** `context` ⇒ handlers consuming a shared-component menu must tolerate "`args[0]` is your own payload and
+     * **the end** is the shared component's context"; ⛔ do not assume `args[0]` is necessarily your data (unless that slot has no shared context).
      */
     commandArgs?: unknown[];
     children?: Array<string | MenuItemDescriptor>;
 }
 /**
- * 对话框 wire 契约。
+ * Dialog wire contract—
  *
- * 曾双份定义：linkdesk-api.ts（插件侧）与 dialog-handlers.ts 内联结构体
- * 手工对齐——一边改另一边静默失效。本模块一处定义：
- * 插件 API re-export（保持既有 import 路径）+ preload + 主进程三端 import type。
+ * Once defined twice: linkdesk-api.ts (plugin side, ) and an inline struct in dialog-handlers.ts
+ * manually aligned—changing one side silently broke the other. This module defines it in one place:
+ * plugin API re-export (keeping the existing import path) + preload + main process, three ends import type.
  */
 export interface DialogOpenOptions {
     title?: string;
-    /** true = 选目录，默认选文件 */
+    /** true = pick a directory; defaults to picking a file */
     directory?: boolean;
     filters?: {
         name: string;
         extensions: string[];
     }[];
 }
-/** 富内容确认打开参数——池插件 → 壳 DialogService（content 视图声明寻址）。
- *  title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。 */
+/** rich-content confirm dialog open params—pool plugin → shell DialogService (addressed by content view declaration).
+ *  title/message are fallbacks—when the content view fails to resolve, the shell falls back to a plain-text confirm (the dialog still shows; it does not silently die). */
 export interface DialogContentOpenOptions {
-    /** 兜底标题——content 解析失败回落用；池侧已 t() 解析 */
+    /** Fallback title—used when content resolution fails; the pool side has already resolved it via t() */
     title?: string;
-    /** 兜底正文——同上 */
+    /** Fallback body—same as above */
     message?: string;
-    /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址） */
+    /** Owning plugin of the content (the shell resolves the composite address via ViewContainerService.getView) */
     pluginId: string;
-    /** 内容视图声明 id（contributes.views 注册） */
+    /** Content view declaration id (registered in contributes.views) */
     viewId: string;
-    /** 不透明载荷——结构克隆过 IPC，壳不解释，内容视图经 dialogHost.current() 读 */
+    /** Opaque payload—structured-cloned over IPC; the shell does not interpret it; the content view reads it via dialogHost.current() */
     payload?: unknown;
 }
-/** 插件侧条目——对标 VS Code QuickPickItem 三字段（label 第一行左 / description 第一行右 / detail 第二行左） */
+/** Plugin-side entry — three fields modeled after the VS Code QuickPickItem (label left of row 1 / description right of row 1 / detail left of row 2) */
 export interface PluginQuickPickItem {
     label: string;
-    /** 第一行右 */
+    /** Right of the first row */
     description?: string;
-    /** 第二行左 */
+    /** Left of the second row */
     detail?: string;
 }
-/** 插件侧 show() 选项——v1 最小面：items + 输入框占位/前缀（buttons/onHighlight 留待消费方出现） */
+/** Plugin-side show() options — minimal v1 surface: items + input placeholder/prefix (buttons/onHighlight deferred until consumers appear) */
 export interface PluginQuickPickOptions {
     items: PluginQuickPickItem[];
     placeholder?: string;
     prefix?: string;
 }
 /**
- * 插件 quickPick 请求——preload show() 经 contextBridge 函数代理桥接给池 QuickPickHost 的形状。
- * 池内本地桥（零 IPC）：Promise resolve 的正是 opts.items 里的原对象（身份保持，非序列化副本）。
+ * Plugin quickPick request — the shape bridged from preload's show() to the pool's QuickPickHost via a contextBridge function proxy.
+ * Local bridge inside the pool (zero IPC): the Promise resolves to the very object from opts.items (identity preserved, not a serialized copy).
  */
 export interface PluginQuickPickRequest {
     opts: PluginQuickPickOptions;
 }
-/** 行内操作按钮——池哑渲染，点击回传 actionId */
+/** Inline action button — rendered dumbly by the pool; clicks send back actionId */
 export interface PoolQuickPickButton {
-    /** 动作 ID——壳 onItemAction(item, actionId) 执行 */
+    /** Action ID — the shell executes onItemAction(item, actionId) */
     actionId: string;
-    /** codicon 图标名（不含 "codicon-" 前缀） */
+    /** codicon icon name (without the "codicon-" prefix) */
     icon: string;
     tooltip?: string;
 }
 export interface PoolQuickPickItem {
-    /** getKey(item)——壳侧动作重解析的唯一键 */
+    /** getKey(item) — the sole key for the shell's action re-resolution */
     key: string;
-    /** getSearchText(item)——池本地模糊匹配 */
+    /** getSearchText(item) — the pool's local fuzzy matching */
     searchText: string;
-    /** 勾选标记——label 左侧 ✓。undefined = 无勾选（通用 QuickPick 不受影响）；true/false = 渲染固定占位保对齐。
-     * 原义 = 已激活项；归一化夹 02 批 N2 起**明确两语义并存**（各问各的问题，⛔ 不许再添第三用途）
-     *   ①「当前生效项」——主题/语言选择器、面板 [+] 视图选择器（✓ = 你现在用的是这个）；
-     *   ②「开关态」——面板标签右键视图清单（✓ = 显示在标签栏）、侧栏显隐菜单（✓ = 展开/显示中）。 */
+    /** Checked marker — ✓ to the left of the label. undefined = no checkmark (generic QuickPicks unaffected); true/false = render a fixed placeholder to keep alignment.
+     * original meaning = the activated item; from normalization dossier batch 02 N2 onward **both semantics coexist explicitly** (each answers its own question; ⛔ never add a third use):
+     *   ① "currently effective item" — theme/language pickers, the panel [+] view picker (✓ = this is what you are using now);
+     *   ② "toggle state" — the panel tab's right-click view list (✓ = shown in the tab bar), the sidebar visibility menu (✓ = expanded/visible). */
     checked?: boolean;
-    /** 第一行左——已 t() 解析 */
+    /** Left of the first row — already t()-resolved */
     label: string;
-    /** 第一行右——已 t() 解析。**归属/分类/附注**专用（插件 · 容器 / 类目 / 归属配方）；
-     *  🔴 归一化夹 02 批 N2：**状态不许借这一格**（「当前」「已隐藏」「已激活」走 detail）——
-     *  借了就把归属整条挤掉，而池是哑渲染、丢掉的信息找不回来。 */
+    /** Right of the first row — already t()-resolved. Reserved for **ownership/category/annotation** (plugin · container / category / owning recipe);
+     *  🔴 normalization dossier batch 02 N2: **status must not borrow this slot** ("current", "hidden", "activated" go to detail) —
+     *  borrowing it would squeeze out the ownership entirely, and since the pool is a dumb renderer the lost information cannot be recovered. */
     category?: string;
-    /** 第二行左——已 t() 解析 */
+    /** Left of the second row — already t()-resolved */
     detail?: string;
-    /** 显示串——壳侧 formatKeyLabel 后（如 "Ctrl+K Ctrl+T"），⛔ 非注册表原串——池渲染 keycap pill（哑拆分） */
+    /** Display string — after the shell's formatKeyLabel (e.g. "Ctrl+K Ctrl+T"); ⛔ not the raw registry string — the pool renders a keycap pill (dumb splitting) */
     keybinding?: string;
-    /** 行内操作按钮 */
+    /** Inline action buttons */
     buttons?: PoolQuickPickButton[];
 }
 export interface PoolQuickPickData {
@@ -1432,11 +1439,11 @@ export interface PoolQuickPickData {
     items: PoolQuickPickItem[];
 }
 /**
- * Pool Dialog 哑渲染数据——（浮层归一化设计.md §7）。
+ * Pool Dialog dumb-render data —  (floating-layer-normalization-design.md §7).
  *
- * 聪慧→哑数据流：壳 DialogService 桥（renderer 注册）把 options 序列化成 DTO 推送
- * （显示文本铁律——按钮文案已由壳侧 t() 解析，池原样渲染）。
- * Promise 的 resolve 闭包留壳——池只回传动作类型（confirm/cancel），壳侧 settle。
+ * Smart→dumb data flow: the shell's DialogService bridge (registered by the renderer) serializes options into a DTO and pushes it
+ * (display-text iron law — button copy already resolved by shell-side t(); the pool renders as-is).
+ * The Promise's resolve closure stays in the shell — the pool only sends back the action type (confirm/cancel); the shell settles.
  */
 export type PoolDialogData = {
     open: false;
@@ -1444,70 +1451,70 @@ export type PoolDialogData = {
     open: true;
     title: string;
     message: string;
-    /** 壳侧已 t() 解析——池原样渲染 */
+    /** Already t()-resolved on the shell side — the pool renders as-is */
     confirmLabel?: string;
     cancelLabel?: string;
-    /** alert 模式——只有确定按钮，无取消/Escape/backdrop 关闭 */
+    /** Alert mode — only the OK button; no cancel/Escape/backdrop close */
     isAlert: boolean;
-    /** 富内容槽——present 时替代 title/message/默认按钮渲染（弹窗机制不变
-     *  居中/遮罩/Esc/trap/点遮罩取消仍由 DialogHost 提供）。内容 = 插件视图——
-     *  壳不持渲染器，池经 PluginComponent 挂载（仿 FloatingPanel DTO）。payload 不透明——
-     *  壳不解释、池原样持，内容视图经 window.linkdesk.dialogHost.current() 读。 */
+    /** rich content slot — replaces title/message/default-button rendering when present (the dialog mechanics are unchanged:
+     *  centering/overlay/Esc/trap/click-overlay-cancel are still provided by DialogHost). Content = a plugin view —
+     *  the shell holds no renderer; the pool mounts it via PluginComponent (modeled after the FloatingPanel DTO). payload is opaque —
+     *  the shell does not interpret it and the pool holds it as-is; the content view reads it via window.linkdesk.dialogHost.current(). */
     content?: {
         pluginId: string;
-        /** 池视图注册表寻址键——loader 运行时附挂（ViewContainerService._renderPath） */
+        /** Pool view registry addressing key — attached at loader runtime (ViewContainerService._renderPath) */
         renderPath: string;
-        /** 不透明序列化载荷——随打开参数过壳→回池（结构克隆），内容视图取数用 */
+        /** Opaque serialized payload — travels with the open parameters through shell→back to pool (structured clone); used by the content view to fetch data */
         payload?: unknown;
     };
 };
 /**
- * **在途弹窗**的可读投影——「有没有 confirm/alert 正弹着、在等什么」。
+ * a readable projection of **pending dialogs** — "is a confirm/alert up, and what is it waiting for".
  *
- * 🔴 与 `PoolDialogData` 的关系：那个是**哑渲染载荷**（池照它画），这个是**问「现在在等什么」的答案**
- * （读 `DialogService` 登记的在途 options）。两者形状刻意同源但**不是同一条通道**：
- * 那个走 `pool:dialog` 直推，这个走 `plugins:call("getPendingDialogs")` 按需拉。
+ * 🔴 Relationship to `PoolDialogData`: that one is the **dumb-render payload** (the pool draws from it); this one is the **answer to "what is being waited on now"**
+ * (reads the pending options registered in `DialogService`). Their shapes are deliberately same-origin but they are **not the same channel**:
+ * that one goes over the `pool:dialog` direct push; this one is pulled on demand via `plugins:call("getPendingDialogs")`.
  *
- * 取用面 = `window.linkdesk.dialogHost.pending()`。
+ * Consumption surface = `window.linkdesk.dialogHost.pending()`.
  */
 export interface PoolPendingDialog {
-    /** `"confirm"` = 可取消（Escape/点遮罩）；`"alert"` = 只有确定（`PoolDialogData.isAlert` 同源） */
+    /** `"confirm"` = cancellable (Escape/overlay click); `"alert"` = OK only (same source as `PoolDialogData.isAlert`) */
     kind: "confirm" | "alert";
     title: string;
     message: string;
     /**
-     * 按钮文案——**已由壳按显示文本铁律解析**（显式 `confirmLabel`/`cancelLabel` 优先，否则 i18n 缺省；
-     * 与推送面 `bridges.ts` **同一份实现**，见 `DialogService.resolveDialogButtons`）。
-     * `kind:"confirm"` → 2 条（确定、取消）；`kind:"alert"` → 1 条（确定）。
-     * ⚠️ 富内容模式（`content` 存在）下按钮由插件视图自画 ⇒ **空数组**（⛔ 别拿确定/取消去猜）。
+     * Button copy — **already resolved by the shell per the display-text iron law** (explicit `confirmLabel`/`cancelLabel` take priority, otherwise i18n defaults;
+     * the **same implementation** as the push-side `bridges.ts`, see `DialogService.resolveDialogButtons`).
+     * `kind:"confirm"` → 2 entries (OK, Cancel); `kind:"alert"` → 1 entry (OK).
+     * ⚠️ In rich-content mode (`content` present) the buttons are drawn by the plugin view itself ⇒ **empty array** (⛔ never guess OK/Cancel).
      */
     buttons: string[];
-    /** 富内容确认——内容 = 插件自绘视图。给**身份**（不给 renderPath：那是池内寻址键，
-     *  而本面在池里问的是"壳在等什么"），⛔ 不带 payload（不透明载荷可能很大，读「在等什么」也用不上）。 */
+    /** rich-content confirmation — content = a plugin's self-drawn view. Gives the **identity** (not renderPath: that is the pool-internal addressing key,
+     *  whereas this surface asks "what is the shell waiting for" from inside the pool); ⛔ no payload (the opaque payload can be large and is useless for reading "what is being waited on"). */
     content?: {
         pluginId: string;
         viewId: string;
     };
 }
-/** 标题栏动作按钮——池渲染 + 回传壳侧重解析业务语义（池零语义，UI 机械知识除外）。
- * 改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
- *  同名，契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧（契约族命名消歧惯例）。 */
+/** Title bar action buttons — rendered by the pool + sent back for the shell to re-resolve business semantics (zero pool semantics, except UI mechanical knowledge).
+ * renamed PoolFloatingPanelButton — same name as poolActions.ts's PoolFloatingPanelAction (IPC round-trip action);
+ *  flattening the contract into one file would declaration-merge them into a ghost composite type; the button descriptor uses the Button suffix for disambiguation (contract-family naming convention). */
 export interface PoolFloatingPanelButton {
-    /** 动作 id——open-in（在主窗口中打开）/ maximize（最大化）/ close（关闭），壳侧重解析 */
+    /** Action id — open-in (open in the main window) / maximize / close; re-resolved by the shell */
     id: string;
-    /** 壳 t() 已解析的动作名——mockup：hover tooltip（open-in 展开全文） */
+    /** Action name already resolved by shell t() — mockup: hover tooltip (open-in expands the full text) */
     label: string;
-    /** 内建图标 id——池按 id 选 SVG（open-in/maximize/restore/close） */
+    /** Built-in icon id — the pool picks the SVG by id (open-in/maximize/restore/close) */
     icon: string;
-    /** 本地 toggle 专用（I8-9 最大化→还原 同按钮）——切换态图标，缺省 = 非 toggle 动作（回传壳） */
+    /** Local-toggle only (I8-9 maximize→restore on the same button) — icon for the toggled state; absent = not a toggle action (sent back to the shell) */
     toggledIcon?: string;
-    /** 本地 toggle 切换态文案（如「还原」）——池零自产文本，两态文案都壳 t() 给 */
+    /** Copy for the local toggle's switched state (e.g. "Restore") — zero pool-produced text; both states' copy comes from shell t() */
     toggledLabel?: string;
-    /** open-in 类型——默认纯图标、hover 展开全文（mockup .fp-act.open-in） */
+    /** open-in style — icon-only by default, expands to full text on hover (mockup .fp-act.open-in) */
     expandOnHover?: boolean;
 }
-/** 面板显式几何（px）——I8-5/I8-7 拖拽/调高后取代默认居中大卡布局。
- * 同一形状经 `panel.setFloatingBounds` 走 API 路径（非鼠标路径）设定。 */
+/** Explicit panel geometry (px) — after I8-5/I8-7 drag/resize, replaces the default centered large-card layout.
+ * the same shape set through the API path (non-mouse path) via `panel.setFloatingBounds`. */
 export interface FloatingPanelBounds {
     top: number;
     left: number;
@@ -1518,129 +1525,129 @@ export type PoolFloatingPanelData = {
     open: false;
 } | {
     open: true;
-    /** 面板身份——壳 FloatingPanelService 单实例语义按 viewId 裁决（I8-10：同 viewId 聚焦 / 异 viewId 替换） */
+    /** Panel identity — the shell's FloatingPanelService single-instance semantics adjudicates by viewId (I8-10: same viewId focuses / different viewId replaces) */
     viewId: string;
-    /** 标题——壳 t() 已解析，池原样渲染 */
+    /** Title — already resolved by shell t(); the pool renders as-is */
     title: string;
-    /** 内容插件——池经 PluginComponent(pluginId, renderPath) 渲染（壳不持渲染器） */
+    /** Content plugin — the pool renders via PluginComponent(pluginId, renderPath) (the shell holds no renderer) */
     pluginId: string;
-    /** 内容视图 renderPath——池视图注册表寻址 */
+    /** Content view renderPath — addressed via the pool's view registry */
     renderPath: string;
-    /** 标题栏动作按钮（顺序 = 渲染顺序：open-in / maximize / close） */
+    /** Title bar action buttons (order = render order: open-in / maximize / close) */
     actions: PoolFloatingPanelButton[];
-    /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
+    /** Language-switch copy re-push marker (refreshPanelText) — the pool only re-renders title/actions and skips focus acquisition (I8-8: only the first open takes focus) */
     refresh?: boolean;
-    /** **API 路径**显式几何（`panel.setFloatingBounds` 推入，一次性——⛔ 壳不把它存进
-     *  refreshPanelText 的底稿，否则语言切换重推会把用户拖过的面板弹回旧位）。
-     *  语义三分：**缺省** = 不动几何（拖拽/调高后的本地态原样保留）｜**部分字段** = 精确设定
-     *  （未带字段保持现值，同一套 I8-5/I8-7 钳制）｜**null** = 回默认居中大卡（拖拽前那一态）。 */
+    /** **API path** explicit geometry (pushed via `panel.setFloatingBounds`, one-shot — ⛔ the shell must not store it into
+     *  refreshPanelText's draft, otherwise a language-switch re-push would snap the user-dragged panel back to its old spot).
+     *  Three-way semantics: **absent** = leave geometry untouched (local state after drag/resize preserved as-is) | **partial fields** = set precisely
+     *  (unspecified fields keep current values, same I8-5/I8-7 clamping) | **null** = back to the default centered large card (the pre-drag state). */
     bounds?: Partial<FloatingPanelBounds> | null;
 };
-/** 几何宿主请求——preload 转发 API 路径到池 FloatingPanelHost（池是几何真相源
- *  面板渲染在池，只有池知道它此刻真在哪；壳不存几何 ⇒ 不会是第二把尺）。
- *  `set` 在最大化态下先退出最大化再设定（「设定必生效」——几何与满窗态互斥）。 */
+/** geometry host request — preload forwards the API path to the pool's FloatingPanelHost (the pool is the source of truth for geometry:
+ *  the panel renders in the pool, and only the pool knows where it truly is at this moment; the shell stores no geometry ⇒ cannot become a second ruler).
+ *  `set` while maximized first exits maximization, then applies ("a set must take effect" — geometry and full-window state are mutually exclusive). */
 export type FloatingPanelBoundsHostRequest = {
     op: "set";
     bounds: Partial<FloatingPanelBounds> | null;
 } | {
     op: "get";
 };
-/** `floatingPanelHost.getBounds()` 读数——池侧渲染盒的**真实**几何 + 面板身份 + 最大化态。
- *  「无面板」不在此型内——返回类型是 `PoolFloatingPanelGeometry | null`。 */
+/** Readout of `floatingPanelHost.getBounds()` — the **actual** geometry of the pool-side render box + panel identity + maximized state.
+ *  "No panel" is not part of this type — the return type is `PoolFloatingPanelGeometry | null`. */
 export interface PoolFloatingPanelGeometry extends FloatingPanelBounds {
     viewId: string;
     pluginId: string;
-    /** I8-9 最大化（纯视觉态，铺满窗口）——true 时几何 = 满窗盒（如实报，⛔ 不报「最大化前」的旧值） */
+    /** I8-9 maximized (purely visual state, filling the window) — when true the geometry = the full-window box (reported faithfully; ⛔ never report the stale pre-maximize values) */
     maximized: boolean;
 }
-/** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Dialog/FloatingPanel 宿主桥 */
+/** UI overlays/menu/notification namespace surface — Modeled after VS Code vscode.window + ContextKey + the in-pool QuickPick/Dialog/FloatingPanel host bridges */
 export interface UiAPI {
-    /** 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.window.showInformationMessage */
+    /** Notifications — plugins raise notifications ( the only notification surface is the bell-wide notification panel; the bottom-right narrow-card path was removed wholesale), Modeled after VS Code vscode.window.showInformationMessage */
     notifications: {
-        /** 弹出通知，**一律返回句柄**（含 update/finish/cancel）——句柄隔离
-         *  此前只在 progress:true 时返回句柄 ⇒ persistent 的失败通知（带 [重试]）撤不下来，
-         * 用户手动重试成功后那条「安装失败」仍长驻，面板变成失败墙。
-         *  ⇒ 一条通知只能被**创建它的那个句柄**更新/删除，不管它是不是进度条。
-         * options.actions 带主动作按钮——点击走壳 executeCommand(action.command, action.args)，
-         *  命令 handler 插件自注册。不传 actions → 无按钮（现状）。error 类自动停留 8s。
-         * options.persistent=true 长驻通知——不自动消失、等用户手动点 ×（错误诊断类用）;
-         * 常驻上限**按来源分桶**各 5 条，超出顶掉同来源最老的并给汇总提示 */
+        /** Raises a notification, **always returns a handle** (with update/finish/cancel) —  (S6) handle isolation:
+         *  previously a handle was returned only when progress:true ⇒ a persistent failure notification (with [Retry]) could not be dismissed,
+         * and after the user's manual retry succeeded, that "install failed" entry kept living on, the panel turning into a wall of failures (archive 18 A3/).
+         *  ⇒ A notification can only be updated/removed by **the handle that created it**, whether or not it is a progress bar.
+         * options.actions carries primary action buttons — clicking runs the shell's executeCommand(action.command, action.args),
+         *  the command handler registered by the plugin itself. No actions → no buttons (status quo). Error kinds auto-stay 8s.
+         * options.persistent=true long-lived notification — does not auto-dismiss, waits for the user to click × (for error diagnostics);
+         * the long-lived cap is **bucketed by source**, 5 each (S3); over the cap, evict the oldest of the same source and show a summary notice */
         show(message: string, options?: {
             type?: "info" | "warning" | "error";
-            /** true → 进度通知：update 可带 0-100 百分比驱动真进度条 */
+            /** true → progress notification: update can carry a 0-100 percent to drive a real progress bar () */
             progress?: boolean;
-            /** true → 长驻通知：不自动消失；错误诊断/需用户决定的场景用 */
+            /** true → long-lived notification: does not auto-dismiss (); for error-diagnosis / needs-user-decision scenarios */
             persistent?: boolean;
             actions?: PluginToastAction[];
-            /** 生产者身份 id——**机器读的归属键，不含人类文案**（人类可读名由壳解析）。
-             *  面板**按来源分组**、每组各 5 条常驻配额都以此为键；不传 → 全落「其他」组。
-             *  插件传自己的插件 id；壳自身域用 `app.<域>`（如 `app.update`）。
-             *  ⚠️ **做不到自动注入**——池是单进程共享 realm，所有插件共用同一个 `window.linkdesk`，
-             *  preload 无从知道「这次 show() 是哪个插件的树发的」⇒ **只能作者显式报**。
-             *  ⚠️ 老插件不填就仍然全落「其他」组：这是**新契约**，要作者重新发布才生效。 */
+            /** (S5) producer identity id — **a machine-read attribution key with no human copy** (the human-readable name is resolved by the shell).
+             *  The panel **groups by source** and each group's 5-entry long-lived quota keys off this; omitted → all fall into the "Other" group.
+             *  Plugins pass their own plugin id; the shell's own domains use `app.<domain>` (e.g. `app.update`).
+             *  ⚠️ **Auto-injection is impossible** — the pool is a single shared-realm process where all plugins share the same `window.linkdesk`,
+             *  and the preload cannot know "which plugin's tree issued this show()" ⇒ **only the author can declare it explicitly**.
+             *  ⚠️ Old plugins that omit it still all fall into the "Other" group: this is a **new contract** and takes effect only after authors re-release. */
             source?: string;
         }): Promise<NotificationHandle>;
         /**
-         * **只读列举**——面板里现在有什么（条数 / 未读 / 每条内容与按钮 / 唤醒与存活判据）。
+         * **read-only listing** — what the panel currently holds (counts / unread / each entry's content and buttons / wake and liveness criteria).
          *
-         * 🔴 为什么必须是这一个形状：返回的就是**铃铛宽面板的 DTO 本体**（`NotifLayout`，与
-         * `pool.onLayout` 的 `statusBar.notif` 同一个 `buildNotif(t)` 产出）——**不是**另算一份摘要。
-         * 两把尺子必然打架：AI 读到的分组/未读/文案若与屏幕上画的不同，读取面就成了假信息源。
-         * 设计原文（路线 B）也承认布局快照里**已在推**这份数据，只是「没开门」；本方法就是那扇门，
-         * 而门后接的仍是同一份实现（⛔ 不 fork 第二把尺）。
+         * 🔴 Why it must be exactly this shape: what is returned is the **bell-wide panel's DTO itself** (`NotifLayout`, the same `buildNotif(t)` output as
+         * `pool.onLayout`'s `statusBar.notif`) — **not** a separately computed summary. Two rulers would inevitably clash: if the grouping/unread/copy the AI reads
+         * differed from what is drawn on screen, the read surface would become a source of false information.
+         * The design text (route B) also concedes that the layout snapshot **is already pushing** this data and just "hadn't opened the door"; this method is that door,
+         * and behind the door it is still the same implementation (⛔ do not fork a second ruler).
          *
-         * ⚠️ **脱出窗也拿得到**：本方法经 `plugins:call` 问**壳**（壳持全量状态），不读本窗那份布局子集
-         * ——脱出窗的 `statusBar` 是策略表裁掉的，走布局就会答「没有通知」。
+         * ⚠️ **Escaped windows get it too**: this method asks the **shell** via `plugins:call` (the shell holds the full state) and does not read this window's layout subset
+         * — an escaped window's `statusBar` is cut off by the policy table, so going through layout would answer "no notifications".
          *
-         * ⚠️ 文案类字段（`bellTitle`/`panelTitle`/分组 label/`timeLabel`…）**已由壳按当前语言 `t()` 解析**，
-         * 调用方原样显示即可（显示文本铁律）。
+         * ⚠️ Copy-type fields (`bellTitle`/`panelTitle`/group labels/`timeLabel`…) are **already resolved by the shell's `t()` in the current language**;
+         * callers display them verbatim (display-text iron rule).
          */
         list(): Promise<NotifLayout>;
         /**
-         * **变更订阅**——通知面（新增/更新/收掉/认账/面板开合）有变化就回调。
+         * **change subscription** — calls back whenever the notification surface changes (added/updated/dismissed/acknowledged/panel open-close).
          *
-         * 🔴 **信号无载荷**：回调**不带**快照——带了就等于把「数据」从第二条路推一遍，池侧便会有人直接
-         * 用信号里的数据、而不去问权威（`list()`），于是又长出第二把尺。本订阅只回答
-         * 「**现在变了**」，要答案请 `list()`（与 `watchFile`/`events.on` 那套「状态推流 + 按需拉」
-         * 的分工一致）。
+         * 🔴 **The signal carries no payload**: the callback does **not** include a snapshot — including one would push the "data" through a second path,
+         * and someone on the pool side would then use the signal's data instead of asking the authority (`list()`), growing a second ruler again. This subscription only answers
+         * "**it changed just now**"; for answers call `list()` (consistent with the "status push + pull on demand"
+         * division of `watchFile`/`events.on`).
          *
-         * 传输 = 壳 `events.emit("notif:changed")` → 主进程广播 → 池 `events.on`（**无新增 IPC 通道**，
-         * 命名空间矩阵 §3 通道计数不动）。⚠️ 广播默认存 payload 供新池重放 ⇒ 新起的池可能收到一条
-         * 「陈旧的变更信号」——本订阅是幂等重取语义（收到就 `list()`），无害。
+         * Transport = the shell's `events.emit("notif:changed")` → main-process broadcast → the pool's `events.on` (**no new IPC channel**;
+         * the namespace matrix §3 channel count unchanged). ⚠️ The broadcast stores its payload by default for new pools to replay ⇒ a newly started pool may receive
+         * a "stale change signal" — this subscription has idempotent re-fetch semantics (on receipt, call `list()`), so it is harmless.
          *
-         * @returns 退订函数
+         * @returns unsubscribe function
          */
         subscribe(cb: () => void): () => void;
     };
-    /** 菜单——插件声明式读写 */
+    /** Menus — declarative read/write for plugins */
     menu: {
         registerItems(menuId: string, pluginId: string, items: ManifestMenuItem[]): Promise<void>;
         getItems(menuId: string, context?: Record<string, unknown>): Promise<MenuItemDescriptor[]>;
     };
-    /** ContextKey——插件 SET 状态供壳 when 子句读 */
+    /** ContextKey — plugins SET state for the shell's when clauses to read */
     contextKey: {
         set(key: string, value: unknown): Promise<void>;
         _getValue?(key: string): unknown;
     };
-    /** 弹窗——确认/提示/文件选择 */
+    /** Dialogs — confirm/alert/file selection */
     dialog: {
         confirm(message: string): Promise<boolean>;
         alert(message: string): Promise<void>;
-        /** 文件/目录选择器——对标 Tauri dialog.open（openFile 为插件侧规范名，本方法保留给既有消费方） */
+        /** File/directory picker — Modeled after Tauri dialog.open ( openFile is the canonical plugin-side name; this method is kept for existing consumers) */
         open(opts?: DialogOpenOptions): Promise<string | null>;
-        /** 打开文件选择器——返回用户选中路径，取消 → null。安全由主进程控制 */
+        /** Opens the file picker — returns the user-selected path; cancel → null. Security is controlled by the main process */
         openFile(opts?: DialogOpenOptions): Promise<string | null>;
-        /** 富内容确认——确认框内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
-         *  弹窗机制同 confirm（居中/遮罩/Esc/焦点锁/点遮罩取消）；内容排版与按钮由插件视图自画
-         *  （对标 VS Code「对话框是壳、内容插件定」）。title/message 兜底——content 视图解析
-         *  失败时壳回落纯文字确认（弹窗仍出，不静默死）。返回 true = 确认，false = 取消/关闭。 */
+        /** rich-content confirm — the dialog's content = a plugin self-drawn view (content view declarative addressing + opaque payload).
+         *  Dialog mechanics match confirm (centered/mask/Esc/focus lock/click-mask-to-cancel); content layout and buttons are drawn by the plugin view
+         *  (Modeled after VS Code's "the dialog is the shell's, the content is the plugin's"). title/message as fallback — if the content view fails to resolve,
+         *  the shell falls back to a plain-text confirm (the dialog still appears, no silent death). Returns true = confirmed, false = cancelled/closed. */
         confirmContent(options: DialogContentOpenOptions): Promise<boolean>;
     };
-    /** 插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染）。结算 null → undefined */
+    /** plugin quickPick picker — local bridge inside the pool (zero IPC, rendered by QuickPickHost). A settle of null → undefined */
     quickPick: {
         show(opts: PluginQuickPickOptions): Promise<unknown>;
     };
-    /** QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） */
+    /** QuickPick host rendering bridge — consumed by the pool's QuickPickHost (the shell preload has no such surface) */
     quickPickHost: {
         registerHost(fn: (req: PluginQuickPickRequest, settle: (key: string | null) => void) => void): () => void;
         onShow(cb: (data: PoolQuickPickData) => void): () => void;
@@ -1649,73 +1656,73 @@ export interface UiAPI {
         close(): void;
         itemAction(key: string, actionId: string): void;
     };
-    /** Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面）。命名 dialogHost——
-     * dialog 命名空间已是插件侧 confirm/alert/open API */
+    /** Dialog dumb-render subscription — consumed by the pool's DialogHost (the shell preload has no such surface). Named dialogHost —
+     * the dialog namespace is already the plugin-side confirm/alert/open API */
     dialogHost: {
         onShow(cb: (data: PoolDialogData) => void): () => void;
-        /** 当前打开的 Dialog 数据——富内容视图挂载后经 dialogHost.current()?.content?.payload
-         *  取数（content 模式才可读；无打开/已关闭 → null）。壳 preload 无此面（池内本地读）。 */
+        /** data of the currently open dialog — after the rich-content view mounts, read via dialogHost.current()?.content?.payload
+         *  (readable in content mode only; none open / already closed → null). The shell preload has no such surface (a local read inside the pool). */
         current(): PoolDialogData | null;
         /**
-         * **在途弹窗清单**——「有没有 confirm/alert 正弹着、在等什么」。
+         * **the in-flight dialog list** — "is a confirm/alert currently up, and what is it waiting for".
          *
-         * 与 `current()` 的分工：`current()` 读的是**本进程收到的哑渲染数据**（`open:false` 即已关；
-         * 内容已按池要画的形态给全）；`pending()` 读的是**壳侧 DialogService 的在途请求**
-         * （`options` 原形 + `kind` + 按钮文案）——两个面问的是同一件事的不同切面，
-         * 故**都留着**：`pending()` 多给出「这是谁问的 / 富内容视图的 pluginId+viewId / 按钮有几条」。
+         * Division of labor with `current()`: `current()` reads **the dumb-render data received by this process** (`open:false` means closed;
+         * content already given in full in the form the pool will draw); `pending()` reads **the shell-side DialogService's in-flight requests**
+         * (the raw `options` + `kind` + button copy) — the two surfaces ask different facets of the same thing,
+         * hence **both are kept**: `pending()` additionally gives "who asked / the rich-content view's pluginId+viewId / how many buttons".
          *
-         * 🔴 **单槽是现状的诚实描述，不是设计目标**：壳→池弹窗链路（`src/App/bridges.ts` 的 `pending`）
-         * 同一时刻只承载一条，第二次 `confirm` 会覆盖前一条的 settle 闭包（那条 Promise 永不结算——
-         * **既有缺陷**）。只做「读得到」，**不改 Promise 语义** ⇒ 本方法如实报「最后打开的那一条」。
-         * 空数组 = 此刻没有弹窗。
+         * 🔴 **The single slot is an honest description of the status quo, not a design goal**: the shell→pool dialog path (`pending` in `src/App/bridges.ts`)
+         * carries only one entry at a time; a second `confirm` overwrites the previous settle closure (that Promise never settles —
+         * a **pre-existing defect**).  only makes it "readable", **without changing Promise semantics** ⇒ this method truthfully reports "the last one opened".
+         * An empty array = no dialog up right now.
          *
-         * ⚠️ 富内容确认模式下**按钮由插件视图自画**，壳不知道有几条 ⇒
-         * `buttons` 为空数组、`content` 给出视图身份——⛔ 不要拿「确定/取消」去猜（编数据）。
+         * ⚠️ In rich-content confirm mode () **the buttons are drawn by the plugin view** and the shell does not know how many there are ⇒
+         * `buttons` is an empty array and `content` gives the view identity — ⛔ do not guess "OK/Cancel" (fabricating data).
          *
-         * ⚠️ `buttons` 的**序 = 声明序**（`resolveDialogButtons` 恒为 `[确认, 取消]`），**不是屏幕上的左右位**
-         * ——2026-09-28 CDP 实证：屏幕上次按钮画左、主按钮画右，本数组恒确认在前。
-         * 想动手就按序号调 `confirm()` / `cancel()`，⛔ 别拿视觉位置对号入座。
+         * ⚠️ `buttons`' **order = declaration order** (`resolveDialogButtons` always yields `[confirm, cancel]`), **not the left/right positions on screen**
+         * — proven by CDP on 2026-09-28: on screen the secondary button is drawn left and the primary right, while this array always has confirm first.
+         * To act, call `confirm()` / `cancel()` by index; ⛔ do not map by visual position.
          */
         pending(): Promise<PoolPendingDialog[]>;
         confirm(): void;
         cancel(): void;
     };
-    /** （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。
-     * 命名 floatingPanelHost——面板请求 API（panel.revealFloating）归 PanelAPI，宿主渲染桥归本面 */
+    /** (type B): floating panel dumb-render subscription — consumed by the pool's FloatingPanelHost (the shell preload has no such surface).
+     * Named floatingPanelHost — the panel request API (panel.revealFloating) belongs to PanelAPI; the host rendering bridge belongs to this surface */
     floatingPanelHost: {
         onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
-        /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
+        /** Action return — open-in (open in the main window) / close; settled on the shell side (business semantics re-resolved on the shell side) */
         action(actionId: string): void;
         /**
-         * 注册几何宿主（池 FloatingPanelHost mount 时调）。主世界函数经 contextBridge
-         * 代理进隔离世界存储，同 `quickPickHost.registerHost` 先例。返回 unsubscribe。
-         * ⚠️ 面板渲染在池 ⇒ **几何真相源在池**：拖拽 / 调高 / `panel.setFloatingBounds` 这条 API 路径
-         * 最终都落在本宿主上（壳不存几何、不做几何计算）。
+         * register the geometry host (called when the pool's FloatingPanelHost mounts). The main-world function is proxied via contextBridge
+         * into isolated-world storage, per the `quickPickHost.registerHost` precedent. Returns unsubscribe.
+         * ⚠️ The panel renders in the pool ⇒ **the geometry source of truth is in the pool**: dragging / resizing / the `panel.setFloatingBounds` API path
+         * all ultimately land on this host (the shell stores no geometry and does no geometry math).
          */
         registerBoundsHost(fn: (req: FloatingPanelBoundsHostRequest) => boolean | PoolFloatingPanelGeometry | null): () => void;
         /**
-         * 读当前悬浮面板几何（**同步**——池内直答零 IPC，同 `dialogHost.current()` 先例）。
-         * 返回**实际生效**的几何（钳制 / 最大化后的真实结果，非调用方意图值）；**无面板** → `null`。
+         * read the current floating panel geometry (**synchronous** — answered directly in the pool with zero IPC, per the `dialogHost.current()` precedent).
+         * Returns the **actually effective** geometry (the real result after clamping / maximizing, not the caller's intended value); **no panel** → `null`.
          *
-         * 判据用法：`panel.setFloatingBounds({ top: 100, left: 80 })` 后调本函数对账——`top/left` 应等于
-         * 100/80（越界时等于被钳后的值）。⚠️ 壳侧 / CLI 的读数出口不是本函数（那是池内面），而是池上报的
-         * 壳镜像：命令 `workbench.action.getFloatingPanelBounds`。
+         * Criterion usage: after `panel.setFloatingBounds({ top: 100, left: 80 })`, call this function to reconcile — `top/left` should equal
+         * 100/80 (equal to the clamped values when out of bounds). ⚠️ The shell-side / CLI read outlet is not this function (that is an in-pool surface) but the pool-reported
+         * shell mirror: the command `workbench.action.getFloatingPanelBounds`.
          */
         getBounds(): PoolFloatingPanelGeometry | null;
     };
 }
-/** 端口列表条目——listPorts() 返回 */
+/** Port list entry—the listPorts() return */
 export interface SerialPortInfo {
     name: string;
     description: string;
 }
-/** 串口状态快照——F5 刷新 / getStatus() 返回 */
+/** Serial port status snapshot—F5 refresh / getStatus() return */
 export interface SerialStatus {
     isOpen: boolean;
     portName: string;
     baudRate: number;
 }
-/** 打开串口配置——插件 API 入参 + 主进程 serial-service 消费 */
+/** Open serial port config—plugin API input + consumed by the main-process serial-service */
 export interface OpenPortConfig {
     portName: string;
     baudRate: number;
@@ -1723,121 +1730,121 @@ export interface OpenPortConfig {
     stopBits?: number;
     parity?: string;
     encoding?: string;
-    /** D8——资源归属声明：由插件 openPort 时自声明（pool WCV 多插件同 JS 上下文，
-     *  主进程无法从 sender 识别插件），卸载时 closePortsByOwner 按此回收硬件资源。 */
+    /** D8—resource ownership declaration: declared by the plugin itself at openPort (pool WCV means multiple plugins share one JS context,
+     *  so the main process cannot identify the plugin from the sender); on unload, closePortsByOwner reclaims the hardware resources by it. */
     ownerPluginId?: string;
 }
-/** 串口数据载荷——serial.data 推送（由原无口名 string 演化——D6 载荷对象化）。 */
+/** Serial data payload—the serial.data push ( evolved from the original port-name-less string—D6 payload objectification). */
 export interface SerialDataPayload {
-    /** 数据源端口 = 路由键——消费方按 portName 收自己的口的数据（多口并存各口各收） */
+    /** Data-source port = routing key—consumers receive their own port's data by portName (multiple ports coexist, each receiving its own) */
     portName: string;
-    /** 解码后的行文本 */
+    /** Decoded line text */
     text: string;
 }
-/** 串口统计载荷——serial.stats 推送（由原无口名 SerialStats 演化——S10 每口计数器的数据源）。
- *  tx/rx 为推送增量（非累计值）——消费方自行累加。 */
+/** Serial stats payload—the serial.stats push ( evolved from the original port-name-less SerialStats—the data source for the S10 per-port counters).
+ *  tx/rx are push deltas (not cumulative values)—consumers accumulate on their own. */
 export interface SerialStatsPayload {
-    /** 统计归属端口 = 路由键——各口计数器独立累加 */
+    /** Stats-owner port = routing key—each port's counters accumulate independently */
     portName: string;
     tx?: number;
     rx?: number;
 }
-/** 串口系统消息载荷——serial.system 推送（由原无口名 string 演化——S12 正则挖口名 hack 的修根）。
- *  message 保留 V2 消息格式（如 `---- 已打开串行端口 COM3 ----`），portName 结构化免解析。
- * ——type 分类标签（审视 ①：来源端分类，一个概念一处写，不做消费端文案关键词判断）
- *  status = 正常成功流程（开/关/波特率切换）；error = 非正常流程（同口二开拒绝 D8 / 驱动错误 / 拔线）。
- *  消费端按键路由：status 按口过滤（他口操作不显示）、error 全局可见（非活动标签页也显示）。 */
+/** Serial system message payload—the serial.system push ( evolved from the original port-name-less string—the root fix for the S12 regex-extract-port-name hack).
+ *  message keeps the V2 message format (a localized status banner embedding the port name, e.g. `---- <serial port opened> COM3 ----`—the runtime string itself is Chinese, verbatim samples live in the serial handler tests); portName is structured so no parsing is needed.
+ * (P1)—type classification tag (review ①: classified at the source end, one concept written in one place, no consumer-side message-keyword matching):
+ *  status = normal success flow (open/close/baud-rate switch); error = abnormal flow (D8 refusal of a second open on the same port / driver errors / unplug).
+ *  Consumer-side routing by key: status filtered per port (other ports' operations are not shown); error globally visible (shown even on inactive tabs). */
 export interface SerialSystemPayload {
-    /** 消息归属端口 = 路由键——本端口会话专属消费（开/关状态切换）；不匹配的会话仍可显示文本但不触发状态切换 */
+    /** Message-owner port = routing key—consumed exclusively by this port's session (open/close state switches); non-matching sessions may still display the text but do not trigger a state switch */
     portName: string;
     message: string;
-    /** 消息分类——status 成功流程 / error 失败异常（D8 拒绝、驱动错误、拔线） */
+    /** Message category—status success flow / error failure anomaly (D8 refusal, driver error, unplug) */
     type: "status" | "error";
 }
-/** 串口/剪贴板/插件间通信/事件/持久化存储命名空间面——对标 VS Code SerialPort API + p2p + EventEmitter + state */
+/** Serial / clipboard / inter-plugin communication / events / persistent storage namespace surfaces — modeled after VS Code SerialPort API + p2p + EventEmitter + state */
 export interface DataAPI {
-    /** 串口——读/写/监听，对标 VS Code SerialPort API */
+    /** Serial — read/write/listen, modeled after VS Code SerialPort API */
     serial: {
         listPorts(): Promise<SerialPortInfo[]>;
-        /** D5 双形态：无参 → SerialStatus[]（全部打开口，空数组 = 全关）/ 有参 → 单口快照（F5 遍历恢复用） */
+        /** D5 dual form: no arg → SerialStatus[] (all open ports, empty array = all closed) / with arg → a single port snapshot (for F5 traversal restore) */
         getStatus(): Promise<SerialStatus[]>;
         getStatus(portName: string): Promise<SerialStatus>;
         openPort(cfg: OpenPortConfig): Promise<void>;
-        /** D2——portName 可选：缺省 = 唯一打开口（0 口抛「串口未打开」/ ≥2 口抛「多串口已打开，请指定 portName」） */
+        /** D2 — portName optional: omitted = the only open port (0 ports throws "serial port not open" / ≥2 ports throws "multiple serial ports open, please specify portName") */
         closePort(portName?: string): Promise<void>;
         sendData(data: number[], portName?: string): Promise<void>;
         sendText(text: string, enc: string, portName?: string): Promise<void>;
         setDtr(enable: boolean, portName?: string): Promise<void>;
         setRts(enable: boolean, portName?: string): Promise<void>;
-        /** 载荷对象化——SerialDataPayload.portName = 路由键（多口并存各口各收） */
+        /** payloads made objects — SerialDataPayload.portName = routing key (multiple ports coexist, each receives its own) */
         onData(cb: (payload: SerialDataPayload) => void): () => void;
         onStats(cb: (payload: SerialStatsPayload) => void): () => void;
         onSystem(cb: (payload: SerialSystemPayload) => void): () => void;
     };
-    /** 剪贴板——读/写系统剪贴板 */
+    /** Clipboard — read/write the system clipboard */
     clipboard: {
         readText(): Promise<string>;
         writeText(text: string): Promise<void>;
-        /** 写入文件列表——文件树复制粘贴用 */
+        /** Write a file list — used by file-tree copy/paste */
         writeFileList(paths: string[]): Promise<void>;
     };
-    /** p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） */
+    /** p2p targeted inter-plugin push — same pattern as bridge.broadcast (fire-and-forget) */
     p2p: {
         send(target: string, channel: string, data: unknown): void;
         on(channel: string, cb: (data: unknown) => void): () => void;
     };
-    /** 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 */
+    /** Generic event subscribe + publish — the inter-plugin data pipeline. channel is a free-form string; payloads are typed per channel — subscribers narrow */
     events: {
-        /** on 泛型化——载荷类型按订阅方 cb 推断（event-system EventSystemApi 同款，已泛型化 impl），通道契约类型（ConfigurationChangedPayload 等）可直传 */
+        /** on made generic — the payload type is inferred from the subscriber's cb (same as the event-system EventSystemApi;  already made the impl generic); channel contract types (ConfigurationChangedPayload etc.) can be passed directly */
         on<T = unknown>(channel: string, cb: (payload: T) => void): () => void;
         emit(channel: string, payload: unknown): void;
         heartbeat?(): void;
         notifyTheme?(isDark: boolean): void;
     };
-    /** 插件持久化存储——集中缓存 + 文件持久化 */
+    /** plugin persistent storage — centralized cache + file persistence */
     pluginState: {
-        /** 读取持久化状态——运行时动态值，默认 unknown；调用方显式 get<string>(...) 窄化或自行收窄 */
+        /** Read persisted state — a runtime dynamic value; defaults to unknown; callers narrow via explicit get<string>(...) or their own narrowing */
         get<T = unknown>(pluginId: string, key: string): Promise<T | undefined>;
         set(pluginId: string, key: string, value: unknown): Promise<void>;
-        /** 订阅持久化状态变更——按 pluginId+key 精确匹配（通配键名订阅走 events.on("plugin-state:changed")，见  补导出 PluginStateChangedPayload）。返回 unsubscribe */
+        /** Subscribe to persisted state changes — exact match on pluginId+key (wildcard key subscription goes through events.on("plugin-state:changed"), see the  added export PluginStateChangedPayload). Returns unsubscribe */
         onChange(pluginId: string, key: string, cb: (value: unknown) => void): () => void;
     };
 }
 export interface WorkspaceFolder {
-    /** 文件夹完整路径（file:// URI） */
+    /** Full folder path (file:// URI) */
     uri: string;
-    /** 文件夹名——路径最后一段 */
+    /** Folder name—the last path segment */
     name: string;
-    /** 索引——第一个打开的文件夹 index=0 */
+    /** Index—the first opened folder is index=0 */
     index: number;
 }
-/** 文件/目录条目——前后端共用 */
+/** File/directory entry—shared by front and back ends */
 export interface FileEntry {
     name: string;
     path: string;
     isDirectory: boolean;
     isFile: boolean;
-    size?: number; // 字节
-    modifiedAt?: number; // Unix 时间戳 ms
-    /** V 文件是否只读（不可写） */
+    size?: number; // bytes
+    modifiedAt?: number; // Unix timestamp ms
+    /** V whether the file is read-only (not writable) */
     isReadonly?: boolean;
 }
 export interface FileChangeEvent {
     path: string;
     type: "created" | "changed" | "deleted";
 }
-/** 环境信息——env.get() 返回（主进程 env-handlers 组装） */
+/** Environment info — returned by env.get() (assembled by the main process env-handlers) */
 export interface EnvInfo {
     appDataDir: string;
     pluginsRootDir: string;
     appPluginsDir: string;
-    /** （1.2-4）：用户安装包代码根 {userData}/plugins——.linkdesk-plugin 解压家（与 appPluginsDir 只读根分开） */
+    /** (1.2-4): the user-installed package code root {userData}/plugins — the unpack home of .linkdesk-plugin (kept separate from the read-only appPluginsDir root) */
     userPluginsDir: string;
     pluginDataDir?: string;
     pluginCacheDir?: string;
     pluginExportsDir?: string;
 }
-/** IPC search:searchFiles 载荷——FileSearcher.SearchOptions 的 wire 子集（无 signal） */
+/** IPC search:searchFiles payload—the wire subset of FileSearcher.SearchOptions (no signal) */
 export interface SearchWireOptions {
     roots: string[];
     query: string;
@@ -1848,7 +1855,7 @@ export interface SearchWireOptions {
     useRegex?: boolean;
     maxResults?: number;
 }
-/** 单个匹配——1-based lineNumber；matchStart/matchEnd 为该行内 0-based 列区间（不含 end） */
+/** A single match—lineNumber is 1-based; matchStart/matchEnd are 0-based column ranges within the line (end exclusive) */
 export interface SearchWireMatch {
     filePath: string;
     lineNumber: number;
@@ -1856,14 +1863,14 @@ export interface SearchWireMatch {
     matchStart: number;
     matchEnd: number;
 }
-/** IPC search:searchFiles 返回——FileSearchResult 的 wire 形状 */
+/** IPC search:searchFiles return—the wire shape of FileSearchResult */
 export type SearchWireResult = Array<{
     filePath: string;
     matches: SearchWireMatch[];
 }>;
-/** 工作区/文件系统/路径/环境/搜索/编码命名空间面——对标 VS Code vscode.workspace + env + ExtensionContext */
+/** Workspace / filesystem / path / environment / search / encoding namespace surfaces — modeled after VS Code vscode.workspace + env + ExtensionContext */
 export interface WorkspaceAPI {
-    /** 工作区——池 preload 注入（壳侧经 WorkspaceService 直用）。池权威命名空间——插件必用面（file-tree），必选 */
+    /** Workspace — injected by the pool preload (the shell side uses WorkspaceService directly). Pool-authoritative namespace — a must-use plugin surface (file-tree), required */
     workspace: {
         getFolders(): Promise<WorkspaceFolder[]>;
         getActive(): Promise<string | undefined>;
@@ -1874,25 +1881,25 @@ export interface WorkspaceAPI {
         onDidChangeFolders(cb: () => void): () => void;
         onDidChangeActiveWorkspace(cb: (uri: string | null) => void): () => void;
     };
-    /** 文件系统——插件读写（路径校验由主进程执行） */
+    /** Filesystem — plugin read/write (path validation is performed by the main process) */
     filesystem: {
         readTextFile(p: string): Promise<string>;
         writeTextFile(p: string, d: string): Promise<void>;
         exists(p: string): Promise<boolean>;
         createDir(p: string): Promise<void>;
         copy(src: string, dest: string): Promise<void>;
-        /** 重命名/移动文件或目录（主进程 fs.rename 原子；对标 POSIX rename / VS Code fs.rename） */
+        /** rename/move a file or directory (atomic fs.rename in the main process; modeled after POSIX rename / VS Code fs.rename) */
         rename(src: string, dest: string): Promise<void>;
         remove(p: string): Promise<void>;
         listDir(p: string): Promise<FileEntry[]>;
         readBinaryFile(p: string): Promise<Uint8Array>;
         writeBinaryFile(p: string, d: Uint8Array): Promise<void>;
-        /** 监听目录变更——返回 unsubscribe（内部走 filesystem:changed:<watcherId> 通道） */
+        /** Watch a directory for changes — returns unsubscribe (internally uses the filesystem:changed:<watcherId> channel) */
         watch(dirPath: string, onEvent: (e: FileChangeEvent) => void): Promise<() => void>;
-        /** 列出条目名——壳 preload 独有（池侧请用 listDir） */
+        /** List entry names — shell preload only (the pool side should use listDir) */
         readdir?(p: string): Promise<string[]>;
     };
-    /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（池侧补上——settings 插件池内解析 userData 路径） */
+    /** Path utilities — injected on both shell/pool ends (in-pool plugins such as editor/file-tree consume normalize/join etc.); appDataDir is identical on both ends ( added on the pool side — settings plugins resolve userData paths in the pool) */
     path: {
         appDataDir?(): Promise<string>;
         normalize(p: string): string;
@@ -1901,39 +1908,39 @@ export interface WorkspaceAPI {
         dirname(p: string): string;
         extname(p: string): string;
     };
-    /** 环境信息——对标 VS Code ExtensionContext */
+    /** Environment info — modeled after VS Code ExtensionContext */
     env: {
         get(pluginId?: string): Promise<EnvInfo>;
     };
-    /** 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） */
+    /** file search — full-text search/replace (executed via IPC in the shell/main process) */
     search: {
-        // wire 契约归口 src/core/types/ipc/search.ts——与 preload-pool buildSearch 双端同源
+        //  the wire contract's canonical home is src/core/types/ipc/search.ts — same origin on both ends with preload-pool buildSearch
         searchFiles(opts: SearchWireOptions): Promise<SearchWireResult>;
     };
-    /** 编码检测/转换（主进程 EncodingService） */
+    /** encoding detection/conversion (main-process EncodingService) */
     encoding: {
         detect(buffer: Uint8Array): Promise<string>;
         decode(buffer: Uint8Array, encoding: string): Promise<string>;
         encode(text: string, encoding: string): Promise<Uint8Array>;
-        /** T1 二进制守卫：纯启发式判定（判定归壳，一处真相源；旧壳无此方法 ⇒ 插件须特性探测降级） */
+        /** T1 binary guard: purely heuristic determination (the shell owns the decision — one source of truth; older shells lack this method ⇒ plugins must feature-detect and degrade) */
         isBinary(buffer: Uint8Array): Promise<boolean>;
     };
 }
-/** 文件装饰——池内本地注册表。形状对标插件 API 契约 §3.24 */
+/** File decoration —  in-pool local registry. Shape modeled after the plugin API contract §3.24 */
 export interface FileDecoration {
     badge?: string;
     tooltip?: string;
     color?: string;
     propagate?: boolean;
 }
-/** 文件装饰提供方——插件注册（registerProvider）。同步查询契约：跳过返回 Promise 的 provideDecoration */
+/** File decoration provider — registered by plugins (registerProvider). Sync-query contract: provideDecoration implementations returning Promise are skipped */
 export interface FileDecorationProvider {
     provideDecoration(uri: string): FileDecoration | null | undefined;
     onDidChangeFileDecorations?(cb: (uris: string[]) => void): () => void;
 }
-/** 文件装饰/关联/语言定义/LSP/协议/视图容器命名空间面——编辑器配套服务（主进程/池内直答） */
+/** File decoration / association / language definition / LSP / protocol / view container namespace surfaces — editor companion services (answered directly by the main process / in-pool) */
 export interface EditorAPI {
-    /** 文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 */
+    /** file decorations — a local in-pool registry (zero IPC). Shape modeled after contract §3.24 */
     decorations: {
         registerProvider(pluginId: string, provider: FileDecorationProvider): void;
         unregisterProvider(pluginId: string): void;
@@ -1941,18 +1948,20 @@ export interface EditorAPI {
         onDidChange(cb: (uris: string[]) => void): () => void;
     };
     /**
-     * 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。
-     * T2（第 3 波）：`getPluginFor` 升级为覆盖表感知的完整解析（覆盖 → 声明 → 角色，01 §T2.2）——
-     * 三入口（FoldersView/SearchView/intake）同吃 ⇒ F3「一处真相」；`listHandlersFor` = 选择器只读面；
-     * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步）；
-     * `setDefaultBulk` = 同口的**批量**形态（2/聚合格——一次写 N 类，聚合逻辑在管理器侧）。
+     * file associations — extension→plugin ID (answered directly by the main-process FileAssociationService).
+     * T2 (wave 3): `getPluginFor` upgraded to full override-table-aware resolution (override → declaration → role, 01 §T2.2) —
+     * the three entries (FoldersView/SearchView/intake) all consume it ⇒ F3 "one place of truth"; `listHandlersFor` =
+     * the read-only selector surface; `setDefault` = the override table's only write port ("Set as default" / "Restore automatic",
+     * bidirectional sync ); `setDefaultBulk` = the **bulk** form of the same port (2/aggregate write — writes N types at once,
+     * aggregation logic on the manager side).
      */
     fileAssociation: {
         getPluginFor(ext: string): Promise<string | undefined>;
         /**
-         * 列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器与设置页下拉的数据源，01 §T2.1）；无声明者 ⇒ []。
-         * `title` = **插件**显示名（manifest.name ?? pluginId）；`displayName` = **文件类型**显示名
-         * （声明里的 displayName，如 .rs → "Rust"）——两者语义不同，命名位用 `title`。
+         * List all declarers of the extension plus the current-default marker (data source for the "Open with…" picker and the
+         * settings page dropdown, 01 §T2.1); no declarers ⇒ [].
+         * `title` = the **plugin** display name (manifest.name ?? pluginId); `displayName` = the **file type** display name
+         * (the displayName in the declaration, e.g. .rs → "Rust") — the two differ semantically; naming surfaces use `title`.
          */
         listHandlersFor(ext: string): Promise<Array<{
             pluginId: string;
@@ -1960,12 +1969,12 @@ export interface EditorAPI {
             displayName: string;
             isCurrent: boolean;
         }>>;
-        /** 覆盖表唯一写口——`pluginId: null` = 恢复自动（删覆盖键）；写后 config:changed 即时广播 */
+        /** The override table's only write port — `pluginId: null` = restore automatic (deletes the override key); config:changed is broadcast immediately after writing () */
         setDefault(ext: string, pluginId: string | null): Promise<void>;
-        /** 同上，**一次写 N 类**（2/聚合：`pluginId: null` = 逐类删）——非法/重复扩展名在写面内跳过 */
+        /** Same as above, **writes N types at once** (2/aggregation: `pluginId: null` = delete per type) — invalid/duplicate extensions are skipped within the write surface */
         setDefaultBulk(exts: string[], pluginId: string | null): Promise<void>;
     };
-    /** langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */
+    /** langDef — language definition registry (answered directly by the main process). Returns only serializable fields (monarch tokenizer functions are stripped on the main-process side) */
     langDef: {
         get(extension: string): Promise<{
             id: string;
@@ -1975,14 +1984,14 @@ export interface EditorAPI {
             };
         } | null>;
     };
-    /** LSP 桥——自动补全/F12/诊断/重命名 */
+    /** LSP bridge — autocompletion/F12/diagnostics/rename */
     lsp: {
         spawn(command: string, args: string[] | undefined, pluginId: string): Promise<string>;
         write(channelId: string, data: string): void;
         dispose(channelId: string): Promise<unknown>;
         onData(cb: (channelId: string, data: string) => void): () => void;
     };
-    /** protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） */
+    /** protocol — protocol registry (answered directly by the main process). parseLine/detect are stripped before returning (JS functions cannot cross processes) */
     protocol: {
         listProtocols(): Promise<Array<{
             id: string;
@@ -1993,75 +2002,75 @@ export interface EditorAPI {
         getActiveProtocolId(): Promise<string>;
         setActiveProtocolId(protocolId: string): Promise<void>;
     };
-    /** viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 */
+    /** viewContainer — real IPC query/update (asks the shell-side registry). The DTO contains only serializable public fields */
     viewContainer: {
         getViewContainer(id: string): Promise<Record<string, unknown> | undefined>;
         getViews(containerId: string): Promise<Array<Record<string, unknown>>>;
-        // getView 复合寻址——(pluginId, viewId) 精确查视图元数据（碰撞面）
+        //  getView compound addressing — (pluginId, viewId) precise view metadata lookup (collision surface  of )
         getView(pluginId: string, viewId: string): Promise<Record<string, unknown> | undefined>;
         registerView(pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void>;
     };
 }
-/** （1.2-4）：plugins.resolveEntry() 返回——resolvePath 的兄弟（discovery 族，非安装 handler）。
- *  pool/运行时按 { root, entry } 拼 dev /@fs 与 prod linkdesk:// 两种 URL。 */
+/** (1.2-4): returned by plugins.resolveEntry() — sibling of resolvePath (discovery family, not the install handler).
+ *  The pool/runtime assembles both dev /@fs and prod linkdesk:// URLs from { root, entry }. */
 export interface PluginEntryInfo {
-    /** 插件目录绝对路径（正斜杠）；插件不存在 = null */
+    /** Absolute path of the plugin directory (forward slashes); null = plugin does not exist */
     root: string | null;
-    /** 入口文件名——bundle → "index.bundle.js"；源码 → manifest.entry（缺省 "src/index.tsx"）；无 = null */
+    /** Entry file name — bundle → "index.bundle.js"; source → manifest.entry (default "src/index.tsx"); none = null */
     entry: string | null;
-    /** 目录是否含 index.bundle.js（bundle 格式事实） */
+    /** Whether the directory contains index.bundle.js (bundle-format fact) */
     bundle: boolean;
 }
-/** 兼容读数请求——plugins.getCompatibility 入参：插件身份 ＋ 目录侧事实（未装插件由
- *  调用方从 catalog 条目供给；已装插件以磁盘 manifest 为生效值，主进程覆盖） */
+/** Compatibility reading request () — input to plugins.getCompatibility: plugin identity + catalog-side facts (for uninstalled plugins the caller
+ *  supplies them from the catalog entry; for installed plugins the on-disk manifest is the effective value and the main process overrides) */
 export interface PluginCompatibilityRequest {
     pluginId: string;
-    /** 插件要求的最低壳版本（catalog 条目携带；未装插件的唯一来源） */
+    /** The minimum shell version the plugin requires (carried by the catalog entry; the only source for uninstalled plugins) */
     minAppVersion?: string | null;
-    /** 插件最后发版日（catalog `publishedAt`，ISO） */
+    /** The plugin's last release date (catalog `publishedAt`, ISO) */
     publishedAt?: string | null;
 }
-/** 兼容读数——状态算法单点在壳 `src/core/compat/compatibility.ts`；本面只给机器态，
- *  ⛔ 不携带任何用户可见句子（用户面文案归市场插件 i18n，用户面词表见 00 号档 §〇d） */
+/** Compatibility reading () — the state algorithm lives in one place, the shell's `src/core/compat/compatibility.ts`; this surface provides machine state only,
+ *  ⛔ it carries no user-visible sentences (user-facing copy belongs to the marketplace plugin's i18n; the user-facing vocabulary lives in archive 00 §0d) */
 export interface PluginCompatibilityReading {
     pluginId: string;
-    /** 五态（与用户面五词固定对应，对应表住在 compatibility.ts 头注） */
+    /** Five states (fixed mapping to the five user-facing words; the mapping table lives in the compatibility.ts header comment) */
     state: "current" | "compatible" | "drifted" | "incompatible" | "unknown";
-    /** 悬空读数；null = 拿不到（未装 / 目录读不了）——缺数据 ≠ 有问题 */
+    /** Dangling reading; null = unavailable (not installed / catalog unreadable) — missing data ≠ a problem */
     dangling: {
         count: number;
         names: string[];
     } | null;
-    /** 生效的最低壳版本（已装 = 磁盘 manifest；未装 = 调用方供给）；没有 ⇒ null */
+    /** The effective minimum shell version (installed = on-disk manifest; not installed = supplied by the caller); absent ⇒ null */
     minAppVersion: string | null;
     shellVersion: string;
-    /** minAppVersion 缺失/非法 ⇒ null（没得比）；false ⇒ state = "incompatible" */
+    /** minAppVersion missing/invalid ⇒ null (nothing to compare); false ⇒ state = "incompatible" */
     minAppSatisfied: boolean | null;
-    /** 插件最后发版日（YYYY-MM-DD）；catalog 拿不到 ⇒ null */
+    /** The plugin's last release date (YYYY-MM-DD); null if the catalog cannot provide it */
     lastUpdate: string | null;
-    /** 当前壳构建日（YYYY-MM-DD）；dev 占位 ⇒ null */
+    /** The current shell build date (YYYY-MM-DD); null for the dev placeholder */
     shellBuiltAt: string | null;
-    /** 哪些输入缺失（诊断面；state = "unknown" 时非空） */
+    /** Which inputs are missing (diagnostic surface; non-empty when state = "unknown") */
     unknown: string[];
 }
 /**
- * 核心类型定义。
- * 插件元数据、标签页扩展字段、视图注册表条目。
+ * core type definitions.
+ * Plugin metadata, tab extension fields, view registry entries.
  *
- * 设计依据：[[phase4-design-decisions]] + public/schemas/plugin.schema.json
+ * Design basis: [[phase4-design-decisions]] + public/schemas/plugin.schema.json
  */
 export type PluginType = "view" | "card" | "theme" | "language" | "protocol" | "resource" | "datasource";
 export interface TabBehavior {
-    /** 场上无标签页时自动创建此标签页，且不可关闭。只有欢迎页声明。 */
+    /** Auto-create this tab when no tabs are on stage, and it cannot be closed. Only the welcome page declares it. */
     isFallback?: boolean;
-    /** 全局只允许一个实例，重复创建 → 聚焦已有。如设置页。 */
+    /** Globally only one instance allowed; creating it again → focus the existing one. E.g. the settings page. */
     singleton?: boolean;
-    /** 关闭前弹确认框，值为提示文本。如终端。 */
+    /** Show a confirm dialog before close; the value is the prompt text. E.g. the terminal. */
     confirmOnClose?: string;
-    /** 关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后，closeTab 之前）。如终端声明 "close_port"。 */
+    /** The Tauri invoke command called before close (after the confirmOnClose confirmation, before closeTab). E.g. the terminal declares "close_port". */
     invokeBeforeClose?: string;
-    /** CreateTabOptions 中用于判断标签页身份的唯一字段。null=允许多实例不去重（默认）。
-     *  如 workspace 声明 "workspaceName"——同名工作台只允许一个标签页。 */
+    /** The unique field in CreateTabOptions used to determine tab identity. null = allow multiple instances without dedup (default).
+     *  E.g. workspace declares "workspaceName" — only one tab per workspace name. */
     identityField?: string;
 }
 export interface StatusBarItem {
@@ -2070,36 +2079,36 @@ export interface StatusBarItem {
     label: string;
     align?: "left" | "right";
     onClick?: string;
-    /** 声明 true → 壳自动注册配置项（<pluginId>.statusBar.<id>）+ 注入 visible prop。
-     *  插件作者只写一行 JSON，用户可在 Settings Editor 开关。 */
+    /** Declare true → the shell auto-registers a config item (<pluginId>.statusBar.<id>) + injects the visible prop.
+     *  The plugin author writes one line of JSON and the user can toggle it in the Settings Editor. */
     configurable?: boolean;
 }
 export interface PluginManifest {
     $schema?: string;
     /**
-     * 插件身份——**发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录
-     * `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、
-     * 卸载墓碑键、更新对账全部以它为准。
+     * Plugin identity — **immutable forever after publication** (Modeled after VS Code's `publisher.name`). The install directory
+     * `{userData}/plugins/<pluginId>/`, the distribution artifact name `<pluginId>.linkdesk-plugin`, the marketplace catalog dedup key,
+     * the uninstall tombstone key, and update reconciliation all key off it.
      *
-     * L7起**要求显式声明**：不声明时退回「项目目录名」兜底（`derivePluginId`），而仓库名
-     * 与本地目录名是自由的——目录名一改身份就跟着改，且五条后果（安装目录并存两份 / 墓碑对不上 /
-     * 市场出现两条 / 更新链静默断 / 插件数据看似丢失）没有一条会报错。兜底路径保留仅为向后兼容
-     * 仓外的存量第三方插件。
-     * 形状约束 `^[A-Za-z0-9][A-Za-z0-9._-]*$`（`SAFE_PLUGIN_ID`，防路径穿越直通文件系统）。
+     * From L7 () onward **explicit declaration is required**: when undeclared it falls back to the "project directory name" (`derivePluginId`), and since
+     * the repo name and the local directory name are free-form, changing the directory name changes the identity — with five consequences (two coexisting copies in the install area / tombstones not matching /
+     * two marketplace entries / the update chain silently broken / plugin data seemingly lost) and not one of them reports an error. The fallback path is kept only for backward compatibility
+     * with existing third-party plugins outside the repo.
+     * Shape constraint `^[A-Za-z0-9][A-Za-z0-9._-]*$` (`SAFE_PLUGIN_ID`, prevents path traversal straight into the filesystem).
      */
     pluginId?: string;
-    /** @deprecated 使用 contributes + tabBehavior 等声明字段代替——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
+    /** @deprecated Use declarative fields such as contributes + tabBehavior instead — contribution points are detected from the manifest's actual declaration fields (Modeled after VS Code contributes) */
     type?: PluginType;
     core?: boolean;
-    /** 插件角色——只管加载策略。view=有 UI 组件，data=纯数据。不填自动推导 */
+    /** Plugin role — governs loading strategy only. view = has a UI component, data = pure data. Auto-derived when omitted */
     pluginRole?: "view" | "data";
     name: string;
     version: string;
     icon?: string;
     iconSource?: "codicon" | "svg" | "url" | "lucide";
-    /** 市场展示图（cover art，14 档案双图标模型）——svg 资产相对路径，可画得讲究复杂
-     *  （与 icon 的「界面单色小图标」语义分开：壳图标栏/标签栏只读 icon）。缺省 → 市场回退用 icon。
-     *  惯例：值 = 包内资源相对路径（如 "resources/cover.svg"）、iconSource 省略 → linkdesk:// 路径推断。 */
+    /** Marketplace display art (cover art, archive 14's dual-icon model ) — relative path of an svg asset, may be drawn elaborately and complex
+     *  (semantically separate from icon's "monochrome small UI icon": the shell's icon bar/tab bar read only icon). Omitted → the marketplace falls back to icon.
+     *  Convention: value = a relative path into package resources (e.g. "resources/cover.svg"); iconSource omitted → inferred as a linkdesk:// path. */
     marketIcon?: string;
     marketIconSource?: "codicon" | "svg" | "url" | "lucide";
     description?: string;
@@ -2107,21 +2116,21 @@ export interface PluginManifest {
     entry?: string;
     sidebar?: string;
     tabBehavior?: TabBehavior;
-    /** 系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页，marketplace=插件市场。
-     *  同一 role 多插件合法并存（一对多，全收进槽位候选）；默认 = 首注册稳定序
-     * （core:true 无行为特权，不抢默认），用户切换的活动套持久化保持。
-     * 开放 string——第三方可声明新角色名，壳零改动（FactorySlots 按字符串查表）。 */
+    /** System slot role — declares which system-level function this plugin fills. settings = the settings page, marketplace = the plugin marketplace.
+     *  Multiple plugins with the same role legitimately coexist (one-to-many, all collected into the slot candidates); default = the stable order of first registration
+     * ( core:true carries no behavioral privilege and does not grab the default); the user's switched active suite persists.
+     * open string — third parties may declare new role names with zero shell changes (FactorySlots looks up by string). */
     factoryRole?: string;
     statusBar?: StatusBarItem[];
-    /** @deprecated 已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
+    /** @deprecated  — migrated to contributes.themes. Kept only for normalizeManifest backward compatibility. */
     file?: string;
-    /** @deprecated 已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
+    /** @deprecated  — migrated to contributes.themes. Kept only for normalizeManifest backward compatibility. */
     themes?: {
         id: string;
         name: string;
         file: string;
     }[];
-    /** @deprecated 已迁移到 contributes.languages。仅 normalizeManifest 向后兼容用。 */
+    /** @deprecated  — migrated to contributes.languages. Kept only for normalizeManifest backward compatibility. */
     languages?: {
         code: string;
         name: string;
@@ -2137,18 +2146,18 @@ export interface PluginManifest {
         plugin: string;
         reason: string;
     }[];
-    /** 插件级激活顺序依赖——按 pluginId 声明，loader 先加载依赖再加载本插件。
-     * 纯声明：无版本约束（版本语义属  市场范畴，激活顺序不承载）；缺依赖 → loader 状态机挂 PENDING。
-     *  与 ConfigurationRegistry 的配置项级 dependsOn（同一 manifest 内某配置项依赖另一配置项）不同域。 */
+    /** Plugin-level activation-order dependencies () — declared by pluginId; the loader loads dependencies before this plugin.
+     * Pure declaration: no version constraints (version semantics belong to the  marketplace domain; activation order does not carry them); missing dependency → the loader state machine parks it PENDING.
+     *  A different domain from ConfigurationRegistry's config-item-level dependsOn (one config item within the same manifest depending on another). */
     requires?: string[];
     screenshots?: string[];
     minAppVersion?: string;
-    /** @deprecated 归并到 requires（插件级激活依赖统一由 requires 声明）。
-     * 零插件使用；loader 兼容读取直到  落地迁移。 */
+    /** @deprecated  — merged into requires (plugin-level activation dependencies are uniformly declared by requires).
+     * Zero plugins use it; the loader reads it for compatibility until the  migration lands. */
     extensionDependencies?: string[];
     docs?: string;
     cardDocMap?: Record<string, string>;
-    /** @deprecated 使用 contributes.i18n 代替。每插件 `i18n/{lang}.json`，key=中文原文。见 [[i18n-round2-leftovers]] */
+    /** @deprecated  — use contributes.i18n instead. Per-plugin `i18n/{lang}.json`, key = original Chinese text. See [[i18n-round2-leftovers]] */
     i18n?: Record<string, string>;
     cssVars?: Record<string, {
         dark: string;
@@ -2156,82 +2165,82 @@ export interface PluginManifest {
     }>;
     permissions?: ("serial" | "filesystem" | "network")[];
     /**
-     * g：视图元数据——声明视图和壳的交互方式。
-     * 这些字段替代 Phase 3/4 的硬编码特殊判断（isSidebarOnlyView / BOTTOM_ICONS 等）。
+     * g: view metadata — declares how the view interacts with the shell.
+     * These fields replace the hardcoded special cases of Phase 3/4 (isSidebarOnlyView / BOTTOM_ICONS etc.).
      */
-    /** 插件 UI 出现位置——声明式。替代 iconLocation + viewRole + keepSidebarOnFocus。
-     *  对标 VS Code：viewsContainers + views 的组合推导出 Activity Bar / Sidebar / Panel */
+    /** Where the plugin UI appears — declarative. Replaces iconLocation + viewRole + keepSidebarOnFocus.
+     *  Modeled after VS Code: viewsContainers + views combine to derive Activity Bar / Sidebar / Panel */
     appearsIn?: {
         iconBar?: "top" | "bottom";
         sidePanel?: boolean;
         tabBar?: boolean;
-        /** W2 准入（2026-10-02 拍板：白名单制，缺省 false）——声明 true 才进欢迎页「开始」卡与 [+] 创建菜单。
-         *  ⚠️ 只管这两张菜单的**展示**：未声明 ⇏ 不能打开（命令/最近/会话恢复/悬浮面板 open-in 照常可开，
-         *  那些消费方问的是**能力**——getTabOpenableViews）。值域与 plugin.schema.json 的 appearsIn.standaloneOpenable 逐字一致。 */
+        /** W2 admission (decided 2026-10-02: allowlist-based, default false) — declared true to enter the welcome page's "Start" card and the [+] create menu.
+         *  ⚠️ Governs only the **display** in those two menus: not declaring ⇏ cannot open (command/recents/session restore/floating panel open-in still open it;
+         *  those consumers ask about **capability** — getTabOpenableViews). The value domain matches plugin.schema.json's appearsIn.standaloneOpenable verbatim. */
         standaloneOpenable?: boolean;
-        /** 自绘（代码）状态栏组件文件路径（相对插件根，.tsx）——存在 + 文件二合一声明（对标视图 render）。
-         *  有值 = 插件自绘状态栏组件取代其静态 statusBar 贡献项；loader 注册时 resolveRuntimePluginRoot
-         *  归一 → ViewPluginEntry.statusBarRenderPath（dev /@fs 源码 / prod linkdesk:// dist，SDK 打包后
-         * 此字段改写为 statusBar.bundle.js 编译表面），壳发 component marker → 池直动态 import。
-         *  缺省 = 无自绘组件（静态贡献项照常）。 */
+        /** Custom-drawn (code) status bar component file path (relative to the plugin root, .tsx) — a combined existence + file declaration (Modeled after the view's render).
+         *  A value = the plugin's custom status bar component replaces its static statusBar contribution; at registration the loader's resolveRuntimePluginRoot
+         *  normalizes it → ViewPluginEntry.statusBarRenderPath (dev /@fs source / prod linkdesk:// dist; after SDK packaging
+         * this field is rewritten to the statusBar.bundle.js compiled surface), and the shell emits a component marker → the pool dynamic-imports it directly ().
+         *  Omitted = no custom component (static contribution items proceed as usual). */
         statusBar?: string;
     };
-    /** @deprecated 用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
+    /** @deprecated  — replaced by appearsIn.iconBar. Kept only as a backward-compatibility fallback in viewRegistry.ts. */
     iconLocation?: "top" | "bottom";
-    /** @deprecated 用 appearsIn.tabBar / appearsIn.sidePanel 替代。 */
+    /** @deprecated  — replaced by appearsIn.tabBar / appearsIn.sidePanel. */
     viewRole?: "sidebarPrimary" | "tabOnly";
-    /** @deprecated  后已无 shellRendered 概念——壳级视图直接写 App.tsx，不走 plugin.json 声明。保留仅用于向后兼容。 */
+    /** @deprecated After  the shellRendered concept no longer exists — shell-level views are written directly into App.tsx and not declared via plugin.json. Kept only for backward compatibility. */
     shellRendered?: boolean;
-    /** @deprecated appearsIn 归一化后不再需要。 */
+    /** @deprecated  — no longer needed after appearsIn normalization. */
     keepSidebarOnFocus?: boolean;
     /**
-     * 对标 VS Code package.json contributes。
-     * 使用 Record<string, unknown> 兼容未知 key——parseContributions 按 key 逐项检测。
-     * 已知 key 的类型见下方 ContributesViewsContainers / ContributesViews。
+     * Modeled after VS Code package.json contributes.
+     * Uses Record<string, unknown> to tolerate unknown keys — parseContributions detects each key individually.
+     * Types for known keys are in ContributesViewsContainers / ContributesViews below.
      */
     contributes?: Record<string, unknown>;
 }
-/** 发现条目——plugins.listAll() 返回（主进程直扫 plugins/ 全子目录，替代渲染进程 import.meta.glob）。
- *  打包/市场安装的插件不在源码树——glob 发现不了；listAll 以磁盘为唯一真源，dev/prod 同一面。
- *  完整 manifest 为纯 JSON 数据（IPC 可序列化），statusBar/contributes 等随 manifest 携带
- * （statusBar 入口由消费方从 manifest.statusBar 派生，无需单独通道）。 */
+/** Discovery entry — returned by plugins.listAll() ( the main process scans all subdirectories of plugins/ directly, replacing the renderer's import.meta.glob).
+ *  Plugins installed via bundling/marketplace are not in the source tree — glob cannot discover them; listAll treats the disk as the single source of truth, same surface for dev/prod.
+ *  The full manifest is plain JSON data (IPC-serializable); statusBar/contributes etc. travel with the manifest
+ * ( the statusBar entry is derived by the consumer from manifest.statusBar, no separate channel needed). */
 export interface PluginDiscoveryEntry {
     pluginId: string;
-    /** manifest.entry——插件 JS 入口（无 = 纯贡献插件，只有 manifest 无组件） */
+    /** manifest.entry — the plugin's JS entry (absent = pure-contribution plugin, manifest only, no components) */
     entry?: string;
-    /** 完整 plugin.json */
+    /** Full plugin.json */
     manifest: PluginManifest;
-    /** （1.2-4）：目录含 index.bundle.js = SDK 打包的 .linkdesk-plugin 解压产物。
-     *  磁盘格式事实（非插件身份——硬约束 11）；bundle 插件 JS 入口恒 index.bundle.js（runtime 分支依据）。 */
+    /** (1.2-4): the directory contains index.bundle.js = an unpacked SDK-packaged .linkdesk-plugin artifact.
+     *  A disk-format fact (not plugin identity — hard constraint 11); a bundle plugin's JS entry is always index.bundle.js (basis for the runtime branch). */
     bundle?: boolean;
-    /** （1.2-4）：磁盘位置事实——home = 代码根（app = 只读 app 插件根 / userData = {userData}/plugins 用户安装家）。
-     *  subdir = 2026-09-05 塌平单根后恒 null（平铺树 root-direct 扫描不产出子目录；类型保留 null 供下游空安全）。 */
+    /** (1.2-4): disk-location fact — home = code root (app = read-only app plugin root / userData = {userData}/plugins, the user-installed home).
+     *  subdir = always null after the 2026-09-05 flattening to a single root (the flat tree's root-direct scan produces no subdirectories; the type keeps null for downstream null-safety). */
     origin?: {
         home: "app" | "userData";
         subdir: string | null;
     };
 }
-/** 安装进度的 job 身份——壳侧 `installPlugin` 调主进程 fs/net 段（download/extract）时随行，
- *  主进程段据此把 `plugin:installProgress` 事件回填到**具体的 job/插件**（18 档 §五 I.6③ 的「事件侧回填」）。
- *  此前下载/解压段的事件**不带任何身份**，多单并行时百分比互相灌进同一行；N=1 时靠「归活跃会话」侥幸正确。
- *  `jobId` 是壳侧 job 表的产物（单一生产者，见 install-queue.ts）——主进程只透传，不生成、不持久化。 */
+/** job identity for install progress — travels with the shell-side `installPlugin` call into the main process's fs/net segment (download/extract);
+ *  the main-process segment uses it to write `plugin:installProgress` events back to the **specific job/plugin** (the "event-side backfill" of archive 18 §V I.6-3).
+ *  Previously the download/extract events carried **no identity at all**; with parallel installs the percentages poured into the same row; at N=1 correctness was accidental via "assign to the active session".
+ *  `jobId` is a product of the shell-side job table (single producer, see install-queue.ts) — the main process only forwards it; it neither generates nor persists it. */
 export interface PluginInstallJobRef {
     jobId: string;
-    /** 池侧请求已带 id 时同带——下载段靠它把进度归到具体插件（待解压才知 id 的包流只有 jobId） */
+    /** Carried along when the pool-side request already has an id — the download segment uses it to attribute progress to the specific plugin (a package stream that only yields an id after extraction carries only jobId) */
     pluginId?: string;
 }
-/** pluginManager.checkUpdates 返回——主进程 fetch catalog + semver 对比（壳传 current，壳是账本/磁盘 owner） */
+/** (segment B): returned by pluginManager.checkUpdates — the main process fetches the catalog + compares semver (the shell passes current; the shell is the ledger/disk owner) */
 export interface PluginUpdateCheckResult {
     current: string;
     latestVersion: string;
     downloadUrl?: string;
     update: boolean;
 }
-/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 投影字段对齐
- * 声明依赖 id 列表（manifest.requires 透传）——marketplace 判缺依赖 + 依赖/被依赖行
- *  数据源（dependencies.ts 引擎只壳内；消费经 list() 投影）。无 requires = undefined。
- * （14 档案批次一）：+ icon/iconSource——市场行/详情图标的数据通道（注释自认的"7 字段对齐"
- *  原取舍现在市场要图标，属同通道需扩，见 IpcBridgeHandler/pluginManager.ts list 投影同步）。 */
+/** Manifest serialization subset of list() — aligned with the projection fields of handlePluginsCall "list"
+ * the declared dependency id list (manifest.requires passed through) — the data source for the marketplace's missing-dependency check and the depends-on/depended-on rows
+ *  (the dependencies.ts engine runs only inside the shell; consumption goes through the list() projection). No requires = undefined.
+ * (archive batch 1 of 14): + icon/iconSource — the data channel for marketplace row/detail icons (the previously self-acknowledged "7-field alignment" trade-off
+ *  now needs icons for the marketplace, an expansion of the same channel; see the IpcBridgeHandler/pluginManager.ts list projection sync). */
 export interface PluginListSubset {
     name?: string;
     description?: string;
@@ -2241,57 +2250,57 @@ export interface PluginListSubset {
     statusBar?: PluginManifest["statusBar"];
     contributes?: PluginManifest["contributes"];
     requires?: string[];
-    // （14 档案批次一数据通道）：icon/iconSource 透传——市场拿到插件图标
-    // （行/详情 PluginIcon 渲染的唯一 manifest 数据源；无图标 = undefined → 消费端默认图兜底）。
-    // 与  同构：list() 子集继续只挑 UI 消费字段，不整 manifest 过 IPC。
+    //  (data channel of archive batch 1 of 14): icon/iconSource pass-through — the marketplace gets the plugin icon
+    // (the sole manifest data source for row/detail PluginIcon rendering; no icon = undefined → the consumer's default art as fallback).
+    // Isomorphic with  the list() subset keeps picking only UI-consumed fields, never shipping the whole manifest over IPC.
     icon?: PluginManifest["icon"];
     iconSource?: PluginManifest["iconSource"];
-    // （14 档案批次二·五）：marketIcon/marketIconSource 透传——市场展示图（cover art）数据通道。
-    // 市场消费「marketIcon ?? icon」在 marketplace 层 pick（壳界面只读 icon，故 list 一并透传两对）；
-    // 无 marketIcon = undefined → 市场回退 icon，再空 → 默认封面。
+    //  (archive batch 2 of 14, item 5): marketIcon/marketIconSource pass-through — the data channel for the marketplace's display art (cover art).
+    // The marketplace consumes "marketIcon ?? icon", picked at the marketplace layer (the shell UI reads only icon, hence list passes through both pairs);
+    // no marketIcon = undefined → the marketplace falls back to icon, and if still empty → the default cover.
     marketIcon?: PluginManifest["marketIcon"];
     marketIconSource?: PluginManifest["marketIconSource"];
 }
-/** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
- * Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
- *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。
- * pendingReason——缺依赖挂起原因（"等待依赖: xxx"）；无挂起 = undefined。
- *  有值 = 插件已安装但依赖未就绪（PENDING），列表/详情显示等待状态。 */
+/** Plugin list entry — returned by pluginManager.list() (manifest subset serialized by the main process).
+ * Partial<PluginManifest> was too wide (component and other fields unreachable over IPC) — narrowed to the
+ *  7 fields actually serialized by the IpcBridgeHandler.handlePluginsCall "list" branch, consumed by the marketplace.
+ * pendingReason — the reason a plugin is parked for missing dependencies ("waiting for dependency: xxx"); undefined = not parked.
+ *  A value = the plugin is installed but its dependencies are not ready (PENDING); list/detail show a waiting state. */
 export interface PluginListEntry {
     pluginId: string;
     manifest: PluginListSubset;
-    /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条 */
+    /** Parked reason for missing dependencies — the marketplace shows a PENDING badge + a detail hint bar () */
     pendingReason?: string;
-    /** 该插件**住哪**——`true` = 在用户安装家（`{userData}/plugins`），可被下载来的新包替换。
-     *  `false` = 只读 app 根（随包发货件 / 目录源安装的插件）——更新流对它必然抛「不在用户安装区」，
-     *  市场**不得**渲染「更新到 vX」（那是点下去必失败的死钮，含 8 只官方随包插件在内）。
-     *  判据唯一源 = `isPluginUpdatable`（磁盘住所事实，非插件身份——硬约束 11）。 */
+    /** (G6): where this plugin **lives** — `true` = in the user-installed home (`{userData}/plugins`), replaceable by a downloaded package.
+     *  `false` = the read-only app root (bundled ship-with-package plugins / plugins installed from a directory source) — the update flow necessarily throws "not in the user install area" for it,
+     *  and the marketplace **must not** render "update to vX" (a dead button that fails on click; including the 8 official bundled plugins).
+     *  The single source of the criterion = `isPluginUpdatable` (a disk-residence fact, not plugin identity — hard constraint 11). */
     updatable?: boolean;
 }
-/** 安装请求侧身份——job 表按 pluginId 去重、job 行要显示名，而两者都只有池侧知道
- *  （显示名今天只存在于池侧目录 store，壳拿不到）。
- *  jobId **不在这里**：它是壳侧 job 表的产物（单一生产者），池侧从 `plugin:installJobs` 广播里认领。 */
+/** install request-side identity — the job table dedupes by pluginId and job rows need display names, but only the pool side knows both
+ *  (the display name today exists only in the pool-side catalog store; the shell cannot get it).
+ *  jobId is **not here**: it is a product of the shell-side job table (single producer); the pool side claims it from the `plugin:installJobs` broadcast. */
 export interface PluginInstallRequestOpts {
-    /** 账本来源（add 的 source）；缺省 user */
+    /** Ledger source (the source of add); defaults to user */
     ledgerSource?: "user" | "marketplace";
-    /** 插件 id——job 表去重键 + 广播载荷的 pluginId；池侧目录条目已知者传入 */
+    /** Plugin id — the job table's dedup key + the pluginId in the broadcast payload; pass it if the pool-side catalog entry is known */
     pluginId?: string;
-    /** 显示名——job 行文案；不传则退化为 pluginId */
+    /** Display name — job row text; falls back to pluginId when omitted */
     displayName?: string;
-    /** job 出身——行 = 一次用户动作（user，缺省）；插件拖来的依赖（dependency）藏在那一行里 */
+    /** Job origin — row = one user action (user, default); dependencies dragged in by a plugin (dependency) hide inside that row */
     origin?: "user" | "dependency";
     /**
-     * 依赖解析目录——传入后，本插件 `requires` 里**缺失**的依赖由壳在**同一安装 job 内**
-     * 自动先装（内联递归、不占第二个槽——依赖解析复用 updateCheck 打本目录取最新直链）。
-     * 不传 = 行为与现状一致（缺依赖 parked）。解析半径 = 本目录（壳不内置任何目录 URL）。
-     * 设计定案：docs/02-Electron架构/插件生态与发布/03-插件市场/20-依赖链自动安装设计定案.md。
+     * dependency resolution catalog — when passed, **missing** dependencies in this plugin's `requires` are
+     * auto-installed first by the shell **within the same install job** (inline recursion, no second slot — dependency resolution reuses updateCheck against this catalog for the latest direct link).
+     * Omit = behavior identical to today (parked on missing dependency). Resolution radius = this catalog (the shell has no built-in catalog URL).
+     * Design decision: see the repo-internal design dossier on dependency-chain auto-install for the plugin marketplace (Chinese docs tree, ledger anchor preserved above).
      */
     catalogUrl?: string;
 }
-/** 安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
- *  安装进度事件：events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
+/** install result — on success:false, error is the failure reason (in Chinese; validation / version conflict / copy failure).
+ *  Install progress events: events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
  *  stage: validating | copying | loading | done | error
- * 装卸广播（壳 loader → 唯一 Pool）
+ * load/unload broadcast (shell loader → the single Pool):
  *  events.on("plugin:installed", ({ pluginId, version, reason }) => ...) reason: install | reinstall
  *  events.on("plugin:uninstalled", ({ pluginId, reason }) => ...) reason: uninstall */
 export interface PluginInstallResult {
@@ -2300,181 +2309,181 @@ export interface PluginInstallResult {
     version?: string;
     needRestart?: boolean;
     error?: string;
-    /** 第三类终态——**已安装但缺依赖**（装上去了，插件在列表里，但不可用）。
-     *  为真时 success 也是 true（文件真落盘了），但消费方**不得渲染成「✓ 已安装」**——那是撒谎。
-     *  job 行显示「已安装但缺依赖：{名}」。 */
+    /** (archive 18 §V I.6-7): the third terminal state — **installed but missing dependencies** (it is installed, shows in the list, but is unusable).
+     *  When true, success is also true (the files really did land on disk), but consumers **must not render it as "✓ installed"** — that would be lying.
+     *  The job row shows "installed but missing dependencies: {name}". */
     parked?: boolean;
-    /** 用户在面板上点了「取消安装」——**不是失败**（`success` 为 false 只是「没装成」）。
-     *  消费方据此**不得**走失败分支（不弹错误 toast、不推 [重试]、不打红行）——用户主动叫停已表明意图，
-     *  再报一次错等于拿用户自己的决定去吓他。job 行由队列侧**整条撤掉**（不渲染 ✗）。 */
+    /** the user clicked "Cancel install" on the panel — **not a failure** (`success` being false just means "the install did not happen").
+     *  Consumers **must not** take the failure branch off this (no error toast, no [Retry] push, no red row) — the user actively stopped it, intent already expressed;
+     *  reporting the error again would weaponize the user's own decision against them. The job row is **removed entirely** by the queue side (no ✗ rendered). */
     cancelled?: boolean;
 }
-/** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集）
- * core 旗标透传——list() EXCLUDES 禁用插件，禁用态详情页卸载钮守 「core:true 详情页不画」
- *  只能经此拿到 core（缓存 manifest 内取值，纯新增可选字段零回归）。
- * + 图标四字段（icon/iconSource/marketIcon/marketIconSource）——**同  给 list() 补图标通道的
- *  同一先例**。禁用行此前只能退到目录条目取图，而目录条目的图标已改绝对 URL（未装态形态）⇒ 禁用行
- *  （明明插件还在盘上）会静默改拉远程图，断网即裂。补通道后裁决序与其它位统一：已装优先 → 目录 → 默认块。
- *  未安装列表（getUninstalledPluginInfo）**不补**：插件已不在盘上，本地无图可读，目录条目本就是唯一来源。 */
+/** Disabled/uninstalled list entry — the serialized shape of loader getDisabledPluginInfo/getUninstalledPluginInfo (a further subset of PluginListSubset)
+ * the core flag passes through — list() EXCLUDES disabled plugins; the disabled-state detail page's uninstall button honors  "no uninstall button on the detail page for core:true"
+ *  and core can only be obtained here (read from the cached manifest; a purely additive optional field, zero regression).
+ * + four icon fields (icon/iconSource/marketIcon/marketIconSource) — the **same precedent as  adding an icon channel to list()**.
+ *  Disabled rows previously had to fall back to the catalog entry for art, but the catalog entry's icon had changed to an absolute URL (the not-installed shape) ⇒ a disabled row
+ *  (even though the plugin is still on disk) would silently start pulling remote art, breaking offline. After the channel was added the resolution order is unified with the other positions: installed first → catalog → default block.
+ *  The not-installed list (getUninstalledPluginInfo) is **not** extended: the plugin is no longer on disk, there is no local art to read, and the catalog entry is already the sole source. */
 export interface PluginInfoEntry {
     pluginId: string;
     name: string;
     description?: string;
     version?: string;
     core?: boolean;
-    /** 同 `PluginListEntry.updatable` 的住所判据——禁用**不改住所**（disable 只记名单，
-     *  目录原地不动）⇒ userData 家的禁用插件照样可更新，app 树的则否。 */
+    /** (G6): the same residence criterion as `PluginListEntry.updatable` — being disabled **does not change residence** (disable only records a list entry,
+     *  the catalog stays in place) ⇒ a disabled plugin in the userData home can still be updated, one in the app tree cannot. */
     updatable?: boolean;
-    /** 界面小图标（Type-1 剪影 for 图标栏插件 / Type-2 身份图 for 其余） */
+    /** small UI icon (Type-1 silhouette for icon-bar plugins / Type-2 identity art for the rest) */
     icon?: string;
     iconSource?: "codicon" | "svg" | "url" | "lucide";
-    /** 插件身份彩色图（Type-2）——行/详情展示位的第一候选 */
+    /** plugin identity color art (Type-2) — first candidate for row/detail display positions */
     marketIcon?: string;
     marketIconSource?: "codicon" | "svg" | "url" | "lucide";
 }
-/** 更新结果——PluginInstallResult 的更新扩展。
- *  upToDate = catalog 直答已是最新（success:true 但非"更新发生"——UI 显示"已是最新"非红错误）；
- *  currentVersion 随行供 toast/日志显示 v旧→v新。needRestart 恒 true（bundle 模块缓存需重启激活）。 */
+/** (segment B): update result — the update extension of PluginInstallResult.
+ *  upToDate = the catalog answered directly that it is already the latest (success:true but not "an update happened" — the UI shows "already up to date", not a red error);
+ *  currentVersion travels along for toast/log display of vOld→vNew. needRestart is always true (the bundle module cache needs a restart to activate). */
 export interface PluginUpdateResult extends PluginInstallResult {
-    /** 更新前磁盘版本 */
+    /** On-disk version before the update */
     currentVersion?: string;
-    /** 查目录后已是最新（本次无替换发生） */
+    /** Already the latest after checking the catalog (no replacement happened this time) */
     upToDate?: boolean;
 }
-/** 插件发现/管理命名空间面——桥接 IpcBridgeHandler → loader 函数 */
+/** Plugin discovery/management namespace surfaces — bridges IpcBridgeHandler → loader functions */
 export interface PluginsAPI {
-    /** 插件发现——双端注入：resolvePath 双端同面；读面（listDirs/listAll/readAllManifests/listDisabledDirs/readManifest）壳 preload 独有（loader 只在壳跑） */
+    /** Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/readAllManifests/listDisabledDirs/readManifest) is shell preload only (the loader runs only in the shell) */
     plugins: {
         resolvePath(id: string): Promise<string>;
-        /** （1.2-4）：resolvePath 的兄弟（discovery 族）——返回 { root, entry, bundle }（bundle 入口恒 index.bundle.js）。
-         *  可选——保 state.ts 守卫与两 preload 面（壳/池）编译不裂；调用方先判存在再调用。 */
+        /** (1.2-4): sibling of resolvePath (discovery family) — returns { root, entry, bundle } (the bundle entry is always index.bundle.js).
+         *  Optional — keeps the state.ts guard and both preload surfaces (shell/pool) compiling; callers check for existence before calling. */
         resolveEntry?(id: string): Promise<PluginEntryInfo>;
-        /** 兼容读数（只读）——「这份插件跟当前版本搭不搭」由壳单点算出（状态算法
-         *  `src/core/compat/compatibility.ts`；用户面五词与读数的对应表住该文件头注）。
-         *  可选——同 resolveEntry 先例（保 mock 与既有实现面编译不裂；调用方先判存在）。 */
+        /** compatibility reading (read-only) — "does this plugin match the current version" is computed at a single point by the shell
+         *  (state algorithm `src/core/compat/compatibility.ts`; the mapping table between the five user-facing words and the readings lives in that file's header comment).
+         *  Optional — same precedent as resolveEntry (keeps the mock and the existing implementation surface compiling; callers check for existence first). */
         getCompatibility?(req: PluginCompatibilityRequest): Promise<PluginCompatibilityReading>;
         listDirs?(): Promise<string[]>;
-        /** 全量发现——[{ pluginId, entry, manifest }]（替代 import.meta.glob；打包插件不在源码树，主进程读盘唯一真源） */
+        /** full discovery — [{ pluginId, entry, manifest }] (replaces import.meta.glob; packaged plugins live outside the source tree, so reading disk in the main process is the only source of truth) */
         listAll?(): Promise<PluginDiscoveryEntry[]>;
         listDisabledDirs?(): Promise<string[]>;
-        /** 返回 plugin.json 原始 JSON 文本——消费方自行 JSON.parse */
+        /** Returns the raw plugin.json JSON text — consumers JSON.parse it themselves */
         readManifest?(id: string): Promise<string>;
-        /** 全量 manifest——Record<pluginId, PluginManifest>（pluginManifests eager glob 的 IPC 替代） */
+        /** all manifests — Record<pluginId, PluginManifest> (the IPC replacement for the pluginManifests eager glob) */
         readAllManifests?(): Promise<Record<string, PluginManifest>>;
-        /** （1.2-5）：主进程真下载段——fetch .linkdesk-plugin 包 → {userData}/tmp/<原包名>（壳 preload 独有；loader 包安装流 packageOps 调）。
-         * 可带 job 身份——主进程段的进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份，N=1 时归活跃会话） */
+        /** (1.2-5): the main-process real download stage — fetches the .linkdesk-plugin package → {userData}/tmp/<original package name> (shell preload only; called by the loader's install flow packageOps).
+         * may carry a job identity — progress events from the main-process stage backfill jobId/pluginId accordingly (absent = events carry no identity; with N=1 attributed to the active session) */
         packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{
             zipPath: string;
             sizeBytes?: number;
         }>;
-        /** （1.2-5）：主进程真解压段——共享 bundle-zip 语义 → {userData}/plugins/<id>/（2026-09-05 塌平单根；壳 preload 独有；目标已存在拒绝）。
-         * job 同 packageDownload——解压段进度事件回填身份 */
+        /** (1.2-5): the main-process real extract stage — shared bundle-zip semantics → {userData}/plugins/<id>/ (2026-09-05 flattened single root; shell preload only; rejects if the target already exists).
+         * job same as packageDownload — extract-stage progress events backfill the identity */
         packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{
             pluginId: string;
             version: string;
             targetDir: string;
         }>;
-        /** 按 jobId 中止在途下载——面板「取消安装」的唯一落点。
-         *  AbortSignal 不可跨 IPC（结构化克隆拒绝），只能发这条**定向消息**；主进程只持
-         *  jobId → AbortController 登记表，不解释语义。返回 false = 该 job 当前没有在途下载
-         *  （已下完/未开始/非下载段）——调用方按「取消已受理，等终态」理解，不当失败。 */
+        /** abort an in-flight download by jobId — the single landing point for the panel's "Cancel install".
+         *  An AbortSignal cannot cross IPC (structured clone rejects it), so only this **targeted message** can be sent; the main process only keeps
+         *  a jobId → AbortController registry and does not interpret semantics. Returns false = that job currently has no in-flight download
+         *  (already finished / not started / not in the download stage) — callers should read this as "cancel accepted, wait for the terminal state", not as a failure. */
         packageCancel?(jobId: string): Promise<boolean>;
-        /** 主进程真网络段——fetch marketplace.json → 版本对比（不碰账本——current 由壳传）。prerelease 默认忽略。 */
+        /** (stage B): the main-process real network stage — fetches marketplace.json → version comparison (does not touch the ledger — current is passed in by the shell). Prereleases are ignored by default. */
         packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
-        /** b/c：主进程真下载+解压段——下载到 tmp → 解压到 {userData}/tmp/.stage-<id>（id 一致 + 版本方向校验，不碰旧目录）。
-         * （锚①）：allowOlder 显式 true 放行「包内版本 < 当前」的降级（版本下拉选旧版 + F2 确认后传）；默认仍拒 <=；同版恒拒。
-         * job 同 packageDownload——更新下载段的进度按 jobId 归行，并按 jobId 可真中止。 */
+        /** b/c (stage B): the main-process real download+extract stage — downloads to tmp → extracts to {userData}/tmp/.stage-<id> (id consistency + version direction validation; the old directory is untouched).
+         * (anchor ①): allowOlder explicitly true admits a downgrade where "package version < current" (version dropdown picks an older version + passed after F2 confirm); the default still rejects <=; the same version is always rejected.
+         * (G1): job same as packageDownload — update download-stage progress is attributed by jobId, and can be truly aborted by jobId. */
         packageStageUpdate?(pluginId: string, source: string, currentVersion?: string, allowOlder?: boolean, job?: PluginInstallJobRef): Promise<{
             pluginId: string;
             newVersion: string;
             stagedDir: string;
         }>;
-        /** 主进程原子替换段——同卷 rename：target→.bak→staged→target→rm .bak（失败复原旧版）。
-         *  0.2.48：`deferred: true` = 旧版目录被占用（dev 轨道 Vite 句柄主场景，磁盘未动、暂存原样）——
-         *  调用方提示「重启后自动替换」，启动时 `commitPendingStagedUpdates` 补提交；version = 暂存的新版号。 */
+        /** (stage B): the main-process atomic replacement stage — same-volume rename: target→.bak→staged→target→rm .bak (restores the old version on failure).
+         *  0.2.48: `deferred: true` = the old directory is occupied (dev-track Vite handles being the main scenario; disk untouched, staging kept as-is) —
+         *  the caller shows "will be replaced automatically after restart", and `commitPendingStagedUpdates` commits it on startup; version = the staged new version number. */
         packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{
             pluginId: string;
             version: string;
             deferred?: boolean;
         }>;
     };
-    /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
+    /** Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), required */
     pluginManager: {
         list(): Promise<PluginListEntry[]>;
         enable(id: string): Promise<unknown>;
         disable(id: string): Promise<unknown>;
         uninstall(id: string): Promise<unknown>;
-        /** opts 携带请求侧身份（pluginId/displayName/origin）——job 表去重 + job 行显示名 */
+        /** opts carries the requester-side identity (pluginId/displayName/origin) — job table dedup + job row display name */
         install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
-        /** （1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名；壳与池 preload 双面同款——池经 plugins:call 代理）。进度走 plugin:installProgress 通道 */
+        /** (1.2-5): the explicit name for the url/.linkdesk-plugin package install flow (installPlugin routing alias; identical on both the shell and pool preloads — the pool proxies via plugins:call). Progress goes through the plugin:installProgress channel */
         installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
         reinstall(id: string): Promise<unknown>;
         getDisabled(): Promise<PluginInfoEntry[]>;
         getUninstalled(): Promise<PluginInfoEntry[]>;
         isDisabled(id: string): Promise<boolean>;
-        /** 安全更新（原子 + unload 机械路径）——opts: { catalogUrl?（走 check 选最新） | url?（直给更新包） }。
-         * （锚①）：allowOlder 显式 true 放行降级（版本下拉选旧版 + F2 确认后传）；默认拒 <=。 */
+        /** (stage B): safe update (atomic + unload mechanical path) — opts: { catalogUrl? (check picks the latest) | url? (update package given directly) }.
+         * (anchor ①): allowOlder explicitly true admits a downgrade (version dropdown picks an older version + passed after F2 confirm); the default rejects <=. */
         update?(pluginId: string, opts?: {
             catalogUrl?: string;
             url?: string;
             allowOlder?: boolean;
         }): Promise<PluginUpdateResult>;
-        /** 只读查更新——有新版返回 downloadUrl（UI 徽标数据源；更新动作走 update） */
+        /** (stage B): read-only update check — returns downloadUrl when a new version exists (data source for the UI badge; the update action goes through update) */
         checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
-        /** 装/卸/重装成功 → 通知主进程全量重扫三表 */
+        /** install/uninstall/reinstall success → notify the main process to fully rescan the three tables */
         notifyManifestChanged?(): void;
     };
 }
 /**
- * bridge 请求信封契约。
+ * Bridge request envelope contract—
  *
- * 插件 IPC 请求经主进程转发到壳侧服务（IpcBridgeHandler）的信封：
- * requestId 用于 respond 关联，args 是命令自定参数（shell 侧 switch 收窄）。
- * preload-shell 的 IpcRelay 缓冲 + IpcBridgeHandler onRequest 同用此型。
+ * The envelope for plugin IPC requests forwarded by the main process to shell-side services (IpcBridgeHandler):
+ * requestId is used to correlate with respond; args are the command's own parameters (narrowed by a shell-side switch).
+ * Shared by preload-shell's IpcRelay buffering and IpcBridgeHandler onRequest.
  */
 export interface BridgeRequestPayload {
     requestId: string;
     channel: string;
     args: unknown[];
     /**
-     * 信封来源窗盖章——主进程按 sender 反查 windowId（池不知自身 windowId，铁律），
-     * 池→壳每一请求自带来源窗身份。壳按此路由按窗操作（sourceId 族：标签改/关/聚焦落到来源窗注册表，
-     * 主窗照旧）——窗口身份丢失类（黑点/面板/弹窗）同根归一化。壳侧 switch 收窄时按需消费，无消费方忽略。
+     * source-window stamp on the envelope—the main process reverse-looks-up the windowId by sender (the pool does not know its own windowId, the  iron rule),
+     * so every pool→shell request carries its source-window identity. The shell routes per-window operations by it (the sourceId family: tab modify/close/focus land in the source window's registry,
+     * the main window stays as before)—the same-root normalization for the lost-window-identity class (black dot/panel/dialog). The shell-side switch consumes it as needed when narrowing; ignored if no consumer.
      */
     sourceWindowId?: string;
 }
 /**
- * 池→壳侧栏动作 wire 契约。
+ * Pool→shell sidebar action wire contract—
  *
- * 原定义在 PoolSectionStack.tsx（池组件内部类型），但走 IPC pool.sidebarAction 到壳
- * （preload-shell → usePoolSync → ViewContainerService）——跨堆协议，归口本目录。
+ * Originally defined in PoolSectionStack.tsx (an internal pool component type), but travels over IPC pool.sidebarAction to the shell
+ * (preload-shell → usePoolSync → ViewContainerService)—a cross-stack protocol, consolidated into this directory.
  */
 export interface SidebarAction {
     action: "reorder" | "setCollapsed" | "setVisible" | "toggleSidebarCollapse" | "setSidebarWidth";
     containerId?: string;
     viewId?: string;
-    /** setCollapsed 复合键持久化——池侧 view 自带 pluginId（SidebarViewMeta），壳侧精确寻址同名视图 */
+    /** setCollapsed composite-key persistence—the pool-side view carries its own pluginId (SidebarViewMeta), so the shell addresses the same-named view precisely */
     pluginId?: string;
     newIndex?: number;
     collapsed?: boolean;
     visible?: boolean;
-    /** 分隔线拖拽 commit——resizeZone("sidebar", width)。补入（原契约漏此变体） */
+    /** divider drag commit—resizeZone("sidebar", width). Added in  (the original contract missed this variant) */
     width?: number;
 }
-/** 分屏方向——池侧 onDropSplit 已从 drop zone 归一化（MainZone:382） */
+/** Split direction—pool-side onDropSplit has already normalized it from the drop zone (MainZone:382) */
 export type TabSplitDirection = "horizontal" | "vertical";
 /**
- * 标签页拖拽分屏——类型 + drop zone 检测算法。
- * 设计依据：[V3-Phase3-标签页分屏设计.md §9]
+ * Tab drag-to-split—types + drop-zone detection algorithm.
+ * Design basis: the V3-tab-split design doc §9 (repo-internal, Chinese-named)
  */
 export type DropZone = "left" | "right" | "up" | "down" | "center" | null;
-/** 池→壳 tab 动作——union literal 即 wire 枚举 */
+/** Pool→shell tab actions—the union literal is the wire enum */
 export type PoolTabAction = {
     action: "focusTab";
     tabId: string;
 }
-// 点击面板空白聚焦该面板——只改 activeGroupId 不改 activeTabId
-//（activeTabId 已是该组活跃标签；焦点=用户在看哪个面板，命令路由/聚焦环依赖它）
+//  (P5): clicking a panel's blank area focuses that panel—changes activeGroupId only, not activeTabId
+// (activeTabId is already that group's active tab; focus = which panel the user is looking at; command routing/focus ring depend on it)
  | {
     action: "focusGroup";
     groupId: string;
@@ -2482,8 +2491,8 @@ export type PoolTabAction = {
     action: "closeTab";
     tabId: string;
 }
-// closeOtherTabs/closeTabsToRight/closeAllTabs/duplicateTab 树内零发送方——
-// 但 tabAction 是插件可见 API（第三方插件可发），壳 switch 保留为契约面
+// closeOtherTabs/closeTabsToRight/closeAllTabs/duplicateTab have zero in-tree senders—
+// but tabAction is a plugin-visible API (third-party plugins can send it), so the shell switch keeps them as a contract surface
  | {
     action: "closeOtherTabs";
     groupId: string;
@@ -2502,7 +2511,7 @@ export type PoolTabAction = {
     newIndex: number;
     oldIndex: number;
 }
-// newIndex = 目标组内插入缝（跨组拖拽落点 = 竖杠缝隙；缺省 append 末尾）
+//  newIndex = the insert gap within the target group (cross-group drag landing = the gap at the vertical bar; omitted appends to the end)
  | {
     action: "moveTab";
     tabId: string;
@@ -2533,7 +2542,7 @@ export type PoolTabAction = {
     ];
     branchIndex?: number;
 }
-// 标签页拖出窗口后释放——screenX/Y = 释放点屏幕坐标（壳侧命中检测：TabBar→并窗 / 空白→新窗）
+//  tab released after being dragged out of the window—screenX/Y = release point screen coordinates (shell-side hit testing: TabBar→merge into window / blank→new window)
  | {
     action: "releaseOutsideWindow";
     tabId: string;
@@ -2541,15 +2550,15 @@ export type PoolTabAction = {
     screenY: number;
 };
 /**
- * ① 同款：壳侧接收的 tab 动作——主进程按 sender 解析注入 sourceWindowId（权威窗口身份）。
- * 池永远不知自身 windowId；壳读 sourceWindowId 判源窗（detach 源 / 同窗不并）。
+ * Same as  ①: tab actions received by the shell—the main process resolves and injects sourceWindowId by sender (authoritative window identity).
+ * The pool never knows its own windowId; the shell reads sourceWindowId to determine the source window (detach source / no merge within the same window).
  */
 export type ShellTabAction = PoolTabAction & {
     sourceWindowId: string;
 };
-/** TabBar viewport rect——池侧 getBoundingClientRect 上报（吸附/释放并窗命中检测数据源）。
- *  坐标 = 视口相对（0,0 = 窗口内容区左上），壳持权威 window bounds 后转 screen（bounds.x + rect.left）。
- *  groupId 携带——命中后 mergeTabToWindow 直落目标组。 */
+/** TabBar viewport rect—reported by the pool side via getBoundingClientRect (data source for dock/release merge-window hit testing).
+ *  Coordinates are viewport-relative (0,0 = top-left of the window content area); the shell holds the authoritative window bounds and converts to screen (bounds.x + rect.left).
+ *  groupId is carried—after a hit, mergeTabToWindow goes straight to the target group. */
 export interface TabBarViewportRect {
     groupId: string;
     left: number;
@@ -2557,29 +2566,29 @@ export interface TabBarViewportRect {
     width: number;
     height: number;
 }
-/** 池→壳：TabBar rects 上报载荷——主进程按 sender 解析附上 windowId */
+/** Pool→shell: TabBar rects report payload—the main process resolves windowId by sender and attaches it () */
 export interface TabBarRectsPayload {
     windowId: string;
     rects: TabBarViewportRect[];
 }
-/** 拖拽位置上报载荷——池拖出手势（拎起后 mousemove 全程）上报，壳排除源窗转 screen 吸附命中检测。
- *  坐标 = 屏幕坐标（e.screenX/screenY——窗口 bounds 同为屏幕坐标，可直接命中）。canceled = Esc 取消（keydown 无坐标）。 */
+/** drag position report payload—reported by the pool's drag-out gesture (mousemove for the whole duration after pickup); the shell excludes the source window and converts to screen coordinates for dock hit testing.
+ *  Coordinates are screen coordinates (e.screenX/screenY—window bounds are screen coordinates too, so hit testing works directly). canceled = Esc cancel (keydown carries no coordinates). */
 export interface TabDragPositionPayload {
     tabId: string;
     screenX: number;
     screenY: number;
-    /** Esc 取消拖拽——壳清吸附提示（keydown 无坐标，仅置标志；screenX/screenY 填 0） */
+    /** Esc canceled the drag—the shell clears the dock hint (keydown carries no coordinates, only sets the flag; screenX/screenY are filled with 0) */
     canceled?: boolean;
-    /** 被拖标签标题——池上报供主进程幽灵窗渲染文字（主进程不持 tabState，标题由池带）。壳/吸附忽略此字段 */
+    /** title of the dragged tab—reported by the pool so the main process can render text in the ghost window (the main process holds no tabState; the title comes from the pool). Ignored by the shell/dock */
     title?: string;
-    /** 光标是否在源窗外（屏坐标对照 winScreenX+视口尺寸，与 onMouseUp 窗外判定同源）——
-     *  窗外 → 主进程 OS 幽灵显示（DOM 浮块出窗被裁剪）；窗内 → OS 幽灵隐藏（DOM 浮块可见）。壳/吸附忽略此字段 */
+    /** whether the cursor is outside the source window (screen coordinates compared against winScreenX+viewport size, same source as the onMouseUp outside-window check)—
+     *  outside → the main process shows the OS ghost (a DOM floating block outside the window would be clipped); inside → the OS ghost hides (the DOM floating block stays visible). Ignored by the shell/dock */
     outside?: boolean;
-    /** 进化：拖拽幽灵外观——主题三色（源池 getComputedStyle 读 --bg-card/--border/--text-primary，
-     * 均为纯 hex 值）+ 被拖标签图标（池把 tab.icon 判别联合裁成幽灵窗可渲染形态——emoji 文本或 img
-     *  URL；codicon/lucide 无字形字体注入 → null，iconKind 区分渲染）。
-     *  仅 outside=true（窗外）时主进程消费；壳/吸附忽略此字段。可选用——旧池不带上限。
-     *  iconKind 判定与 DragOverlays 浮块同款（emoji：直渲文本；img：图片 URL）。 */
+    /** evolution: drag ghost appearance—theme three colors (the source pool reads --bg-card/--border/--text-primary via getComputedStyle,
+     * all plain hex values) + the dragged tab's icon ( the pool narrows the tab.icon discriminated union into a form the ghost window can render—emoji text or an img
+     *  URL; codicon/lucide have no glyph font injected → null, iconKind distinguishes the rendering).
+     *  Consumed by the main process only when outside=true (outside the window); ignored by the shell/dock. Optional—old pools may omit it (no cap).
+     *  iconKind determination is the same as the DragOverlays floating block (emoji: direct text render; img: image URL). */
     ghost?: {
         theme: {
             bg: string;
@@ -2590,47 +2599,47 @@ export interface TabDragPositionPayload {
         iconKind: "emoji" | "img" | null;
     };
 }
-/** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（源窗排除——池永远不知自身 windowId） */
+/** Pool→shell: drag position report payload—the main process resolves sourceWindowId by sender and attaches it (source-window exclusion—the pool never knows its own windowId) */
 export type ShellTabDragPosition = TabDragPositionPayload & {
     sourceWindowId: string;
 };
-/** 壳→池：吸附提示载荷——目标窗 TabBar 插入指示（groupId 命中）/ 清除（groupId null = 无吸附目标，清光）。
- * groupId 命中时携带 viewportX/Y——光标在目标窗 viewport 坐标（壳由屏坐标 − 窗口 bounds 原点换算），
- *  目标池用它算插入缝隙（竖线落点，复用 computeTabInsertIndex）。 */
+/** Shell→pool: dock hint payload—the target window's TabBar insert indicator (groupId hit) / clear (groupId null = no dock target, clear everything).
+ * on a groupId hit, viewportX/Y are carried—the cursor position in the target window's viewport coordinates (the shell converts from screen coordinates minus the window bounds origin),
+ *  and the target pool uses it to compute the insert gap (the vertical-line landing spot, reusing computeTabInsertIndex). */
 export interface AdsorbHintPayload {
     groupId: string | null;
     viewportX?: number;
     viewportY?: number;
 }
-/** 池→壳：吸附插入缝隙回传——目标池每次算出新的缝隙（竖线落点）就上报，壳存吸附注册表供释放并窗精确落位。
- * windowId 由主进程按 sender 注入（池永远不知自身 windowId，定案）。 */
+/** Pool→shell: dock insert gap callback—whenever the target pool computes a new gap (the vertical-line landing spot) it reports it; the shell stores it in the dock registry for precise placement on release-and-merge.
+ * windowId is injected by the main process based on the sender (the pool never knows its own windowId, settled in ). */
 export interface AdsorbIndexPayload {
     windowId: string;
     groupId: string;
-    /** 插入缝隙 0..tabs.length（竖线落点）——松手 merge 落位 = 竖线指的那根缝（提示不撒谎） */
+    /** Insert gap 0..tabs.length (the vertical-line landing spot)—on release, the merge lands exactly in the gap the line points at (the hint never lies) */
     insertIndex: number;
 }
-/** QuickPick 动作——select/highlight/close/itemAction 按 key 回传 */
+/** QuickPick action—select/highlight/close/itemAction report back by key */
 export interface PoolQuickPickAction {
     type: string;
     key?: string;
     actionId?: string;
 }
-/** Dialog 动作——confirm/cancel 回传，壳侧 settle Promise */
+/** Dialog action—confirm/cancel reported back; the shell settles the Promise */
 export interface PoolDialogAction {
     type: string;
 }
-/** 悬浮面板动作——action 按 actionId 回传（open-in/close），壳侧 settle Promise（类型 B） */
+/** Floating panel action—action reported back by actionId (open-in/close); the shell settles the Promise (type B) */
 export interface PoolFloatingPanelAction {
     type: string;
     actionId?: string;
 }
-/** 内存压力通知——主进程 window-manager 采样超阈值 */
+/** Memory pressure notification—the main process's window-manager sampled above threshold () */
 export interface MemoryPressureData {
     totalRSS: number;
     threshold: number;
 }
-/** 壳→主：创建池窗请求——windowId 壳生成（tabState 归属），bounds 可选（A4 多窗口底座） */
+/** Shell→main: create pool window request—windowId generated by the shell (tabState ownership), bounds optional (A4 multi-window foundation) */
 export interface CreatePoolWindowRequest {
     windowId: string;
     width?: number;
@@ -2638,381 +2647,393 @@ export interface CreatePoolWindowRequest {
     x?: number;
     y?: number;
 }
-/** 池窗位置/大小变更矩形——主进程 moved/resized 事件上报（壳据 windowId 更新注册表 + 落盘 A6）。
- *  非独立契约入口（契约生成器 walkRefs 命中引用即强制 export 进 linkdesk.d.ts）——源码不 export，knip 不报死面。 */
+/** pool window position/size change rect—reported by main-process moved/resized events (the shell updates the registry by windowId + persists it, A6).
+ *  Not an independent contract entry (the contract generator's walkRefs force-exports anything referenced into linkdesk.d.ts)—the source does not export it, so knip does not flag dead code. */
 export interface WindowBounds {
     x: number;
     y: number;
     width: number;
     height: number;
 }
-/** 主→壳：脱出池窗 bounds 变更通知（用户移动/缩放窗口）——壳持久化浮窗位置（I9-14 位置/大小记录） */
+/** Main→shell: pool window bounds change notification (user moves/resizes the window)—the shell persists the floating window position (I9-14 position/size record) */
 export interface PoolWindowBoundsPayload {
     windowId: string;
     bounds: WindowBounds;
 }
-/** 插件磁盘位置——市场详情页「打开所在位置 / 数据位置」两行的数据源。
- *  主进程解析（池内**零**安装路径知识——渲染侧只拿结果，不拼路径）。 */
+/** plugin disk locations — the data source for the marketplace detail page's "open install location / data location" rows.
+ *  Resolved in the main process (the pool holds **zero** knowledge of install paths — the renderer gets only results, never assembles paths). */
 export interface PluginDiskLocation {
-    /** 插件目录绝对路径（正斜杠——与 `plugins.resolvePath` 同规；消费端用作链接 tooltip，不自行拼接） */
+    /** Absolute path of the plugin directory (forward slashes — same convention as `plugins.resolvePath`; consumers use it as a link tooltip and do not splice it themselves) */
     installDir: string;
-    /** 插件数据目录——**只有该插件真有数据时才非空**（目录不存在或空 → null）。
-     *  与 VS Code 详情页「缓存」行同判据（`computeSize` 后 `if (!cacheSize) return`——空则整行不显示）：
-     *  纯 UI 插件恒 null，**不是人人都有**，故不造空行。 */
+    /** Plugin data directory — **non-empty only when the plugin actually has data** (directory missing or empty → null).
+     *  Same criterion as the VS Code detail page's "cache" row (after `computeSize`, `if (!cacheSize) return` — the whole row is hidden when empty):
+     *  a pure-UI plugin is always null; **not everyone has one**, so no empty row is invented. */
     dataDir: string | null;
 }
-/** `shell.openPluginFolder` 的两枚落点——安装目录 / 数据目录 */
+/** the two targets of `shell.openPluginFolder` — install directory / data directory */
 export type PluginFolderKind = "install" | "data";
-/** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
+/** Shell↔plugin relay / pool control / window / shell-level commands / hot-exit staging namespace surfaces — injected on both ends (bridge is true-shell-only / hotExit is pool-side-only) */
 export interface ShellAPI {
-    /** 壳↔插件通信中继——壳 preload 独有 */
+    /** Shell↔plugin communication relay — shell preload only */
     bridge?: {
         onRequest(cb: (req: BridgeRequestPayload) => void): () => void;
         respond(requestId: string, result?: unknown, error?: string): void;
         broadcast(channel: string, payload: unknown): void;
         notifyConfigChanged(key: string, value: unknown): void;
     };
-    /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
+    /** Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + sends actions. Each end implements its own half (method-level subset surface, surfaces.ts) */
     pool: {
-        // ── 壳侧（池 preload 无） ──
-        /** windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
+        // ── Shell side (absent from the pool preload) ──
+        /** optional targeted push by windowId (defaults to 'main') — the shell traverses its window registry to push each window's layout by id */
         pushLayout(layout: PoolLayout, windowId?: string): void;
-        /** A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
+        /** A3: the callback receives windowId (main pool='main', detached pool=shell-generated id) — the shell pushes that window's layout targeted by id */
         onReady(cb: (windowId: string) => void): () => void;
         toggleDevTools(): void;
         onSidebarAction(cb: (action: SidebarAction) => void): () => void;
-        // 壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——权威窗口身份）
+        //  the shell side receives action = ShellTabAction (the main process injects sourceWindowId by sender —  authoritative window identity)
         onTabAction(cb: (action: ShellTabAction) => void): () => void;
-        // 池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
+        //  pool→shell TabBar viewport rects report (data source for dock/detach-merge hit testing) — windowId injected by the main process
         onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
-        // 池→壳 拖拽位置上报（拎起后 mousemove 全程）——sourceWindowId 由主进程注入（壳排除源窗命中）
+        //  pool→shell drag position report (mousemove throughout while picked up) — sourceWindowId injected by the main process (the shell excludes the source window from hit testing)
         onDragPosition(cb: (pos: ShellTabDragPosition) => void): () => void;
-        // 壳→池 吸附提示（目标窗 TabBar 插入指示/清除）——windowId 壳命中解析后定向推送（载荷带 viewport 坐标）
+        //  shell→pool dock hint (target window TabBar insert indicator/clear) — windowId pushed targeted after the shell resolves the hit (payload carries viewport coordinates)
         pushAdsorbHint(hint: AdsorbHintPayload, windowId: string): void;
-        // 池→壳 吸附插入缝隙回传（壳侧——windowId 由主进程注入，壳存吸附注册表供释放并窗精确落位）
+        //  pool→shell dock insertion gap report (shell side — windowId injected by the main process; the shell keeps a docking registry for precise placement on detach-merge)
         onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
         pushQuickPick(data: unknown): void;
         onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
         pushDialog(data: unknown): void;
         onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
-        // （类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
+        //  (type B): in-shell floating panel — pushPanel dumb render data + action callbacks back
         pushFloatingPanel(data: unknown): void;
         onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
         onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
-        // ── ：多窗口底座——壳驱动创建/关闭池窗 + 监听 OS 关窗（主进程执行窗口生命周期）──
+        // ──  (A4): multi-window foundation — shell-driven create/close of pool windows + listening for OS window close (the main process owns the window lifecycle) ──
         createWindow(opts: CreatePoolWindowRequest): void;
         closeWindow(windowId: string): void;
         onWindowClosed(cb: (windowId: string) => void): () => void;
-        // ── 主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
+        // ──  main→shell pool window bounds changes (moved/resized reports) — shell registry update + persisting floating window positions (I9-14) ──
         onWindowBoundsChanged(cb: (payload: PoolWindowBoundsPayload) => void): () => void;
-        // ── 池侧（壳 preload 无） ──
+        // ── Pool side (absent from the shell preload) ──
         /**
-         * **按需读当前布局**——本窗最近一次收到的完整布局快照（树 `root` + 分组 `groups`）。
+         * **read the current layout on demand** — the full layout snapshot most recently received
+         * by this window (tree `root` + groups `groups`).
          *
-         * 🔴 与 `onLayout` 是**同一把尺**：返回的就是最近一次 `onLayout` 的载荷本体。
-         * 池按 whole-value 快照整帧渲染、**不缓存旧值合并**（`poolLayout.ts` 头注释两条铁律）——
-         * 本方法只为「不用等下一帧」而留一个读数口，**不参与渲染**。
+         * 🔴 The **same yardstick** as `onLayout`: what is returned is the very body of the most recent `onLayout` payload.
+         * The pool renders whole-value snapshot frames and **does not cache old values for merging** (the two iron rules in the
+         * `poolLayout.ts` header) — this method only leaves a read port for "not waiting for the next frame" and **does not participate in rendering**.
          *
-         * ⚠️ 未收到过任何一次推送（池刚起、壳尚未推 / 非就绪窗）→ `null`（**不编一份空布局**）。
-         * ⚠️ **脱出窗拿到的是策略子集**（`WINDOW_MODE_STRATEGIES`：detached = `titleBar`+`groups`；
-         * drift = `titleBar`+`panel`）⇒ 那些窗里 `statusBar`/`sidebar`/`iconBar` **不存在**——
-         * 这是窗口模式的正常结果，不是丢数据。要跨窗看全貌用 `tabs.list()`（问壳）。
-         * ⚠️ 分屏树深度上限 `MAX_TREE_DEPTH = 4`（`src/core/utils/splitTree.ts`）——树里不会出现更深层，
-         * 读取方不必按无限深度兜底，但**也别假设一定能到 4 层**（用户不一定分那么多）。
+         * ⚠️ No push has been received yet (pool just started, shell has not pushed / window not ready) → `null` (**no empty layout is fabricated**).
+         * ⚠️ **A detached window receives a policy subset** (`WINDOW_MODE_STRATEGIES`: detached = `titleBar`+`groups`;
+         * drift = `titleBar`+`panel`) ⇒ in those windows `statusBar`/`sidebar`/`iconBar` **do not exist** —
+         * this is a normal consequence of the window mode, not data loss. Use `tabs.list()` (ask the shell) to see the full picture across windows.
+         * ⚠️ Split-tree depth cap `MAX_TREE_DEPTH = 4` (`src/core/utils/splitTree.ts`) — deeper levels never appear in the tree;
+         * readers need not guard for infinite depth, but **do not assume 4 levels is always reachable** (users may not split that deep).
          */
         getLayout(): PoolLayout | null;
         onLayout(cb: (layout: PoolLayout) => void): () => void;
         ready(): void;
         sidebarAction(action: SidebarAction): void;
         tabAction(action: PoolTabAction): void;
-        // 池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
+        //  pool→shell TabBar viewport rects report (pool side — MainZone useTabDrag reports getBoundingClientRect)
         tabBarRects(rects: TabBarViewportRect[]): void;
-        // 池→壳 拖拽位置上报（池侧——useDragReorder 拎起后 mousemove 上报，壳吸附命中）
+        //  pool→shell drag position report (pool side — useDragReorder reports mousemove after pickup, shell does dock hit testing)
         dragPosition(pos: TabDragPositionPayload): void;
-        // 壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 插入指示/清除）
+        //  shell→pool dock hint subscription (pool side — MainZone subscribes for the target window's TabBar insert indicator/clear)
         onAdsorbHint(cb: (hint: AdsorbHintPayload) => void): () => void;
-        // 池→壳 吸附插入缝隙回传（池侧——目标池算竖线落点后上报，壳释放并窗精确落位）
+        //  pool→shell dock insertion gap report (pool side — the target pool computes the vertical-line drop point and reports; the shell places precisely on detach-merge)
         adsorbIndex(payload: {
             groupId: string;
             insertIndex: number;
         }): void;
-        // ── ：通用「beforeClose 可取消」通道（池侧）──
-        // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
-        // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。
+        // ──  (P8): generic "cancelable beforeClose" channel (pool side) ──
+        // Plugins register a handler (their own logic: show a confirmation / clean up resources / return a boolean deciding whether closing the tab is allowed);
+        // the GroupTabBar close path `await beforeClose` — if the handler returns false (or Promise<false>), the close is canceled.
         registerBeforeClose(pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>): void;
         unregisterBeforeClose(pluginId: string): void;
         beforeClose(pluginId: string, tab: PoolTab): Promise<boolean>;
     };
-    /** 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-namespace.ts） */
+    /** Window control — TitleBar button mapping, injected on both ends (11 methods on one channel, shared module electron/window-namespace.ts) */
     window: {
         minimize(): void;
         maximize(): void;
         unmaximize(): void;
         close(): void;
-        /** 缩放因子 → 主进程 setZoomFactor(池 WCV) */
+        /** zoom factor → main process setZoomFactor (pool WCV) */
         setZoom(factor: number): void;
         toggleDevTools(): Promise<void>;
         isMaximized(): Promise<boolean>;
         onMaximizeChange(cb: (maximized: boolean) => void): () => void;
-        /** OS 级置顶（盖过其他应用）——true 置顶 / false 解除；按 sender 路由宿主窗 */
+        /** OS-level always-on-top (covers other apps) — true pins / false unpins; routed to the host window by sender */
         setAlwaysOnTop(pinned: boolean): void;
         isAlwaysOnTop(): Promise<boolean>;
         onAlwaysOnTopChange(cb: (pinned: boolean) => void): () => void;
     };
-    /** 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端注入 */
+    /** Shell-level commands — revealInOS / openInTerminal / startDrag / relaunch, injected on both ends */
     shell: {
         showItemInFolder(p: string): Promise<void>;
         openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
-        /** 已装插件的磁盘位置——市场详情页「打开所在位置 / 数据位置」的**判据**数据源
-         *  （是否有数据目录决定那行画不画）。主进程解析（池内零安装路径知识）；盘上找不到该插件 → null。
-         *  ⚠️ 与 `shell.showItemInFolder(p)` 的分工：**那个要路径、这个给身份**——调用方（市场）拿不到也不该拼绝对路径。 */
+        /** disk location of an installed plugin — the **criterion** data source for "open containing folder / data location"
+         *  on the marketplace detail page (whether a data directory exists decides whether that row is drawn).
+         *  Resolved by the main process (the pool has zero knowledge of install paths); plugin not found on disk → null.
+         *  ⚠️ Division of labor with `shell.showItemInFolder(p)`: **that one takes a path, this one takes an identity** —
+         *  the caller (marketplace) cannot and should not assemble absolute paths. */
         pluginLocation(pluginId: string): Promise<PluginDiskLocation | null>;
-        /** 资源管理器打开插件的安装目录 / 数据目录——主进程解析路径后 `shell.openPath`。
-         * 开的是目录**内容**（与  `appearance.revealStorage`「打开存储位置」同一手感），
-         *  **不是** `showItemInFolder` 的「父目录 + 选中它」。目录不存在时：`install` 抛错（插件不在盘上，
-         *  不假装打开成功）；`data` 先建空目录再开（同 revealStorage——打开即见存储位置，空目录同样合法）。 */
+        /** open the plugin's install directory / data directory in the file explorer — the main process resolves the path then `shell.openPath`.
+         * Opens the directory **contents** (same feel as  `appearance.revealStorage` "open storage location"),
+         *  **not** `showItemInFolder`'s "parent folder with it selected". When the directory does not exist: `install` throws
+         *  (plugin not on disk — never pretend the open succeeded); `data` creates an empty directory first, then opens (same as revealStorage —
+         *  opening reveals the storage location; an empty directory is equally legitimate). */
         openPluginFolder(pluginId: string, kind: PluginFolderKind): Promise<void>;
         startDrag(filePath: string, iconPath?: string): void;
-        /** **真重启应用**（退出并重新启动进程）。
-         *  与 `window.location.reload()` 的区别是「池在不在」——池是独立的 WebContentsView，壳 reload 不重建它，
-         *  更新视图类插件后池里跑的仍是旧 bundle（界面看起来毫无变化）。
-         *  诚实边界：整个应用会退出再起——未保存的编辑器内容由热退出（hotExit）负责，工作区布局走持久化恢复。
-         *  壳 preload 独有（池不需要自己重启宿主）；调用后本进程随即终止，不要再依赖它的返回。 */
+        /** (G4): **truly restart the app** (quit and start the process again).
+         *  The difference from `window.location.reload()` is whether the pool survives — the pool is an independent WebContentsView,
+         *  a shell reload does not rebuild it, so after updating view-type plugins the pool still runs the old bundle
+         *  (the UI looks completely unchanged).
+         *  Honest boundary: the whole app quits and starts again — unsaved editor content is handled by hot exit, and the workspace
+         *  layout goes through persisted restore.
+         *  Shell preload only (the pool has no need to restart its own host); once called, this process terminates soon after — do not rely on its return. */
         relaunch?(): Promise<void>;
         /**
-         * T4（2026-10-05，本案「文件打开方式与贡献点」）：**受控 openExternal**——请求宿主把 URL
-         * 交给系统默认程序打开（浏览器 / 邮件客户端 / 已注册协议的处理器，如 VS Code）。
+         * T4 (2026-10-05, the "file open-with and contribution points" case): **controlled openExternal** — asks the host to hand the URL
+         * to the system default handler (browser / mail client / handler registered for the protocol, e.g. VS Code).
          *
-         * 🔴 **白名单不是建议，是闸门**：只有 `http:` / `https:` / `mailto:` 与宿主常量登记过的协议
-         * （今日含 `vscode:`）放行；**其余一律拒**（`file:` / `javascript:` / `data:` 明确拒——插件的文件面
-         * 走 `workspace` / `filesystem`，不经 OS 壳；把外部输入当脚本执行更不是宿主该替谁做的事）。
-         * 被拒 = 这个 Promise **reject**（不静默），调用方应当接住并给用户一个说法。
+         * 🔴 **The whitelist is not advice, it is a gate**: only `http:` / `https:` / `mailto:` and protocols registered in the host
+         * constant (today including `vscode:`) pass; **everything else is rejected** (`file:` / `javascript:` / `data:` are explicitly
+         * rejected — plugin file access goes through `workspace` / `filesystem`, not the OS shell; and executing external input as a
+         * script is not something the host should do on anyone's behalf).
+         * Rejected = this Promise **rejects** (no silent failure); the caller should catch it and give the user an explanation.
          *
-         * ⚠️ 「转交系统」的诚实边界：宿主**不感知**目标程序装没装——`vscode://` 拉起的是 OS 的答复，
-         * 没装时由 Windows 自己弹「如何打开」。宿主只保证「协议在白名单内、URL 结构合法」。
-         * 白名单清单进宿主保留面账（家族 `externalProtocols`），改它 = 一次公共面决策。
+         * ⚠️ Honest boundary of "handing off to the system": the host **cannot sense** whether the target program is installed —
+         * `vscode://` brings up the OS's answer; when it is not installed, Windows itself pops "How do you want to open this?".
+         * The host only guarantees "the protocol is whitelisted and the URL is well-formed".
+         * The whitelist list belongs to the host-reserved surface ledger (family `externalProtocols`); changing it = one public-surface decision.
          */
         openExternal(url: string): Promise<void>;
     };
-    /** 热退出暂存——编辑器未保存内容落盘。`?`：池侧独有（壳 preload 不注入） */
+    /** Hot exit staging — persists unsaved editor content to disk (). `?`: pool-side only (the shell preload does not inject it) */
     hotExit?: {
         save(filePath: string, content: string): Promise<void>;
         load(filePath: string): Promise<string | null>;
         clear(filePath: string): Promise<void>;
     };
-    /** OS 拖入文件路径获取——双端注入 */
+    /** Get the paths of files dragged in from the OS — injected on both ends */
     getFilePath: (file: File) => string;
 }
-/** 底部面板命名空间面——对标 VS Code vscode.window.createTreeView 后 focus / 视图提升语义 */
+/** Bottom panel namespace surface — modeled after VS Code vscode.window.createTreeView focus / view-promotion semantics */
 export interface PanelAPI {
     panel: {
-        /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
+        /** Focus a bottom panel view — if the panel is hidden, it expands and switches to that view; if shown, focus switches. No-op when viewId is not in the panel container */
         reveal(viewId: string): Promise<void>;
-        /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op。
-         * 可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
-         *  pluginId 精确命中目标套（壳侧路径 Ctrl+,/右键已带；裸 viewId 多命中 fail-loud no-op） */
+        /** In-shell floating panel (type B) — pops a declared view out (I8-2 identity toggle). No-op when viewId is an undeclared view.
+         * optional pluginId compound addressing — when two plugins share the same viewId (dual settings suites coexisting), the plugin side
+         *  carries pluginId to hit the target suite precisely (the shell-side Ctrl+, / context menu path already does; a bare viewId with multiple
+         *  hits fails loud as a no-op) */
         revealFloating(viewId: string, pluginId?: string): Promise<void>;
         /**
-         * 设定当前悬浮面板的几何（**非鼠标路径**——不与拖拽抢，两条路并存）。
+         * set the geometry of the current floating panel (**non-mouse path** — does not fight dragging; the two paths coexist).
          *
-         * `bounds` 只带想改的字段（如只 `{ top, left }` 只挪位置，`height` 不动）；`null` = 回默认居中大卡
-         * （I8-5/I8-7 拖拽前那一态）。面板**未开**时 no-op（本 API 只改几何，⛔ 不开面板——开面板归 `revealFloating`）。
+         * `bounds` only carries the fields to change (e.g. only `{ top, left }` moves the position, leaving `height` untouched); `null` = back to
+         * the default centered large card (the state before I8-5/I8-7 dragging). No-op when the panel is **not open** (this API only changes
+         * geometry; ⛔ it does not open the panel — opening belongs to `revealFloating`).
          *
-         * ⚠️ 越界值按**拖拽同一套边界**钳制（不是拒绝）：`height < 300` → 300；`height > 窗口高 - 80` → 钳到上限；
-         * `top/left` 被钳进 6px 壳内边界；`width` 只设上限（窗口宽 - 12）。想读回**实际生效**的几何，用
-         * `floatingPanelHost.getBounds()`（池内同步直答）或壳命令 `workbench.action.getFloatingPanelBounds`。
+         * ⚠️ Out-of-range values are clamped by **the same bounds as dragging** (not rejected): `height < 300` → 300;
+         * `height > window height - 80` → clamped to the cap; `top/left` clamped into the 6px in-shell margin; `width` is capped only
+         * (window width - 12). To read back the **actually effective** geometry, use `floatingPanelHost.getBounds()` (synchronous in-pool
+         * answer) or the shell command `workbench.action.getFloatingPanelBounds`.
          */
         setFloatingBounds(bounds: Partial<FloatingPanelBounds> | null): Promise<void>;
     };
 }
-/** 设置套条目——settings.list() 返回的一行。
- * 非导出（模块内接口）——契约生成器经 SettingsAPI.list 传递引用自动收集并 emit export；
- * 壳内无第三方消费方，导出会被 knip 报未用（linkdesk-api.ts 排除域不算消费）。 */
+/** Settings suite entry — one row returned by settings.list().
+ * Not exported (module-local interface) — the contract generator collects it automatically via SettingsAPI.list's transitive reference and emits the export;
+ * there is no third-party consumer inside the shell, so exporting it would be reported as unused by knip (excluded domains in linkdesk-api.ts do not count as consumers). */
 export interface SettingsPluginInfo {
-    /** 插件 ID——getActive/setActive 的句柄 */
+    /** Plugin ID — the handle for getActive/setActive */
     pluginId: string;
-    /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
+    /** Plugin display name (raw manifest.name; consumers do their own i18n) */
     title: string;
 }
-/** 设置套命名空间面——双端注入（设置 UI 在池内渲染，壳侧实现走 IPC 桥） */
+/** Settings suite namespace surface — injected on both ends (the settings UI renders in the pool; the shell-side implementation goes through the IPC bridge) */
 export interface SettingsAPI {
     settings: {
-        /** 全部声明 factoryRole:"settings" 的设置套（含默认/内置），注册序 */
+        /** All settings suites declaring factoryRole:"settings" (including the default/built-in one), in registration order */
         list(): Promise<SettingsPluginInfo[]>;
-        /** 当前活动设置套 ID——读持久化激活（落盘），无记录/已卸载回退默认（内置） */
+        /** The current active settings suite ID — reads the persisted activation (on-disk record); falls back to the default (built-in) when there is no record or the plugin is uninstalled */
         getActive(): Promise<string | undefined>;
-        /** 切换活动设置套——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
+        /** Switch the active settings suite — validates the candidate, then persists (survives restart). Throws fail-loud for non-candidates */
         setActive(pluginId: string): Promise<void>;
     };
 }
-/** 插槽条目——factorySlots.list(role) 返回的一行。
- * 非导出（模块内接口）——契约生成器经 list 传递引用自动收集并 emit export；
- * 壳内无第三方消费方，导出会被 knip 报未用（linkdesk-api.ts 排除域不算消费）。 */
+/** Slot entry — one row returned by factorySlots.list(role).
+ * Not exported (module-local interface) — the contract generator collects it automatically via list's transitive reference and emits the export;
+ * there is no third-party consumer inside the shell, so exporting it would be reported as unused by knip (excluded domains in linkdesk-api.ts do not count as consumers). */
 export interface FactorySlotEntry {
-    /** 插件 ID——getActive/setActive 的句柄 */
+    /** Plugin ID — the handle for getActive/setActive */
     pluginId: string;
-    /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
+    /** Plugin display name (raw manifest.name; consumers do their own i18n) */
     title: string;
-    /** 该插件 contributes.floatingPanel.viewId（无声明 = undefined）——切换/打开候选悬浮面板用 */
+    /** this plugin's contributes.floatingPanel.viewId (undeclared = undefined) — used for switching/opening the candidate floating panel */
     viewId?: string;
 }
-/** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */
+/** factorySlots namespace surface — injected on both ends (the in-pool renderer side implements it via the IPC bridge) */
 export interface FactorySlotsAPI {
     factorySlots: {
-        /** 全部已填充角色的名字（注册序）——设置页「任何 factoryRole ≥2 候选 → 该角色名组出现」先枚举角色再 list(role) 判候选数 */
+        /** Names of all filled roles (registration order) — for the settings page's "any factoryRole with ≥2 candidates → that role name group appears": enumerate roles first, then list(role) to judge the candidate count */
         listRoles(): Promise<string[]>;
-        /** 全部声明指定 factoryRole 的候选插件 [{pluginId, title}]，注册序 */
+        /** All candidate plugins declaring the given factoryRole [{pluginId, title}], in registration order */
         list(role: string): Promise<FactorySlotEntry[]>;
-        /** 指定角色的活动插件 ID——读持久化激活（落盘），无记录/已卸载回退默认（内置） */
+        /** The active plugin ID for the given role — reads the persisted activation (on-disk record); falls back to the default (built-in) when there is no record or the plugin is uninstalled */
         getActive(role: string): Promise<string | undefined>;
-        /** 切换指定角色活动插件——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
+        /** Switch the active plugin for the given role — validates the candidate, then persists (survives restart). Throws fail-loud for non-candidates */
         setActive(role: string, pluginId: string): Promise<void>;
     };
 }
 /**
- * linkdesk-api app 域——主软件产品身份只读面（06-主软件更新）。
- * 自 linkdesk-api.ts 拆出——第 14 个命名空间域接口。
- * 依赖方向：app → 无（纯函数签名，零类型依赖）；被聚合器交叉组装。
+ * linkdesk-api app domain — the read-only main-software product identity surface (n-software-updates).
+ * Split out of linkdesk-api.ts () — the 14th namespace domain interface.
+ * Dependency direction: app → none (pure function signatures, zero type dependencies); cross-composed by the aggregator.
  *
- * 暴露边界（00-README §三② 2026-08-30 拍板）：只读不写——版本号给第三方可读（市场 minAppVersion
- * 校验  消费），更新写命令（下载/重启）是壳私事不开放。ProductInfo（app:getProductInfo
- * 全量身份）非第三方插件面——主软件产品内部（关于页）用，不进本契约（见 electron/product.ts）。
+ * Exposure boundary (00-README §3②, decided 2026-08-30): read-only, no writes — the version number is third-party readable
+ * (consumed by the marketplace minAppVersion validation, ); update write commands (download/restart) are the shell's
+ * private affair and not opened up. ProductInfo (the full identity of app:getProductInfo) is not a third-party plugin surface —
+ * it is used internally by the main software (About page ) and stays out of this contract (see electron/product.ts).
  */
 export interface AppAPI {
-    /** app 命名空间——只读产品身份。版本号唯一运行时来源 = 主进程 app.getVersion()（package.json 单点，02 §2.3）。 */
+    /** The app namespace — read-only product identity. The only runtime source of the version number = main-process app.getVersion() (package.json as the single point, 02 §2.3). */
     app: {
         getVersion(): Promise<string>;
     };
 }
-/** 有可用更新时的全量描述——`UpdateState.available` 起各态携带 */
+/** Full description when an update is available — carried by every state from `UpdateState.available` onward */
 export interface UpdateInfo {
-    /** 新版本（SemVer，无 v 前缀） */
+    /** New version (SemVer, no v prefix) */
     version: string;
-    /** 当前运行版本（`app.getVersion()`——02 §2.3 唯一运行时来源） */
+    /** Currently running version (`app.getVersion()` — 02 §2.3, the sole runtime source) */
     currentVersion: string;
-    /** ISO 发布日期（Release `published_at`） */
+    /** ISO release date (Release `published_at`) */
     publishedAt: string;
-    /** 发行说明页 URL（GitHub release `html_url`） */
+    /** Release notes page URL (GitHub release `html_url`) */
     releaseNotesUrl: string;
-    /** 安装器直链（`available` 之后才有——检查腿就能拿到，下载才消费） */
+    /** Direct installer link (present only after `available` — the check leg can already fetch it; only the download consumes it) */
     downloadUrl?: string;
     /**
-     * 安装包 sha256（64 位小写 hex，**已剥 `sha256:` 前缀**）。
-     * 🔴 **源 = Release asset 的 `digest` 字段**（GitHub 服务端自动算）——API 里**没有** `checksum` 字段，
-     * 照名字取恒 `undefined` ⇒ 每次都走「未附 ⇒ 降级放行」⇒ 校验静默失效（05-文档与发布/02-发布流水线.md §1.5.1）。
+     * Installer sha256 (64-char lowercase hex, **the `sha256:` prefix already stripped**).
+     * 🔴 **Source = the Release asset's `digest` field** (computed server-side by GitHub) — the API has **no** `checksum` field;
+     * reading it by that name is always `undefined` ⇒ every run takes the "absent ⇒ degrade and allow" path ⇒ validation silently fails (release-pipeline dossier §1.5.1).
      */
     checksum?: string;
-    /** 安装包字节数（Release asset `size`） */
+    /** Installer size in bytes (Release asset `size`) */
     size?: number;
 }
 /**
- * 检查腿六类 + 下载腿五类 + 启动复位一类（01 §2.3 / §2.4 / §2.5）。
- * 文案必须互不相同——「当前已是最新版本」和「tag 不是 SemVer」是两件事，不许各归一半。
+ * Six classes for the check leg + five for the download leg + one startup-reset class (01 §2.3 / §2.4 / §2.5).
+ * The copy must be mutually distinct — "you are already on the latest version" and "the tag is not SemVer" are two different things; no half-and-half attribution.
  *
- * ⚠️ 暂不单独 `export`：当前唯一消费方是本文件的 `UpdateError.code`，knip 门禁不许空导出。
- * 壳侧要做「错误码 → 文案」映射时取 `UpdateError["code"]`，或届时把它升回具名导出。
+ * ⚠️ Not separately `export`ed for now: the only current consumer is this file's `UpdateError.code`, and the knip gate forbids empty exports.
+ * When the shell side needs an "error code → copy" mapping (), take `UpdateError["code"]`, or promote it back to a named export then.
  */
 export type UpdateErrorCode =
-// —— 检查腿（六类） ——
-/** 不可达/超时/代理未生效（本腿必走 main-fetch.ts） */
+// —— Check leg (six classes) ——
+/** Unreachable/timeout/proxy not in effect (this leg always goes through main-fetch.ts, ) */
 'network'
-/** GitHub 403/429（`x-ratelimit-remaining: 0`）→「稍后自动重试」，不说成网络故障 */
+/** GitHub 403/429 (`x-ratelimit-remaining: 0`) → "auto-retry later"; not to be reported as a network failure */
  | 'rate-limited'
-/** 仓库不存在 / 无 Release（404） */
+/** Repository does not exist / no Release (404) */
  | 'not-found'
-/** JSON 结构非法 / 缺 `tag_name`/`published_at` */
+/** Malformed JSON structure / missing `tag_name`/`published_at` */
  | 'invalid-response'
-/** 🔴 Release 到手但匹配不到 asset（命名漂移）——**不许报成 network** */
+/** 🔴 Release fetched but no asset matches (naming drift) — **must not be reported as network** */
  | 'asset-missing'
-/** 🔴 `tag_name` 非合法 SemVer——**与「无更新」分开报**，静默忽略会让发布事故隐形 */
+/** 🔴 `tag_name` is not valid SemVer — **report separately from "no update"**; silently ignoring it would make release incidents invisible */
  | 'version-unparsable'
-// —— 下载腿（五类） ——
-/** sha256 不符 → 删文件 + 报错 */
+// —— Download leg (five classes) ——
+/** sha256 mismatch → delete the file + report an error */
  | 'checksum-mismatch'
-/** 🔴 Release 未附校验值 → 记一笔 + 降级放行（不拦更新，01 §2.4） */
+/** 🔴 Release carries no checksum → log it + degrade and allow (do not block the update, 01 §2.4) */
  | 'checksum-unavailable'
-/** 落盘失败（磁盘满/无权限） */
+/** Write to disk failed (disk full / no permission) */
  | 'write-error'
 /**
- * 🔴 传输中断——两种子情形共用一个码：① 进程中途退出留下的下载 → 重启后归 `idle + interrupted`，
- * **不复活 `downloading`**；② 本次下载**收了一半就断**（已收 < Content-Length）。
- * 两者的用户语义与处置完全相同（这次没下成，重下），拆两码只会让壳多写一条一模一样的文案。
- * ⚠️ 与 `network` 的分界：**连接阶段**就连不上 / 挂死超时 = `network`；**已经在下、半路断** = 本码。
+ * 🔴 Transfer interrupted — two sub-cases share one code: ① a download left behind by a process exiting mid-run → after restart attributed `idle + interrupted`,
+ * **not reviving `downloading`** (); ② this download **broke off halfway** (received < Content-Length, ).
+ * Their user semantics and handling are identical (this attempt failed; download again); splitting into two codes would only make the shell write one identical line of copy twice.
+ * ⚠️ Boundary with `network`: cannot connect / hangs until timeout during the **connection phase** = `network`; **already downloading and broke mid-way** = this code.
  */
  | 'interrupted'
-/** 用户/系统取消 */
+/** Cancelled by the user/system */
  | 'canceled'
-// —— 启动复位（一类，非腿产出） ——
+// —— Startup reset (one class, not produced by a leg) ——
 /**
- * 🔴 上次更新**没装成，且安装器已不在盘上**（启动复位  算出，`update-install.ts` 的
- * `resolveStartupInstall`）——落 `idle + 本码`，`update` 保留。
+ * 🔴 The last update **failed to install, and the installer is no longer on disk** (computed by the startup reset , `update-install.ts`'s
+ * `resolveStartupInstall`) — lands on `idle + this code`, `update` preserved.
  *
- * **为什么不复用 `interrupted`**（2026-09-12 拆码，超本格顺手修）：两者在腿内确实同义（都是
- * 「这次没下成，重下」），但**壳侧的处置不同**——本码是**启动时从盘上读回来的**，没有任何发起方，
- * 于是「谁发起谁出声」那条路（`checkForUpdatesAndReport`）根本走不到它 ⇒ 换成 `interrupted`
- * 时用户**下次启动零通知**（实测：`initUpdateService` 丢弃 `resolution.outcome`，
- * 而生产者对 `idle` 一律闭嘴）。壳的迁移驱动那条路**只认本码**才出声（`useUpdateNotifications`），
- * 于是「下载腿的断流」与「启动时的未完成」在机器上可分辨，不再靠「`update` 在不在」这种
- * 会随实现漂移的间接不变式。
+ * **Why not reuse `interrupted`** (codes split 2026-09-12, fixed in passing beyond this entry's scope): within a leg the two are indeed synonymous (both
+ * "this attempt failed; download again"), but **the shell-side handling differs** — this code is **read back from disk at startup** with no initiator,
+ * so the "whoever initiates reports" path (`checkForUpdatesAndReport`) can never reach it ⇒ if it were `interrupted`,
+ * the user would get **zero notification on next startup** (empirically: `initUpdateService` discards `resolution.outcome`,
+ * and producers stay silent on `idle` across the board). The shell's transition-driven path **only reports on this code** (`useUpdateNotifications`),
+ * so "the download leg's broken stream" and "an unfinished update at startup" are machine-distinguishable, no longer relying on an indirect invariant
+ * like "whether `update` is present" that drifts with the implementation.
  */
  | 'install-interrupted';
-/** 一次失败的结构化记账——态内 `lastError`（不抛错，07 §4.1） */
+/** Structured record of one failure — the in-state `lastError` (no throwing, 07 §4.1) */
 export interface UpdateError {
     code: UpdateErrorCode;
     /**
-     * 人类可读 = **i18n key 形态**（= 中文原文，硬约束 2）。
+     * Human-readable = **i18n key form** (= the original Chinese text, hard constraint 2).
      *
-     * 🔴 **带运行时数值的句子必须写成词条 + `{{占位}}`，值走 `params`**——直接拼进 `message`
-     * （`下载超时——30 秒无数据`）会让整句**永远不可能成为词条**（一个字都不一样），`t()` 只能
-     * 原样吐出中文原文 ⇒ 那类句子在所有语言下都是中文（2026-09-12 修，超本格顺手修）。
-     * 分界线：**句子骨架（可翻译）进 `message`，只进不出的运行时值（秒数/字节数/系统错误原文）
-     * 进 `params`**。插值语法与壳侧 `t()` 一致（i18next 的 `{{name}}`）。
+     * 🔴 **Sentences carrying runtime values must be written as lexicon entries + `{{placeholders}}`, with values going through `params`** — concatenating them directly into `message`
+     * (e.g. `Download timed out — 30 seconds without data`) makes the whole sentence **forever impossible to become a lexicon entry** (not one character identical), and `t()` can only
+     * emit the original Chinese text verbatim ⇒ such sentences stay Chinese in every language (fixed 2026-09-12, fixed in passing beyond this entry's scope).
+     * The dividing line: **the sentence skeleton (translatable) goes into `message`; runtime values that only flow in and never out (seconds/byte counts/raw system errors) go into `params`**.
+     * Interpolation syntax matches the shell's `t()` (i18next's `{{name}}`).
      */
     message: string;
     /**
-     * 词条占位符的实值（`{ seconds: 30 }` 对应词条里的 `{{seconds}}`）。
-     * 值**本身不再翻译**——系统错误原文（`msg(e)`）与 HTTP 状态文本天然无语言，故当**不透明值**传。
-     * 缺省（不传）= 该词条没有占位符，壳侧照旧 `t(message)`。
+     * Actual values for the lexicon entry's placeholders (`{ seconds: 30 }` corresponds to `{{seconds}}` in the entry).
+     * Values themselves are **never translated** — raw system errors (`msg(e)`) and HTTP status texts are language-neutral by nature, so pass them as **opaque values**.
+     * Omitted (not passed) = the entry has no placeholders; the shell still calls `t(message)` as usual.
      */
     params?: Record<string, string | number>;
 }
-/** 下载进度——`UpdateState.downloading` 携带，节流 ≤500ms 一条（07 §4.2） */
+/** Download progress — carried by `UpdateState.downloading`, throttled to ≤500ms per message (07 §4.2) */
 export interface DownloadProgress {
-    /** 已下载字节 */
+    /** Bytes downloaded */
     transferred: number;
-    /** 总字节 */
+    /** Total bytes */
     total: number;
-    /** 0-100 整数 */
+    /** 0-100 integer */
     percent: number;
 }
 /**
- * 更新状态机判别联合（01 §2.1 九态）。
+ * Update state machine discriminated union (01 §2.1, nine states).
  *
  * ```
- * uninitialized → disabled（更新源不可用）/ idle
- * idle ──check──▶ checking ──新版本──▶ available（无更新/出错 → idle）
- * available ──download──▶ downloading ──完成──▶ downloaded（失败 → idle + lastError）
- * downloaded ──「重启并更新」──▶ updating ──quitAndInstall──▶ 进程退出
- * ready = downloaded 的提示态（toast「重启并更新」已出）
+ * uninitialized → disabled (update source unavailable) / idle
+ * idle ──check──▶ checking ──new version──▶ available (no update / error → idle)
+ * available ──download──▶ downloading ──done──▶ downloaded (failure → idle + lastError)
+ * downloaded ──"restart and update"──▶ updating ──quitAndInstall──▶ process exits
+ * ready = downloaded's notification state (the "restart and update" toast has been shown)
  * ```
  *
- * 🔴 **`downloaded` 没有「回 idle」的边**（2026-09-12 用户拍板；本文档旧版图里的
- * `downloaded ──「稍后」──▶ idle` 是**错的**，已删）。通知面上的「稍后」**只收起那一条提示**，
- * 状态原地不动——安装器已经在盘上等着装了，把态降回 `idle` 只会让用户重下一遍。
- * 两个出口：`updating`（点「重启并更新」），或进程退出后由启动复位还原。
- * 由此推出 （已在 `electron/services/update-service.ts` 落地）：这两个态**免疫检查**——
- * 检查腿比的是 `latest > current`，已下好的版本必然还大于当前版本 ⇒ 一查必判 `available`，
- * 界面就从「重新启动」退回「下载更新」。
+ * 🔴 **`downloaded` has no edge back to idle** (, decided by the user 2026-09-12; the old diagram's
+ * `downloaded ──"later"──▶ idle` was **wrong** and has been deleted). The notification's "later" **only dismisses that one notice**;
+ * the state stays put — the installer is already on disk waiting to run, and downgrading the state to `idle` would only make the user download again.
+ * Two exits: `updating` (clicking "restart and update"), or the startup reset restores it after the process exits ().
+ * From this follows  (already landed in `electron/services/update-service.ts`): these two states are **check-immune** —
+ * the check leg compares `latest > current`, and a version already downloaded is necessarily still greater than the current one ⇒ every check judges `available`,
+ * and the UI would regress from "restart" back to "download update".
  *
- * 🔴 **`downloaded`/`ready` 带 `warning` 槽（2026-09-12 用户拍板 ⇒ 选 (a)「给状态加 warning 槽」）**：
- * 降级放行（`checksum-unavailable` 等「照常安装、但要记一笔」的情形）**必须落在这个槽里**。
- * 此前只有一个 `idle.lastError` 槽，而**降级放行时状态走的是 `downloaded`** ⇒ 照旧类型实现这笔账
- * 必然被无声丢掉（发布侧永远看不见自己漏附了校验值，拍板想要的效果归零；同属
- * [[snapshot-shadows-truth-bug-class]] ④「只有一次机会 + 失败不出声」）。
+ * 🔴 **`downloaded`/`ready` carry a `warning` slot (decided by the user 2026-09-12 ⇒ option (a) "add a warning slot to the state")**:
+ * degrade-and-allow cases (`checksum-unavailable` etc. "install as usual, but log it") **must land in this slot**.
+ * Previously there was only one `idle.lastError` slot, and **on degrade-and-allow the state goes to `downloaded`** ⇒ implementing the old type as-is
+ * would silently drop this record (the release side would never see that it omitted a checksum, zeroing out the intended effect; also an instance of
+ * [[snapshot-shadows-truth-bug-class]] ④ "one chance only + failures stay silent").
  *
- * ⚠️ `warning` ≠ `lastError` 的复本：**`lastError` = 这次没成**（回 `idle`，有出口等用户重试）；
- * **`warning` = 成了，但有一件发布侧该知道的事**（态照常往下走）。所以它只出现在「成功那条路」上，
- * 且**跨态传递**：`downloaded.warning` →（壳出提示时）→ `ready.warning`。
+ * ⚠️ `warning` is not a copy of `lastError`: **`lastError` = this attempt failed** (back to `idle`, with an exit waiting for the user to retry);
+ * **`warning` = it succeeded, but there is something the release side should know** (the state proceeds as usual). So it appears only on the "success path",
+ * and it **propagates across states**: `downloaded.warning` → (when the shell raises the notice) → `ready.warning`.
  */
 export type UpdateState = {
     type: 'uninitialized';
@@ -3033,7 +3054,7 @@ export type UpdateState = {
     update: UpdateInfo;
     progress: DownloadProgress;
 }
-/** `warning` = 降级放行的记账（如 `checksum-unavailable`）——见上方 🔴，不是失败 */
+/** `warning` = the degrade-and-allow record (e.g. `checksum-unavailable`) — see the 🔴 above, not a failure */
  | {
     type: 'downloaded';
     update: UpdateInfo;
@@ -3042,69 +3063,69 @@ export type UpdateState = {
     type: 'updating';
     update: UpdateInfo;
 }
-/** `downloaded` 的提示态——`warning` 由 `downloaded` 传递而来（消费者是壳） */
+/** The notification state of `downloaded` — `warning` is carried over from `downloaded` (the consumer is the shell, ) */
  | {
     type: 'ready';
     update: UpdateInfo;
     warning?: UpdateError;
 };
 export interface UpdateAPI {
-    /** update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态）。 */
+    /** The update namespace — read-only update state (for "About"-type plugins to read the host version/update state). */
     update: {
-        /** 读当前状态机全量态（07 §4.1：永不抛——服务必然有态）。 */
+        /** Read the full state-machine state (07 §4.1: never throws — the service always has a state). */
         getState(): Promise<UpdateState>;
     };
 }
 /**
- * linkdesk API——插件代码的类型安全入口。
- * 对标 VS Code `vscode` 对象的全局命名空间结构。
- * 池 preload 注入的命名空间为插件运行时真相源（required）；
- * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（审视 N1 修正
- * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * 由 15 个命名空间域接口交叉组装（interface→type intersection，
- * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
+ * linkdesk API — the type-safe entry point for plugin code.
+ * Global namespace structure modeled after the VS Code `vscode` object.
+ * The namespaces injected by the pool preload are the plugin runtime source of truth (required);
+ * only bridge (true-shell-only) / hotExit (pool-side-only) are optional with `?` — the other side does not inject them (review N1 fix:
+ * the remaining bridge surfaces window/pool/shell/getFilePath are injected on both ends and marked required in the contract).
+ * cross-composed from 15 namespace domain interfaces (interface→type intersection;
+ * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
  */
 export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 /**
- * 🔥 设置控件词表**正典**（`uiHint`）——宿主声明与渲染层之间的唯一词表（判据 B）。
+ * 🔥 Canonical vocabulary for settings control hints (`uiHint`) — the single vocabulary between host declarations and the rendering layer (criterion B).
  *
- * 14 个值 = 设置页分发器能渲染的控件形态全集（与设置插件 `renderControl.tsx` 的 switch 逐 case 同源）。
- * ⚠️ `fileAssociationsManager`（第 4 波追加）**不是一只控件**——它是「**整组自定义视图**」的挂载位：
- *   声明它的键所在的组由设置插件渲染成「默认打开方式」管理器（竞争类型/按插件浏览两区块），
- *   与其余 hint 的「行内控件」形态不同（见设置仓 `file-associations-manager/`）。
- * 消费方：① 宿主 `ConfigurationRegistry.ConfigProperty`（编译期收窄 ⇒ 声明写错当场红）
- * ② 设置插件分发表 ③ 作者面 `plugin.schema.json` 的 description（给第三方作者看的正典表）。
- * ⚠️ **声明字段本身保持开放 `string`**（本文件 `LinkDeskConfigProperty.uiHint` 与作者面 schema 都是）
- * ——第三方自定义 hint 合法（承诺不收回）；渲染器不认识的 hint ⇒ **只读展示 ＋ title 说明**降级，
- *   ⛔ 不再落进可编辑兜底（防裸字符串写穿值域）。
- * 运行时名单与类型守卫在 `@linkdesk/ui`（`SETTINGS_UI_HINTS` / `isSettingsUiHint`）——
- * 本契约包是**纯类型生成产物、零运行时**，只能带类型。
+ * The 14 values = the full set of control shapes the settings page dispatcher can render (same source, case by case, as the switch in the settings plugin's `renderControl.tsx`).
+ * ⚠️ `fileAssociationsManager` (added in wave 4) is **not a single control** — it is the mount point for an **entire group of custom views**:
+ *   the group owning the key that declares it is rendered by the settings plugin as a "default open-with" manager (competing types / browse-by-plugin sections),
+ *   unlike the "inline control" shape of the other hints (see the settings repo's `file-associations-manager/`).
+ * Consumers: ① the host's `ConfigurationRegistry.ConfigProperty` (compile-time narrowing ⇒ a wrong declaration turns red on the spot)
+ * ② the settings plugin dispatch table ③ the description in the author-facing `plugin.schema.json` (the canonical table shown to third-party authors).
+ * ⚠️ **The declaring field itself stays an open `string`** (both `LinkDeskConfigProperty.uiHint` in this file and the author-facing schema)
+ * — third-party custom hints are legitimate (promise, not withdrawn); a hint the renderer does not know ⇒ degrade to **read-only display + title explanation**,
+ *   ⛔ no longer falling into an editable fallback (prevents bare strings from punching through the value domain).
+ * The runtime list and type guards live in `@linkdesk/ui` (`SETTINGS_UI_HINTS` / `isSettingsUiHint`) —
+ * this contract package is a **pure type-generation artifact with zero runtime** and can only carry types.
  */
 export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider" | "image" | "fontTone" | "fontFamily" | "color" | "file" | "directory" | "fontSize" | "segmented" | "stringList" | "fileAssociationsManager";
 /**
- * 设置行渲染提示正典（`renderHint`）——三值。
- * `readonly` 只读状态行（值来自 `statusCommand` 运行时数据源，不来自配置存储）；
- * `action` 操作按钮（文案 = `description`，点击执行 `actionCommand`）；`color` 色块预览
- * （壳 `app.accentColor` / `app.glassTint` 在用）。同 uiHint：声明面保持开放 `string`，未知值降级。
- * 🆕 设置行案 2.1（2026-10-04 · 伴生声明正交化）：`readonly`/`action` 是「**主控件就是它**」的简写；
- * `statusCommand`/`actionCommand` 可与**任何**主控件共存（渲染 `[主控件][伴生按钮][伴生只读]`）。
+ * Canonical render hint for settings rows (`renderHint`) — three values.
+ * `readonly` read-only status row (value comes from the `statusCommand` runtime data source, not from config storage);
+ * `action` action button (label = `description`, click runs `actionCommand`); `color` color swatch preview
+ * (used by the shell's `app.accentColor` / `app.glassTint`). Same as uiHint: the declaring side stays an open `string`; unknown values degrade.
+ * 🆕 Settings row case 2.1 (2026-10-04 · companion-declaration orthogonalization): `readonly`/`action` are shorthands for "the primary control is itself";
+ * `statusCommand`/`actionCommand` can coexist with **any** primary control (rendering `[primary control][companion button][companion read-only]`).
  */
 export type SettingsRenderHint = "readonly" | "action" | "color";
 /**
- * 「打开方式」请求——壳命令 `SHELL_COMMANDS.openWith` 的唯一入参形状。
- * `uri` 与 `ext` 至少给一个：右键/编辑器入口给 `uri`（壳侧算 `ext`）；设置页「按类型打开」入口只给 `ext`。
+ * "Open with" request — the sole input shape of the shell command `SHELL_COMMANDS.openWith`.
+ * Give at least one of `uri` and `ext`: the context-menu/editor entry provides `uri` (the shell computes `ext`); the settings page's "open by type" entry provides only `ext`.
  */
 export interface OpenWithRequest {
-    /** 文件路径（右键/编辑器入口给） */
+    /** File path (provided by the context-menu/editor entry) */
     uri?: string;
-    /** 显示名（面板标题用） */
+    /** Display name (used for the panel title) */
     name?: string;
-    /** 归一化扩展名（无点、小写——由壳侧 normalizeExt 统一计算，调用方不必预处理） */
+    /** Normalized extension (no dot, lowercase — computed uniformly by the shell's normalizeExt; callers need not pre-process) */
     ext?: string;
     /**
-     * @deprecated 面板自 2026-10-05 起**一律居中**（案 03 §3.0′，用户改判：视觉聚焦 / 形态统一 /
-     * 不与周围元素打架 / 不显凌乱）——锚定态废止，壳侧不再归一化该字段、⛔ 已无消费方。
-     * 保留仅为兼容已发布契约面（⛔ 不得删除，见 `check-api-surface-additive`）；新调用方⛔ 不要再传。
+     * @deprecated The panel is **always centered** as of 2026-10-05 (case 03 §3.0′, the user's revised verdict: visual focus / shape uniformity /
+     * no fighting with surrounding elements / no cluttered look) — the anchored state is abolished; the shell no longer normalizes this field, ⛔ no consumers remain.
+     * Kept only for compatibility with the already-released contract surface (⛔ must not be deleted, see `check-api-surface-additive`); new callers ⛔ must not pass it.
      */
     anchor?: {
         x: number;
@@ -3112,61 +3133,61 @@ export interface OpenWithRequest {
     };
 }
 /**
- * 处理器条目（面板一行的数据形状）——**由壳侧组装，⛔ 插件不自行构造**。
- * `title` = **处理器名**（插件显示名，取 `pluginManager.list()` 行的 `manifest.name ?? pluginId`）；
- * `typeLabel` = **类型名**（声明里的 `displayName`，如「Rust」）。⛔ 两者不可互换：
- * `contributes.fileAssociations[].displayName` 的语义是**文件类型显示名**，不是插件/处理器名。
+ * Handler entry (the data shape of one panel row) — **assembled by the shell; ⛔ plugins must not construct it themselves**.
+ * `title` = the **handler name** (the plugin's display name, taken as `manifest.name ?? pluginId` from a `pluginManager.list()` row);
+ * `typeLabel` = the **type name** (the `displayName` in the declaration, e.g. "Rust"). ⛔ The two must not be swapped:
+ * the semantics of `contributes.fileAssociations[].displayName` is the **file type's display name**, not the plugin/handler name.
  */
 export interface OpenWithHandler {
     pluginId: string;
-    /** 处理器名（插件显示名） */
+    /** Handler name (the plugin's display name) */
     title: string;
-    /** 类型名（声明 displayName——想给插件起名请用 manifest 顶层 name） */
+    /** Type name (declared displayName — to name the plugin use the manifest's top-level name) */
     typeLabel?: string;
-    /** 图标 manifest 子集——壳侧用共享 helper `pickIdentityArt()` 产出（与设置页/标签栏同源） */
+    /** Icon manifest subset — produced by the shell with the shared helper `pickIdentityArt()` (same source as the settings page/tab bar) */
     manifest?: {
         icon?: string;
         iconSource?: "codicon" | "svg" | "url" | "lucide";
     };
-    /** 该处理器是否为当前默认 */
+    /** Whether this handler is the current default */
     isDefault: boolean;
-    /** 该处理器是否由自动裁决选中（无显式覆盖时） */
+    /** Whether this handler was chosen by automatic adjudication (when no explicit override exists) */
     isAuto: boolean;
 }
-/** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
+/** Icon mapping entry — font glyph form (monochrome/multi-color fonts; seti-style fonts carry one color per icon; codicon is the guaranteed monochrome fallback) */
 export interface IconThemeGlyph {
-    /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
+    /** CSS class name (codicon fallback / custom icon font asset) */
     class: string;
-    /** 可选每图标颜色（seti 类彩色字体） */
+    /** Optional per-icon color (seti-style color fonts) */
     color?: string;
 }
-/** 图标映射条目——图像资产形态（任意多色/拟物化/贴图） */
+/** Icon mapping entry — image asset form (any multi-color/skeuomorphic/textured art) */
 export interface IconThemeImage {
-    /** 图像资产相对路径——壳加载时解析为 linkdesk:// 绝对 URL（getPluginAssetPath），消费方零解析负担 */
+    /** Relative path of the image asset — resolved by the shell at load time to a linkdesk:// absolute URL (getPluginAssetPath); consumers carry zero resolution burden */
     imagePath: string;
 }
-/** 图标映射条目——双形态（④ 拍板：字体 glyph 或图像资产，同一主题可混用，壳零审查） */
+/** Icon mapping entry — dual form (④ decision: font glyph or image asset; a single theme may mix both; the shell performs zero review) */
 export type IconThemeMapping = IconThemeGlyph | IconThemeImage;
-/** 图标主题映射表——fileExtensions/fileNames/folderNames → 双形态条目 */
+/** Icon theme mapping table — fileExtensions/fileNames/folderNames → dual-form entries */
 export interface IconThemeMappings {
     files?: Record<string, IconThemeMapping>;
     extensions?: Record<string, IconThemeMapping>;
     folders?: Record<string, IconThemeMapping>;
-    /** 文件夹打开态——可选，未指定则复用 folders */
+    /** Folder open state — optional; reuses folders when unspecified */
     foldersExpanded?: Record<string, IconThemeMapping>;
-    /* ── 默认图标（对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
-    /** 默认文件图标——未命中 files/extensions 时使用（缺省 = 壳 codicon 保底） */
+    /* ── Default icons ( aligns with VS Code iconTheme top-level default keys — use the theme default instead of the codicon fallback when the mapping table misses) ── */
+    /** Default file icon — used when files/extensions miss (default = the shell's codicon fallback) */
     file?: IconThemeMapping;
-    /** 默认文件夹图标——未命中 folders 时使用（缺省 = 壳 codicon 保底） */
+    /** Default folder icon — used when folders miss (default = the shell's codicon fallback) */
     folder?: IconThemeMapping;
-    /** 默认文件夹展开图标——未命中 foldersExpanded 时使用（缺省 = 壳 codicon 保底） */
+    /** Default expanded folder icon — used when foldersExpanded misses (default = the shell's codicon fallback) */
     folderExpanded?: IconThemeMapping;
-    /** 根文件夹图标（缺省 = 壳 codicon 保底） */
+    /** Root folder icon (default = the shell's codicon fallback) */
     rootFolder?: IconThemeMapping;
-    /** 根文件夹展开图标（缺省 = 壳 codicon 保底） */
+    /** Root folder expanded icon (default = the shell's codicon fallback) */
     rootFolderExpanded?: IconThemeMapping;
 }
-/** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
+/** Plugin state change—the plugin-state:changed payload (cross-WebView state sync primitive) */
 export interface PluginStateChangedPayload {
     pluginId: string;
     key: string;
@@ -3175,7 +3196,7 @@ export interface PluginStateChangedPayload {
 
 declare global {
   interface Window {
-    /** 插件 API——对标 VS Code vscode 命名空间（由 preload-pool.ts / preload-shell.ts 注入） */
+    /** Plugin API—modeled after the VS Code vscode namespace (injected by preload-pool.ts / preload-shell.ts) */
     linkdesk: LinkDeskAPI;
   }
 }

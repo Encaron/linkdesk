@@ -1,15 +1,15 @@
 /**
- * Phase 4 核心类型定义。
- * 插件元数据、标签页扩展字段、视图注册表条目。
+ * Phase 4 core type definitions.
+ * Plugin metadata, tab extension fields, view registry entries.
  *
- * 设计依据：[[phase4-design-decisions]] + public/schemas/plugin.schema.json
+ * Design basis: [[phase4-design-decisions]] + public/schemas/plugin.schema.json
  */
 
-/* ── 插件类型枚举 ── */
+/* ── Plugin type enum ── */
 
 export type PluginType = "view" | "card" | "theme" | "language" | "protocol" | "resource" | "datasource";
 
-/** contributes.themes 条目——对标 VS Code theme extension point */
+/** contributes.themes entry — Modeled after VS Code theme extension point */
 export interface ThemeContribution {
   id: string;
   label: string;
@@ -17,51 +17,51 @@ export interface ThemeContribution {
   path: string;
 }
 
-/** contributes.iconThemes 条目——对标 VS Code productIconThemes extension point */
+/** contributes.iconThemes entry — Modeled after VS Code productIconThemes extension point */
 export interface IconThemeContribution {
   id: string;
   label: string;
   path: string;
 }
 
-/** 图标映射条目——字体 glyph 形态（单色/带色字体，seti 类每图标一色；codicon 即保底单色） */
+/** Icon mapping entry — font glyph form (monochrome/multi-color fonts; seti-style fonts carry one color per icon; codicon is the guaranteed monochrome fallback) */
 export interface IconThemeGlyph {
-  /** CSS 类名（codicon 保底 / 自定义图标字体资产） */
+  /** CSS class name (codicon fallback / custom icon font asset) */
   class: string;
-  /** 可选每图标颜色（seti 类彩色字体） */
+  /** Optional per-icon color (seti-style color fonts) */
   color?: string;
 }
 
-/** 图标映射条目——图像资产形态（任意多色/拟物化/贴图） */
+/** Icon mapping entry — image asset form (any multi-color/skeuomorphic/textured art) */
 export interface IconThemeImage {
-  /** 图像资产相对路径——壳加载时解析为 linkdesk:// 绝对 URL（getPluginAssetPath），消费方零解析负担 */
+  /** Relative path of the image asset — resolved by the shell at load time to a linkdesk:// absolute URL (getPluginAssetPath); consumers carry zero resolution burden */
   imagePath: string;
 }
 
-/** 图标映射条目——双形态（E5.8#133 ④ 拍板：字体 glyph 或图像资产，同一主题可混用，壳零审查） */
+/** Icon mapping entry — dual form (E5.8#133 ④ decision: font glyph or image asset; a single theme may mix both; the shell performs zero review) */
 export type IconThemeMapping = IconThemeGlyph | IconThemeImage;
 
-/** 图标主题映射表——fileExtensions/fileNames/folderNames → 双形态条目 */
+/** Icon theme mapping table — fileExtensions/fileNames/folderNames → dual-form entries */
 export interface IconThemeMappings {
   files?: Record<string, IconThemeMapping>;
   extensions?: Record<string, IconThemeMapping>;
   folders?: Record<string, IconThemeMapping>;
-  /** 文件夹打开态——可选，未指定则复用 folders */
+  /** Folder open state — optional; reuses folders when unspecified */
   foldersExpanded?: Record<string, IconThemeMapping>;
-  /* ── 默认图标（E5.8#133.6：对齐 VS Code iconTheme 顶层默认键——未命中匹配表时用主题默认而非 codicon 保底） ── */
-  /** 默认文件图标——未命中 files/extensions 时使用（缺省 = 壳 codicon 保底） */
+  /* ── Default icons (E5.8#133.6: aligns with VS Code iconTheme top-level default keys — use the theme default instead of the codicon fallback when the mapping table misses) ── */
+  /** Default file icon — used when files/extensions miss (default = the shell's codicon fallback) */
   file?: IconThemeMapping;
-  /** 默认文件夹图标——未命中 folders 时使用（缺省 = 壳 codicon 保底） */
+  /** Default folder icon — used when folders miss (default = the shell's codicon fallback) */
   folder?: IconThemeMapping;
-  /** 默认文件夹展开图标——未命中 foldersExpanded 时使用（缺省 = 壳 codicon 保底） */
+  /** Default expanded folder icon — used when foldersExpanded misses (default = the shell's codicon fallback) */
   folderExpanded?: IconThemeMapping;
-  /** 根文件夹图标（缺省 = 壳 codicon 保底） */
+  /** Root folder icon (default = the shell's codicon fallback) */
   rootFolder?: IconThemeMapping;
-  /** 根文件夹展开图标（缺省 = 壳 codicon 保底） */
+  /** Root folder expanded icon (default = the shell's codicon fallback) */
   rootFolderExpanded?: IconThemeMapping;
 }
 
-/** contributes.icons 条目——对标 VS Code icon extension point。插件贡献共享图标供其他插件引用。 */
+/** contributes.icons entry — Modeled after VS Code icon extension point. Plugins contribute shared icons for other plugins to reference. */
 export interface IconContribution {
   description: string;
   default: {
@@ -70,19 +70,19 @@ export interface IconContribution {
   };
 }
 
-/** contributes.languages 条目——对标 VS Code language extension point */
+/** contributes.languages entry — Modeled after VS Code language extension point */
 export interface LanguageContribution {
   id: string;
   label: string;
   path: string;
 }
 
-/** contributes.langDefs 条目——编程语言定义（对标 VS Code contributes.languages） */
+/** contributes.langDefs entry — programming language definition (Modeled after VS Code contributes.languages) */
 export interface LangDefContribution {
   id: string;
   extensions: string[];
   aliases?: string[];
-  /** 🔒 内部——registerLangDef 运行时注入。插件 author 不应在 plugin.json 中声明此字段。 */
+  /** 🔒 Internal — injected at runtime by registerLangDef. Plugin authors should not declare this field in plugin.json. */
   _pluginId?: string;
   monarch?: {
     tokenizer: Record<string, unknown>;
@@ -93,23 +93,23 @@ export interface LangDefContribution {
   };
 }
 
-/* ── 标签页行为声明 ── */
+/* ── Tab behavior declaration ── */
 
 export interface TabBehavior {
-  /** 场上无标签页时自动创建此标签页，且不可关闭。只有欢迎页声明。 */
+  /** Auto-create this tab when no tabs are on stage, and it cannot be closed. Only the welcome page declares it. */
   isFallback?: boolean;
-  /** 全局只允许一个实例，重复创建 → 聚焦已有。如设置页。 */
+  /** Globally only one instance allowed; creating it again → focus the existing one. E.g. the settings page. */
   singleton?: boolean;
-  /** 关闭前弹确认框，值为提示文本。如终端。 */
+  /** Show a confirm dialog before close; the value is the prompt text. E.g. the terminal. */
   confirmOnClose?: string;
-  /** 关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后，closeTab 之前）。如终端声明 "close_port"。 */
+  /** The Tauri invoke command called before close (after the confirmOnClose confirmation, before closeTab). E.g. the terminal declares "close_port". */
   invokeBeforeClose?: string;
-  /** CreateTabOptions 中用于判断标签页身份的唯一字段。null=允许多实例不去重（默认）。
-   *  如 workspace 声明 "workspaceName"——同名工作台只允许一个标签页。 */
+  /** The unique field in CreateTabOptions used to determine tab identity. null = allow multiple instances without dedup (default).
+   *  E.g. workspace declares "workspaceName" — only one tab per workspace name. */
   identityField?: string;
 }
 
-/* ── 状态栏贡献条目 ── */
+/* ── Status bar contribution entry ── */
 
 export interface StatusBarItem {
   id: string;
@@ -117,39 +117,39 @@ export interface StatusBarItem {
   label: string;
   align?: "left" | "right";
   onClick?: string;
-  /** 声明 true → 壳自动注册配置项（<pluginId>.statusBar.<id>）+ 注入 visible prop。
-   *  插件作者只写一行 JSON，用户可在 Settings Editor 开关。 */
+  /** Declare true → the shell auto-registers a config item (<pluginId>.statusBar.<id>) + injects the visible prop.
+   *  The plugin author writes one line of JSON and the user can toggle it in the Settings Editor. */
   configurable?: boolean;
 }
 
-/* ── 插件元数据（plugin.json 的 TS 类型） ── */
+/* ── Plugin metadata (TS type of plugin.json) ── */
 
 export interface PluginManifest {
   $schema?: string;
   /**
-   * 插件身份——**发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录
-   * `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、
-   * 卸载墓碑键、更新对账全部以它为准。
+   * Plugin identity — **immutable forever after publication** (Modeled after VS Code's `publisher.name`). The install directory
+   * `{userData}/plugins/<pluginId>/`, the distribution artifact name `<pluginId>.linkdesk-plugin`, the marketplace catalog dedup key,
+   * the uninstall tombstone key, and update reconciliation all key off it.
    *
-   * L7（E6#98g）起**要求显式声明**：不声明时退回「项目目录名」兜底（`derivePluginId`），而仓库名
-   * 与本地目录名是自由的——目录名一改身份就跟着改，且五条后果（安装目录并存两份 / 墓碑对不上 /
-   * 市场出现两条 / 更新链静默断 / 插件数据看似丢失）没有一条会报错。兜底路径保留仅为向后兼容
-   * 仓外的存量第三方插件。
-   * 形状约束 `^[A-Za-z0-9][A-Za-z0-9._-]*$`（`SAFE_PLUGIN_ID`，防路径穿越直通文件系统）。
+   * From L7 (E6#98g) onward **explicit declaration is required**: when undeclared it falls back to the "project directory name" (`derivePluginId`), and since
+   * the repo name and the local directory name are free-form, changing the directory name changes the identity — with five consequences (two coexisting copies in the install area / tombstones not matching /
+   * two marketplace entries / the update chain silently broken / plugin data seemingly lost) and not one of them reports an error. The fallback path is kept only for backward compatibility
+   * with existing third-party plugins outside the repo.
+   * Shape constraint `^[A-Za-z0-9][A-Za-z0-9._-]*$` (`SAFE_PLUGIN_ID`, prevents path traversal straight into the filesystem).
    */
   pluginId?: string;
-  /** @deprecated 使用 contributes + tabBehavior 等声明字段代替——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
+  /** @deprecated Use declarative fields such as contributes + tabBehavior instead — contribution points are detected from the manifest's actual declaration fields (Modeled after VS Code contributes) */
   type?: PluginType;
   core?: boolean;
-  /** 插件角色——只管加载策略。view=有 UI 组件，data=纯数据。不填自动推导 */
+  /** Plugin role — governs loading strategy only. view = has a UI component, data = pure data. Auto-derived when omitted */
   pluginRole?: "view" | "data";
   name: string;
   version: string;
   icon?: string;
   iconSource?: "codicon" | "svg" | "url" | "lucide";
-  /** 市场展示图（cover art，14 档案双图标模型 E6#67）——svg 资产相对路径，可画得讲究复杂
-   *  （与 icon 的「界面单色小图标」语义分开：壳图标栏/标签栏只读 icon）。缺省 → 市场回退用 icon。
-   *  惯例：值 = 包内资源相对路径（如 "resources/cover.svg"）、iconSource 省略 → linkdesk:// 路径推断。 */
+  /** Marketplace display art (cover art, archive 14's dual-icon model E6#67) — relative path of an svg asset, may be drawn elaborately and complex
+   *  (semantically separate from icon's "monochrome small UI icon": the shell's icon bar/tab bar read only icon). Omitted → the marketplace falls back to icon.
+   *  Convention: value = a relative path into package resources (e.g. "resources/cover.svg"); iconSource omitted → inferred as a linkdesk:// path. */
   marketIcon?: string;
   marketIconSource?: "codicon" | "svg" | "url" | "lucide";
   description?: string;
@@ -157,127 +157,127 @@ export interface PluginManifest {
   entry?: string;
   sidebar?: string;
   tabBehavior?: TabBehavior;
-  /** 系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页，marketplace=插件市场。
-   *  同一 role 多插件合法并存（一对多，全收进槽位候选）；默认 = 首注册稳定序
-   *  （E6#18b：core:true 无行为特权，不抢默认），用户切换的活动套持久化保持。
-   *  E5.7#65：开放 string——第三方可声明新角色名，壳零改动（FactorySlots 按字符串查表）。 */
+  /** System slot role — declares which system-level function this plugin fills. settings = the settings page, marketplace = the plugin marketplace.
+   *  Multiple plugins with the same role legitimately coexist (one-to-many, all collected into the slot candidates); default = the stable order of first registration
+   *  (E6#18b: core:true carries no behavioral privilege and does not grab the default); the user's switched active suite persists.
+   *  E5.7#65: open string — third parties may declare new role names with zero shell changes (FactorySlots looks up by string). */
   factoryRole?: string;
   statusBar?: StatusBarItem[];
-  /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
+  /** @deprecated E5#12 — migrated to contributes.themes. Kept only for normalizeManifest backward compatibility. */
   file?: string;
-  /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
+  /** @deprecated E5#12 — migrated to contributes.themes. Kept only for normalizeManifest backward compatibility. */
   themes?: { id: string; name: string; file: string }[];
-  /** @deprecated E5#12——已迁移到 contributes.languages。仅 normalizeManifest 向后兼容用。 */
+  /** @deprecated E5#12 — migrated to contributes.languages. Kept only for normalizeManifest backward compatibility. */
   languages?: { code: string; name: string; file: string }[];
   mode?: "text" | "binary";
   resources?: string[];
   recommends?: { plugin: string; reason: string }[];
   suggests?: { plugin: string; reason: string }[];
-  /** 插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，loader 先加载依赖再加载本插件。
-   *  纯声明：无版本约束（版本语义属 E6 市场范畴，激活顺序不承载）；缺依赖 → loader 状态机挂 PENDING。
-   *  与 ConfigurationRegistry 的配置项级 dependsOn（同一 manifest 内某配置项依赖另一配置项）不同域。 */
+  /** Plugin-level activation-order dependencies (E5.8#13) — declared by pluginId; the loader loads dependencies before this plugin.
+   *  Pure declaration: no version constraints (version semantics belong to the E6 marketplace domain; activation order does not carry them); missing dependency → the loader state machine parks it PENDING.
+   *  A different domain from ConfigurationRegistry's config-item-level dependsOn (one config item within the same manifest depending on another). */
   requires?: string[];
   screenshots?: string[];
   minAppVersion?: string;
-  /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
-   *  零插件使用；loader 兼容读取直到 #14 落地迁移。 */
+  /** @deprecated E5.8#14 — merged into requires (plugin-level activation dependencies are uniformly declared by requires).
+   *  Zero plugins use it; the loader reads it for compatibility until the #14 migration lands. */
   extensionDependencies?: string[];
   docs?: string;
   cardDocMap?: Record<string, string>;
-  /** @deprecated E5#109——使用 contributes.i18n 代替。每插件 `i18n/{lang}.json`，key=中文原文。见 [[i18n-round2-leftovers]] */
+  /** @deprecated E5#109 — use contributes.i18n instead. Per-plugin `i18n/{lang}.json`, key = original Chinese text. See [[i18n-round2-leftovers]] */
   i18n?: Record<string, string>;
   cssVars?: Record<string, { dark: string; light: string }>;
   permissions?: ("serial" | "filesystem" | "network")[];
 
   /**
-   * Phase 5g：视图元数据——声明视图和壳的交互方式。
-   * 这些字段替代 Phase 3/4 的硬编码特殊判断（isSidebarOnlyView / BOTTOM_ICONS 等）。
+   * Phase 5g: view metadata — declares how the view interacts with the shell.
+   * These fields replace the hardcoded special cases of Phase 3/4 (isSidebarOnlyView / BOTTOM_ICONS etc.).
    */
 
-  /** 插件 UI 出现位置——声明式。替代 iconLocation + viewRole + keepSidebarOnFocus。
-   *  对标 VS Code：viewsContainers + views 的组合推导出 Activity Bar / Sidebar / Panel */
+  /** Where the plugin UI appears — declarative. Replaces iconLocation + viewRole + keepSidebarOnFocus.
+   *  Modeled after VS Code: viewsContainers + views combine to derive Activity Bar / Sidebar / Panel */
   appearsIn?: {
     iconBar?: "top" | "bottom";
     sidePanel?: boolean;
     tabBar?: boolean;
-    /** W2 准入（2026-10-02 拍板：白名单制，缺省 false）——声明 true 才进欢迎页「开始」卡与 [+] 创建菜单。
-     *  ⚠️ 只管这两张菜单的**展示**：未声明 ⇏ 不能打开（命令/最近/会话恢复/悬浮面板 open-in 照常可开，
-     *  那些消费方问的是**能力**——getTabOpenableViews）。值域与 plugin.schema.json 的 appearsIn.standaloneOpenable 逐字一致。 */
+    /** W2 admission (decided 2026-10-02: allowlist-based, default false) — declared true to enter the welcome page's "Start" card and the [+] create menu.
+     *  ⚠️ Governs only the **display** in those two menus: not declaring ⇏ cannot open (command/recents/session restore/floating panel open-in still open it;
+     *  those consumers ask about **capability** — getTabOpenableViews). The value domain matches plugin.schema.json's appearsIn.standaloneOpenable verbatim. */
     standaloneOpenable?: boolean;
-    /** 自绘（代码）状态栏组件文件路径（相对插件根，.tsx）——存在 + 文件二合一声明（对标视图 render）。
-     *  有值 = 插件自绘状态栏组件取代其静态 statusBar 贡献项；loader 注册时 resolveRuntimePluginRoot
-     *  归一 → ViewPluginEntry.statusBarRenderPath（dev /@fs 源码 / prod linkdesk:// dist，SDK 打包后
-     *  此字段改写为 statusBar.bundle.js 编译表面），壳发 component marker → 池直动态 import（E6#62d）。
-     *  缺省 = 无自绘组件（静态贡献项照常）。 */
+    /** Custom-drawn (code) status bar component file path (relative to the plugin root, .tsx) — a combined existence + file declaration (Modeled after the view's render).
+     *  A value = the plugin's custom status bar component replaces its static statusBar contribution; at registration the loader's resolveRuntimePluginRoot
+     *  normalizes it → ViewPluginEntry.statusBarRenderPath (dev /@fs source / prod linkdesk:// dist; after SDK packaging
+     *  this field is rewritten to the statusBar.bundle.js compiled surface), and the shell emits a component marker → the pool dynamic-imports it directly (E6#62d).
+     *  Omitted = no custom component (static contribution items proceed as usual). */
     statusBar?: string;
   };
-  /** @deprecated E5#14——用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
+  /** @deprecated E5#14 — replaced by appearsIn.iconBar. Kept only as a backward-compatibility fallback in viewRegistry.ts. */
   iconLocation?: "top" | "bottom";
-  /** @deprecated E5#14——用 appearsIn.tabBar / appearsIn.sidePanel 替代。 */
+  /** @deprecated E5#14 — replaced by appearsIn.tabBar / appearsIn.sidePanel. */
   viewRole?: "sidebarPrimary" | "tabOnly";
-  /** @deprecated E2c #19d 后已无 shellRendered 概念——壳级视图直接写 App.tsx，不走 plugin.json 声明。保留仅用于向后兼容。 */
+  /** @deprecated After E2c #19d the shellRendered concept no longer exists — shell-level views are written directly into App.tsx and not declared via plugin.json. Kept only for backward compatibility. */
   shellRendered?: boolean;
-  /** @deprecated E5#14——appearsIn 归一化后不再需要。 */
+  /** @deprecated E5#14 — no longer needed after appearsIn normalization. */
   keepSidebarOnFocus?: boolean;
 
   /**
-   * Phase 5：对标 VS Code package.json contributes。
-   * 使用 Record<string, unknown> 兼容未知 key——parseContributions 按 key 逐项检测。
-   * 已知 key 的类型见下方 ContributesViewsContainers / ContributesViews。
+   * Phase 5: Modeled after VS Code package.json contributes.
+   * Uses Record<string, unknown> to tolerate unknown keys — parseContributions detects each key individually.
+   * Types for known keys are in ContributesViewsContainers / ContributesViews below.
    */
   contributes?: Record<string, unknown>;
 }
 
-/* ── E5.8#36.5：视图动作区声明——contributes.views[].titleActions（随视图走，面板/侧栏两处消费） ── */
+/* ── E5.8#36.5: view action area declaration — contributes.views[].titleActions (travels with the view; consumed in both the panel and the sidebar) ── */
 
-/** 动作区下拉条目——label 显示文本（i18n key），command 执行，args 作为单个位置参数透传 */
+/** Action-area dropdown entry — label is the display text (i18n key), command is executed, args passes through as a single positional argument */
 export interface TitleActionItem {
-  /** 显示文本——i18n key（中文原文；池 t() 解析——显示文本铁律） */
+  /** Display text — i18n key (original Chinese text; resolved by the pool's t() — display-text iron rule) */
   label: string;
-  /** 点击执行的命令 ID */
+  /** Command id executed on click */
   command: string;
-  /** 命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化，无则省略） */
+  /** Command argument — passed through as a single positional argument of executeCommand(command, args) (JSON-serializable; omit if none) */
   args?: unknown;
 }
 
-/** 动作区 widget——三形态：icon 按钮 / 下拉菜单 / 主按钮+下拉复合（VS Code 终端 [+] + [▾] 同款）。
- *  widget 是通用件不是给终端造的——谁声明谁用（通用 API 壳先行建设不等消费方，插件独立铁律）。 */
+/** Action-area widget — three forms: icon button / dropdown menu / split primary button + dropdown (same as the VS Code terminal [+] + [▾]).
+ *  The widget is a general-purpose piece, not built for the terminal — whoever declares it uses it (general APIs are built by the shell first, never waiting for a consumer — plugin-independence iron rule). */
 export type TitleActionWidget =
-  /** 单图标按钮——点击执行 command */
+  /** Single icon button — click runs the command */
   | {
       type: "icon";
       id: string;
       command: string;
-      /** codicon 类名（如 "codicon-add"）——池渲染 `<span className={`codicon ${icon}`} />` */
+      /** codicon class name (e.g. "codicon-add") — the pool renders `<span className={`codicon ${icon}`} />` */
       icon: string;
-      /** tooltip / aria-label——i18n key */
+      /** tooltip / aria-label — i18n key */
       title: string;
       args?: unknown;
     }
-  /** 纯下拉——chevron 按钮展开 items 列表 */
+  /** Pure dropdown — the chevron button expands the items list */
   | {
       type: "dropdown";
       id: string;
       items: TitleActionItem[];
-      /** chevron tooltip——i18n key */
+      /** chevron tooltip — i18n key */
       title?: string;
     }
-  /** 主按钮+下拉复合——主按钮执行 command（默认动作），右侧 chevron 展开 items 备选 */
+  /** Split primary button + dropdown — the primary button runs the command (default action); the chevron on the right expands the items alternatives */
   | {
       type: "split";
       id: string;
       command: string;
-      /** 主按钮图标——无 icon 时用 title（t() 后）作文本按钮 */
+      /** Primary button icon — when there is no icon, the title (after t()) is used as a text button */
       icon?: string;
-      /** 主按钮 tooltip / aria-label / 无 icon 时的文本——i18n key */
+      /** Primary button tooltip / aria-label / text when there is no icon — i18n key */
       title: string;
       items: TitleActionItem[];
       args?: unknown;
     };
 
-/* ── E3.6：contributes 已知 key 类型——用于 as 类型断言，消费端安全访问 ── */
+/* ── E3.6: contributes known-key types — for `as` type assertions, safe consumer-side access ── */
 
-/** contributes.viewsContainers 的形状 */
+/** Shape of contributes.viewsContainers */
 export interface ContributesViewsContainers {
   [containerId: string]: {
     title: string;
@@ -289,7 +289,7 @@ export interface ContributesViewsContainers {
   };
 }
 
-/** contributes.views 的形状 */
+/** Shape of contributes.views */
 export interface ContributesViews {
   [containerId: string]: Array<{
     id: string;
@@ -306,73 +306,73 @@ export interface ContributesViews {
     titleDescription?: string;
     showActions?: "always" | "whenExpanded" | "default";
     titleTooltip?: string;
-    /** 面板区 dock 最小高度（E5.7#63.7：ViewContainerService 消费）——E5.8#1c 补录 schema */
+    /** Panel-area dock minimum height (E5.7#63.7: consumed by ViewContainerService) — schema supplemented in E5.8#1c */
     minHeight?: number;
-    /** 视图动作区声明（E5.8#36.5）——面板标签栏/侧栏 header 右侧 widget 列表。随视图走随视图迁移 */
+    /** View action area declaration (E5.8#36.5) — the widget list on the right of the panel tab bar / sidebar header. Travels with the view and migrates with it */
     titleActions?: TitleActionWidget[];
   }>;
 }
 
-/** 悬浮面板「首开形态」——壳拥有的**形态词汇表**（声明面与配置值同用一套，值即形态，无映射层）。
- *  'floatingPanel' = 壳内悬浮面板；'tab' = 标签页。
- *  分工：插件只**声明**想要哪种（defaultForm/formKey），壳**决定并执行**（openTab / panel:reveal-floating）。 */
+/** Floating panel "first-open form" — the shell-owned **form vocabulary** (the declaring side and config values share one set; the value is the form, no mapping layer).
+ *  'floatingPanel' = the in-shell floating panel; 'tab' = a tab.
+ *  Division of labor: the plugin only **declares** which one it wants (defaultForm/formKey); the shell **decides and executes** (openTab / panel:reveal-floating). */
 export type FloatingPanelOpenForm = "floatingPanel" | "tab";
 
-/** contributes.floatingPanel 的形状——声明某视图可在壳内悬浮面板显示（E5.8#39.5 类型 B）。
- *  viewId 必须引用 contributes.views 中已注册的视图——声明寻址解析出 pluginId/renderPath/title。
- *  首批声明者 = settings（#38 Ctrl+, 弹面板）；第二声明者验证载体 = floating-panel-demo 测试插件。 */
+/** Shape of contributes.floatingPanel — declares that a view can be shown in the in-shell floating panel (E5.8#39.5 type B).
+ *  viewId must reference a view already registered in contributes.views — the declarative addressing resolves pluginId/renderPath/title.
+ *  First declarer = settings (#38 Ctrl+, opens the panel); the second declarer validating the carrier = the floating-panel-demo test plugin. */
 export interface ContributesFloatingPanel {
-  /** 视图 ID——contributes.views 已注册视图（声明 floatingPanel 视图才有「在悬浮面板中打开」右键 I8-3） */
+  /** View ID — a view registered in contributes.views (only views declaring floatingPanel get the "open in floating panel" context item I8-3) */
   viewId: string;
-  /** **首次打开**用哪种形态（作者定死，不给用户入口）——不声明 = 原行为（有面板即面板）。
-   *  ⛔ 与 formKey 互斥（plugin.schema.json 机械拒）：一个形态两个来源 ⇒ 键的 default 与它谁说了算说不清。 */
+  /** Which form the **first open** uses (fixed by the author, no user entry point) — undeclared = original behavior (panel if a panel exists).
+   *  ⛔ Mutually exclusive with formKey (mechanically rejected by plugin.schema.json): one form with two sources ⇒ it becomes undefined whether the key's default or this field wins. */
   defaultForm?: FloatingPanelOpenForm;
-  /** **首次打开**形态的用户配置键——声明则设置页出现该项，用户自己选；键的 `default` 即作者默认形态
-   *  （故与 defaultForm 互斥）。键 = 同插件 contributes.configuration 里一个 type:"string" 的键，
-   *  取值 = 上面的形态词汇表；未声明该键 / 取值不在词汇表 ⇒ 降级 defaultForm → 无（不崩，出声）。 */
+  /** User config key for the **first-open** form — declaring it adds the item to the settings page and the user picks it; the key's `default` is the author's default form
+   *  (hence mutually exclusive with defaultForm). Key = a type:"string" key in the same plugin's contributes.configuration;
+   *  value = the form vocabulary above; key undeclared / value outside the vocabulary ⇒ degrade to defaultForm → none (no crash, makes noise). */
   formKey?: string;
 }
 
-/* ── 视图插件注册条目 ── */
+/* ── View plugin registry entry ── */
 
 export interface ViewPluginEntry {
   pluginId: string;
   manifest: PluginManifest;
-  /** E6#62d：插件自绘状态栏组件（manifest.appearsIn.statusBar 声明）的归一化 URL——loader 注册时
-   *  resolveRuntimePluginRoot 拼：dev /@fs 源码 .tsx、prod linkdesk:// dist（SDK 打包后 manifest
-   *  appearsIn.statusBar 改写为 statusBar.bundle.js → URL 直指编译表面）。壳 statusbar.ts 读此发
-   *  component marker（componentRenderPath）→ 池直动态 import。未声明/根解析失败 = 无。 */
+  /** E6#62d: normalized URL of the plugin's custom status bar component (declared at manifest.appearsIn.statusBar) — assembled by resolveRuntimePluginRoot
+   *  at loader registration: dev /@fs source .tsx, prod linkdesk:// dist (after SDK packaging the manifest's appearsIn.statusBar is rewritten
+   *  to statusBar.bundle.js → the URL points straight at the compiled surface). The shell's statusbar.ts reads this and emits
+   *  a component marker (componentRenderPath) → the pool dynamic-imports it directly. Undeclared / root resolution failure = none. */
   statusBarRenderPath?: string;
 }
 
-/* ── Tab 类型扩展（Phase 4） ── */
+/* ── Tab type extensions (Phase 4) ── */
 
 /**
- * createTab 的可选参数。
- * VS Code 对标：打开编辑器时的 options（viewColumn / preview / label 等）。
- * 注意：这不是 Partial<Tab>——只暴露有意外露的字段，防止调用方覆盖内部状态。
+ * Optional parameters of createTab.
+ * VS Code counterpart: the options when opening an editor (viewColumn / preview / label etc.).
+ * Note: this is not Partial<Tab> — only fields intentionally exposed are listed, preventing callers from overwriting internal state.
  */
 export interface CreateTabOptions {
-  /** 插件 ID（view 类型时指定哪个插件渲染） */
+  /** Plugin ID (which plugin renders, for view type) */
   pluginId?: string;
-  /** plugin-detail 标签页的目标插件 ID */
+  /** Target plugin ID of a plugin-detail tab */
   detailPluginId?: string;
-  /** 工作台名称（workspace 类型时使用） */
+  /** Workspace name (for workspace type) */
   workspaceName?: string;
-  /** 文件路径（editor 类型时使用） */
+  /** File path (for editor type) */
   filePath?: string;
-  /** 自定义标签名 */
+  /** Custom tab label */
   label?: string;
-  /** 是否固定（false=预览模式，对标 VS Code preview editor） */
+  /** Whether pinned (false = preview mode, Modeled after the VS Code preview editor) */
   pinned?: boolean;
-  /** 数据源 ID */
+  /** Data source ID */
   sourceId?: string;
-  /** 目标面板组 ID（分屏时指定落在哪个面板） */
+  /** Target panel group ID (which panel to land in when splitting) */
   targetGroupId?: string;
 }
 
 /**
- * Tab.type 保留为逻辑角色（terminal / workspace / settings / welcome）。
- * 新增 pluginId 指定哪个插件实现该角色——渲染走 pluginId，规则走 type。
- * 旧布局恢复时的 type→pluginId 映射见 tabIdentity.ts 的 resolveLegacyPluginId。
+ * Tab.type is kept as a logical role (terminal / workspace / settings / welcome).
+ * The new pluginId specifies which plugin implements the role — rendering goes by pluginId, rules go by type.
+ * For the type→pluginId mapping during legacy layout restore, see tabIdentity.ts's resolveLegacyPluginId.
  */

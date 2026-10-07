@@ -15,60 +15,60 @@ npm install -D @linkdesk/plugin-sdk
 
 <!-- BEGIN API-CHEATSHEET -->
 
-> 自动生成，**勿手改**——由 `scripts/generate-api-cheatsheet.mjs` 从 `@linkdesk/contracts` 的 `linkdesk.d.ts` 现读产出，
-> `npm run check` 机械盯漂。完整签名与逐方法说明见 `linkdesk.d.ts` 本体（IDE 里可直接跳转）。
+> Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
+> `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**16 个域接口 → 47 个命名空间 / 260 个方法**，全部经 `window.linkdesk.<命名空间>.<方法>` 调用。 (plus 1 deprecated alias/es `config`, not counted twice)
+**16 domain interfaces → 47 namespaces / 260 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
-| `commands` | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | 命令——对标 VS Code vscode.commands |
-| `configuration` | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | 配置—新名——对标 VS Code vscode.workspace.getConfiguration |
-| `config` | 15 | （废弃别名 → `configuration`） | @deprecated 向后兼容别名，新代码用 configuration |
+| `commands` | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | Commands — modeled after VS Code vscode.commands |
+| `configuration` | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | Configuration — the new name — modeled after VS Code vscode… |
+| `config` | 15 | (deprecated alias → `configuration`) | @deprecated  — backward-compatibility alias |
 | `theme` | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `language` | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
-| `appearance` | 2 | `importImage` `revealStorage` | 外观资产——本地选图拷贝入库（受控来源——用户任选路径不能 file:// 直读） |
+| `appearance` | 2 | `importImage` `revealStorage` | appearance assets — locally picked images are copied into m… |
 | `storage` ⚠️ | 2 | `revealCache` `cacheDir` | —— |
 | `tabs` | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `keybindings` | 13 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `clearKeybindingForCommand` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
-| `notifications` | 3 | `show` `list` `subscribe` | 通知——插件弹通知（唯一通知面 = 铃铛宽通知面板，右下窄卡链路已整删），对标 VS Code vscode.wind… |
-| `menu` | 2 | `registerItems` `getItems` | 菜单——插件声明式读写 |
-| `contextKey` | 1 | `set` | ContextKey——插件 SET 状态供壳 when 子句读 |
-| `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | 弹窗——确认/提示/文件选择 |
-| `quickPick` | 1 | `show` | 插件 quickPick 选择器——池内本地桥（零 IPC，QuickPickHost 渲染） |
-| `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick 宿主渲染桥——池 QuickPickHost 消费（壳 preload 无此面） |
-| `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog 哑渲染订阅——池 DialogHost 消费（壳 preload 无此面） |
-| `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | （类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面） |
-| `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | 串口——读/写/监听，对标 VS Code SerialPort API |
-| `clipboard` | 3 | `readText` `writeText` `writeFileList` | 剪贴板——读/写系统剪贴板 |
-| `p2p` | 2 | `send` `on` | p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） |
-| `events` | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | 通用事件订阅 + 发布——插件间数据管道 |
-| `pluginState` | 3 | `get` `set` `onChange` | 插件持久化存储——集中缓存 + 文件持久化 |
-| `workspace` | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | 工作区——池 preload 注入（壳侧经 WorkspaceService 直用） |
-| `filesystem` | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | 文件系统——插件读写（路径校验由主进程执行） |
-| `path` | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等） |
-| `env` | 1 | `get` | 环境信息——对标 VS Code ExtensionContext |
-| `search` | 1 | `searchFiles` | 文件搜索——全文搜索/替换（IPC 到壳/主进程执行） |
-| `encoding` | 4 | `detect` `decode` `encode` `isBinary` | 编码检测/转换（主进程 EncodingService） |
-| `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | 文件装饰——池内本地注册表（零 IPC） |
-| `fileAssociation` | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答） |
-| `langDef` | 1 | `get` | langDef——语言定义注册表（主进程直答） |
-| `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP 桥——自动补全/F12/诊断/重命名 |
-| `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol——协议注册表（主进程直答） |
-| `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer——真 IPC 查询/更新（问壳侧注册表） |
-| `plugins` | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | 插件发现——双端注入：resolvePath 双端同面 |
-| `pluginManager` | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | 插件管理——桥接 IpcBridgeHandler → loader 函数 |
-| `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | 壳↔插件通信中继——壳 preload 独有 |
-| `pool` | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | 池控制——壳 preload：推送布局 + 注册池→壳动作回调 |
-| `window` | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | 窗口控制——TitleBar 按钮映射，双端注入（11 方法同通道，共享模块 electron/window-name… |
-| `shell` | 7 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° `openExternal` | 壳级命令——revealInOS / openInTerminal / startDrag / relaunch，双端… |
-| `hotExit` ⚠️ | 3 | `save` `load` `clear` | 热退出暂存——编辑器未保存内容落盘 |
-| `getFilePath` | 0 | (top-level function)`getFilePath: (file: File) => string;` | OS 拖入文件路径获取——双端注入 |
+| `notifications` | 3 | `show` `list` `subscribe` | Notifications — plugins raise notifications ( the only noti… |
+| `menu` | 2 | `registerItems` `getItems` | Menus — declarative read/write for plugins |
+| `contextKey` | 1 | `set` | ContextKey — plugins SET state for the shell's when clauses… |
+| `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | Dialogs — confirm/alert/file selection |
+| `quickPick` | 1 | `show` | plugin quickPick picker — local bridge inside the pool (zer… |
+| `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick host rendering bridge — consumed by the pool's Qu… |
+| `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's Di… |
+| `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | (type B): floating panel dumb-render subscription — consume… |
+| `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | Serial — read/write/listen, modeled after VS Code SerialPor… |
+| `clipboard` | 3 | `readText` `writeText` `writeFileList` | Clipboard — read/write the system clipboard |
+| `p2p` | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.bro… |
+| `events` | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data p… |
+| `pluginState` | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persis… |
+| `workspace` | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | Workspace — injected by the pool preload (the shell side us… |
+| `filesystem` | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | Filesystem — plugin read/write (path validation is performe… |
+| `path` | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | Path utilities — injected on both shell/pool ends (in-pool … |
+| `env` | 1 | `get` | Environment info — modeled after VS Code ExtensionContext |
+| `search` | 1 | `searchFiles` | file search — full-text search/replace (executed via IPC in… |
+| `encoding` | 4 | `detect` `decode` `encode` `isBinary` | encoding detection/conversion (main-process EncodingService) |
+| `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | file decorations — a local in-pool registry (zero IPC). Sha… |
+| `fileAssociation` | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly … |
+| `langDef` | 1 | `get` | langDef — language definition registry (answered directly b… |
+| `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP bridge — autocompletion/F12/diagnostics/rename |
+| `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main… |
+| `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side … |
+| `plugins` | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | Plugin discovery — injected on both ends: resolvePath exist… |
+| `pluginManager` | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader funct… |
+| `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | Shell↔plugin communication relay — shell preload only |
+| `pool` | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers poo… |
+| `window` | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | Window control — TitleBar button mapping, injected on both … |
+| `shell` | 7 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° `openExternal` | Shell-level commands — revealInOS / openInTerminal / startD… |
+| `hotExit` ⚠️ | 3 | `save` `load` `clear` | Hot exit staging — persists unsaved editor content to disk … |
+| `getFilePath` | 0 | (top-level function)`getFilePath: (file: File) => string;` | Get the paths of files dragged in from the OS — injected on… |
 | `panel` | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
 | `settings` | 3 | `list` `getActive` `setActive` | —— |
 | `factorySlots` | 4 | `listRoles` `list` `getActive` `setActive` | —— |
-| `app` | 1 | `getVersion` | app 命名空间——只读产品身份 |
-| `update` | 1 | `getState` | update 命名空间——只读更新状态（供「关于」类插件读宿主版本/更新态） |
+| `app` | 1 | `getVersion` | The app namespace — read-only product identity. The only ru… |
+| `update` | 1 | `getState` | The update namespace — read-only update state (for "About"-… |
 
 ⚠️ = optional namespace in the contract (injected on one side only): `storage` `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
 ° = member marked `?` in the contract: injected in one side's preload only (almost always shell-side). **Your plugin runs in the pool** — check for existence before calling.
@@ -184,4 +184,4 @@ npm run release:mark
 ```
 
 > 🔴 The shelf read has a **~3 minute replication delay** (`contracts` is visible within seconds, `plugin-sdk` takes minutes) — do **not** re-publish on a 404, npm will reject the duplicate version.
-> Full procedure + all three measured pitfalls → **`docs/06-发布管理/作者轴npm发版.md`** in the LinkDesk repository.
+> Full procedure + all three measured pitfalls → the author-axis npm release dossier in the LinkDesk repository (Chinese docs tree, publishing-management series).

@@ -1,32 +1,32 @@
 /**
- * 🔥 linkdesk API 命名空间——类型安全的插件 API 入口（聚合器门面）
+ * 🔥 linkdesk API namespace — type-safe plugin API entry (aggregator facade)
  *
- * E3j #74：对标 VS Code `vscode` 命名空间。插件通过此模块获得：
- *   - 完整的 TypeScript 类型提示（IDE 自动补全、参数校验）
- *   - 零 IPC 知识——不需要知道 channel 名、action 格式、参数结构
- *   - 所有方法内部走 ipcRenderer.invoke()——自动经过 #72 的 IPC 消息队列
+ * E3j #74: Modeled after the VS Code `vscode` namespace. Plugins get from this module:
+ *   - Full TypeScript type hints (IDE autocompletion, parameter validation)
+ *   - Zero IPC knowledge — no need to know channel names, action formats, or payload shapes
+ *   - All methods go through ipcRenderer.invoke() internally — automatically routed through the #72 IPC message queue
  *
- * E5.7#97：本文件成为 window.linkdesk 的完整契约面（替代 E5#89 的宽松
- * Record<string, any>）——池 preload（插件运行时真相源）+ 壳 preload 双端
- * 注入的全部命名空间在此一处声明。跨堆 wire 载荷类型从 src/core/types/ipc/
- * import（决策点 1）——改动 tsc 三端同时报错。
+ * E5.7#97: this file is the complete contract surface of window.linkdesk (replacing the loose
+ * Record<string, any> of E5#89) — every namespace injected by the pool preload (plugin runtime source of truth)
+ * and the shell preload is declared here. Cross-stack wire payload types are imported from src/core/types/ipc/
+ * (decision point 1) — a change breaks tsc on all three ends at once.
  *
- * 使用方式：
+ * Usage:
  *   import { linkdesk } from "@src/core/api/linkdesk-api";
  *   const themes = await linkdesk.theme.getAvailable();
  *   await linkdesk.commands.executeCommand("myCommand", arg1, arg2);
  *
- * 运行时实现：window.linkdesk（由 preload-pool.ts / preload-shell.ts 通过 contextBridge 注入）。
+ * Runtime implementation: window.linkdesk (injected via contextBridge by preload-pool.ts / preload-shell.ts).
  *
- * E5.8#0d.10-9e：拆 linkdesk-api/ 子模块后，本文件 = 聚合器——15 个命名空间域接口交叉组装
- * LinkDeskAPI + 独立接口 re-export + DialogOpenOptions 保路径 + getLinkDesk/linkdesk 运行时导出。
- * E5.8#41.12：settings 域加入（第 12 个，设置套枚举/切换）；E5.8#41.14：factorySlots 域（第 13 个，
- * 槽位无关通用枚举面）；E6#57.2a：app 域（第 14 个，主软件产品身份只读）；E6#57.8：update 域
- * （第 15 个，主软件更新只读态——写命令不进契约，见 linkdesk-api/update.ts）——头注释与
- * generate-contract.mjs 同源，勿单改。
- * 分层依赖：types（独立接口基座）→ 15 域接口（Commands/Appearance/Tabs/Keybindings/Ui/Data/
- * Workspace/Editor/Plugins/Shell/Panel/Settings/FactorySlots/App/Update）→ 本聚合器交叉组装；域接口间零互依赖，单向无环。
- * 外部消费方 import 路径零变更（"./linkdesk-api" 命中文件，"./linkdesk-api/types" 命中子模块）。
+ * E5.8#0d.10-9e: after splitting out the linkdesk-api/ submodules, this file = the aggregator — 15 namespace domain interfaces cross-composed
+ * into LinkDeskAPI + re-exports of standalone interfaces + DialogOpenOptions keeps its path + getLinkDesk/linkdesk runtime exports.
+ * E5.8#41.12: settings domain added (12th, settings suite enumeration/switching); E5.8#41.14: factorySlots domain (13th,
+ * slot-agnostic generic enumeration surface); E6#57.2a: app domain (14th, read-only main-software product identity); E6#57.8: update domain
+ * (15th, read-only main-software update state — write commands stay out of the contract, see linkdesk-api/update.ts) — the header comment and
+ * generate-contract.mjs share the same source; never change one alone.
+ * Layered dependencies: types (standalone interface base) → 15 domain interfaces (Commands/Appearance/Tabs/Keybindings/Ui/Data/
+ * Workspace/Editor/Plugins/Shell/Panel/Settings/FactorySlots/App/Update) → this aggregator cross-composes them; zero mutual dependencies among domain interfaces, unidirectional and acyclic.
+ * External consumers' import paths are unchanged ("./linkdesk-api" hits this file, "./linkdesk-api/types" hits the submodule).
  */
 
 import type { CommandsAPI } from "./linkdesk-api/commands";
@@ -40,32 +40,32 @@ import type { WorkspaceAPI } from "./linkdesk-api/workspace";
 import type { EditorAPI } from "./linkdesk-api/editor";
 import type { PluginsAPI } from "./linkdesk-api/plugins";
 import type { ShellAPI } from "./linkdesk-api/shell";
-import type { PanelAPI } from "./linkdesk-api/panel"; // E5.8#34.5：底部面板命名空间
-import type { SettingsAPI } from "./linkdesk-api/settings"; // E5.8#41.12：设置套命名空间（枚举/切换）
-import type { FactorySlotsAPI } from "./linkdesk-api/factory-slots"; // E5.8#41.14：系统插槽通用枚举面（槽位无关）
-import type { AppAPI } from "./linkdesk-api/app"; // E6#57.2a：app 域（主软件产品身份——只读 getVersion）
-import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8：update 域（主软件更新只读态——写命令不进契约）
+import type { PanelAPI } from "./linkdesk-api/panel"; // E5.8#34.5: bottom panel namespace
+import type { SettingsAPI } from "./linkdesk-api/settings"; // E5.8#41.12: settings suite namespace (enumeration/switching)
+import type { FactorySlotsAPI } from "./linkdesk-api/factory-slots"; // E5.8#41.14: generic system-slot enumeration surface (slot-agnostic)
+import type { AppAPI } from "./linkdesk-api/app"; // E6#57.2a: app domain (main-software product identity — read-only getVersion)
+import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8: update domain (read-only main-software update state — write commands stay out of the contract)
 
 /**
- * linkdesk API——插件代码的类型安全入口。
- * 对标 VS Code `vscode` 对象的全局命名空间结构。
- * 池 preload 注入的命名空间为插件运行时真相源（required）；
- * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
- * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * E5.8#0d.10-9e：由 15 个命名空间域接口交叉组装（interface→type intersection，
- * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
+ * linkdesk API — the type-safe entry point for plugin code.
+ * Global namespace structure modeled after the VS Code `vscode` object.
+ * The namespaces injected by the pool preload are the plugin runtime source of truth (required);
+ * only bridge (true-shell-only) / hotExit (pool-side-only) are optional with `?` — the other side does not inject them (E5.8#22 review N1 fix:
+ * the remaining bridge surfaces window/pool/shell/getFilePath are injected on both ends and marked required in the contract).
+ * E5.8#0d.10-9e: cross-composed from 15 namespace domain interfaces (interface→type intersection;
+ * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
  */
 export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 
-// ── 独立类型接口 re-export（types.ts 基座）──
+// ── Standalone type interface re-exports (types.ts base) ──
 
 export type {
   LinkDeskCommand,
   LinkDeskTheme,
   LinkDeskLanguage,
   LinkDeskConfigSchema,
-  // 设置控件词表正典（2026-10-03 设置控件案 3.1）：类型随契约发 npm，
-  // 运行时名单/守卫在 @linkdesk/ui（本包纯类型零运行时——⛔ 别往这里加 const）。
+  // Canonical settings-control vocabulary (2026-10-03 settings-control case 3.1): types ship with the contract npm package,
+  // runtime lists/guards live in @linkdesk/ui (this package is pure types with zero runtime — ⛔ never add const here).
   SettingsUiHint,
   SettingsRenderHint,
   PluginListEntry,
@@ -78,15 +78,15 @@ export type {
   MenuItemDescriptor,
   NotificationHandle,
   PluginToastAction,
-  // 「打开方式」命令面类型（壳命令 workbench.action.openWith）——壳与插件双方可达，故住契约
+  // "Open with" command-surface types (shell command workbench.action.openWith) — reachable from both shell and plugins, hence they live in the contract
   OpenWithRequest,
   OpenWithHandler,
 } from "./linkdesk-api/types";
 
-export type { DialogOpenOptions } from "../types/ipc/dialogs"; // E5.7#97：归口 src/core/types/ipc/dialogs.ts——此 re-export 保持既有插件 import 路径
+export type { DialogOpenOptions } from "../types/ipc/dialogs"; // E5.7#97: canonical home is src/core/types/ipc/dialogs.ts — this re-export keeps the existing plugin import path
 
-// E5.8#133.3：图标主题类型契约化——IconThemeMappings 等供插件消费方 import type
-// （file-tree 双形态渲染按 @linkdesk/contracts 拿映射形状；契约生成器自动收集传递引用）。
+// E5.8#133.3: icon theme types made contractual — IconThemeMappings etc. for plugin consumers to import type
+// (file-tree dual-form rendering takes the mapping shape from @linkdesk/contracts; the contract generator collects transitive references automatically).
 export type {
   IconThemeMappings,
   IconThemeMapping,
@@ -94,22 +94,22 @@ export type {
   IconThemeImage,
 } from "./types";
 
-// E5.8#20：PluginStateChangedPayload 补导出——插件经 events.on("plugin-state:changed") 通配订阅
-// （pluginState.onChange 精确 key 匹配捕获不了通配键名），载荷类型属契约面必给消费类型。
+// E5.8#20: PluginStateChangedPayload added to exports — plugins subscribe via the wildcard channel events.on("plugin-state:changed")
+// (pluginState.onChange exact key matching cannot catch wildcard key names); the payload type belongs to the contract surface and must be given to consumers.
 export type { PluginStateChangedPayload } from "../types/ipc/events";
 
-// ── 获取 typed API 实例 ──
+// ── Get a typed API instance ──
 
 /**
- * 返回类型安全的 linkdesk API 对象。
- * 运行时 window.linkdesk 由 preload 注入——此函数只加类型标注。
+ * Returns the type-safe linkdesk API object.
+ * At runtime window.linkdesk is injected by the preload — this function only adds type annotations.
  */
 export function getLinkDesk(): LinkDeskAPI {
   return (window as unknown as { linkdesk: LinkDeskAPI }).linkdesk;
 }
 
 /**
- * 便捷导出：类型安全的 linkdesk API 实例。
+ * Convenience export: a type-safe linkdesk API instance.
  *
  * @example
  *   import { linkdesk } from "@src/core/api/linkdesk-api";

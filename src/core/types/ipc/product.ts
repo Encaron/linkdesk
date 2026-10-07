@@ -1,75 +1,75 @@
 /**
- * 产品身份 wire 契约——`app:getProductInfo` 的返回体（07-数据流通格式.md §四.1）。
+ * Product identity wire contract—the return body of `app:getProductInfo` (data-flow dossier 07 in the Chinese docs tree, §4.1).
  *
- * ## 为什么类型住在这里，而不是 `electron/product.ts` 里
+ * ## Why the types live here and not in `electron/product.ts`
  *
- * 同 `src/core/types/ipc/update.ts` 的既有理由（那个文件头注写着同一句话）：
- * **跨堆协议类型归口本目录，`electron/` 与 `src/` 双端 import 同一份**——字段改名 tsc 双端报错，
- * 不再各写一份。
+ * Same rationale as `src/core/types/ipc/update.ts` (that file's header comment says the same thing):
+ * **cross-stack protocol types are consolidated into this directory, and `electron/` and `src/` both import the same copy**—renaming a field makes tsc fail on both ends,
+ * instead of each side writing its own copy.
  *
- * 🔴 本文件是**从 `electron/product.ts` 搬过来的**（E6#57.13 落地时）：那三个 interface 原本
- * 只声明在主进程，而渲染侧 `window.linkdesk.app.getProductInfo` 是**壳内私有扩展**
- * （不在契约，见 `src/core/api/linkdesk-api/surfaces.ts` 的 `ShellExposed.app` 段）——
- * 壳侧要消费它就得有类型，而「在 `src/` 里再抄一份」等于**同一个形状两份真值**，
- * 改一处漏一处是迟早的事。搬移的另一个理由：`#57.14` 关于标签页要的是同一份数据，
- * 那时不必再搬第二次。
+ * 🔴 This file was **moved over from `electron/product.ts`** (when E6#57.13 landed): those three interfaces were originally
+ * declared only in the main process, while the renderer-side `window.linkdesk.app.getProductInfo` is a **shell-private extension**
+ * (not in the contract; see the `ShellExposed.app` section of `src/core/api/linkdesk-api/surfaces.ts`)—
+ * the shell side needs types to consume it, and "copying one more copy into `src/`" would mean **two sources of truth for the same shape**;
+ * changing one and missing the other was only a matter of time. Another reason for the move: the About tab in `#57.14` needs the same data,
+ * so it would not have to be moved a second time.
  *
- * ⚠️ 值不动：`loadProduct()` / `productInfo()` 仍在 `electron/product.ts`（读 `product.json` +
- * 从 `process.versions` 增强）——本文件**零逻辑，只有形状**。
+ * ⚠️ The values do not move: `loadProduct()` / `productInfo()` stay in `electron/product.ts` (reads `product.json` +
+ * enriches from `process.versions`)—this file has **zero logic, only shape**.
  */
 
-/** `electron/product.json` 的身份字段（02 §2.2：身份唯一真相源，随打包进 asar） */
+/** Identity fields of `electron/product.json` (02 §2.2: the single source of truth for identity, packed into the asar) */
 export interface Product {
   nameLong: string;
   nameShort: string;
-  /** SemVer。⚠️ 运行时恒取 `app.getVersion()`（02 §2.3 版本单一真相源），不是读 product.json 那份 */
+  /** SemVer. ⚠️ At runtime always taken from `app.getVersion()` (02 §2.3 single source of truth for the version), not the copy read from product.json */
   version: string;
-  /** git HEAD 短哈希（发布脚本写）；dev 空 → `'—'` */
+  /** git HEAD short hash (written by the release script); empty in dev → `'—'` */
   commit: string;
-  /** ISO 8601（发布脚本写）；dev 空 → `'—'` */
+  /** ISO 8601 (written by the release script); empty in dev → `'—'` */
   date: string;
   quality: "stable" | "preview";
   /**
-   * 更新源 URL（检查腿打的 `/latest` 端点）。
-   * ⚠️ 也是**发行说明「所有版本」链接的唯一基址**——壳侧 `useReleaseNotes.listPageUrl()`
-   * 从这个值推出 `github.com/O/R/releases` 页面端点，不写死仓库地址（仓库名改过一次：
-   * `serial-v3` → `linkdesk`）。改仓库 = 改 `product.json` 一处。
+   * Update source URL (the `/latest` endpoint hit by the check leg).
+   * ⚠️ Also the **single base URL for the release notes "all versions" link**—the shell-side `useReleaseNotes.listPageUrl()`
+   * derives the `github.com/O/R/releases` page endpoint from this value instead of hardcoding the repo address (the repo was renamed once:
+   * `serial-v3` → `linkdesk`). Changing the repo = changing one place in `product.json`.
    */
   updateUrl: string;
   /**
-   * 作者身份（04「关于 LinkDesk 标签页重设计」2026-09-26 拍板②：身份唯一真相源 = product.json）。
-   * ⚠️ **可选**：旧 shape 的 product.json 没有这个块 ⇒ `undefined` ⇒ 关于页**整块作者卡不画**
-   * （「没有作者信息」与「读不出来」是两件事，后者才画 `—`）。GitHub 账号**不在此块**——
-   * 由 `updateUrl` 的 owner 段推出（不写死，同页脚仓库链接）。
+   * Author identity (04 "About LinkDesk tab redesign" decision ②, 2026-09-26: the single source of truth for identity = product.json).
+   * ⚠️ **Optional**: product.json in the old shape lacks this block ⇒ `undefined` ⇒ the About page **skips the author card entirely**
+   * ("no author info" and "failed to read" are two different things; only the latter draws `—`). The GitHub account is **not in this block**—
+   * it is derived from the owner segment of `updateUrl` (not hardcoded, same as the footer repo link).
    */
   author?: ProductAuthor;
 }
 
-/** 关于页作者卡 / 页脚版权行的身份数据（04 设计 §四.1 ③c④；手写常量，发布脚本不覆写，同 `nameLong`） */
+/** Identity data for the About-page author card / footer copyright line (About-tab design doc 04, §4.1 ③c④; hand-written constants, not overwritten by the release script, same as `nameLong`) */
 export interface ProductAuthor {
-  /** 中文名（值，不翻译） */
+  /** Chinese name (value, not translated) */
   nameZh: string;
-  /** 英文名（值，不翻译） */
+  /** English name (value, not translated) */
   nameEn: string;
-  /** 主邮箱（工作事务；`mailto:` 链接） */
+  /** Primary email (work matters; `mailto:` link) */
   emailPrimary: string;
-  /** 备邮箱（生活事务；`mailto:` 链接） */
+  /** Secondary email (personal matters; `mailto:` link) */
   emailSecondary: string;
-  /** 版权持有者署名口径（「冯毅力（Encaron）」——与 LICENSE / 关于页页脚三处一致） */
+  /** Copyright holder attribution (a Chinese name plus GitHub handle in parentheses, e.g. `…(Encaron)`—consistent across LICENSE, the About page, and the footer) */
   copyrightHolder: string;
 }
 
-/** runtime 增强（`process.versions` + `os`，不落盘） */
+/** Runtime enrichment (`process.versions` + `os`, not persisted) */
 export interface ProductRuntime {
   electron: string;
   chromium: string;
   node: string;
   v8: string;
-  /** `${platform} ${release}`（02 §2.2） */
+  /** `${platform} ${release}` (02 §2.2) */
   os: string;
 }
 
-/** `app:getProductInfo` 全量返回体（关于标签页 8 字段唯一来源，07 §三） */
+/** Full return body of `app:getProductInfo` (the sole source of the About tab's 8 fields, data-flow dossier 07 §3) */
 export interface ProductInfo {
   product: Product;
   runtime: ProductRuntime;

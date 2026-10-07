@@ -1,9 +1,9 @@
 /**
- * Pool Dialog 哑渲染数据——E5.7#17（浮层归一化设计.md §7）。
+ * Pool Dialog dumb-render data — E5.7#17 (floating-layer-normalization-design.md §7).
  *
- * 聪慧→哑数据流：壳 DialogService 桥（renderer 注册）把 options 序列化成 DTO 推送
- * （显示文本铁律——按钮文案已由壳侧 t() 解析，池原样渲染）。
- * Promise 的 resolve 闭包留壳——池只回传动作类型（confirm/cancel），壳侧 settle。
+ * Smart→dumb data flow: the shell's DialogService bridge (registered by the renderer) serializes options into a DTO and pushes it
+ * (display-text iron law — button copy already resolved by shell-side t(); the pool renders as-is).
+ * The Promise's resolve closure stays in the shell — the pool only sends back the action type (confirm/cancel); the shell settles.
  */
 
 export type PoolDialogData =
@@ -12,46 +12,46 @@ export type PoolDialogData =
       open: true;
       title: string;
       message: string;
-      /** 壳侧已 t() 解析——池原样渲染 */
+      /** Already t()-resolved on the shell side — the pool renders as-is */
       confirmLabel?: string;
       cancelLabel?: string;
-      /** alert 模式——只有确定按钮，无取消/Escape/backdrop 关闭 */
+      /** Alert mode — only the OK button; no cancel/Escape/backdrop close */
       isAlert: boolean;
-      /** E6#71c 富内容槽——present 时替代 title/message/默认按钮渲染（弹窗机制不变：
-       *  居中/遮罩/Esc/trap/点遮罩取消仍由 DialogHost 提供）。内容 = 插件视图——
-       *  壳不持渲染器，池经 PluginComponent 挂载（仿 FloatingPanel DTO）。payload 不透明——
-       *  壳不解释、池原样持，内容视图经 window.linkdesk.dialogHost.current() 读。 */
+      /** E6#71c rich content slot — replaces title/message/default-button rendering when present (the dialog mechanics are unchanged:
+       *  centering/overlay/Esc/trap/click-overlay-cancel are still provided by DialogHost). Content = a plugin view —
+       *  the shell holds no renderer; the pool mounts it via PluginComponent (modeled after the FloatingPanel DTO). payload is opaque —
+       *  the shell does not interpret it and the pool holds it as-is; the content view reads it via window.linkdesk.dialogHost.current(). */
       content?: {
         pluginId: string;
-        /** 池视图注册表寻址键——loader 运行时附挂（ViewContainerService._renderPath） */
+        /** Pool view registry addressing key — attached at loader runtime (ViewContainerService._renderPath) */
         renderPath: string;
-        /** 不透明序列化载荷——随打开参数过壳→回池（结构克隆），内容视图取数用 */
+        /** Opaque serialized payload — travels with the open parameters through shell→back to pool (structured clone); used by the content view to fetch data */
         payload?: unknown;
       };
     };
 
 /**
- * M1 `AI#5`：**在途弹窗**的可读投影——「有没有 confirm/alert 正弹着、在等什么」。
+ * M1 `AI#5`: a readable projection of **pending dialogs** — "is a confirm/alert up, and what is it waiting for".
  *
- * 🔴 与 `PoolDialogData` 的关系：那个是**哑渲染载荷**（池照它画），这个是**问「现在在等什么」的答案**
- * （读 `DialogService` 登记的在途 options）。两者形状刻意同源但**不是同一条通道**：
- * 那个走 `pool:dialog` 直推，这个走 `plugins:call("getPendingDialogs")` 按需拉。
+ * 🔴 Relationship to `PoolDialogData`: that one is the **dumb-render payload** (the pool draws from it); this one is the **answer to "what is being waited on now"**
+ * (reads the pending options registered in `DialogService`). Their shapes are deliberately same-origin but they are **not the same channel**:
+ * that one goes over the `pool:dialog` direct push; this one is pulled on demand via `plugins:call("getPendingDialogs")`.
  *
- * 取用面 = `window.linkdesk.dialogHost.pending()`。
+ * Consumption surface = `window.linkdesk.dialogHost.pending()`.
  */
 export interface PoolPendingDialog {
-  /** `"confirm"` = 可取消（Escape/点遮罩）；`"alert"` = 只有确定（`PoolDialogData.isAlert` 同源） */
+  /** `"confirm"` = cancellable (Escape/overlay click); `"alert"` = OK only (same source as `PoolDialogData.isAlert`) */
   kind: "confirm" | "alert";
   title: string;
   message: string;
   /**
-   * 按钮文案——**已由壳按显示文本铁律解析**（显式 `confirmLabel`/`cancelLabel` 优先，否则 i18n 缺省；
-   * 与推送面 `bridges.ts` **同一份实现**，见 `DialogService.resolveDialogButtons`）。
-   * `kind:"confirm"` → 2 条（确定、取消）；`kind:"alert"` → 1 条（确定）。
-   * ⚠️ 富内容模式（`content` 存在）下按钮由插件视图自画 ⇒ **空数组**（⛔ 别拿确定/取消去猜）。
+   * Button copy — **already resolved by the shell per the display-text iron law** (explicit `confirmLabel`/`cancelLabel` take priority, otherwise i18n defaults;
+   * the **same implementation** as the push-side `bridges.ts`, see `DialogService.resolveDialogButtons`).
+   * `kind:"confirm"` → 2 entries (OK, Cancel); `kind:"alert"` → 1 entry (OK).
+   * ⚠️ In rich-content mode (`content` present) the buttons are drawn by the plugin view itself ⇒ **empty array** (⛔ never guess OK/Cancel).
    */
   buttons: string[];
-  /** E6#71c 富内容确认——内容 = 插件自绘视图。给**身份**（不给 renderPath：那是池内寻址键，
-   *  而本面在池里问的是"壳在等什么"），⛔ 不带 payload（不透明载荷可能很大，读「在等什么」也用不上）。 */
+  /** E6#71c rich-content confirmation — content = a plugin's self-drawn view. Gives the **identity** (not renderPath: that is the pool-internal addressing key,
+   *  whereas this surface asks "what is the shell waiting for" from inside the pool); ⛔ no payload (the opaque payload can be large and is useless for reading "what is being waited on"). */
   content?: { pluginId: string; viewId: string };
 }

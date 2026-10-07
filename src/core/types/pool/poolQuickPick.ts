@@ -1,41 +1,41 @@
 /**
- * Pool QuickPick 哑渲染数据——E5.7#15（浮层归一化设计.md §5）。
+ * Pool QuickPick dumb-render data — E5.7#15 (floating-layer-normalization-design.md §5).
  *
- * 聪慧→哑数据流：壳 QuickPickService 序列化（显示文本铁律——全部壳侧 t() 解析后推送），
- * 池 QuickPickHost 纯渲染 + 本地模糊过滤——不 import @src/core（Path B）。
- * 动作（select/highlight/close/itemAction）按 key 回传，壳侧重解析原始 item 执行回调。
+ * Smart→dumb data flow: serialized by the shell's QuickPickService (display-text iron law — everything pushed after shell-side t() resolution);
+ * the pool's QuickPickHost is pure rendering + local fuzzy filtering — no @src/core imports (Path B).
+ * Actions (select/highlight/close/itemAction) are sent back by key; the shell re-resolves the original item and executes the callback.
  */
 
-/** 行内操作按钮——池哑渲染，点击回传 actionId */
+/** Inline action button — rendered dumbly by the pool; clicks send back actionId */
 interface PoolQuickPickButton {
-  /** 动作 ID——壳 onItemAction(item, actionId) 执行 */
+  /** Action ID — the shell executes onItemAction(item, actionId) */
   actionId: string;
-  /** codicon 图标名（不含 "codicon-" 前缀） */
+  /** codicon icon name (without the "codicon-" prefix) */
   icon: string;
   tooltip?: string;
 }
 
 export interface PoolQuickPickItem {
-  /** getKey(item)——壳侧动作重解析的唯一键 */
+  /** getKey(item) — the sole key for the shell's action re-resolution */
   key: string;
-  /** getSearchText(item)——池本地模糊匹配 */
+  /** getSearchText(item) — the pool's local fuzzy matching */
   searchText: string;
-  /** 勾选标记——label 左侧 ✓。undefined = 无勾选（通用 QuickPick 不受影响）；true/false = 渲染固定占位保对齐。
-   *  E5.8#32 原义 = 已激活项；归一化夹 02 批 N2 起**明确两语义并存**（各问各的问题，⛔ 不许再添第三用途）：
-   *   ①「当前生效项」——主题/语言选择器、面板 [+] 视图选择器（✓ = 你现在用的是这个）；
-   *   ②「开关态」——面板标签右键视图清单（✓ = 显示在标签栏）、侧栏显隐菜单（✓ = 展开/显示中）。 */
+  /** Checked marker — ✓ to the left of the label. undefined = no checkmark (generic QuickPicks unaffected); true/false = render a fixed placeholder to keep alignment.
+   *  E5.8#32 original meaning = the activated item; from normalization dossier batch 02 N2 onward **both semantics coexist explicitly** (each answers its own question; ⛔ never add a third use):
+   *   ① "currently effective item" — theme/language pickers, the panel [+] view picker (✓ = this is what you are using now);
+   *   ② "toggle state" — the panel tab's right-click view list (✓ = shown in the tab bar), the sidebar visibility menu (✓ = expanded/visible). */
   checked?: boolean;
-  /** 第一行左——已 t() 解析 */
+  /** Left of the first row — already t()-resolved */
   label: string;
-  /** 第一行右——已 t() 解析。**归属/分类/附注**专用（插件 · 容器 / 类目 / 归属配方）；
-   *  🔴 归一化夹 02 批 N2：**状态不许借这一格**（「当前」「已隐藏」「已激活」走 detail）——
-   *  借了就把归属整条挤掉，而池是哑渲染、丢掉的信息找不回来。 */
+  /** Right of the first row — already t()-resolved. Reserved for **ownership/category/annotation** (plugin · container / category / owning recipe);
+   *  🔴 normalization dossier batch 02 N2: **status must not borrow this slot** ("current", "hidden", "activated" go to detail) —
+   *  borrowing it would squeeze out the ownership entirely, and since the pool is a dumb renderer the lost information cannot be recovered. */
   category?: string;
-  /** 第二行左——已 t() 解析 */
+  /** Left of the second row — already t()-resolved */
   detail?: string;
-  /** 显示串——壳侧 formatKeyLabel 后（如 "Ctrl+K Ctrl+T"），⛔ 非注册表原串——池渲染 keycap pill（哑拆分） */
+  /** Display string — after the shell's formatKeyLabel (e.g. "Ctrl+K Ctrl+T"); ⛔ not the raw registry string — the pool renders a keycap pill (dumb splitting) */
   keybinding?: string;
-  /** 行内操作按钮 */
+  /** Inline action buttons */
   buttons?: PoolQuickPickButton[];
 }
 
@@ -46,18 +46,18 @@ export interface PoolQuickPickData {
   items: PoolQuickPickItem[];
 }
 
-/* ── E5.7#63：插件 quickPick API——linkdesk.quickPick.show(opts) → Promise<item | undefined> ── */
+/* ── E5.7#63: plugin quickPick API — linkdesk.quickPick.show(opts) → Promise<item | undefined> ── */
 
-/** 插件侧条目——对标 VS Code QuickPickItem 三字段（label 第一行左 / description 第一行右 / detail 第二行左） */
+/** Plugin-side entry — three fields modeled after the VS Code QuickPickItem (label left of row 1 / description right of row 1 / detail left of row 2) */
 export interface PluginQuickPickItem {
   label: string;
-  /** 第一行右 */
+  /** Right of the first row */
   description?: string;
-  /** 第二行左 */
+  /** Left of the second row */
   detail?: string;
 }
 
-/** 插件侧 show() 选项——v1 最小面：items + 输入框占位/前缀（buttons/onHighlight 留待消费方出现） */
+/** Plugin-side show() options — minimal v1 surface: items + input placeholder/prefix (buttons/onHighlight deferred until consumers appear) */
 export interface PluginQuickPickOptions {
   items: PluginQuickPickItem[];
   placeholder?: string;
@@ -65,8 +65,8 @@ export interface PluginQuickPickOptions {
 }
 
 /**
- * 插件 quickPick 请求——preload show() 经 contextBridge 函数代理桥接给池 QuickPickHost 的形状。
- * 池内本地桥（零 IPC）：Promise resolve 的正是 opts.items 里的原对象（身份保持，非序列化副本）。
+ * Plugin quickPick request — the shape bridged from preload's show() to the pool's QuickPickHost via a contextBridge function proxy.
+ * Local bridge inside the pool (zero IPC): the Promise resolves to the very object from opts.items (identity preserved, not a serialized copy).
  */
 export interface PluginQuickPickRequest {
   opts: PluginQuickPickOptions;

@@ -1,37 +1,37 @@
 /**
- * Pool 悬浮面板哑渲染数据——E5.8#37（Phase 8 壳内悬浮面板 类型 B）。
+ * Pool floating panel dumb-render data — E5.8#37 (Phase 8 floating panel inside the shell, type B).
  *
- * 聪慧→哑数据流（DialogService 同款——归一化不重造）：壳 FloatingPanelService 桥把面板请求
- * 序列化成 DTO 推送（显示文本铁律——标题/动作文案已由壳侧 t() 解析，池原样渲染，零 useTranslation）。
- * 内容 = 插件视图——DTO 带 pluginId/renderPath，池经 PluginComponent 按 viewId 寻址视图注册表渲染
- * （壳不持渲染器——#37 验收）。
+ * Smart→dumb data flow (same as DialogService — normalize, don't recreate): the shell's FloatingPanelService bridge serializes panel requests
+ * into DTOs and pushes them (display-text iron law — title/action copy already resolved by shell-side t(); the pool renders as-is, zero useTranslation).
+ * Content = a plugin view — the DTO carries pluginId/renderPath, and the pool addresses the view registry via PluginComponent to render
+ * (the shell holds no renderer — #37 acceptance).
  *
- * 状态闭环：壳 push {open:false} 驱动关闭——池不本地关闭（哑，I8-11）。
- * 例外：最大化（I8-9 同按钮 toggle）是纯视觉态（CSS 100vw）——池本地 toggle，零壳 roundtrip；
- * 两态文案/图标都由 DTO 携带（池零自产文本）。
- * Promise settle 闭包留壳——池只回传动作类型（action/actionId），壳侧重解析业务语义（#38 接线）。
+ * State closed loop: the shell pushes {open:false} to drive closing — the pool does not close locally (dumb, I8-11).
+ * Exception: maximize (same-button toggle, I8-9) is a purely visual state (CSS 100vw) — the pool toggles locally, zero shell roundtrip;
+ * copy/icons for both states are carried by the DTO (zero pool-produced text).
+ * Promise settle closures stay in the shell — the pool only sends back the action type (action/actionId); the shell re-resolves business semantics (#38 wiring).
  */
 
-/** 标题栏动作按钮——池渲染 + 回传壳侧重解析业务语义（池零语义，UI 机械知识除外）。
- *  E5.8#20-c：改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
- *  同名，契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧（契约族命名消歧惯例）。 */
+/** Title bar action buttons — rendered by the pool + sent back for the shell to re-resolve business semantics (zero pool semantics, except UI mechanical knowledge).
+ *  E5.8#20-c: renamed PoolFloatingPanelButton — same name as poolActions.ts's PoolFloatingPanelAction (IPC round-trip action);
+ *  flattening the contract into one file would declaration-merge them into a ghost composite type; the button descriptor uses the Button suffix for disambiguation (contract-family naming convention). */
 export interface PoolFloatingPanelButton {
-  /** 动作 id——open-in（在主窗口中打开）/ maximize（最大化）/ close（关闭），壳侧重解析 */
+  /** Action id — open-in (open in the main window) / maximize / close; re-resolved by the shell */
   id: string;
-  /** 壳 t() 已解析的动作名——mockup：hover tooltip（open-in 展开全文） */
+  /** Action name already resolved by shell t() — mockup: hover tooltip (open-in expands the full text) */
   label: string;
-  /** 内建图标 id——池按 id 选 SVG（open-in/maximize/restore/close） */
+  /** Built-in icon id — the pool picks the SVG by id (open-in/maximize/restore/close) */
   icon: string;
-  /** 本地 toggle 专用（I8-9 最大化→还原 同按钮）——切换态图标，缺省 = 非 toggle 动作（回传壳） */
+  /** Local-toggle only (I8-9 maximize→restore on the same button) — icon for the toggled state; absent = not a toggle action (sent back to the shell) */
   toggledIcon?: string;
-  /** 本地 toggle 切换态文案（如「还原」）——池零自产文本，两态文案都壳 t() 给 */
+  /** Copy for the local toggle's switched state (e.g. "Restore") — zero pool-produced text; both states' copy comes from shell t() */
   toggledLabel?: string;
-  /** open-in 类型——默认纯图标、hover 展开全文（mockup .fp-act.open-in） */
+  /** open-in style — icon-only by default, expands to full text on hover (mockup .fp-act.open-in) */
   expandOnHover?: boolean;
 }
 
-/** 面板显式几何（px）——I8-5/I8-7 拖拽/调高后取代默认居中大卡布局。
- *  M2 `AI#20`：同一形状经 `panel.setFloatingBounds` 走 API 路径（非鼠标路径）设定。 */
+/** Explicit panel geometry (px) — after I8-5/I8-7 drag/resize, replaces the default centered large-card layout.
+ *  M2 `AI#20`: the same shape set through the API path (non-mouse path) via `panel.setFloatingBounds`. */
 export interface FloatingPanelBounds {
   top: number;
   left: number;
@@ -39,12 +39,12 @@ export interface FloatingPanelBounds {
   height: number;
 }
 
-/** `floatingPanelHost.getBounds()` 读数——池侧渲染盒的**真实**几何 + 面板身份 + 最大化态。
- *  「无面板」不在此型内——返回类型是 `PoolFloatingPanelGeometry | null`。 */
+/** Readout of `floatingPanelHost.getBounds()` — the **actual** geometry of the pool-side render box + panel identity + maximized state.
+ *  "No panel" is not part of this type — the return type is `PoolFloatingPanelGeometry | null`. */
 export interface PoolFloatingPanelGeometry extends FloatingPanelBounds {
   viewId: string;
   pluginId: string;
-  /** I8-9 最大化（纯视觉态，铺满窗口）——true 时几何 = 满窗盒（如实报，⛔ 不报「最大化前」的旧值） */
+  /** I8-9 maximized (purely visual state, filling the window) — when true the geometry = the full-window box (reported faithfully; ⛔ never report the stale pre-maximize values) */
   maximized: boolean;
 }
 
@@ -52,34 +52,34 @@ export type PoolFloatingPanelData =
   | { open: false }
   | {
       open: true;
-      /** 面板身份——壳 FloatingPanelService 单实例语义按 viewId 裁决（I8-10：同 viewId 聚焦 / 异 viewId 替换） */
+      /** Panel identity — the shell's FloatingPanelService single-instance semantics adjudicates by viewId (I8-10: same viewId focuses / different viewId replaces) */
       viewId: string;
-      /** 标题——壳 t() 已解析，池原样渲染 */
+      /** Title — already resolved by shell t(); the pool renders as-is */
       title: string;
-      /** 内容插件——池经 PluginComponent(pluginId, renderPath) 渲染（壳不持渲染器） */
+      /** Content plugin — the pool renders via PluginComponent(pluginId, renderPath) (the shell holds no renderer) */
       pluginId: string;
-      /** 内容视图 renderPath——池视图注册表寻址 */
+      /** Content view renderPath — addressed via the pool's view registry */
       renderPath: string;
-      /** 标题栏动作按钮（顺序 = 渲染顺序：open-in / maximize / close） */
+      /** Title bar action buttons (order = render order: open-in / maximize / close) */
       actions: PoolFloatingPanelButton[];
-      /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
+      /** Language-switch copy re-push marker (refreshPanelText) — the pool only re-renders title/actions and skips focus acquisition (I8-8: only the first open takes focus) */
       refresh?: boolean;
-      /** M2 `AI#20`：**API 路径**显式几何（`panel.setFloatingBounds` 推入，一次性——⛔ 壳不把它存进
-       *  refreshPanelText 的底稿，否则语言切换重推会把用户拖过的面板弹回旧位）。
-       *  语义三分：**缺省** = 不动几何（拖拽/调高后的本地态原样保留）｜**部分字段** = 精确设定
-       *  （未带字段保持现值，同一套 I8-5/I8-7 钳制）｜**null** = 回默认居中大卡（拖拽前那一态）。 */
+      /** M2 `AI#20`: **API path** explicit geometry (pushed via `panel.setFloatingBounds`, one-shot — ⛔ the shell must not store it into
+       *  refreshPanelText's draft, otherwise a language-switch re-push would snap the user-dragged panel back to its old spot).
+       *  Three-way semantics: **absent** = leave geometry untouched (local state after drag/resize preserved as-is) | **partial fields** = set precisely
+       *  (unspecified fields keep current values, same I8-5/I8-7 clamping) | **null** = back to the default centered large card (the pre-drag state). */
       bounds?: Partial<FloatingPanelBounds> | null;
     };
 
-/** M2 `AI#20`：几何宿主请求——preload 转发 API 路径到池 FloatingPanelHost（池是几何真相源：
- *  面板渲染在池，只有池知道它此刻真在哪；壳不存几何 ⇒ 不会是第二把尺）。
- *  `set` 在最大化态下先退出最大化再设定（「设定必生效」——几何与满窗态互斥）。 */
+/** M2 `AI#20`: geometry host request — preload forwards the API path to the pool's FloatingPanelHost (the pool is the source of truth for geometry:
+ *  the panel renders in the pool, and only the pool knows where it truly is at this moment; the shell stores no geometry ⇒ cannot become a second ruler).
+ *  `set` while maximized first exits maximization, then applies ("a set must take effect" — geometry and full-window state are mutually exclusive). */
 export type FloatingPanelBoundsHostRequest =
   | { op: "set"; bounds: Partial<FloatingPanelBounds> | null }
   | { op: "get" };
 
-/** M2 `AI#20`：池侧几何宿主实现——`set` 返回「有面板且已应用」，`get` 返回当前渲染几何（无面板 = null）。
- *  形状对标 `quickPickHost.registerHost(fn)`（主世界函数经 contextBridge 代理进隔离世界存储）。 */
+/** M2 `AI#20`: pool-side geometry host implementation — `set` returns "a panel exists and was applied", `get` returns the current render geometry (no panel = null).
+ *  Shape modeled after `quickPickHost.registerHost(fn)` (a main-world function proxied through contextBridge into the isolated world for storage). */
 export type FloatingPanelBoundsHostFn = (
   req: FloatingPanelBoundsHostRequest,
 ) => boolean | PoolFloatingPanelGeometry | null;

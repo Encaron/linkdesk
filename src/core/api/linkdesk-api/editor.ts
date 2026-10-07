@@ -1,14 +1,14 @@
 /**
- * linkdesk-api 编辑器配套服务域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9d）。
- * decorations/fileAssociation/langDef/lsp/protocol/viewContainer 六命名空间面 verbatim。
- * 依赖方向：editor → ./types（FileDecoration/FileDecorationProvider）；被聚合器交叉组装。
+ * linkdesk-api editor companion services domain — split out of linkdesk-api.ts (E5.8#0d.10-9d).
+ * The decorations/fileAssociation/langDef/lsp/protocol/viewContainer six namespace surfaces verbatim.
+ * Dependency direction: editor → ./types (FileDecoration/FileDecorationProvider); cross-composed by the aggregator.
  */
 
 import type { FileDecoration, FileDecorationProvider } from "./types";
 
-/** 文件装饰/关联/语言定义/LSP/协议/视图容器命名空间面——编辑器配套服务（主进程/池内直答） */
+/** File decoration / association / language definition / LSP / protocol / view container namespace surfaces — editor companion services (answered directly by the main process / in-pool) */
 export interface EditorAPI {
-  /** E5.7#60：文件装饰——池内本地注册表（零 IPC）。形状对标契约 §3.24 */
+  /** E5.7#60: file decorations — a local in-pool registry (zero IPC). Shape modeled after contract §3.24 */
   decorations: {
     registerProvider(pluginId: string, provider: FileDecorationProvider): void;
     unregisterProvider(pluginId: string): void;
@@ -17,18 +17,20 @@ export interface EditorAPI {
   };
 
   /**
-   * E5.7#50：文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）。
-   * T2（第 3 波）：`getPluginFor` 升级为覆盖表感知的完整解析（覆盖 → 声明 → 角色，01 §T2.2）——
-   * 三入口（FoldersView/SearchView/intake）同吃 ⇒ F3「一处真相」；`listHandlersFor` = 选择器只读面；
-   * `setDefault` = 覆盖表唯一写口（「设为默认」/「恢复自动」，双向同步 E31）；
-   * `setDefaultBulk` = 同口的**批量**形态（E32/E34 聚合格——一次写 N 类，聚合逻辑在管理器侧）。
+   * E5.7#50: file associations — extension→plugin ID (answered directly by the main-process FileAssociationService).
+   * T2 (wave 3): `getPluginFor` upgraded to full override-table-aware resolution (override → declaration → role, 01 §T2.2) —
+   * the three entries (FoldersView/SearchView/intake) all consume it ⇒ F3 "one place of truth"; `listHandlersFor` =
+   * the read-only selector surface; `setDefault` = the override table's only write port ("Set as default" / "Restore automatic",
+   * bidirectional sync E31); `setDefaultBulk` = the **bulk** form of the same port (E32/E34 aggregate write — writes N types at once,
+   * aggregation logic on the manager side).
    */
   fileAssociation: {
     getPluginFor(ext: string): Promise<string | undefined>;
     /**
-     * 列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器与设置页下拉的数据源，01 §T2.1）；无声明者 ⇒ []。
-     * `title` = **插件**显示名（manifest.name ?? pluginId）；`displayName` = **文件类型**显示名
-     * （声明里的 displayName，如 .rs → "Rust"）——两者语义不同，命名位用 `title`。
+     * List all declarers of the extension plus the current-default marker (data source for the "Open with…" picker and the
+     * settings page dropdown, 01 §T2.1); no declarers ⇒ [].
+     * `title` = the **plugin** display name (manifest.name ?? pluginId); `displayName` = the **file type** display name
+     * (the displayName in the declaration, e.g. .rs → "Rust") — the two differ semantically; naming surfaces use `title`.
      */
     listHandlersFor(ext: string): Promise<Array<{
       pluginId: string;
@@ -36,18 +38,18 @@ export interface EditorAPI {
       displayName: string;
       isCurrent: boolean;
     }>>;
-    /** 覆盖表唯一写口——`pluginId: null` = 恢复自动（删覆盖键）；写后 config:changed 即时广播（E31） */
+    /** The override table's only write port — `pluginId: null` = restore automatic (deletes the override key); config:changed is broadcast immediately after writing (E31) */
     setDefault(ext: string, pluginId: string | null): Promise<void>;
-    /** 同上，**一次写 N 类**（E32/E34 聚合：`pluginId: null` = 逐类删）——非法/重复扩展名在写面内跳过 */
+    /** Same as above, **writes N types at once** (E32/E34 aggregation: `pluginId: null` = delete per type) — invalid/duplicate extensions are skipped within the write surface */
     setDefaultBulk(exts: string[], pluginId: string | null): Promise<void>;
   };
 
-  /** E5.7#49：langDef——语言定义注册表（主进程直答）。只返回可序列化字段（monarch tokenizer 函数主进程侧剥壳） */
+  /** E5.7#49: langDef — language definition registry (answered directly by the main process). Returns only serializable fields (monarch tokenizer functions are stripped on the main-process side) */
   langDef: {
     get(extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null>;
   };
 
-  /** E5.6#14-lsp：LSP 桥——自动补全/F12/诊断/重命名 */
+  /** E5.6#14-lsp: LSP bridge — autocompletion/F12/diagnostics/rename */
   lsp: {
     spawn(command: string, args: string[] | undefined, pluginId: string): Promise<string>;
     write(channelId: string, data: string): void;
@@ -55,18 +57,18 @@ export interface EditorAPI {
     onData(cb: (channelId: string, data: string) => void): () => void;
   };
 
-  /** E5.7#49：protocol——协议注册表（主进程直答）。返回前剥 parseLine/detect（JS 函数不可跨进程） */
+  /** E5.7#49: protocol — protocol registry (answered directly by the main process). parseLine/detect are stripped before returning (JS functions cannot cross processes) */
   protocol: {
     listProtocols(): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>>;
     getActiveProtocolId(): Promise<string>;
     setActiveProtocolId(protocolId: string): Promise<void>;
   };
 
-  /** E5.7#58：viewContainer——真 IPC 查询/更新（问壳侧注册表）。DTO 只含可序列化公开字段 */
+  /** E5.7#58: viewContainer — real IPC query/update (asks the shell-side registry). The DTO contains only serializable public fields */
   viewContainer: {
     getViewContainer(id: string): Promise<Record<string, unknown> | undefined>;
     getViews(containerId: string): Promise<Array<Record<string, unknown>>>;
-    // E5.8#41.9.2：getView 复合寻址——(pluginId, viewId) 精确查视图元数据（#41.8 碰撞面 #2）
+    // E5.8#41.9.2: getView compound addressing — (pluginId, viewId) precise view metadata lookup (collision surface #2 of #41.8)
     getView(pluginId: string, viewId: string): Promise<Record<string, unknown> | undefined>;
     registerView(pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void>;
   };

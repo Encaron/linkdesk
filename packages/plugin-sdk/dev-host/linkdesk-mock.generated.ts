@@ -1,17 +1,17 @@
 /**
- * 🔥 linkdesk-mock.generated.ts——dev 宿主 window.linkdesk mock 树（自动生成，勿手改）
+ * 🔥 linkdesk-mock.generated.ts—dev-host window.linkdesk mock tree (auto-generated, do not edit by hand)
  *
- * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（LinkDeskAPI 交集——与 linkdesk.d.ts 同一标注源）
- * 生成器：scripts/generate-contract.mjs（E6#27 第三产物，杜绝 mock/preload 双份漂移）
- * 改契约源 → 跑 `node scripts/generate-contract.mjs`（npm run check 里 contracts:check 三产物逐字节强制）
+ * Generated from: src/core/api/linkdesk-api.ts + linkdesk-api/ (LinkDeskAPI intersection—same annotation source as linkdesk.d.ts)
+ * Generator: scripts/generate-contract.mjs (E6#27 third artifact—prevents mock/preload drift; consumed by dev-host/mock.ts via a Proxy)
+ * After changing a contract source, run `node scripts/generate-contract.mjs` (contracts:check enforces all three artifacts byte-for-byte)
  *
- * 消费方：packages/plugin-sdk/dev-host/mock.ts——injectDevMockApi() 用 Proxy 包本树：
- *   树内方法 = 类型驱动中性默认 + 调用即打 [linkdesk-mock] 日志（mock vs 真 IPC 可感知）；
- *   树外路径（契约里不存在的方法名） = Proxy 抛「不在 linkdesk API 契约」。
- * 默认值策略（"不崩 + 可感知"，详见 02-本地预览环境.md §10.2）：
- *   Promise<void/…数据对象> → async 返 undefined；Promise<数组> → []；Promise<string/boolean> → ""/false；
- *   void → noop（registerCommand 等每插件必调，绝不抛）；返回退订句柄（onChange 等）→ noop 函数；
- *   其余同步 → ""/undefined。真数据/真行为走真实 IPC / linkdesk-plugin-sdk dev --real（E6#28.5）。
+ * Consumer: packages/plugin-sdk/dev-host/mock.ts—injectDevMockApi() wraps this tree in a Proxy:
+ *   in-tree methods = type-driven neutral defaults + a [linkdesk-mock] log line per call (mock vs real IPC is perceivable);
+ *   out-of-tree paths (method names absent from the contract) = the Proxy throws "not in the linkdesk API contract".
+ * Default-value strategy ("never crash + stay perceivable"; see the local-preview-environment design doc §10.2):
+ *   Promise<void/…data object> → async returns undefined; Promise<array> → []; Promise<string/boolean> → ""/false;
+ *   void → noop (registerCommand etc. are called by every plugin—never throw); unsubscribe handles (onChange etc.) → noop function;
+ *   other sync returns → ""/undefined. Real data/behavior goes through real IPC / linkdesk-plugin-sdk dev --real (E6#28.5).
  */
 export const linkdeskMock: Record<string, unknown> = {
   commands: {

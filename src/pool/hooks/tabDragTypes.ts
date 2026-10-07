@@ -1,6 +1,6 @@
 /**
- * 标签页拖拽分屏——类型 + drop zone 检测算法。
- * 设计依据：[V3-Phase3-标签页分屏设计.md §9]
+ * Tab drag-to-split—types + drop-zone detection algorithm.
+ * Design basis: the V3-Phase3 tab-split design doc §9 (repo-internal, Chinese-named)
  */
 
 export type DropZone = "left" | "right" | "up" | "down" | "center" | null;
