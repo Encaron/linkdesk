@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, afterEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { render, cleanup, fireEvent } from "@testing-library/react";
 import MarkdownView from "./MarkdownView";
 
 afterEach(() => cleanup());
@@ -128,5 +128,51 @@ describe("MarkdownView", () => {
     expect(a?.getAttribute("target")).toBe("_blank");
     const img = container.querySelector("figure img");
     expect(img?.getAttribute("src")).toBe("linkdesk://demo-plugin/resources/cover.svg");
+  });
+
+  // ── 相对链接内部跳转（AI 操作手册接线）：不传回调 = 旧行为；传回调 = 相对链接点击交给调用方 ──
+
+  it("不传 onRelativeLink：相对 md 链接保持旧行为 target=_blank（外开），结构不回归", () => {
+    const { container } = render(<MarkdownView markdown="[ch](02-index.md)" />);
+    const a = container.querySelector("a");
+    expect(a?.getAttribute("href")).toBe("02-index.md");
+    expect(a?.getAttribute("target")).toBe("_blank");
+  });
+
+  it("onRelativeLink：相对链接点击进回调（收原文 href），返回 true 阻止默认（内部跳转不外开）", () => {
+    const seen: string[] = [];
+    const { container } = render(
+      <MarkdownView
+        markdown="[ch](02-index.md) [anch](01-overview.md#sec) [web](https://example.com)"
+        onRelativeLink={(h) => {
+          seen.push(h);
+          return true;
+        }}
+      />
+    );
+    const rel = [...container.querySelectorAll("a")].find((a) => a.getAttribute("href") === "02-index.md");
+    expect(rel).toBeTruthy();
+    // fireEvent 返回 false = 事件被取消（preventDefault 生效）——手册内跳转、不落外开
+    expect(fireEvent.click(rel!)).toBe(false);
+    expect(seen).toContain("02-index.md");
+    // 带 # 锚片段的 md 链接同属相对候选——回调收**原文**（怎么拆 id 是调用方的事）
+    const anchor = [...container.querySelectorAll("a")].find((a) => a.getAttribute("href") === "01-overview.md#sec");
+    expect(fireEvent.click(anchor!)).toBe(false);
+    expect(seen).toContain("01-overview.md#sec");
+    // http 外链不进回调（回调只吃无 scheme 相对链接）——点击外链不算数
+    expect(seen.filter((h) => h === "https://example.com")).toHaveLength(0);
+  });
+
+  it("onRelativeLink 返回 false：不拦默认（认领失败回落外开语义），锚点 #sec 不进回调", () => {
+    const seen: string[] = [];
+    const { container } = render(
+      <MarkdownView markdown="[stray](99-not-a-chapter.md) [hash](#sec)" onRelativeLink={(h) => (seen.push(h), false)} />
+    );
+    const a = [...container.querySelectorAll("a")].find((x) => x.getAttribute("href") === "99-not-a-chapter.md");
+    expect(a?.getAttribute("target")).toBe("_blank"); // 结构上仍外开兜底（拦不拦由点击时回调返回值定）
+    // #sec 纯页内锚点不是相对候选——即便点击也不该进回调
+    const hash = [...container.querySelectorAll("a")].find((x) => x.getAttribute("href") === "#sec");
+    expect(fireEvent.click(hash!)).toBe(true); // 未取消 = 默认行为保留
+    expect(seen).toHaveLength(0);
   });
 });

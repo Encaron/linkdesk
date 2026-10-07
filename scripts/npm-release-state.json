@@ -12,10 +12,10 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.88",
-      "contentHash": "4a43c4652254d70524dc00b0498d93b44232f26e745362abfc8640405b26d9cf",
+      "version": "0.1.89",
+      "contentHash": "6cc270b0e7aee9790a0d29fc3e0836d7e8bcaa278b155f66522809d7cac85713",
       "fileHashes": {
-        "packages/plugin-sdk/README.md": "2adfe0fff028f5a7",
+        "packages/plugin-sdk/README.md": "1776ceb6309dbd3d",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
         "packages/plugin-sdk/dev-host/index.html": "4a4a4c87a3088677",
         "packages/plugin-sdk/dev-host/linkdesk-mock.generated.ts": "02679843f02efa62",
@@ -131,8 +131,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.55",
-      "contentHash": "f4562f35e96e11302141156f38e0960f7750f82ab93514e1df8bbb60318e914e",
+      "version": "0.2.56",
+      "contentHash": "4fdf8035a3aaa00f22ae88128721296d23a26fb46950be9266d83c15ce5297f9",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "656affde2e0191c4",
@@ -197,8 +197,8 @@
         "src/components/shared/keybinding-hint/KeybindingHint.test.tsx": "58891f4a4cac9352",
         "src/components/shared/keybinding-hint/KeybindingHint.tsx": "e4c7c1d37369b91a",
         "src/components/shared/markdown-view/MarkdownView.css": "f62c5d678e974f9f",
-        "src/components/shared/markdown-view/MarkdownView.test.tsx": "4555dcba8daf0f8f",
-        "src/components/shared/markdown-view/MarkdownView.tsx": "a28fa9651b7fc912",
+        "src/components/shared/markdown-view/MarkdownView.test.tsx": "d387d484470b9285",
+        "src/components/shared/markdown-view/MarkdownView.tsx": "ad6f5b6b9c105483",
         "src/components/shared/number-input/NumberInput.css": "70e8cd72c5faa03f",
         "src/components/shared/number-input/NumberInput.tsx": "33febfb7afc2f592",
         "src/components/shared/object-editor/ObjectEditor.css": "c7dca88ab04dd827",

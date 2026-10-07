@@ -52,6 +52,15 @@ function isSafeLink(href: string | undefined): boolean {
   return /^https?:\/\//i.test(h) || /^mailto:/i.test(h);
 }
 
+/** 无 scheme 相对链接（内部跳转候选）——`02-章名.md`、`./a/b.md`、`/x`；
+ *  http(s)/mailto 等带 scheme 的与协议相对 `//`、`#` 锚点不算（那些本来就是「外开/页内」语义）。 */
+function isRelativeHref(href: string | undefined): boolean {
+  if (!href) return false;
+  const h = href.trim();
+  if (!h || h.startsWith("#") || h.startsWith("//")) return false;
+  return !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(h);
+}
+
 /** 媒体 src 解析（E6#70a img/video/source 共用）——返回可落 DOM 的 src 或 null：
  *  ① 有 scheme：仅 https: / linkdesk:（详情页基址产物）放行；http/data:/javascript:/file: 等拒；
  *  ② 协议相对 `//`：拒（跟随页面 scheme，不可控）；
@@ -102,6 +111,11 @@ interface MarkdownViewProps {
   /** 媒体资源基址（E6#70a 可选）——README 相对引用解析基准（详情页注入 `linkdesk://{pluginId}/`，
    *  被查看插件的包内资源即此可达）；绝对 https 直通不受影响。不提供 = 旧行为（相对仅透传）。 */
   assetBase?: string;
+  /** 相对链接内部跳转（可选）——提供时，无 scheme 相对链接（如 `02-章名.md`）的点击先交给调用方：
+   *  返回 true = 调用方已在内部消化（阻止默认，不弹外窗）；返回 false = 未处理，回落旧行为外开。
+   *  http(s)/mailto/协议相对 `//`/`#` 锚点不进回调。不提供 = 旧行为（相对链接一律 target=_blank）。
+   *  ⚠️ 会随 components 一起进 useMemo——调用方须给稳定引用（useCallback），否则 memo 失效。 */
+  onRelativeLink?: (href: string) => boolean;
 }
 
 /**
@@ -114,16 +128,31 @@ interface MarkdownViewProps {
  *   引用（React 按 type 协调为原位更新）；外层 memo 让 markdown/className/assetBase 不变时整组件跳过
  *   重渲染（react-markdown 不再重解析）。零行为改变，纯稳定性修复。
  */
-function makeComponents(assetBase: string | undefined): Components {
+function makeComponents(assetBase: string | undefined, onRelativeLink?: (href: string) => boolean): Components {
   return {
-    a: ({ href, children, ...rest }) =>
-      isSafeLink(href) ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+    a: ({ href, children, ...rest }) => {
+      if (!isSafeLink(href)) return <span {...rest}>{children}</span>;
+      const h = (href ?? "").trim();
+      const internal = onRelativeLink && isRelativeHref(h);
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          // 内部候选：回调认领（返回 true）才拦默认；认领不了保持默认（target=_blank 走既有外链门禁）
+          onClick={
+            internal
+              ? (e) => {
+                  if (onRelativeLink(h)) e.preventDefault();
+                }
+              : undefined
+          }
+          {...rest}
+        >
           {children}
         </a>
-      ) : (
-        <span {...rest}>{children}</span>
-      ),
+      );
+    },
     img: ({ src, alt, ...rest }) => {
       const resolved = resolveMediaSrc(src, assetBase);
       return resolved ? (
@@ -166,8 +195,8 @@ function makeComponents(assetBase: string | undefined): Components {
   };
 }
 
-function MarkdownView({ markdown, className, assetBase }: MarkdownViewProps) {
-  const components = useMemo(() => makeComponents(assetBase), [assetBase]);
+function MarkdownView({ markdown, className, assetBase, onRelativeLink }: MarkdownViewProps) {
+  const components = useMemo(() => makeComponents(assetBase, onRelativeLink), [assetBase, onRelativeLink]);
 
   return (
     <div className={className ? `ldk-mdv ${className}` : "ldk-mdv"}>

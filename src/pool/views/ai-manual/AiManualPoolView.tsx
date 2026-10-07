@@ -28,7 +28,7 @@
  * （硬约束 14 只针对带 effect 的组件；`ReleaseNotesPoolView`/`AboutView` 的 `_isActive` 注释同款）。
  */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BookOpen } from "lucide-react";
 import MarkdownView from "../../../components/shared/markdown-view/MarkdownView";
@@ -149,6 +149,21 @@ function ContentFrame({
   // 不是「态判定」（态仍然只由壳给的那个 `state` 决定）——⛔ 别把这段挪成第二处态裁决。
   const current = data.chapters.find((c) => c.id === activeId) ?? data.chapters[0];
 
+  // 手册正文里的相对链接（`[02 章](02-命令与API索引.md)`）= 章切换的另一种拼法：href 去 `.md`
+  // 恰是章 id（主进程按「文件名去 `.md`」生成 id，两处天然同源）——拦下来走同一个 onSelect，
+  // 让点击链接 = 点左栏章节。此前这些链接落 `target="_blank"` 外开（dev 下被外链门禁送去系统浏览器
+  // 开 localhost 黑页 / 打包下被 deny 毫无反应）。非章链接（指向非 md 资源等）返回 false ⇒
+  // MarkdownView 保留默认外开行为。useCallback 给稳定引用（MarkdownView 的 components 挂在它上面）。
+  const onRelativeLink = useCallback(
+    (href: string): boolean => {
+      const id = href.split("#")[0]?.replace(/\.md$/i, "").trim() ?? "";
+      if (id === "" || !data.chapters.some((c) => c.id === id)) return false;
+      onSelect(id);
+      return true;
+    },
+    [data.chapters, onSelect]
+  );
+
   return (
     <div className="ldk-manual">
       <div className="ldk-manual-head">
@@ -180,8 +195,9 @@ function ContentFrame({
           没有它，读完第 5 章再切到第 1 章会停在半空（同一容器、同一 scrollTop）。
         */}
         <div className="ldk-manual-content" key={current.id}>
-          {/* 正文 = 随包 GFM 原文 → **唯一 md 渲染件**（`MarkdownView` 自走 sanitize），池不自己解析 */}
-          <MarkdownView markdown={current.markdown} />
+          {/* 正文 = 随包 GFM 原文 → **唯一 md 渲染件**（`MarkdownView` 自走 sanitize），池不自己解析。
+              相对链接经 `onRelativeLink` 拦成章切换（见上），外链仍走 MarkdownView 默认外开。 */}
+          <MarkdownView markdown={current.markdown} onRelativeLink={onRelativeLink} />
         </div>
       </div>
     </div>
