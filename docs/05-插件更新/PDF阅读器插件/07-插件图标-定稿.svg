@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-labelledby="t d">
+  <title id="t">PDF 阅读器插件图标（案 A · 红带文档，2026-10-07 拍板定稿）</title>
+  <desc id="d">红色圆角文档底板，右上折角，白色文字行两条——红色 = PDF 的行业认知，16px 标签栏实尺寸下辨识度最高</desc>
+  <rect x="4.5" y="2.5" width="15" height="19" rx="2.5" fill="#b8432e"/>
+  <path d="M14.5 2.5V8H19.5z" fill="#ffffff" opacity="0.32"/>
+  <rect x="7.5" y="11" width="9" height="2.6" rx="1.3" fill="#ffffff"/>
+  <rect x="7.5" y="15.4" width="6" height="2.6" rx="1.3" fill="#ffffff" opacity="0.72"/>
+</svg>

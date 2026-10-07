@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 阅读器 · UI 设计图（2026-10-07）</title>
+<style>
+  :root {
+    --pg-ink:#1f2430; --pg-ink2:#5b6472; --pg-paper:#f6f4ef; --pg-card:#fff;
+    --pg-accent:#b8432e; --pg-line:#d8d2c6; --pg-ok:#2e7d4f; --pg-warn:#9a6b1f;
+    --pg-shell:#33415c; --pg-shellbg:#e4e9f2;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI","Microsoft YaHei",sans-serif; background:var(--pg-paper); color:var(--pg-ink); padding:30px 22px 70px; }
+  .wrap { max-width:1060px; margin:0 auto; }
+  h1 { font-size:22px; } .sub { color:var(--pg-ink2); font-size:13px; margin:4px 0 24px; }
+  h2 { font-size:15px; margin:30px 0 10px; padding-left:10px; border-left:4px solid var(--pg-accent); }
+  .note { font-size:12.5px; color:var(--pg-ink2); margin-bottom:10px; line-height:1.7; }
+  .card { background:var(--pg-card); border:1.5px solid var(--pg-line); border-radius:12px; padding:16px; }
+
+  /* ── §A 标签栏示意 ── */
+  .tabbar { display:flex; align-items:flex-end; gap:2px; background:#dee3ea; padding:6px 10px 0; border-radius:8px 8px 0 0; }
+  .tab { display:flex; align-items:center; gap:6px; background:#f4f5f7; padding:6px 12px; border-radius:8px 8px 0 0; font-size:12px; color:var(--pg-ink2); }
+  .tab.on { background:#fff; color:var(--pg-ink); font-weight:600; }
+  .tab svg { width:14px; height:14px; }
+
+  /* ── §B 阅读器 mockup：三档底色 = 根类切换（与实装同机制） ── */
+  .seg { display:inline-flex; border:1.5px solid var(--pg-line); border-radius:8px; overflow:hidden; margin-bottom:10px; }
+  .seg button { border:0; background:#fff; padding:6px 16px; font-size:12.5px; cursor:pointer; color:var(--pg-ink2); }
+  .seg button.on { background:var(--pg-shell); color:#fff; }
+  .reader { border-radius:10px; overflow:hidden; border:1.5px solid var(--pg-line); }
+  /* 底色档 token（照 00.5 §二表，色值唯一出处） */
+  .rd-paper { --pdf-bg-surface:#f1f2f0; --pdf-bg-page:#ffffff; --pdf-ink-ui:#1f2430; --pdf-ink-muted:#6b7280; --pdf-border-page:#d8d2c6; --pdf-accent:#2563eb; --pdf-chip:#ffffff; }
+  .rd-sepia { --pdf-bg-surface:#efe6d4; --pdf-bg-page:#f9f1e0; --pdf-ink-ui:#3e3524; --pdf-ink-muted:#8a7a5c; --pdf-border-page:#ddd0b4; --pdf-accent:#2563eb; --pdf-chip:#fbf6ea; }
+  .rd-night { --pdf-bg-surface:#0f172a; --pdf-bg-page:#192134; --pdf-ink-ui:#e2e8f0; --pdf-ink-muted:#94a3b8; --pdf-border-page:rgba(255,255,255,.08); --pdf-accent:#60a5fa; --pdf-chip:#1e293b; }
+  .rd { display:none; } .rd.show { display:block; }
+  .r-toolbar { height:40px; display:flex; align-items:center; gap:4px; padding:0 10px; background:var(--pg-shellbg); border-bottom:1px solid var(--pg-line); }
+  .r-toolbar .gap { width:1px; height:18px; background:var(--pg-line); margin:0 6px; }
+  .tbtn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; color:#3b4757; }
+  .tbtn:hover { background:rgba(0,0,0,.08); }
+  .tbtn svg { width:16px; height:16px; }
+  .pageno { font-size:12px; color:#3b4757; background:#fff; border:1px solid var(--pg-line); border-radius:6px; padding:3px 10px; min-width:74px; text-align:center; }
+  .pct { font-size:12px; color:#3b4757; padding:0 6px; min-width:44px; text-align:center; }
+  .tbtn.wide { width:auto; padding:0 10px; font-size:12px; gap:4px; }
+  .tbtn.active { background:#fff; color:var(--pg-shell); box-shadow:inset 0 0 0 1px var(--pg-line); }
+  .r-body { display:flex; height:360px; }
+  .r-side { width:180px; background:var(--pdf-bg-surface); border-right:1px solid var(--pdf-border-page); padding:10px; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+  .thumb { background:var(--pdf-bg-page); border:1px solid var(--pdf-border-page); border-radius:4px; height:64px; padding:8px 7px; display:flex; flex-direction:column; gap:4px; }
+  .thumb.cur { outline:2px solid var(--pdf-accent); outline-offset:1px; }
+  .tl { height:3px; border-radius:2px; background:var(--pdf-border-page); }
+  .r-view { flex:1; background:var(--pdf-bg-surface); overflow:hidden; padding:16px 0; display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .page { width:300px; background:var(--pdf-bg-page); border:1px solid var(--pdf-border-page); border-radius:2px; box-shadow:0 1px 4px rgba(0,0,0,.10); padding:22px 24px; }
+  .page .ph { height:10px; border-radius:3px; background:var(--pdf-ink-ui); opacity:.85; width:55%; margin-bottom:14px; }
+  .page .pl { height:5px; border-radius:2px; background:var(--pdf-ink-ui); opacity:.28; margin-bottom:7px; }
+  .page .pl.hl { background:var(--pdf-accent); opacity:.45; }
+  .r-status { height:24px; display:flex; align-items:center; gap:14px; padding:0 12px; font-size:11.5px; background:var(--pg-shellbg); border-top:1px solid var(--pg-line); color:#3b4757; }
+  .r-status b { font-weight:600; }
+
+  /* ── §C 错误态/加载态 ── */
+  .duo { display:flex; gap:14px; flex-wrap:wrap; }
+  .state { flex:1 1 300px; height:170px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1.5px solid var(--pg-line); }
+  .state svg { width:30px; height:30px; }
+  .state .t1 { font-size:13px; font-weight:600; } .state .t2 { font-size:12px; color:var(--pg-ink2); }
+  .state .btn { font-size:12px; border:1px solid var(--pg-line); border-radius:6px; padding:4px 12px; background:#fff; cursor:pointer; }
+  .st-err { --pdf-danger:#dc2626; background:#fbf3f2; } .st-err svg { color:var(--pdf-danger); }
+  .st-load { background:#f4f5f7; }
+  .skel { width:190px; height:110px; border-radius:4px; background:linear-gradient(100deg,#e8eaee 40%,#f3f4f6 50%,#e8eaee 60%); background-size:200% 100%; animation:sh 1.4s infinite; border:1px solid var(--pg-line); }
+  @keyframes sh { to { background-position:-200% 0; } }
+
+  /* ── §D 图标三案 ── */
+  .icons { display:flex; gap:14px; flex-wrap:wrap; }
+  .icase { flex:1 1 260px; border:1.5px solid var(--pg-line); border-radius:12px; padding:16px; text-align:center; cursor:pointer; background:#fff; }
+  .icase:hover { border-color:var(--pg-accent); }
+  .icase.sel { border-color:var(--pg-accent); box-shadow:0 0 0 2px var(--pg-accent); }
+  .icase .nm { font-size:13px; font-weight:700; margin:8px 0 2px; }
+  .icase .ds { font-size:11.5px; color:var(--pg-ink2); line-height:1.6; min-height:50px; }
+  .icase .row { display:flex; align-items:flex-end; justify-content:center; gap:14px; margin-bottom:6px; }
+  .foot { margin-top:30px; font-size:12px; color:var(--pg-ink2); line-height:1.8; }
+  .foot a { color:var(--pg-shell); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PDF 阅读器插件 · UI 设计图</h1>
+  <div class="sub">2026-10-07 · 设计系统 = ui-ux-pro-max（文档灰＋扫描蓝）· 色值唯一出处 = <b>00.5-UI布局规格 §二</b> token 表 · 阅读区底色固定不跟壳主题</div>
+
+  <h2>§A 标签栏示意（图标上标签栏 · 市场列表/打开方式选择器同款）</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="tabbar">
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="#8a94a3" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>README.md</div>
+      <div class="tab on"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2" fill="#b8432e"/><path d="M14 3v5h5" fill="#fff" opacity=".35"/><rect x="8" y="12" width="8" height="2.4" rx="1.2" fill="#fff"/><rect x="8" y="16" width="5.5" height="2.4" rx="1.2" fill="#fff" opacity=".7"/></svg>产品白皮书.pdf</div>
+      <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="#8a94a3" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>终端</div>
+    </div>
+    <div style="height:10px; background:#fff;"></div>
+  </div>
+
+  <h2>§B 主界面（点右下三颗钮切换底色档——与实装同机制：根类换档、token 一处生效）</h2>
+  <div class="seg" id="seg">
+    <button data-m="rd-paper" class="on">纸白 paper</button>
+    <button data-m="rd-sepia">暖黄 sepia（留档·v1 不实现）</button>
+    <button data-m="rd-night">夜间 night</button>
+  </div>
+  <div id="stack">
+    <!-- 三份同构 mockup，切换显示；工具栏与状态条故意跟壳（灰蓝），阅读区跟 token -->
+    <div class="rd rd-paper show">
+      <div class="reader">
+        <div class="r-toolbar">
+          <div class="tbtn" title="缩略图侧栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+          <div class="pageno">7 / 132</div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="gap"></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="M20 20l-4.5-4.5"/></svg></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l-7 7 7 7" transform="scale(.7) translate(5 2)"/></svg></div>
+          <div class="pct">125%</div>
+          <div class="tbtn active wide">适宽</div>
+          <div class="tbtn wide">适页</div>
+          <div class="gap"></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        </div>
+        <div class="r-body">
+          <div class="r-side">
+            <div class="thumb cur"><div class="tl" style="width:60%"></div><div class="tl"></div><div class="tl" style="width:85%"></div><div class="tl" style="width:70%"></div></div>
+            <div class="thumb"><div class="tl" style="width:50%"></div><div class="tl" style="width:90%"></div><div class="tl"></div><div class="tl" style="width:65%"></div></div>
+            <div class="thumb"><div class="tl" style="width:70%"></div><div class="tl" style="width:55%"></div><div class="tl" style="width:88%"></div><div class="tl" style="width:40%"></div></div>
+          </div>
+          <div class="r-view">
+            <div class="page"><div class="ph"></div><div class="pl"></div><div class="pl"></div><div class="pl" style="width:92%"></div><div class="pl" style="width:78%"></div><div class="pl hl"></div><div class="pl" style="width:88%"></div><div class="pl" style="width:64%"></div><div class="pl" style="width:83%"></div><div class="pl" style="width:45%"></div></div>
+            <div class="page" style="height:120px; overflow:hidden;"><div class="ph" style="width:40%"></div><div class="pl"></div><div class="pl" style="width:80%"></div><div class="pl" style="width:58%"></div></div>
+          </div>
+        </div>
+        <div class="r-status"><span>第 <b>7</b> 页 / 共 <b>132</b> 页</span><span>缩放 <b>125%</b> · 适宽</span><span style="color:var(--pg-ok)">底色：纸白（不跟主题）</span></div>
+      </div>
+    </div>
+    <div class="rd rd-sepia">
+      <div class="reader">
+        <div class="r-toolbar">
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+          <div class="pageno">7 / 132</div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="gap"></div>
+          <div class="pct">125%</div>
+          <div class="tbtn wide">适宽</div>
+          <div class="tbtn active wide">适页</div>
+          <div class="gap"></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        </div>
+        <div class="r-body">
+          <div class="r-view" style="padding:24px 0;">
+            <div class="page"><div class="ph"></div><div class="pl"></div><div class="pl" style="width:90%"></div><div class="pl" style="width:75%"></div><div class="pl hl"></div><div class="pl" style="width:86%"></div><div class="pl" style="width:60%"></div><div class="pl" style="width:80%"></div><div class="pl" style="width:42%"></div></div>
+          </div>
+        </div>
+        <div class="r-status"><span>第 <b>7</b> 页 / 共 <b>132</b> 页</span><span>缩放 <b>125%</b> · 适页</span><span style="color:var(--pg-ok)">底色：暖黄（不跟主题）</span></div>
+      </div>
+    </div>
+    <div class="rd rd-night">
+      <div class="reader">
+        <div class="r-toolbar">
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+          <div class="pageno">7 / 132</div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+          <div class="gap"></div>
+          <div class="pct">125%</div>
+          <div class="tbtn active wide">适宽</div>
+          <div class="tbtn wide">适页</div>
+          <div class="gap"></div>
+          <div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        </div>
+        <div class="r-body">
+          <div class="r-view" style="padding:24px 0;">
+            <div class="page"><div class="ph"></div><div class="pl" style="opacity:.38"></div><div class="pl" style="opacity:.38; width:90%"></div><div class="pl" style="opacity:.38; width:75%"></div><div class="pl hl" style="opacity:.6"></div><div class="pl" style="opacity:.38; width:86%"></div><div class="pl" style="opacity:.38; width:60%"></div><div class="pl" style="opacity:.38; width:80%"></div><div class="pl" style="opacity:.38; width:42%"></div></div>
+          </div>
+        </div>
+        <div class="r-status"><span>第 <b>7</b> 页 / 共 <b>132</b> 页</span><span>缩放 <b>125%</b> · 适宽</span><span style="color:var(--pg-ok)">底色：夜间（不跟主题）</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>§C 错误态两式 ＋ 加载骨架</h2>
+  <div class="duo">
+    <div class="state st-err">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M12 11v4M12 18.5v.5"/></svg>
+      <div class="t1">此 PDF 无法打开</div>
+      <div class="t2">文件损坏或不是有效的 PDF 格式</div>
+      <div class="btn">在文件树中显示</div>
+    </div>
+    <div class="state st-err" style="background:#fbf7f0;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#9a6b1f"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <div class="t1">此 PDF 已加密</div>
+      <div class="t2">暂不支持打开受密码保护的文件</div>
+    </div>
+    <div class="state st-load">
+      <div class="skel"></div>
+      <div class="t2">正在载入…（pdf.js onProgress 驱动，大文件不白屏）</div>
+    </div>
+  </div>
+
+  <h2>§D 插件图标三案（点击选中；16px 为标签栏实尺寸预览——以小图清晰为第一判据）</h2>
+  <div class="icons" id="icons">
+    <div class="icase" data-n="A 红带文档">
+      <div class="row">
+        <svg width="72" height="72" viewBox="0 0 24 24"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5" fill="#b8432e"/><path d="M14.5 2.5V8H19.5z" fill="#fff" opacity=".32"/><rect x="7.5" y="11" width="9" height="2.6" rx="1.3" fill="#fff"/><rect x="7.5" y="15.4" width="6" height="2.6" rx="1.3" fill="#fff" opacity=".72"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5" fill="#b8432e"/><rect x="7.5" y="11" width="9" height="2.6" rx="1.3" fill="#fff"/></svg>
+      </div>
+      <div class="nm">案 A · 红带文档</div>
+      <div class="ds">红色底板＋白色文字行——借用「红色 = PDF」的行业认知（Adobe/福昕一脉），16px 下红块最跳、辨识度最高。风险：与「官方市场里其他红色系插件」底色撞车概率略高。</div>
+    </div>
+    <div class="icase" data-n="B 打开的书本">
+      <div class="row">
+        <svg width="72" height="72" viewBox="0 0 24 24"><path d="M12 6c-1.8-1.6-4.2-2-8-2v14c3.8 0 6.2.4 8 2 1.8-1.6 4.2-2 8-2V4c-3.8 0-6.2.4-8 2z" fill="#33415c"/><path d="M12 6v14" stroke="#fff" stroke-width="1.4"/><path d="M6.5 8.5h3M6.5 11.5h3M14.5 8.5h3M14.5 11.5h3" stroke="#fff" stroke-width="1.4" opacity=".65"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 6c-1.8-1.6-4.2-2-8-2v14c3.8 0 6.2.4 8 2 1.8-1.6 4.2-2 8-2V4c-3.8 0-6.2.4-8 2z" fill="#33415c"/><path d="M12 6v14" stroke="#fff" stroke-width="1.6"/></svg>
+      </div>
+      <div class="nm">案 B · 打开的书本</div>
+      <div class="ds">「阅读」语义最直白，蓝灰配色与壳图标栏最调和。风险：与语言包/文档类插件图标语义近似，市场小图里「书」一族容易混。</div>
+    </div>
+    <div class="icase" data-n="C 文档＋放大镜">
+      <div class="row">
+        <svg width="72" height="72" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" fill="#e8ebf0" stroke="#33415c" stroke-width="1.6"/><path d="M14 3v5h5" stroke="#33415c" stroke-width="1.6" fill="none"/><circle cx="12.5" cy="13" r="4.2" fill="#fff" stroke="#b8432e" stroke-width="1.8"/><path d="M15.7 16.2L19 19.5" stroke="#b8432e" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" fill="#e8ebf0" stroke="#33415c" stroke-width="2"/><circle cx="12.5" cy="13" r="4.2" fill="#fff" stroke="#b8432e" stroke-width="2.2"/></svg>
+      </div>
+      <div class="nm">案 C · 文档＋放大镜</div>
+      <div class="ds">「检视/查看器」语义，与壳的文件树放大镜一脉相承。风险：放大镜语义太泛（搜索/预览/检查都在用），且 16px 下细线圆圈易糊。</div>
+    </div>
+  </div>
+  <div class="note" id="pick" style="margin-top:8px;">当前未选——点卡片即选中示意（正式拍板走会话里的选择题）。</div>
+
+  <div class="foot">
+    上游：<a href="00.5-UI布局规格.md">00.5-UI 布局规格（token 表唯一出处）</a> · <a href="01-任务书.md">01-任务书</a> · <a href="02-执行清单.md">02-执行清单</a> · <a href="04-流程图.html">04-流程图</a><br>
+    实装纪律：色值只许写在 00.5 §二表对应的一处定义；工具栏/状态条用壳共享件（跟主题），阅读区 token 固定（不跟主题）；图标钮 28×28、悬停 150ms、焦点环键盘可达（ui-ux-pro-max 交付清单）。
+  </div>
+</div>
+
+<script>
+  document.getElementById('seg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.rd').forEach(r => r.classList.toggle('show', r.classList.contains(b.dataset.m)));
+  });
+  document.getElementById('icons').addEventListener('click', e => {
+    const c = e.target.closest('.icase'); if (!c) return;
+    document.querySelectorAll('.icase').forEach(x => x.classList.toggle('sel', x === c));
+    document.getElementById('pick').textContent = '示意选中：' + c.dataset.n + '（正式拍板走会话里的选择题）';
+  });
+</script>
+</body>
+</html>
