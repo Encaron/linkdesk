@@ -154,9 +154,18 @@ function ContentFrame({
   // 让点击链接 = 点左栏章节。此前这些链接落 `target="_blank"` 外开（dev 下被外链门禁送去系统浏览器
   // 开 localhost 黑页 / 打包下被 deny 毫无反应）。非章链接（指向非 md 资源等）返回 false ⇒
   // MarkdownView 保留默认外开行为。useCallback 给稳定引用（MarkdownView 的 components 挂在它上面）。
+  // 🔴 渲染链（micromark/parse5）会把非 ASCII 的 href **百分号编码**再落 DOM（实读
+  //  `03-按任务操作.md` ⇒ `03-%E6%8C%89...md`）——先 decodeURIComponent 还原成源文件里的裸中文
+  //  再对章 id，否则中文文件名一个都匹配不上、整条内跳等于没修（2026-10-07 实机验出）。
   const onRelativeLink = useCallback(
     (href: string): boolean => {
-      const id = href.split("#")[0]?.replace(/\.md$/i, "").trim() ?? "";
+      let path = href.split("#")[0] ?? "";
+      try {
+        path = decodeURIComponent(path);
+      } catch {
+        // 畸形百分号序列（`%E4%B8` 断尾）——按原样试匹配，匹配不上自然回落外开
+      }
+      const id = path.replace(/\.md$/i, "").trim();
       if (id === "" || !data.chapters.some((c) => c.id === id)) return false;
       onSelect(id);
       return true;
