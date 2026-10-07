@@ -55,6 +55,12 @@ export const REVIEWED_BENIGN = new Map([
   ["index.tsx", "插件入口通用名——7 只仓各有各的入口，零共享语义（2026-10-06 复核）"],
   ["Toolbar.tsx", "file-tree 与 serial-monitor 各自的工具条，零共享语义（2026-10-06 复核）"],
   ["SearchView.tsx", "file-tree 与 marketplace 各自的搜索视图，零共享语义（2026-10-06 复核）"],
+  [
+    "SearchBar.tsx",
+    "serial-monitor 与 pdf-reader 各自的搜索条——前者搜**串口输出流**（props 驱动，带大小写开关，Ctrl+F 开条），"
+      + "后者是阅读区上的**查找浮条**（绝对定位浮层、走阅读器自己的 store，不认识 pdf.js）。props 契约与数据模型无交集，"
+      + "改一处不影响另一处，零共享语义（2026-10-08 复核——pdf-reader 转官方后本闸门才扫到它）。",
+  ],
 ]);
 
 /** 宿主声明面（R4 判据③ 的数据键——**按键**分组，不看整串正则，才能说清「是哪条数据」）。 */
@@ -208,9 +214,10 @@ function selfTest() {
       1,
     ],
     [
+      // 期望 = 当年复核表长度（空同名集 ⇒ 表里每条都该打 ⚠️）。⛔ 别写死数字——表一加行就假红。
       "正控⑤：复核表条目过期（该名字已不跨仓出现）⇒ 打 ⚠️",
       judgeDuplicates(new Map(), ov({})).stale.length,
-      3,
+      REVIEWED_BENIGN.size,
     ],
     [
       "正控⑥：**复核过的宿主数据组合**（今日真实形态：处理器表 ← file-tree, settings）⇒ 不进黄灯名单，且登记被确认见过",

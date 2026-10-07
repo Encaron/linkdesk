@@ -135,6 +135,22 @@ const FACTS = {
       "非组件模块（命令 handler / service）要译文就走 `import i18n from \"i18next\"` 的**默认实例**（宿主已把本插件字典并进全局实例）——先例：file-tree `FileTreeNotify.ts`、marketplace `notifications.ts`；`useTranslation()` 只在组件里用。",
     ],
   },
+  "pdf-reader": {
+    what: "PDF 阅读器——官方示例级的阅读器插件，认领 `.pdf`（声明式文件关联）。双击就在主区标签页里**真渲染**（pdf.js 逐页画到 canvas，不是缩略图预览）；左缘 180px 侧栏一夹两个面 ＝ 缩略图 ＋ 目录树；划选复制、页内与整篇搜索。**卸掉它，`.pdf` 立刻交还系统默认程序**——关联是声明式的，软件里不留痕迹。",
+    where: "主区标签页（`appearsIn.tabBar`）；入口 = 文件树 / 资源管理器双击 `.pdf`，或命令面板。⚠️ 那个 180px 侧栏在**阅读器面内部**，不是壳的侧栏——`contributes` 里**没有 `viewsContainers`**。",
+    layout:
+      "`src/index.tsx` 是入口；阅读面在 `src/views/readerSurface/`，左缘侧栏（缩略图 ＋ 目录树）在 `src/views/outlineSidebar/`，工具栏在 `src/views/readerToolbar/`；\n" +
+      "引擎面在 `src/services/pdfDoc/`（pdf.js 引导与打开、书签目标 → 页码、目录树）与 `src/services/textLayer/`（文本层 ＋ 命中定位与高亮）；纯换算在 `src/utils/`；命令实现与视图态在 `src/commands/`。\n" +
+      "🔴 pdf.js 的 cmaps 与标准字体**随包带走**：`scripts/sync-pdfjs-assets.mjs` 把它们同步进 `public/`，`build` 时一并在包里（`prebuild` 钩子跑的就是它）——中日韩文档不画成方块靠的就是这一步。",
+    notes: [
+      "🔴 **阅读底色有意不跟壳主题**（纸白 / 夜间两档；工具栏与状态条照旧跟主题）——PDF 的观感基准是纸。这是拍板，不是缺陷，⛔ 别顺手「修」成跟主题。",
+      "🔴 **12 条命令全部写在 `plugin.json` 的 `contributes.commands` 里**（翻页 / 跳页 / 缩放 / 适宽适页 / 底色 / 侧栏开合 / 搜索 / 读状态）——命令面板与 `linkdeskctl` 读的是同一张注册表，⛔ 别在代码里另起一套。",
+      "🔴 **回执纪律**：到边界如实回 `noop`、参数不合法回 `ok:false` ＋ `reason`——⛔ 不把「没动」说成「动了」。`pdf-reader.getStatus` 就是给 AI 读数的那条命令。",
+      "🔴 阅读区是**自绘的虚拟化列表**，两条形状一起看：**页位整本都铺**（滚动条长度 ＝ 整本文档）、**位图只挂窗口内 ±2**。只铺窗口那几条会让滚动范围自锁（后面十几页永远够不到）。换倍率还要守住**锚点**：不许把当前页打回第 1 页。",
+      "🔴 `.pdf` 关联是**声明式**的（`contributes.fileAssociations`）——系统注册表那套由壳按声明去写，⛔ 插件侧不自己碰注册表；「卸载即退回」也是靠这个形态成立的。",
+      "本仓同时是**官方示例级参考实现**：只用公开的 `@linkdesk/plugin-sdk` 与 npmjs 上的包，不 import 壳内部——第三方作者可以照它的造法写自己的插件。",
+    ],
+  },
   "lang-defaults": {
     what: "官方语言包——中文 / English 两份词典。**纯数据插件，没有源码。**",
     where: "不出现在任何区域。它的作用是让 `t()` 有译文。",
