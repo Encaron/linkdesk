@@ -2,7 +2,7 @@
 
 > **什么时候读**：你要用 Chrome DevTools Protocol 驱动 LinkDesk 界面（改完 UI/CSS/交互后的实机验收、复现 bug）
 > —— 这是**视觉/手势唯一允许的兜底通道**，但它有一批「看起来对、其实没生效」的坑。
-> **本章只讲坑与正解**；driver 的用法、判据、门禁射程在仓内 [`scripts/dev/README.md`](../../scripts/dev/README.md)（入库、进 git）。
+> **本章只讲坑与正解**；driver 的用法、判据、门禁射程在仓内 [`scripts/dev/README.md`](https://github.com/Encaron/linkdesk/blob/electron/scripts/dev/README.md)（入库、进 git）。
 >
 > 🔴 **总原则**：能调命令就别派发鼠标事件（[04 章](04-手势隐藏规则.md)）；能读 DOM/契约就别截图猜。
 
@@ -67,4 +67,4 @@
 上面这些坑**都已固化成库**：`npm run dev:driver`（`reload` / `handshake` / `snapshot` / `sections` / `layout` /
 `open` / `open-view` / `collapse` / `menu` / `hover` / `states` / `decouple` / `selftest` / `eval` / `call` / `wait` / `activate`），
 三层结构 = `lib/cdp.mjs`（传输）· `lib/linkdesk-driver.mjs`（语义）· `driver.mjs`（CLI），**零第三方依赖**。
-用法与判据：仓内 [`scripts/dev/README.md`](../../scripts/dev/README.md)。
+用法与判据：仓内 [`scripts/dev/README.md`](https://github.com/Encaron/linkdesk/blob/electron/scripts/dev/README.md)。

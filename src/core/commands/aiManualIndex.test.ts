@@ -27,7 +27,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { ensureCoreCommands } from "./shell/coreCommands";
@@ -273,5 +273,35 @@ describe("《AI 操作手册》02 章生成区（M3 AI#11）", () => {
     expect(cmd).toContain("`core.splitDown`");
     expect(cmd).toContain("`workbench.action.toggleSidebarPosition`");
     expect(api).toContain("`pool`");
+  });
+});
+
+describe("《AI 操作手册》自足性——链接不逃逸手册目录（随包发货，读者零源码）", () => {
+  // 手册的读者是**用户机零源码环境的 AI**（AI#16 随包发货）：手册在安装包里是 `resources/ai-manual/`
+  // 下一份**平铺的 md**，指向 `../` 或 `/` 的链接在读者那边必然解析成死链（dev 下更糟——解析成
+  // vite 基址丢进系统浏览器开一页乱码，2026-10-07 实证）。仓内真源要指路，一律给 GitHub blob 网址
+  // （http 放行；页内 `#锚点` 不在此管——查看器无标题 id，锚点了无反应属另一类，别混进本尺）。
+  const MANUAL_DIR = resolve(ROOT, "docs/07-AI操作手册");
+  const escapees = (markdown: string): string[] =>
+    [...markdown.matchAll(/\]\(([^)\s]+)\)/g)]
+      .map((m) => m[1])
+      .filter((href) => /^(\.\.\/|\/)/.test(href));
+
+  it("正控：全册各章 md 链接零逃逸（../ 与 / 开头一个不许有）", () => {
+    const bad: string[] = [];
+    for (const name of readdirSync(MANUAL_DIR).filter((n) => n.toLowerCase().endsWith(".md")).sort()) {
+      for (const href of escapees(readFileSync(resolve(MANUAL_DIR, name), "utf-8"))) {
+        bad.push(`${name}: ${href}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("负控：逃逸链接真的会红（章内相对与 GitHub 网址放行）", () => {
+    expect(escapees("[a](../../scripts/dev/README.md)")).toEqual(["../../scripts/dev/README.md"]);
+    expect(escapees("[a](/abs/path.md)")).toHaveLength(1);
+    expect(escapees("[b](02-命令与API索引.md)")).toHaveLength(0);
+    expect(escapees("[b](https://github.com/Encaron/linkdesk/blob/electron/scripts/dev/README.md)")).toHaveLength(0);
+    expect(escapees("[b](#页内锚点)")).toHaveLength(0);
   });
 });
