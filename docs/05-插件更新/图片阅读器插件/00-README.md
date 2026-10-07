@@ -16,7 +16,7 @@
 
 ## 三、打开逻辑
 
-同 [PDF 阅读器](../PDF阅读器插件/00-README.md) §三：解析 → tab（sourceId=filePath）→ `readBinaryFile` → `Blob` → `URL.createObjectURL` → `<img>`。**零宿主新能力**。
+同 [PDF 阅读器](https://github.com/Encaron/linkdesk-plugin-pdf-reader/tree/main/docs/01-PDF阅读器插件/00-README.md) §三：解析 → tab（sourceId=filePath）→ `readBinaryFile` → `Blob` → `URL.createObjectURL` → `<img>`。**零宿主新能力**。
 
 ## 四、功能分期
 
