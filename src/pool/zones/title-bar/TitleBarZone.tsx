@@ -81,6 +81,27 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
     return () => { unsub?.(); };
   }, []);
 
+  /** pin 点击——**读-改-写**：目标值由主进程的当前真实态推导，⛔ 不看本地 `pinned`。
+   *  实机 bug（2026-10-08）：「置顶按钮点一下窗口退到最后面、之后取消不了」。根因是本地闩锁（未进「修」）——
+   *  置顶偶发「报成功没生效」（推送 true 但窗口并未置顶）时 `pinned` 卡在 true，之后每次点击都在发
+   *  `setAlwaysOnTop(false)`：对非置顶窗那是 no-op 且**连事件都不发** ⇒ 闩锁永远清不掉
+   *  （实测连点 5 次 0 条推送、类名一直 wc-pin-active，重载池页面才复位）。
+   *  以 `isAlwaysOnTop()` 为准 ⇒ 每次点击必然发出与现状**相反**的目标，按钮永不自锁。 */
+  const handleTogglePin = useCallback(() => {
+    const win = window.linkdesk?.window;
+    const read = win?.isAlwaysOnTop;
+    const write = win?.setAlwaysOnTop;
+    if (!read || !write) return; // 无此能力（旧 preload / 无桥）——不动作，避免按钮态与实际偏离
+    read()
+      .then((cur) => {
+        write(!cur);
+        setPinned(!cur); // 乐观先画；下一拍回读覆盖
+        return read(); // 与 write 同序的第二次读 = 落地后的真实态（主进程侧已核实，必要时强制重设）
+      })
+      .then((settled) => setPinned(!!settled))
+      .catch(() => { /* 静默 */ });
+  }, []);
+
   const wc = titleBar.windowControls;
   const openItems = openGroup ? titleBar.menuGroups.find((g) => g.group === openGroup) : undefined;
 
@@ -160,11 +181,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       <div className="ldk-window-controls">
         <button
           className={`ldk-wc-btn ldk-wc-pin${pinned ? " wc-pin-active" : ""}`}
-          onClick={() => {
-            const win = window.linkdesk?.window;
-            if (pinned) win?.setAlwaysOnTop(false);
-            else win?.setAlwaysOnTop(true);
-          }}
+          onClick={handleTogglePin}
           data-hint={pinned ? wc.unpin : wc.pin}
           aria-label={pinned ? wc.unpin : wc.pin}
         >

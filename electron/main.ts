@@ -250,7 +250,26 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
     ipcMain.handle(IPC.window.isMaximized, (event) => hostWindowFor(event)?.isMaximized() ?? false);
     // E5.8#46.18：OS 级置顶——setAlwaysOnTop 按 sender 路由宿主窗（脱出窗/漂移窗/主窗各自置顶互不影响）；
     // isAlwaysOnTop 供 TitleBarZone pin 按钮挂载时初始化两态。
-    ipcMain.on(IPC.window.setAlwaysOnTop, (event, pinned: boolean) => hostWindowFor(event)?.setAlwaysOnTop(!!pinned));
+    // 实机加固（2026-10-08「置顶按钮点一下窗口退到最后面、之后取消不了」）：Windows 上偶发
+    // 「报成功没生效」——setAlwaysOnTop 已触发 always-on-top-changed（渲染端按钮亮起 `wc-pin-active`），
+    // 但窗口并未真置顶（isAlwaysOnTop() 与 HWND 的 WS_EX_TOPMOST 位均为 false）。渲染端闩锁自此卡在
+    // true，之后每次点击都在发 false——对非置顶窗是 no-op、**连事件都不发** ⇒ 按钮永久锁死。两条兜底：
+    //   ① 设完**核实**：没落地就强制重来——同值重发会被 Electron「状态没变」短路，故先反向再正向，
+    //      保证真的再走一次 SetWindowPos(HWND_TOPMOST/NOTOPMOST)。
+    //   ② 推**核实过**的真实态给该窗池（而不是 always-on-top-changed 的乐观态）——闩锁从此拿不到
+    //      谎话；即便再抽风也只是一次不同步，下一次点击以 isAlwaysOnTop() 为准必然可取消。
+    ipcMain.on(IPC.window.setAlwaysOnTop, (event, pinned: boolean) => {
+      const windowId = windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+      const win = hostWindowFor(event);
+      if (!win || win.isDestroyed()) return;
+      const wanted = !!pinned;
+      win.setAlwaysOnTop(wanted);
+      if (win.isAlwaysOnTop() !== wanted) {
+        win.setAlwaysOnTop(!wanted);
+        win.setAlwaysOnTop(wanted);
+      }
+      windowManager?.sendPoolAlwaysOnTopChange(windowId, win.isAlwaysOnTop());
+    });
     ipcMain.handle(IPC.window.isAlwaysOnTop, (event) => hostWindowFor(event)?.isAlwaysOnTop() ?? false);
     // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
     // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
