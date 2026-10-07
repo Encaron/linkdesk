@@ -96,11 +96,13 @@ export function registerRegistryHandlers(): void {
   // E5.7#50：FileAssociation 直连——原 PROXY_CHANNELS 代理（主进程→壳）拉直为主进程直答
   // T2（第 3 波）：getPluginFor 升级为**覆盖表感知**的完整解析（resolveOpenTarget：覆盖 → 声明 → 角色）
   // ——三入口（FoldersView／SearchView／intake）同吃一条通道 ⇒ F3「一处真相」的机械保证。契约返回形
-  // `string | undefined` 不变：无声明且无挂牌者时返回 welcome（E22 提示页语义），空扩展名返回 undefined。
-  ipcMain.handle(IPC.fileAssociation.getPluginFor, async (_event, extension: string) => {
-    if (!extension) return undefined;
-    return resolveOpenTarget(extension, await readOverrideTable());
-  });
+  // `string | undefined` 不变：无声明且无挂牌者时返回 welcome（E22 提示页语义）。
+  // 兜底链修复（2026-10-07 拍板）：空扩展名（无后缀 / 点开头文件）**照样走宿主解析**——
+  // resolveOpenTarget("") 跳过覆盖表/声明表直落角色兜底（服务层用例 ⑥ 已钉）。旧 guard
+  // `if (!extension) return undefined` 把这条设计语义掐成 undefined ⇒ 三入口全部短路进 welcome。
+  ipcMain.handle(IPC.fileAssociation.getPluginFor, async (_event, extension: string) =>
+    resolveOpenTarget(extension, await readOverrideTable())
+  );
 
   // T2 只读面（01 §T2.1）：「打开方式…」选择器数据源——全部声明者＋当前默认标记
   ipcMain.handle(IPC.fileAssociation.listHandlersFor, async (_event, extension: string) =>

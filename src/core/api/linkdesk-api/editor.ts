@@ -23,12 +23,20 @@ export interface EditorAPI {
    * the read-only selector surface; `setDefault` = the override table's only write port ("Set as default" / "Restore automatic",
    * bidirectional sync E31); `setDefaultBulk` = the **bulk** form of the same port (E32/E34 aggregate write — writes N types at once,
    * aggregation logic on the manager side).
+   * Fallback-chain fix (2026-10-07): an **empty extension** (extensionless / dot-starting file) is resolved like any
+   * other — `getPluginFor("")` walks the same pipeline and lands on the role-fallback holder.
+   * D2 (decided 2026-10-07): `listHandlersFor` also lists the **role-fallback holder** when at least one declarer
+   * exists (the "open as text" path stays reachable once a reader claims the type), and `setDefault` accepts the
+   * role-fallback holder as an override target — welcome stays non-assignable (E22 hint-page semantics).
    */
   fileAssociation: {
     getPluginFor(ext: string): Promise<string | undefined>;
     /**
      * List all declarers of the extension plus the current-default marker (data source for the "Open with…" picker and the
      * settings page dropdown, 01 §T2.1); no declarers ⇒ [].
+     * D2 (2026-10-07): with at least one declarer, the **role-fallback holder** is appended when it is not among them —
+     * the "open as text" path remains selectable after a reader claims the type. With no declarers the result stays []
+     * (E13: the fallback holder is already the default then; welcome is never listed — E22).
      * `title` = the **plugin** display name (manifest.name ?? pluginId); `displayName` = the **file type** display name
      * (the displayName in the declaration, e.g. .rs → "Rust") — the two differ semantically; naming surfaces use `title`.
      */

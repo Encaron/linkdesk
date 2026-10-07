@@ -155,6 +155,15 @@ describe("resolveOpenTarget（T2 解析纯函数 · 一处真相源）", () => {
     expect(resolveOpenTarget("")).toBe(HOLDER_A);
     expect(resolveOpenTarget("", { "": HOLDER_B })).toBe(HOLDER_A);
   });
+
+  it("⑦ 🔴 D2（2026-10-07 拍板甲）：覆盖指向**兜底挂牌者**（未声明该类型）也生效——否则「把编辑器设为 .pdf 默认」写键即死", () => {
+    registerFileAssociation({ extension: "pdf", pluginId: HOLDER_B, displayName: "PDF 阅读器" });
+    registerHolder(HOLDER_A, ["zzz"]); // A 未声明 .pdf，但挂牌 text-fallback
+    expect(resolveOpenTarget("pdf", { ".pdf": HOLDER_A })).toBe(HOLDER_A);
+    // 挂牌者被卸 ⇒ 覆盖失效回声明序（E6/E7 同律）
+    rollback(HOLDER_A);
+    expect(resolveOpenTarget("pdf", { ".pdf": HOLDER_A })).toBe(HOLDER_B);
+  });
 });
 
 describe("listHandlersFor（T2 只读面 · 选择器数据源）", () => {
@@ -187,6 +196,31 @@ describe("listHandlersFor（T2 只读面 · 选择器数据源）", () => {
   it("② 无声明者 ⇒ 空数组（选择器不可达：右键项 when 收敛，E13）", () => {
     expect(listHandlersFor("nobody")).toEqual([]);
     expect(listHandlersFor("")).toEqual([]);
+  });
+
+  it("③ 🔴 D2（2026-10-07 拍板甲）：有声明者时兜底挂牌者也进候选——装了阅读器仍能选「编辑器（文本方式）」", () => {
+    // 阅读器声明了 .pdf，编辑器只挂牌 text-fallback（未声明 .pdf）——旧行为选择器里没有编辑器
+    registerFileAssociation({ extension: "pdf", pluginId: HOLDER_B, displayName: "PDF 阅读器" });
+    registerHolder(HOLDER_A, ["zzz"]);
+    const rows = listHandlersFor(".pdf");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ pluginId: HOLDER_B, isCurrent: true });
+    expect(rows[1]).toMatchObject({ pluginId: HOLDER_A, isCurrent: false, displayName: ".pdf" });
+    // 「设为默认」指到兜底挂牌者 ⇒ 覆盖生效（resolveOpenTarget ⑦ 同一笔放宽），isCurrent 跟着走
+    expect(listHandlersFor(".pdf", { ".pdf": HOLDER_A })[1]).toMatchObject({ isCurrent: true });
+  });
+
+  it("③b 无挂牌者（兜底=welcome）⇒ 不补行——welcome 是提示页语义不是可开的处理器（E22/E13 不破）", () => {
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_B, displayName: "阅读器 B" });
+    expect(listHandlersFor(".zzz")).toEqual([
+      { pluginId: HOLDER_B, title: HOLDER_B, displayName: "阅读器 B", isCurrent: true },
+    ]);
+  });
+
+  it("③c 兜底挂牌者自己声明了该类型 ⇒ 不重复补行", () => {
+    registerFileAssociation({ extension: "zzz", pluginId: HOLDER_A, displayName: "编辑器 A" });
+    registerHolder(HOLDER_A, ["qqq"]);
+    expect(listHandlersFor(".zzz")).toHaveLength(1);
   });
 });
 

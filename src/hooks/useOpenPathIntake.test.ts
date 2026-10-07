@@ -113,15 +113,20 @@ describe("useOpenPathIntake（E6#46b 壳侧 intake 消费）", () => {
     expect(one.type).toBe("welcome");
   });
 
-  it("同批多路径逐条处理；无扩展名 → 直接兜底", async () => {
-    const stub = installStub({ exists: () => true, pluginFor: async () => "demo-plugin" });
+  it("同批多路径逐条处理；无扩展名 / 点开头 → 照样问宿主（兜底链修复 J3：不再短路进 welcome）", async () => {
+    // 宿主答复按扩展名给：非空 → demo-plugin；空 → 角色兜底（＝主进程 resolveOpenTarget("") 的真实语义）
+    const pluginFor = vi.fn(async (ext: string) => (ext ? "demo-plugin" : FALLBACK_HOLDER));
+    const stub = installStub({ exists: () => true, pluginFor });
     const { unmount } = renderHook(() => mod.useOpenPathIntake(true));
 
-    await act(async () => { stub.emit(["/tmp/demo/a.xyz", "/tmp/demo/Makefile"]); });
+    await act(async () => { stub.emit(["/tmp/demo/a.xyz", "/tmp/demo/Makefile", "/tmp/demo/.gitignore"]); });
 
-    expect(emitted).toHaveLength(2);
+    expect(emitted).toHaveLength(3);
     expect(emitted[0].type).toBe("demo-plugin");
     expect(emitted[1].type).toBe(FALLBACK_HOLDER);
+    expect(emitted[2].type).toBe(FALLBACK_HOLDER); // 点开头文件同路（dot>0 才算扩展名 ⇒ ext=""）
+    expect(pluginFor).toHaveBeenCalledWith("xyz");
+    expect(pluginFor).toHaveBeenCalledWith(""); // 🔴 J3：入口恒调宿主面——旧写法对空扩展名根本不问
     unmount();
   });
 

@@ -1,7 +1,7 @@
 /* 校验-拟真度.cjs —— 本 case 设计图的**拟真度机械门**
  * 图：`mockups/01-设计图-编辑器二进制提示页.html`　档案：`00-README.md` ～ `交接.md`
  *
- * 运行（仓库根）：`node "docs/04-软件更新/兜底打开链与二进制文本选项/mockups/校验-拟真度.cjs"`
+ * 运行（仓库根）：`node "docs/04-软件更新/已落地/兜底打开链与二进制文本选项/mockups/校验-拟真度.cjs"`
  *   负控自证：　`node "…/校验-拟真度.cjs" --self-test`
  *   （纯 Node，无第三方依赖——`.cjs` 因为仓库是 "type":"module"）
  *

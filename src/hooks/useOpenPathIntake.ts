@@ -63,7 +63,10 @@ export function useOpenPathIntake(ready: boolean): void {
       const name = basenameOf(filePath);
       const dot = name.lastIndexOf(".");
       const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
-      const pluginId = ext ? await lk.fileAssociation.getPluginFor(ext) : "";
+      // 兜底链修复（2026-10-07）：空扩展名（无后缀 / 点开头）也**照样问宿主**——主进程
+      // resolveOpenTarget("") 直落角色兜底（服务层用例 ⑥）。旧写法 `ext ? … : ""` 把这类文件
+      // 短路进渲染层兜底 = welcome（J3 判据：入口恒调宿主面）。
+      const pluginId = await lk.fileAssociation.getPluginFor(ext);
       _hasOpenedFiles = true;
       shellEvents.emit("tab:create", {
         type: pluginId || resolveFallbackTabType(),

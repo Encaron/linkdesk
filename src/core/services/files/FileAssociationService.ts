@@ -344,7 +344,10 @@ export function getRoleHolders(role: FileAssociationRole = TEXT_FALLBACK_ROLE): 
  *
  * 解析序（D7 主权三层）：
  *   ① 用户覆盖表（`WORKBENCH_FILE_ASSOCIATIONS_KEY`，键归一后精确匹配 E25）——命中且**指向者在册**
- *      才生效；指向者已卸载/禁用（E6/E7：注册已回收）⇒ 视同未覆盖，键惰性保留（下次「设为默认」自然覆盖）；
+ *      才生效；指向者已卸载/禁用（E6/E7：注册已回收）⇒ 视同未覆盖，键惰性保留（下次「设为默认」自然覆盖）。
+ *      「在册」＝**声明过该类型** 或 **text-fallback 挂牌者**（D2，2026-10-07 拍板甲：兜底挂牌者通常
+ *      没声明 .pdf 这类二进制类型，不放行的话「把编辑器设为 .pdf 默认」写键即死）；welcome 不是
+ *      挂牌者，覆盖指 welcome 仍旧无效（E22 提示页语义不是可指派的处理器）；
  *   ② 声明表——注册序即激活序，取首个（E1/E19：第二只装上不漂移）；
  *   ③ 角色兜底（T7）——无声明者时由当前挂牌者接手；连挂牌者都没有 ⇒ welcome 提示页语义（E22）。
  *
@@ -360,7 +363,10 @@ export function resolveOpenTarget(
     for (const [rawKey, target] of Object.entries(override)) {
       // 覆盖表键与查询键同口径归一（E10）；每扩展名至多一个键，命中即止
       if (normalizeExtension(rawKey) === ext) {
-        if (target && getPluginsFor(ext).some((a) => a.pluginId === target)) return target;
+        // D2（2026-10-07 拍板甲）：指向者放宽到「声明者 或 text-fallback 挂牌者」——兜底挂牌者虽未
+        // 声明该类型，却是「以文本方式打开」的合法去处；welcome（提示页语义）不算（E22 不破）。
+        if (target && (getPluginsFor(ext).some((a) => a.pluginId === target) || getRoleHolders().includes(target)))
+          return target;
         break;
       }
     }
@@ -384,6 +390,10 @@ export interface FileAssociationHandlerEntry {
 /**
  * T2 只读面——列出能处理此扩展名的**全部**声明者＋当前默认标记（「打开方式…」选择器数据源）。
  * 无声明者 ⇒ 空数组（选择器不可达：右键项 `when` 收敛 + 调用方判空，E13）。
+ * D2（2026-10-07 拍板甲）：**有声明者时**，兜底挂牌者（role:"text-fallback"，通常＝编辑器）也补进
+ * 候选——否则装了阅读器后「打开方式…」与设置管理器里都选不到它，用户没有任何「用文本打开」的路。
+ * ⛔ 无声明者不补（E13 口径不变：此时兜底者本来就是默认，选择器没有增量）；welcome 不补（E22：
+ * 提示页语义不是可指派的处理器）；兜底者自己声明了该类型的不重复补。
  */
 export function listHandlersFor(
   extension: string,
@@ -394,12 +404,22 @@ export function listHandlersFor(
   const list = getPluginsFor(ext);
   if (list.length === 0) return [];
   const current = resolveOpenTarget(ext, override);
-  return list.map((a) => ({
+  const rows: FileAssociationHandlerEntry[] = list.map((a) => ({
     pluginId: a.pluginId,
     title: a.pluginName ?? a.pluginId,
     displayName: a.displayName ?? a.pluginId,
     isCurrent: a.pluginId === current,
   }));
+  const fallback = resolveFallbackTabType();
+  if (fallback !== FALLBACK_PLUGIN_ID && !list.some((a) => a.pluginId === fallback)) {
+    rows.push({
+      pluginId: fallback,
+      title: fallback, // 面板有 manifest 名的会就地覆盖（OpenWithService 走 pluginManager.list()）
+      displayName: `.${ext}`, // 兜底者没声明过类型名 ⇒ 以扩展名本面目示人
+      isCurrent: current === fallback,
+    });
+  }
+  return rows;
 }
 
 /**
