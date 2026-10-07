@@ -62,6 +62,7 @@
   .state svg { width:30px; height:30px; }
   .state .t1 { font-size:13px; font-weight:600; } .state .t2 { font-size:12px; color:var(--pg-ink2); }
   .state .btn { font-size:12px; border:1px solid var(--pg-line); border-radius:6px; padding:4px 12px; background:#fff; cursor:pointer; }
+  .btnrow { display:flex; gap:8px; }
   .st-err { --pdf-danger:#dc2626; background:#fbf3f2; } .st-err svg { color:var(--pdf-danger); }
   .st-load { background:#f4f5f7; }
   .skel { width:190px; height:110px; border-radius:4px; background:linear-gradient(100deg,#e8eaee 40%,#f3f4f6 50%,#e8eaee 60%); background-size:200% 100%; animation:sh 1.4s infinite; border:1px solid var(--pg-line); }
@@ -183,13 +184,14 @@
     <div class="state st-err">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M12 11v4M12 18.5v.5"/></svg>
       <div class="t1">此 PDF 无法打开</div>
-      <div class="t2">文件损坏或不是有效的 PDF 格式</div>
-      <div class="btn">在文件树中显示</div>
+      <div class="t2">「文件名.pdf」损坏或不是有效的 PDF 格式</div>
+      <div class="btnrow"><div class="btn">打开方式…</div><div class="btn">在市场搜索阅读器</div></div>
     </div>
     <div class="state st-err" style="background:#fbf7f0;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#9a6b1f"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
       <div class="t1">此 PDF 已加密</div>
       <div class="t2">暂不支持打开受密码保护的文件</div>
+      <div class="btnrow"><div class="btn">打开方式…</div><div class="btn">在市场搜索阅读器</div></div>
     </div>
     <div class="state st-load">
       <div class="skel"></div>
