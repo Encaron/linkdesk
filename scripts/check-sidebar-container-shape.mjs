@@ -6,7 +6,7 @@
  * 退出码 0 = 全部合规，退出码 1 = 有违规（打印到 stderr）。
  *
  * 背景（2026-09-28 修「侧栏toolbar与section吸顶丢失」时用户拍板的第四件——「先一次性实证，门禁化另登记」，
- * 登记档 = docs/04-软件更新/待抉择池/侧栏布局形态门禁化.md）：
+ * 登记档 = docs/04-软件更新/已落地/侧栏布局形态门禁化.md）：
  *   `.ldk-side-panel-content` 必须是 **flex 纵列**（`display:flex` + `flex-direction:column`）——
  *   子层① toolbar 包装（flex-shrink:0）钉在滚动区外、子层② section 包装（flex:1 + min-height:0）
  *   自任唯一滚动容器 ⇒ toolbar 与 section 头粘顶的**前提**全在这两条声明上。
@@ -149,7 +149,7 @@ function main() {
     console.error(violations.join("\n"));
     console.error(
       `\n❌ 侧栏容器形态退化 ${violations.length} 处——`.concat(
-        "flex 纵列两条声明必须写进 CSS 规则块本体（不许只靠使用者内联样式补）。\n判据出处：docs/04-软件更新/待抉择池/侧栏布局形态门禁化.md",
+        "flex 纵列两条声明必须写进 CSS 规则块本体（不许只靠使用者内联样式补）。\n判据出处：docs/04-软件更新/已落地/侧栏布局形态门禁化.md",
       ),
     );
     process.exit(1);
