@@ -19,9 +19,21 @@
  *   即便将来某条读取路径又带上缓存滞后，**滞后只会让内容偏旧**，只会「延迟发现落后」，
  *   **永不产生假红**——假红让真红失效，是本仓最贵的坏法。
  *
+ * ── 🔴 2026-10-07 加固：目录读取**钉住 main 的 HEAD sha**（v0.2.53 发版返工的防复发）──
+ *   事故：收录（editor 1.0.25／file-tree 1.0.31 进官方目录）推上去几分钟后推壳 tag，本地发版预演
+ *   腿 ③「出厂种子新鲜」**绿**、几分钟后 CI 同一判据**红**——两次读数不一致。本头注 2026-09-14
+ *   写的「Contents API 无 CDN 层」与该现象相抵 ⇒ 只能承认：**API 路径同样可能读到滞后副本**
+ *   （匿名请求的 Fastly 缓存时长不受我们控）。「延迟发现落后」在攒批发版里就是**一轮 10 分钟 CI 返工**。
+ *   修法：读目录前先 `git ls-remote` 拿 main 的当前 HEAD sha，再 `?ref=<sha>` 取**该次提交**的
+ *   blob——sha 钉死后内容不可变，任何中间缓存都只能命中同一份，「读到旧目录」机制上不可能。
+ *   ls-remote 不可达 ⇒ 退回 `?ref=main` 并**大声说明**（此时 API 读多半也会失败 ⇒ 门禁照旧红，
+ *   不改变「无网即红」的既定口径；但不许把降级藏起来）。
+ *
  * 认证：匿名 60 次/时·IP 足够本用途（每轮 1 次读）；带 `GITHUB_TOKEN` / `GH_TOKEN` 时自动附上
  *   （CI 里 GH Actions 自带；本机 `gh auth login` 的凭据**不会**自动被 fetch 用上，属已知边界）。
  */
+
+import { spawnSync } from "node:child_process";
 
 export const OFFICIAL_REPO = { owner: "Encaron", repo: "linkdesk-marketplace" };
 
@@ -76,13 +88,30 @@ async function ghFetch(url, { accept, raw = true, what, allow404 = false }) {
 }
 
 /**
+ * 官方目录仓 main 的当前 HEAD sha（`git ls-remote`——git 协议直答，无中间缓存）。
+ * 取不到（无网 / 仓不可达）⇒ null，调用方退回 `?ref=main` 并出声。
+ */
+function catalogHeadSha() {
+  const url = `https://github.com/${OFFICIAL_REPO.owner}/${OFFICIAL_REPO.repo}.git`;
+  const res = spawnSync("git", ["ls-remote", url, "refs/heads/main"], { encoding: "utf8" });
+  return /^([0-9a-f]{40})\t/m.exec(res.stdout ?? "")?.[1] ?? null;
+}
+
+/**
  * 读官方目录 → `{ plugins: [...] }`（原始结构，不做裁剪）。
  * 读不到 ⇒ **抛**（门禁/同步都必须响，不许退化成「目录空 ⇒ 无落后」的假绿）。
  */
 export async function readOfficialCatalog() {
+  const sha = catalogHeadSha();
+  const ref = sha ?? "main";
+  if (sha) {
+    console.info(`[official-catalog] 读官方目录，钉 main@${sha.slice(0, 7)}（sha 钉读，不受中间缓存影响）`);
+  } else {
+    console.info(`[official-catalog] ⚠️ ls-remote 不可达 ⇒ 退回 ?ref=main（**新鲜度断言降级**：可能读到滞后副本）`);
+  }
   const url =
     `https://api.github.com/repos/${OFFICIAL_REPO.owner}/${OFFICIAL_REPO.repo}` +
-    `/contents/${OFFICIAL_CATALOG_PATH}?ref=main`;
+    `/contents/${OFFICIAL_CATALOG_PATH}?ref=${ref}`;
   const buf = await ghFetch(url, {
     accept: "application/vnd.github.raw",
     what: "官方目录 marketplace.json",
