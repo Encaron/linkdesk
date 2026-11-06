@@ -9,10 +9,10 @@
  *      ——不经 plugins:extract「存在即拒」、不碰 E6#15n boot 门禁：直写磁盘 + reload = dev 覆盖语义
  *      （生产 linkdesk:// 逐请求 readFileSync；但 protocol.handle 响应无 Cache-Control → 会被 Chromium 缓存，
  *      reload 前须清缓存才落盘生效——机制实锤 + 修正见 04-作者真机调试环.md §二/§六）。
- *   3. watch 作者源码 → 变更自动 重建→直写→reload。作者以 `--remote-debugging-port=9222` 启动 LinkDesk
+ *   3. watch 作者源码 → 变更自动 重建→直写→reload。作者以 `--remote-debugging-port=9333` 启动 LinkDesk
  *      （Chromium 原生 switch，壳零代码）→ SDK 经 CDP Network.clearBrowserCache + Page.reload 刷「LinkDesk Pool」窗口
  *      （清缓存后 reload 重 import 落到磁盘逐请求 readFileSync = 真机生效）；
- *      9222 同时是 CDP/AI 全自动调试入口（沿用 dev-fixtures/toast.mjs 连法）。
+ *      9333 同时是 CDP/AI 全自动调试入口（沿用 dev-fixtures/toast.mjs 连法）。
  *
  * 边界（04 档案 §六）：作用域 = 作者自研 dev 插件——目标目录若已有同 id 安装（市场装发布版）会被**覆盖且不备份**；
  * 多插件工程并行 dev 需各自独立工程；CSS 等热更走整窗口 reload（秒级，非亚秒 HMR——那是 E6#28.7 B 的候选卖点）。
@@ -35,8 +35,9 @@ import { build } from "vite";
 import { defineLinkdeskPluginConfig } from "./vite-config.js";
 import { derivePluginId, readPluginManifest } from "./validate.js";
 
-/** CDP reload 端口默认 9222（与壳 dev electron:dev 尾部 --remote-debugging-port=9222 对齐）；LINKDESK_CDP_PORT 覆盖 */
-export const CDP_PORT = Number(process.env.LINKDESK_CDP_PORT ?? 9222);
+/** CDP reload 端口默认 9333（2026-11-07 自 9222 统一——与壳 driver/隔离实例/作者安装版惯例同源，
+ *  electron:dev 同笔改齐；LINKDESK_CDP_PORT 覆盖） */
+export const CDP_PORT = Number(process.env.LINKDESK_CDP_PORT ?? 9333);
 
 /** 作者当前平台 LinkDesk userData/plugins 代码根（Electron 默认 userData = appData/<appName>，dev/打包同名 "linkdesk"）。
  *  LINKDESK_USER_PLUGINS_DIR 环境变量可覆盖（自定义安装布局 / CI 隔离 userData 的逃生门）。 */
@@ -191,7 +192,7 @@ function hasBuildOutput(pkgDir: string): boolean {
   return false;
 }
 
-/* ── CDP reload（9222 /json/list 找 "LinkDesk Pool" → Page.reload） ── */
+/* ── CDP reload（9333 /json/list 找 "LinkDesk Pool" → Page.reload） ── */
 
 interface CdpTarget {
   title?: string;

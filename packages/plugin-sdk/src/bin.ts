@@ -36,7 +36,7 @@ const USAGE = `linkdesk-plugin-sdk <command>
   dev         在插件工程根起 dev 宿主（E6#24）——读 plugin.json → Vite dev server（端口 1421）
               → 浏览器打开纯前端预览 + HMR。只支持带 entry 的视图插件（脚手架 tab 形态）
   dev --real  E6#28.5 真机环——watch 作者源码 → 隔离单插件 build → 直写 {userData}/plugins/<id>
-              → CDP reload「LinkDesk Pool」（LinkDesk 须以 --remote-debugging-port=9222 启动）。
+              → CDP reload「LinkDesk Pool」（LinkDesk 须以 --remote-debugging-port=9333 启动）。
               真 IPC/串口/LSP 类插件的秒级真机调试（壳零新代码；LINKDESK_USER_PLUGINS_DIR /
               LINKDESK_CDP_PORT 可覆盖）
   build       在插件工程根构建 .linkdesk-plugin（读 plugin.json → Vite build → zip）。

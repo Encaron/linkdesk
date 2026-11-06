@@ -14,7 +14,7 @@
  *   2. 设 env LINKDESK_DEV_PLUGIN_ID/DIR（DIR = 物化目录正斜杠）——主进程 dev 门控据此把发现/
  *      三表/loader 判轨收敛到该插件（electron/services/dev-plugin-mode.ts）。
  *   3. 拉起 vite(1420) → wait-on → tsc -p electron/tsconfig.json → electron-commonjs-fix →
- *      electron . --remote-debugging-port=9222（护栏②：插件改动 = renderer reload，不重启 electron）。
+ *      electron . --remote-debugging-port=9333（护栏②：插件改动 = renderer reload，不重启 electron）。
  *   4. watch 插件源码 → debounce 200ms → 单插件 real build → CDP 刷「LinkDesk Pool」；
  *      改 plugin.json → 额外刷同源其他窗口（壳侧表面）。
  *
@@ -37,7 +37,7 @@ const require = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const isWin = process.platform === "win32";
 const SDK_DIST = join(REPO_ROOT, "packages", "plugin-sdk", "dist");
-const CDP_PORT = Number(process.env.LINKDESK_CDP_PORT ?? 9222);
+const CDP_PORT = Number(process.env.LINKDESK_CDP_PORT ?? 9333);
 const SELF = "[dev:plugin]";
 
 /* ── 参数解析 ─────────────────────────────────────────────── */

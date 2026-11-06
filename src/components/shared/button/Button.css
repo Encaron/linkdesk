@@ -5,6 +5,11 @@
    E6#30.14 variant——语义动作层级（视觉源 mockup 02 st-*，全走主题 token）：
      border 基 1px transparent（border-box 全局 → 尺寸零跳变）——实心钮边框同底，变体钮换 border-color。 */
 .ldk-button {
+  /* 2026-11-07：基类补 display/align-items——此前只在 --sm 档有，非 sm 档的「图标＋文字」按钮
+   * 不居中（serial-monitor 收编试验暴露；04-软件更新/待抉择池/壳工具链小修二连）。
+   * 文字钮视觉零变（单行文本在 inline-flex 与 inline-block 下渲染相同）。 */
+  display: inline-flex;
+  align-items: center;
   background: var(--accent);
   color: var(--text-on-accent);
   border: 1px solid transparent;
@@ -23,11 +28,8 @@
    ⚠️ 12px 不是随手取的值：仓库 `check-spacing-grid` 门禁要求 padding/margin/gap 要么 ≤6
    要么是 4 的倍数，设计稿原写的 10px 两条都不满足（2026-09-12 用户裁决改 12px）——
    与设计规范自己的「4/8dp 节奏」也一致，不是为过门禁而将就。
-   ⚠️ `display/align-items` 只写在 --sm 里：基类没有 display 声明，加在基类会波及
-   settings / marketplace / FilePathInput 三处既有消费者。 */
+   （2026-11-07：display/align-items 已上移基类——非 sm 档图标＋文字按钮同样居中。） */
 .ldk-button--sm {
-  display: inline-flex;
-  align-items: center;
   height: 22px;
   padding: 0 12px;
   font-size: var(--font-size-xs); /* 12px——设计稿原值（--font-size-sm 是 13px）；裸 px 被字号门禁拦，故走 token */
