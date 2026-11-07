@@ -117,15 +117,21 @@ function HintCard({ lines, title, note, placement = "bottom", openDelayMs = 400,
     setOpen(false);
   }, []);
 
-  /** 卡渲染后量实高校正（翻面 ＋ 视口夹紧——保底②，⛔ 不裁字） */
+  /** 卡渲染后量实高校正（翻面 ＋ 视口夹紧——保底②，⛔ 不裁字）。
+   *  2026-11-07 修「已开卡时点击锚标右移被裁」：placeAndOpen 会把 pos 重置回未夹紧估算位，
+   *  而依赖只有 [open, placement] 时 open 已 true ⇒ 校正不重跑 ⇒ 卡停在估算位（右缘裁掉）。
+   *  依赖补 pos：点击设了新 pos ⇒ 效果重跑重新夹紧。🔴 同值必须返回 **原引用**（setPos(prev)）
+   *  ——Object.is 按引用比，无条件 setPos 新对象 = 永不 bail = 渲染死循环（首版实测 6 例连坐红）。 */
   useLayoutEffect(() => {
     if (!open) return;
     const a = hostRef.current?.getBoundingClientRect();
     const c = cardRef.current?.getBoundingClientRect();
     if (!a || !c) return;
     const fixed = computeCardPosition(a, c, { width: window.innerWidth, height: window.innerHeight }, placement);
-    setPos({ top: fixed.top, left: fixed.left });
-  }, [open, placement]);
+    setPos((prev) =>
+      prev.top === fixed.top && prev.left === fixed.left ? prev : { top: fixed.top, left: fixed.left },
+    );
+  }, [open, placement, pos]);
 
   useEffect(() => () => window.clearTimeout(hoverTimer.current), []); // 卸载清计时器（硬约束 14）
 

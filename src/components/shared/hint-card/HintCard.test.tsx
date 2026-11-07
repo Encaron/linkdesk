@@ -112,6 +112,21 @@ describe("HintCard（E6#120 · 通用悬停说明卡）", () => {
     fireEvent.mouseLeave(host);
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
+
+  it("2026-11-07 案根因（serial-monitor 兼容卡）：已开卡时点击锚标 ⇒ 重新夹紧，不跳回未夹紧估算位", () => {
+    // jsdom 全零矩形下：夹紧位 left = EDGE_PX(8px)；估算位 = 锚 left = 0px——两者可判别
+    render(
+      <HintCard lines={["one line."]}>
+        <button type="button">anchor</button>
+      </HintCard>,
+    );
+    const host = screen.getByText("anchor").parentElement!;
+    fireEvent.click(host); // 出卡：估算位 → layout effect 校正夹紧
+    const clamped = screen.getByRole("tooltip").style.left;
+    expect(clamped).not.toBe("0px");
+    fireEvent.click(host); // 已开再点（onClick 走 placeAndOpen）——修复前重置回估算位且校正不重跑
+    expect(screen.getByRole("tooltip").style.left).toBe(clamped);
+  });
 });
 
 describe("computeCardPosition（翻面 ＋ 夹紧——保底② 单一实现）", () => {
