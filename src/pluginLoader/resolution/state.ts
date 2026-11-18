@@ -225,6 +225,11 @@ export async function discoverInstalled(): Promise<PluginDiscoveryEntry[]> {
 /** 已成功加载的插件 ID 集合（用于文件监听检测新插件） */
 const loadedPluginIds = new Set<string>();
 
+/** 04 插件更新须重启①（2026-11-18）：会话级「曾加载过」登记——⛔ 卸载**不清**。
+ *  池侧表面缓存卸载后仍驻留（statusBar bundle 连「模块为 null」的清理都没有；视图 _lazyCache
+ *  无版本键无卸载清理点）⇒ 卸载→装回同 URL 依旧命中旧 bundle。安装流据此判「该如实提示重启」。 */
+const everLoadedPluginIds = new Set<string>();
+
 /** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
 const _loadingPromises = new Map<string, Promise<void>>();
 /** E5.8#14：缺依赖挂起的插件——pluginId → manifest（依赖就绪后 sweep 补载需要 manifest 重查）。
@@ -347,6 +352,7 @@ export {
   log,
   errMsg,
   loadedPluginIds,
+  everLoadedPluginIds,
   _loadingPromises,
   _pendingPlugins,
   getMetadataCache,

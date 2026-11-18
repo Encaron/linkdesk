@@ -9,6 +9,7 @@ import type { PluginManifest } from "../../../core/api/types";
 import { pushToast } from "../../../core/services/ui/NotificationService";
 // E5.8#15.5：getLoadDiagnostics——挂起插件的 pendingReason（list() 数据源合并读取）
 import { getLoadDiagnostics } from "../../resolution/loadState";
+import { everLoadedPluginIds } from "../../resolution/state"; // 04 插件更新须重启①：会话级「曾加载」判据
 import {
   linkdesk,
   pluginsApi,
@@ -147,6 +148,19 @@ export function installWithProgress(
  * E6#73h（D2）：**成功分支不再自弹 toast**——成功 toast 由 lifecycle 消费端 3 统一发声（install 族唯一口）。
  * 此前这里「已安装：X v1.0」+ 消费端「已安装：X（即时生效）」= 一次安装两条，用户以为装了两遍。
  */
+/** 重启提示 toast（catch 分支与「曾加载过」成功分支共用——⛔ 不各写一份） */
+function pushNeedRestartToast(needRestartMsg: string, pluginId: string): void {
+  pushToast({
+    message: needRestartMsg,
+    source: pluginId,
+    severity: "info",
+    ttl: 0,
+    actions: [
+      { label: i18n.t("立即重启"), isPrimary: true, onClick: () => window.location.reload() },
+    ],
+  });
+}
+
 async function loadInstalledPlugin(
   pluginId: string,
   version: string,
@@ -154,6 +168,10 @@ async function loadInstalledPlugin(
   jobId: string,
 ): Promise<PluginInstallResult> {
   jobProgress(jobId, "loading", pluginId);
+  // 04 插件更新须重启①（2026-11-18）：判据从「loadPlugin 抛错」扩到「该插件本会话曾加载过」——
+  // 池侧表面缓存卸载/更新后仍驻留（statusBar bundle 无清理点、视图 _lazyCache 无版本键），
+  // 装回同 URL 命中旧 bundle 且一路无提示 = 静默的错。⚠️ 读集合必须先于 loadPlugin（本次装载会登记）。
+  const wasEverLoaded = everLoadedPluginIds.has(pluginId);
   try {
     await loadPlugin(pluginId, "install");
     // E6#73q（§五 I.6⑦）：终态第三类「已安装但缺依赖」——loadPlugin 走 parkForDependencies 提前返回
@@ -163,18 +181,16 @@ async function loadInstalledPlugin(
       emitInstallProgress("done", pluginId);
       return { success: true, pluginId, version, parked: true };
     }
+    if (wasEverLoaded) {
+      // 本会话已加载过该插件（含卸载后重装/更新装回）⇒ 池缓存里是旧 bundle——如实提示重启
+      pushNeedRestartToast(needRestartMsg, pluginId);
+      emitInstallProgress("done", pluginId);
+      return { success: true, pluginId, version, needRestart: true };
+    }
     emitInstallProgress("done", pluginId);
     return { success: true, pluginId, version };
   } catch {
-    pushToast({
-      message: needRestartMsg,
-      source: pluginId,
-      severity: "info",
-      ttl: 0,
-      actions: [
-        { label: i18n.t("立即重启"), isPrimary: true, onClick: () => window.location.reload() },
-      ],
-    });
+    pushNeedRestartToast(needRestartMsg, pluginId);
     emitInstallProgress("done", pluginId);
     return { success: true, pluginId, version, needRestart: true };
   }

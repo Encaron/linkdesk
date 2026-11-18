@@ -31,6 +31,7 @@ import {
   log,
   errMsg,
   loadedPluginIds,
+	everLoadedPluginIds,
   _loadingPromises,
   _pendingPlugins,
   cachePluginMetadata,
@@ -339,6 +340,7 @@ async function loadPlugin(
  */
 function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: PluginInstallEvent["reason"]): void {
   loadedPluginIds.add(pluginId);
+  everLoadedPluginIds.add(pluginId); // 04 插件更新须重启①：会话级「曾加载」——卸载不清（见 state.ts 头注）
   // E5.8#11：状态机——active（注册全量生效）在 onDidInstall 之前迁移（L6b：事件只在合法迁移后发）
   markLoadSuccess(pluginId);
   syncAppThemeEnum();
