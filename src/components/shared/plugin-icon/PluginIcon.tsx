@@ -12,7 +12,7 @@
  *   <PluginIcon pluginId="terminal" manifest={plugin.manifest} className="my-icon-class" />
  *   manifest 缺省 → emoji 兜底（池内无 manifest 的历史条目沿用现状）。
  */
-import { resolvePluginIcon, type ManifestIconShape } from "./iconUtils";
+import { resolvePluginIcon, type ManifestIconShape, type SharedIconDefault } from "./iconUtils";
 import { ComponentType } from "react";
 import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
@@ -27,6 +27,10 @@ interface PluginIconProps {
   pluginId: string;
   /** 插件 manifest（或其含 icon/iconSource 的子集）——图标唯一裁决来源；缺省 → emoji 兜底 */
   manifest?: ManifestIconShape;
+  /** 共享图标定义快照（iconSource: "shared" 按名查——04 内置配置组图标 2026-11-18）。
+   *  数据源 = iconTheme:changed 广播的 sharedIcons（宿主默认项 app.group-* ＋ 插件 contributes.icons）。
+   *  缺省 / 名字缺省 → emoji 兜底；image 默认项按 **ink 剪影**渲染（mask ＋ --icon-ink 随主题）。 */
+  sharedIcons?: Record<string, SharedIconDefault>;
   className?: string;
   alt?: string;
 }
@@ -60,7 +64,7 @@ const LUCIDE_MAP: Record<string, ComponentType<any>> = {
 /** 无 pluginId 或未注册插件时的回退 emoji（@deprecated E5#100——Lucide 优先） */
 const FALLBACK = "📄";
 
-export function PluginIcon({ pluginId, manifest, className, alt = "" }: PluginIconProps) {
+export function PluginIcon({ pluginId, manifest, sharedIcons, className, alt = "" }: PluginIconProps) {
   const resolved = manifest ? resolvePluginIcon(pluginId, manifest) : { emoji: FALLBACK };
 
   // E5#100: Lucide 优先
@@ -73,6 +77,33 @@ export function PluginIcon({ pluginId, manifest, className, alt = "" }: PluginIc
   if (resolved.codicon) {
     return (
       <span className={`codicon ${resolved.codicon} plugin-icon plugin-icon--codicon ${className ?? ""}`} />
+    );
+  }
+  // 04 内置配置组图标（2026-11-18）：共享图标按名查——image 默认项 = ink 剪影
+  // （mask ＋ --icon-ink 随主题墨色；VS Code product-icon 语义，彩色身份图不走本面）
+  if (resolved.sharedName) {
+    const def = sharedIcons?.[resolved.sharedName];
+    if (def?.url) {
+      const mask = `url("${def.url}")`;
+      return (
+        <span
+          className={`plugin-icon plugin-icon--ink ${className ?? ""}`}
+          style={{
+            backgroundColor: "var(--icon-ink)",
+            WebkitMaskImage: mask,
+            maskImage: mask,
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+          }}
+        />
+      );
+    }
+    return (
+      <span className={`plugin-icon plugin-icon--emoji ${className ?? ""}`}>{FALLBACK}</span>
     );
   }
   if (resolved.src) {

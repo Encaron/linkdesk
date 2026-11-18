@@ -57,7 +57,7 @@ interface PluginRow {
   manifest?: {
     name?: string;
     icon?: string;
-    iconSource?: "codicon" | "svg" | "url" | "lucide";
+    iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared";
     marketIcon?: string;
     marketIconSource?: "codicon" | "svg" | "url" | "lucide";
   };

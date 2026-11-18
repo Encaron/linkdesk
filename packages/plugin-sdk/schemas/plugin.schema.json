@@ -67,7 +67,7 @@
     "iconSource": {
       "type": "string",
       "description": "Icon source",
-      "enum": ["codicon", "svg", "url", "lucide"],
+      "enum": ["codicon", "svg", "url", "lucide", "shared"],
       "default": "codicon"
     },
     "marketIcon": {
@@ -438,7 +438,8 @@
                 "type": "object",
                 "properties": {
                   "fontPath": { "type": "string", "description": "Font file path" },
-                  "fontCharacter": { "type": "string", "description": "Font character code — e.g. \\e001" }
+                  "fontCharacter": { "type": "string", "description": "Font character code — e.g. \\e001" },
+                  "url": { "type": "string", "description": "Image asset default (2026-11-18, case 04) — resolved to an absolute URL; rendered as an ink silhouette (mask + --icon-ink, following the theme text ink). Colorful identity art belongs in icon/marketIcon, not here." }
                 },
                 "additionalProperties": false
               }

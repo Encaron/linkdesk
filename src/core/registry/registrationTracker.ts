@@ -34,7 +34,26 @@ PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
  * - 返回值 = 包装后的 run 函数：done 守卫保证幂等（手动 dispose + rollback 双跑不双清）；
  * - 卸载/禁用时 PluginLifecycle 自动触发 rollback，无需调用方保存返回值。
  */
-export function trackRegistration(pluginId: string, disposer: () => void): () => void {
+export function trackRegistration(pluginId: string | undefined, disposer: () => void): () => void {
+  // 宿主兜底登记（pluginId undefined）不进逆序回滚层——宿主不存在卸载，
+  // 进层反而含混（undefined 键永不会被字符串 rollback 命中，留着只误导读者）。
+  // 仅保留幂等包装（主动 dispose 仍可用）。04 内置配置组图标 2026-11-18 随宿主共享图标引入。
+  if (pluginId === undefined) {
+    let doneHost = false;
+    return (): void => {
+      if (doneHost) return;
+      doneHost = true;
+      try {
+        disposer();
+      } catch (err) {
+        reportError({
+          message: `[registrationTracker] 回滚失败（host）: ${err instanceof Error ? err.message : String(err)}`,
+          source: "registrationTracker",
+          error: err,
+        });
+      }
+    };
+  }
   const layer = _layers.get(pluginId) ?? [];
   let done = false;
   const run = (): void => {

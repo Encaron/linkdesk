@@ -57,6 +57,8 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
   //    SettingsView 按 group 归到子标题下渲染（无 group 平铺原样，第三方设置零侵入）。
   registerConfiguration("appearance", {
     title: t("主题"),
+    // 04「内置配置组图标声明」（2026-11-18）：本体组图标 = IconRegistry 共享图标名（app.group-theme）
+    icon: "app.group-theme",
     properties: {
       "app.theme": {
         type: "string",
@@ -226,18 +228,10 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         title: t("图标主题"),
         description: t("图标主题——文件图标集（内置图标集 = codicon 保底）"),
         onApply: (v) => {
-          const iconThemeId = v as string;
-          // E5.8#133 ④：广播 payload 携带壳已解析的绝对路径 mappings（消费方零解析负担）；
-          // "default" → undefined（codicon 保底，消费方不应用映射直接回退）
-          const mappings = iconThemeId === "default" ? undefined : IconRegistry.getMappings(iconThemeId);
-          // E5.8#133.4：自定义字体资产随广播进池（fontFaces → 池复刻 @font-face；glyphCss → 池注入 glyph 类）；
-          // 无 font 段/非 default → 缺省（池清空上次注入的自定义图标字体，对标 theme:changed fontFaces 语义）
-          const fontAssets = iconThemeId === "default" ? undefined : IconRegistry.getFontAssets(iconThemeId);
-          window.linkdesk?.bridge?.broadcast("iconTheme:changed", {
-            iconThemeId,
-            mappings,
-            ...(fontAssets ?? {}),
-          });
+          // E5.8#133 ④：载荷拼装归一进 IconRegistry.broadcastIconThemeChanged()（mappings ＋ 字体资产
+          // ＋ 04 内置配置组图标 2026-11-18 的 sharedIcons 快照）——onApply 与 AppInitializer 启动应用
+          // 共用同一份，⛔ 不各拼一次
+          IconRegistry.broadcastIconThemeChanged(v as string);
         },
       },
       // 外观六覆盖——dependsOn appearanceMode=custom 才出现（08 §7.1 #5-10）。

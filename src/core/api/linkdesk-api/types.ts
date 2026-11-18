@@ -176,6 +176,8 @@ export type LinkDeskConfigurationContribution = [
   string,
   {
     title: string;
+    /** 04 内置配置组图标（2026-11-18): group icon = **IconRegistry shared-icon name** (host defaults `app.group-*`; third-party plugins may reference their own contributes.icons name). Optional; absent = nav row renders text only. */
+    icon?: string;
     /** M4 AI#38.12 (P-3 decision A): one-line subtitle under the section's main title (optional; undeclared = not rendered, zero intrusion) */
     subtitle?: string;
     /** M4 AI#38.12 (P-3 decision A): one-line small text under each group heading — key = the group's original text (optional, zero intrusion) */
@@ -319,7 +321,8 @@ export interface PluginInfoEntry {
   updatable?: boolean;
   /** E6#106: small UI icon (Type-1 silhouette for icon-bar plugins / Type-2 identity art for the rest) */
   icon?: string;
-  iconSource?: "codicon" | "svg" | "url" | "lucide";
+  /** 🔴 "shared"（04 内置配置组图标 2026-11-18）：按名引用 IconRegistry 共享图标——渲染需注入 sharedIcons 快照 */
+  iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared";
   /** E6#106: plugin identity color art (Type-2) — first candidate for row/detail display positions */
   marketIcon?: string;
   marketIconSource?: "codicon" | "svg" | "url" | "lucide";
@@ -511,7 +514,7 @@ export interface OpenWithHandler {
   /** Type name (declared displayName — to name the plugin use the manifest's top-level name) */
   typeLabel?: string;
   /** Icon manifest subset — produced by the shell with the shared helper `pickIdentityArt()` (same source as the settings page/tab bar) */
-  manifest?: { icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" };
+  manifest?: { icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared" };
   /** Whether this handler is the current default */
   isDefault: boolean;
   /** Whether this handler was chosen by automatic adjudication (when no explicit override exists) */

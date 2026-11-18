@@ -227,7 +227,7 @@ my-plugin/
 | `core` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页卸载按钮不显示/禁用；**无行为特权、非类别**：API/命令层可卸可禁，卸走写 removed 墓碑。默认 `false` |
 | `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
-| `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
+| `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` / `"lucide"` / `"shared"`——`"shared"` = **按名引用** IconRegistry 共享图标（自己的 `contributes.icons` 键，或宿主默认项 `app.group-*`）；渲染需消费方注入共享图标快照（设置页导航今天已接） |
 | `marketIcon` | `string` | 市场展示位的**身份彩色图**（列表行 + 详情顶）。与 `icon` 不同：进图标栏的插件用它补一张彩色图。缺省 → 回退 `icon` → 再缺 → 统一默认彩色块。详见下方「市场展示图 `marketIcon`」 |
 | `marketIconSource` | `string` | 与 `iconSource` 同枚举。写 `resources/…` 时**省略即可**（按值推断） |
 | `description` | `string` | 一句话描述，插件详情页展示。支持多行 |

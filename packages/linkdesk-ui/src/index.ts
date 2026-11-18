@@ -15,11 +15,11 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 29 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 30 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
- *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps）
+ *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps / SharedIconDefault）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
@@ -55,6 +55,8 @@ export { default as ThemePicker } from "@shared/theme-picker/ThemePicker";
 export { default as Toggle } from "@shared/toggle/Toggle";
 export { InlineInput } from "@shared/inline-input/InlineInput";
 export { PluginIcon } from "@shared/plugin-icon/PluginIcon";
+// 04 内置配置组图标（2026-11-18）：iconSource:"shared" 按名查的定义快照值形状（消费方注入 PluginIcon）
+export type { SharedIconDefault } from "@shared/plugin-icon/iconUtils";
 // 2026-10-05「文件打开方式与贡献点」案 4A：按插件浏览插件卡（卡头/受控展开/齿轮菜单/停用态；
 //   行清单⛔不在共享包——那是设置插件本地的管理器词汇）。图标消费现成 PluginIcon，零新造图标链。
 export { default as PluginCard } from "@shared/plugin-card/PluginCard";

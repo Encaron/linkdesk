@@ -844,6 +844,7 @@
     "iconSource": [
       "codicon",
       "lucide",
+      "shared",
       "svg",
       "url"
     ],

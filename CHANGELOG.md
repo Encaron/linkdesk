@@ -6,6 +6,10 @@
 
 **分屏的两栏此前看起来是一整块，聚焦那圈强调色的边线还常常被标签栏和页面内容盖住、不少页面里根本看不见；这一次两栏各自成立，聚焦哪一栏就在哪一栏四周显出一圈强调色边线。**
 
+### feat
+
+- 🎨 **设置页左侧导航的本体组四行有图标了**（通用／主题／AI 接入／默认打开方式）：四枚专项设计墨线稿（B 方案——与插件组彩色块「本体/插件」天然区分：插件＝有块·彩色，本体＝无块·墨线随主题），以 **IconRegistry 共享图标名**声明（宿主默认项 `app.group-*`，启动期登记）——消费端按名查共享图标快照（随 `iconTheme:changed` 广播进池）渲染 **ink 剪影**（mask ＋ 主题文字墨色，亮暗自动翻转）。替换口三层全占：盘上默认资产、图标主题成套覆盖、设置页整套替换。配套：`iconSource` 新增 `"shared"` 形态（按名引用注册表共享图标——schema 里早已承诺的作者契约本版补全）、`contributes.icons` 默认项支持 `url` 图片资产（作者面 schema 三拷贝＋文档双语同笔）；设置插件 1.0.42（地板抬 0.2.53）消费端接线——⚠️ 四行点亮需设置插件 1.0.42 到位（已收录官方目录，软件内市场可更）。
+
 ### fix
 
 - 🖼️ **聚焦环不再被内容盖住**：那圈强调色环此前画在面板自己的绘制层里、位置在标签栏与页面内容**之下** ⇒ 只要标签栏或页面本身不是半透明的，就被整个盖死（内置深色与浅色主题下实测可见像素为 **0**，只有半透明主题才碰巧露出来——「有时看得见、有时看不见」就是这个原因）。现在它改画在面板最上一层：页面里放什么图、什么底色都不再遮挡，四边都在，粗细不变，也不吃鼠标点击（点面板空白处聚焦照常）。
@@ -22,6 +26,7 @@
 
 - `@linkdesk/ui` **0.2.56**（2026-10-07，独立发版）：`MarkdownView` 新增**可选** `onRelativeLink` 回调——提供时无 scheme 相对链接（如 `02-章名.md`）的点击交给调用方，返回 true 即内部消化不弹外窗；不提供行为零变化（marketplace 详情页等既有消费方不受影响）。随本版「手册链接内跳」修复同笔漂移收口。
 - `@linkdesk/plugin-sdk` **0.1.89**（2026-10-07，独立发版）：README 单行行尾空白订正（生成器产物对齐），零内容差异——收掉 0.1.88 记基线后遗留的货架漂移。
+- `@linkdesk/contracts` **0.1.45** ＋ `@linkdesk/plugin-sdk` **0.1.93** ＋ `@linkdesk/ui` **0.2.59** ＋ `@linkdesk/plugin-docs` **0.1.77**（2026-11-18，同链独立发版——本体组图标契约链）：contracts 补 `ConfigurationContribution.icon`（共享图标名）＋ `iconSource` 枚举 `"shared"`（7 处 union 位同笔）；sdk schema 补 `iconSource:"shared"` ＋ `contributes.icons.default.url`（⚠️ **0.1.91 的 schema JSON 有语法伤、0.1.92 当即重发订正**——插入字段漏逗号，而「三拷贝字节同步」门只比拷贝不验语法＝假绿；发版前当场 `json.loads` 记为固化动作）；ui 补 `PluginIcon` 的 `sharedIcons` 注入面＋ink 剪影渲染分支＋`SharedIconDefault` 类型（0.2.58 订正 tarball 内坏括号测试件、0.2.59 订正 barrel 计数注释——两次重发均非功能变化）；plugin-docs 0.1.76→0.1.77 随 ui-surface 账本与作者文档重生成。
 - `@linkdesk/contracts` **0.1.43** ＋ `@linkdesk/plugin-sdk` **0.1.88**（2026-10-07，同链独立发版——软件本体不动，dev 继续测）：**作者面注释全面英文化、零行为改动**。契约源 `src/core/api/**` ＋ `src/core/types/**` 共 40 个文件的 JSDoc 全部译为英文（重勘实测约 1776 行中文注释归零；池档 2026-09-14 旧读数 34 文件/651 行已过期，范围扩大主因是后续各案持续往契约面加类型）。连带英文化：契约生成器与速查表生成器的**产物模板**（`linkdesk.d.ts` 头注/ambient/`// ── Contract types ──` 分隔、mock 树头注、速查表 README 头段与 deprecated alias 格）；类型图从壳内 5 个文件（splitTree / KeybindingRegistry types / MenuRegistry / WorkspaceService / tabDragTypes）借进 d.ts 的注释行同步英文化、壳内其余注释不动。类型、签名、wire 载荷、运行时值一字未动（`serial:system` 的中文状态横幅是真 wire 值，仅注释样例改描述性英文、真值由测试持守）。效果：作者 IDE 悬停 `window.linkdesk.*` 与 npm 页面速查表从此全英文。同笔附带：`npm run check` 新增侧栏容器形态静态门禁（`check-sidebar-container-shape`，判据见待抉择池档）。
 
 ## v0.2.52（2026-10-07）

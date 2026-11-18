@@ -513,9 +513,14 @@ Leave `--list` off entirely and you get every mapping upstream declares — the 
 }
 ```
 
-Plugin A contributes, plugin B references (`"icon": "stm32-chip"` + `"iconSource": "shared"`).
+**Two default forms:**
 
-**id naming rule:** the **keys** here *are* the shared icon ids (plugin A contributes, plugin B references) ⇒ prefix them with your repo identity: `<pluginId>.<name>` (🟡 advisory, reported by the SDK leg). The host has no fallback shared icons ⇒ this family has **no red**; but when two plugins declare the **same key**, the later one **cannot be registered** and one `console.error` names both sides (the same arbitration as recipes and colorways).
+- `fontPath` + `fontCharacter` — an icon-font glyph (the VS Code icon extension point form). Renders only where that font itself is loaded; the shared `PluginIcon` (pool side) does not load plugin fonts today, so a font-only icon falls back there.
+- `url` — an image asset (added 2026-11-18, case 04). **Rendered as an ink silhouette**: `mask` + `--icon-ink`, following the theme's text ink (VS Code product-icon semantics — shared icons are chrome, not merchandise). Colorful identity art belongs in your own `icon`/`marketIcon`, **not here**.
+
+Plugin A contributes, plugin B references (`"icon": "stm32-chip"` + `"iconSource": "shared"`). The reference resolves wherever the consumer injects the shared-icons snapshot (broadcast on `iconTheme:changed`); the settings nav resolves it today (a config contribution's `icon` field), and any component can through `PluginIcon`'s `sharedIcons` prop.
+
+**id naming rule:** the **keys** here *are* the shared icon ids (plugin A contributes, plugin B references) ⇒ prefix them with your repo identity: `<pluginId>.<name>` (🟡 advisory, reported by the SDK leg). 🔴 **Host defaults live in this space too** (`app.group-*` — the settings nav's built-in group icons, 2026-11-18): declaring one of those names is **red** (`host-reserved` — the host registers them at startup, so the runtime rejects your registration and names both sides). For your own keys the family stays advisory; but when two plugins declare the **same key**, the later one **cannot be registered** and one `console.error` names both sides (the same arbitration as recipes and colorways).
 
 ### 3.9 `contributes.languages` — UI language packs
  + `contributes.i18n` — plugin-bundled translations

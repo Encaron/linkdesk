@@ -130,4 +130,40 @@ describe("iconThemeEnumOptions — 枚举与显示名同源装配", () => {
     const i = values.indexOf("demo-plugin.ld-x");
     expect(descriptions[i]).toBe("demo-plugin.ld-x");
   });
+
+
+});
+
+describe("IconRegistry — 宿主共享图标默认项（04 内置配置组图标 2026-11-18）", () => {
+  it("宿主登记（pluginId undefined）放行、可查、快照带 url；disposer 可手动撤", () => {
+    const dispose = IconRegistry.registerIcon(
+      "app.group-demo",
+      { description: "demo", default: { url: "https://assets.example/demo.svg" } },
+      undefined,
+    );
+    expect(IconRegistry.hasIcon("app.group-demo")).toBe(true);
+    expect(IconRegistry.getIcon("app.group-demo")?.pluginId).toBeUndefined();
+    expect(IconRegistry.getSharedIconsSnapshot()["app.group-demo"]).toEqual({
+      url: "https://assets.example/demo.svg",
+    });
+    dispose();
+    expect(IconRegistry.hasIcon("app.group-demo")).toBe(false);
+    expect(IconRegistry.getSharedIconsSnapshot()["app.group-demo"]).toBeUndefined();
+  });
+
+  it("插件撞宿主已占名 → 拒（宿主占位事实链，宿主条目不被顶替）", () => {
+    const host = IconRegistry.registerIcon(
+      "app.group-demo",
+      { description: "demo", default: { url: "https://assets.example/demo.svg" } },
+      undefined,
+    );
+    const rejected = IconRegistry.registerIcon(
+      "app.group-demo",
+      { description: "p", default: {} },
+      "demo-plugin",
+    );
+    expect(IconRegistry.getIcon("app.group-demo")?.pluginId).toBeUndefined(); // 先者（宿主）保留
+    rejected(); // NOOP_DISPOSE——被拒的注册返 no-op
+    host();
+  });
 });

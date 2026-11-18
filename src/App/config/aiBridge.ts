@@ -56,6 +56,8 @@ type ConfigT = (key: string) => string;
 export function registerAiBridgeConfiguration(t: ConfigT): void {
   registerConfiguration("ai-bridge", {
     title: t("AI 接入"),
+    // 04「内置配置组图标声明」（2026-11-18）：本体组图标 = IconRegistry 共享图标名（app.group-ai）
+    icon: "app.group-ai",
     // 分区副标题（AI#38.12 通用件；P-3 拍板 A）
     subtitle: t("让外部 AI（助手 / 脚本 / agent）直接操作本软件：读界面正在发生什么，做白名单内的操作。管外不管内——这里只辖门外的 AI，关着 = 本机任何程序都连不进来；软件里的插件归插件管理管。"),
     groupDescriptions: {

@@ -508,9 +508,14 @@ npx @linkdesk/plugin-sdk import-icon-theme package/dist/material-icons.json \
 }
 ```
 
-插件 A 贡献、插件 B 引用（`"icon": "stm32-chip"` + `"iconSource": "shared"`）。
+**default 两种形态：**
 
-**id 命名规则：** 这里的**键**就是共享图标 id（插件 A 贡献、插件 B 引用）⇒ 建议带上本仓归属 `<pluginId>.<名字>`（🟡 建议，SDK 腿报点）。宿主没有兜底共享图标 ⇒ 这一族**没有红**；但两个插件声明**同一个键**时，后注册者**注册不上** ＋ 一条 `console.error` 点名双方（与配方/配色同一条仲裁）。
+- `fontPath` + `fontCharacter`——图标字体字形（VS Code icon 扩展点形态）。只在**字体本身被加载**的地方渲染；共享件 `PluginIcon`（池侧）今天不加载插件字体，纯字体图标在那里兜底回退。
+- `url`——图片资产（2026-11-18 增，04 案）。**按 ink 剪影渲染**：`mask` ＋ `--icon-ink`，跟随主题文字墨色（VS Code product-icon 语义——共享图标是界面骨架，不是货架商品）。彩色身份图请放你自己的 `icon`/`marketIcon`，**不放这里**。
+
+插件 A 贡献、插件 B 引用（`"icon": "stm32-chip"` + `"iconSource": "shared"`）。引用在**消费方注入共享图标快照**的地方解析（快照随 `iconTheme:changed` 广播）；设置页导航今天已接（配置贡献的 `icon` 字段），任何组件都能经 `PluginIcon` 的 `sharedIcons` prop 消费。
+
+**id 命名规则：** 这里的**键**就是共享图标 id（插件 A 贡献、插件 B 引用）⇒ 建议带上本仓归属 `<pluginId>.<名字>`（🟡 建议，SDK 腿报点）。🔴 **宿主默认项也住这个空间**（`app.group-*`——设置页导航本体组图标，2026-11-18）：声明这些名字判**红**（`host-reserved`——宿主启动期先注册，运行时拒绝你的注册并点名双方）。自己的键照旧只是建议级；但两个插件声明**同一个键**时，后注册者**注册不上** ＋ 一条 `console.error` 点名双方（与配方/配色同一条仲裁）。
 
 ### 3.9 `contributes.languages`——UI 语言包
  + `contributes.i18n`——插件自带翻译

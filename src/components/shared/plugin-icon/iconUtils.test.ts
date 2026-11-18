@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PLUGIN_IDENTITY_URI, DEFAULT_PLUGIN_IDENTITY_SVG } from "./defaultIdentityArt";
-import { pickIdentityArt } from "./iconUtils";
+import { pickIdentityArt, resolvePluginIcon } from "./iconUtils";
 
 const none = {};
 const iconOnly = { icon: "demo-identity" };
@@ -77,5 +77,18 @@ describe("默认彩色块资产形态（48×48 玻璃磁贴语法）", () => {
   it("画幅 48×48 viewBox、玻璃块 rx10 语法", () => {
     expect(DEFAULT_PLUGIN_IDENTITY_SVG).toContain('width="48" height="48" viewBox="0 0 48 48"');
     expect(DEFAULT_PLUGIN_IDENTITY_SVG).toContain('rx="10"');
+  });
+
+
+});
+
+describe("resolvePluginIcon — iconSource shared（04 内置配置组图标 2026-11-18）", () => {
+  it("shared → 按名带回 sharedName（渲染由 PluginIcon 查注入快照）", () => {
+    expect(resolvePluginIcon("demo-plugin", { icon: "demo.group-x", iconSource: "shared" })).toEqual({
+      sharedName: "demo.group-x",
+    });
+  });
+  it("shared 无 icon → emoji 兜底", () => {
+    expect(resolvePluginIcon("demo-plugin", { iconSource: "shared" })).toEqual({ emoji: "📄" });
   });
 });

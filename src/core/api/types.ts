@@ -67,6 +67,10 @@ export interface IconContribution {
   default: {
     fontPath?: string;
     fontCharacter?: string;
+    /** Image asset default（04 内置配置组图标 2026-11-18）——解析为绝对 URL；池侧按 **ink 剪影**渲染
+     *  （mask ＋ --icon-ink，VS Code product-icon 语义：共享图标天然单色随主题墨色）。彩色身份图请走
+     *  自己的 icon/marketIcon，不走本面。 */
+    url?: string;
   };
 }
 
@@ -146,7 +150,9 @@ export interface PluginManifest {
   name: string;
   version: string;
   icon?: string;
-  iconSource?: "codicon" | "svg" | "url" | "lucide";
+  /** 🔴 "shared"（04 内置配置组图标 2026-11-18）：按名引用 IconRegistry 共享图标（contributes.icons
+   *  登记面或宿主默认项）——渲染需调用方注入 sharedIcons 快照（PluginIcon 同名 prop）。 */
+  iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared";
   /** Marketplace display art (cover art, archive 14's dual-icon model E6#67) — relative path of an svg asset, may be drawn elaborately and complex
    *  (semantically separate from icon's "monochrome small UI icon": the shell's icon bar/tab bar read only icon). Omitted → the marketplace falls back to icon.
    *  Convention: value = a relative path into package resources (e.g. "resources/cover.svg"); iconSource omitted → inferred as a linkdesk:// path. */

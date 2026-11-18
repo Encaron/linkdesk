@@ -119,6 +119,7 @@ export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
     "RowSortMode": { since: "0.2.52" },
     "RowState": { since: "0.2.52" },
     "RunStatusCommand": { since: "0.2.40" },
+    "SharedIconDefault": { since: "0.2.53" },
     "SourceBadgeKind": { since: "0.2.40" },
     "SourceBadgeProps": { since: "0.2.40" },
     "SourceBadgeSource": { since: "0.2.40" },

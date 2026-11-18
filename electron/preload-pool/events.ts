@@ -26,6 +26,8 @@ interface IconThemeChangedPayload {
   fontFaces?: FontFaceSpec[];
   /** E5.8#133.4：glyph 类 CSS 原文——池注入 `<style>`（作者自写 .myfont-x::before{content:...}） */
   glyphCss?: string;
+  /** 04 内置配置组图标（2026-11-18）：共享图标定义快照——iconSource:"shared" 按名查（PluginIcon sharedIcons 注入） */
+  sharedIcons?: Record<string, { fontPath?: string; fontCharacter?: string; url?: string }>;
 }
 
 /**

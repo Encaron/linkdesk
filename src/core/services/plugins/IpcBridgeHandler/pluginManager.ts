@@ -30,14 +30,14 @@ export interface PluginManagementAPI {
   // E6#73j（G6）：getDisabledPluginInfo 由 unknown 收窄——禁用列表条目随行 updatable
   // （禁用不改住所：userData 家的禁用插件照样可更新，app 树的则否），市场详情页据此判死钮
   // E6#106：随行图标四字段（禁用插件仍在盘上，本地图可达）——禁用行/详情展示图的数据通道
-  getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" }>;
+  getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string; core?: boolean; updatable: boolean; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" }>;
   getUninstalledPluginInfo(): unknown;
   isPluginDisabled(id: string): boolean;
   // E5.8#15.5：list() 数据源 = 已加载 + 缺依赖挂起（pendingReason 随行）——marketplace 可见 PENDING 状态
   // E6#73j（G6）：updatable 随行——住所判据（userData 安装家才可被包更新），市场据此遮蔽死钮
   getListPluginManifests(): Array<{
     pluginId: string;
-    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" };
+    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" };
     pendingReason?: string;
     updatable: boolean;
   }>;

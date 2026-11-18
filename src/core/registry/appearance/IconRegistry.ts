@@ -26,7 +26,8 @@ interface RegisteredIconTheme extends IconThemeContribution {
 }
 
 interface RegisteredIcon extends IconContribution {
-  pluginId: string;
+  /** 🔴 undefined = 宿主兜底自己（04 内置配置组图标 2026-11-18）——归属仲裁与回滚索引都按它分岔 */
+  pluginId: string | undefined;
 }
 
 /** 图标主题自定义字体资产（E5.8#133.4）——mappings JSON 可选 font 段加载产物，随主题广播进池 */
@@ -137,10 +138,11 @@ class IconRegistryImpl extends RegistryBase {
 
   /* ── 共享图标（contributes.icons） ── */
 
-  /** 注册插件贡献的共享图标。同名 ID —— 🔴 **E6#111f／1.36 起改为归属仲裁**（③跨插件同 id ⇒ 拒 ＋
-   *  `console.error`；🔴 宿主**没有**兜底共享图标 ⇒ 本空间保留面恒空，只剩这一条判据）。
+  /** 注册共享图标。同名 ID —— 🔴 **E6#111f／1.36 起改为归属仲裁**（③跨插件同 id ⇒ 拒 ＋
+   *  `console.error`；🔴 **宿主默认项**（04 内置配置组图标 2026-11-18）：`pluginId === undefined`
+   *  = 宿主兜底自己——裁决永放行，插件后到撞名走「宿主占位→host-reserved 拒」）。
    *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
-  registerIcon(iconId: string, contribution: IconContribution, pluginId: string): () => void {
+  registerIcon(iconId: string, contribution: IconContribution, pluginId: string | undefined): () => void {
     const icon: RegisteredIcon = { ...contribution, pluginId };
     const verdict = judgeAppearanceId({
       space: "sharedIcon",
@@ -154,13 +156,17 @@ class IconRegistryImpl extends RegistryBase {
       return NOOP_DISPOSE;
     }
     this.icons.set(iconId, icon);
-    const ids = this.pluginIconIds.get(pluginId) ?? [];
-    ids.push(iconId);
-    this.pluginIconIds.set(pluginId, ids);
+    // 宿主兜底（undefined）不进 per-pluginId 回滚索引——宿主不存在卸载（同 registrationTracker 口径）
+    if (pluginId !== undefined) {
+      const ids = this.pluginIconIds.get(pluginId) ?? [];
+      ids.push(iconId);
+      this.pluginIconIds.set(pluginId, ids);
+    }
     return this.track(pluginId, () => {
       if (this.icons.get(iconId) === icon) {
         this.icons.delete(iconId);
       }
+      if (pluginId === undefined) return;
       const owned = this.pluginIconIds.get(pluginId);
       if (owned) {
         const kept = owned.filter((id) => id !== iconId);
@@ -182,6 +188,37 @@ class IconRegistryImpl extends RegistryBase {
     return this.icons.has(iconId);
   }
 
+  /** 全部共享图标（登记快照的构建源——04 内置配置组图标 2026-11-18） */
+  getAllIcons(): RegisteredIcon[] {
+    return Array.from(this.icons.values());
+  }
+
+  /** 池侧渲染快照——iconSource:"shared" 按名查的定义表（随 iconTheme:changed 广播进池，
+   *  池 preload 回放缓存兜「晚订阅」竞态；外观仲裁同源，宿主默认项与插件贡献项同表） */
+  getSharedIconsSnapshot(): Record<string, { fontPath?: string; fontCharacter?: string; url?: string }> {
+    const out: Record<string, { fontPath?: string; fontCharacter?: string; url?: string }> = {};
+    for (const [id, icon] of this.icons) {
+      out[id] = { ...(icon.default.url !== undefined ? { url: icon.default.url } : {}), ...(icon.default.fontPath !== undefined ? { fontPath: icon.default.fontPath } : {}), ...(icon.default.fontCharacter !== undefined ? { fontCharacter: icon.default.fontCharacter } : {}) };
+    }
+    return out;
+  }
+
+  /* ── 04 内置配置组图标（2026-11-18）：快照广播 ── */
+
+  /** `iconTheme:changed` 广播（载荷恒带 sharedIcons 快照）——onApply 与启动应用共用这一份（⛔ 不各拼一次）。
+   *  🔴 **default 图标主题也必须广播**：default 走壳兜底、applyConfiguration 不经 onApply 的旧设计下
+   *  快照永远不进池 ⇒ 本体组四行永不亮（2026-11-18 CDP 实测踩中，故抽成本函数无条件广播）。 */
+  broadcastIconThemeChanged(iconThemeId: string): void {
+    const isFallback = iconThemeId === ICON_THEME_FALLBACK_ID;
+    const mappings = isFallback ? undefined : this.getMappings(iconThemeId);
+    const fontAssets = isFallback ? undefined : this.getFontAssets(iconThemeId);
+    window.linkdesk?.bridge?.broadcast("iconTheme:changed", {
+      iconThemeId,
+      mappings,
+      ...(fontAssets ?? {}),
+      sharedIcons: this.getSharedIconsSnapshot(),
+    });
+  }
 }
 
 export const IconRegistry = new IconRegistryImpl();

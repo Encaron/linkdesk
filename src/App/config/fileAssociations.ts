@@ -43,6 +43,8 @@ type ConfigT = (key: string) => string;
 export function registerFileAssociationConfiguration(t: ConfigT): void {
   registerConfiguration("file-associations", {
     title: t("默认打开方式"),
+    // 04「内置配置组图标声明」（2026-11-18）：本体组图标 = IconRegistry 共享图标名（app.group-openwith）
+    icon: "app.group-openwith",
     // 组副标题（contribution 级可选字段，一行小字）——说清「谁和谁同写一个真源」，
     // ⛔ 不写机制口诀（下拉写覆盖表那套进作者文档，用户界面只说结果）；⛔ 零插件名（C3d 泛称版）。
     subtitle: t("单击文件时由哪个插件打开——与文件右键菜单的「打开方式」同写一处，即时互见"),

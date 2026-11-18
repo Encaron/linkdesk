@@ -281,6 +281,9 @@
     "RunStatusCommand": {
       "since": "0.2.40"
     },
+    "SharedIconDefault": {
+      "since": "0.2.53"
+    },
     "SourceBadgeKind": {
       "since": "0.2.40"
     },
@@ -291,5 +294,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 94
+  "count": 95
 }

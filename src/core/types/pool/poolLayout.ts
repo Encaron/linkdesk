@@ -409,7 +409,7 @@ export interface PoolGroup {
 export interface CreatableViewMeta {
   pluginId: string;
   label: string;
-  icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide"; // union identical to plugin.schema.json iconSource (contract generation source)
+  icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared"; // union identical to plugin.schema.json iconSource (contract generation source)
 }
 
 // ── E5.7#1: layout zone fields ──

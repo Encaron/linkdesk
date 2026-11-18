@@ -22,7 +22,7 @@ export abstract class RegistryBase {
    * 登记一个 disposer（#10 迁移目标）——卸载时逆序回滚。
    * register() 内部把条目入表后调此方法登记"删这一条"的清理。
    */
-  protected track(pluginId: string, disposer: () => void): () => void {
+  protected track(pluginId: string | undefined, disposer: () => void): () => void {
     return trackRegistration(pluginId, disposer);
   }
 

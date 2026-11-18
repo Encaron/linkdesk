@@ -17,6 +17,7 @@
 import type { PluginManifest } from "../../api/types";
 // E5.8#50.21：app.theme 旧值归一化（启动应用前映射 "Dark"/"Light" → "dark"/"light"）
 import { normalizeThemeValue } from "../ui/ThemeEngine";
+import { IconRegistry } from "../../registry/appearance/IconRegistry";
 
 // ── 依赖注入接口 ──
 
@@ -152,6 +153,11 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     // → lastBroadcasts → 池 did-finish-load 时 replayToPool），重启后非 default 图标主题经启动广播恢复。
     // 池 preload 的 iconTheme:changed 缓存回放兜住「replay 早于 React 订阅」竞态（硬约束 20 缓冲回放模式）。
     deps.applyConfiguration("app.iconTheme", deps.getConfigurationValue<string>("app.iconTheme") ?? "default");
+    // 04 内置配置组图标（2026-11-18）：快照广播显式补一刀——default 图标主题不经 onApply
+    // （2026-11-18 CDP 实测：启动广播缺失 ⇒ 池永远收不到 sharedIcons ⇒ 本体组四行不亮）
+    IconRegistry.broadcastIconThemeChanged(
+      deps.getConfigurationValue<string>("app.iconTheme") ?? "default"
+    );
   } catch (e) {
     logStep("applyConfig", e);
   }

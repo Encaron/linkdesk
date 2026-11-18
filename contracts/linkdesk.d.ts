@@ -106,6 +106,8 @@ export type LinkDeskConfigurationContribution = [
     string,
     {
         title: string;
+        /** 04 内置配置组图标（2026-11-18): group icon = **IconRegistry shared-icon name** (host defaults `app.group-*`; third-party plugins may reference their own contributes.icons name). Optional; absent = nav row renders text only. */
+        icon?: string;
         /** (P-3 decision A): one-line subtitle under the section's main title (optional; undeclared = not rendered, zero intrusion) */
         subtitle?: string;
         /** (P-3 decision A): one-line small text under each group heading — key = the group's original text (optional, zero intrusion) */
@@ -894,7 +896,7 @@ export interface CreatableViewMeta {
     pluginId: string;
     label: string;
     icon?: string;
-    iconSource?: "codicon" | "svg" | "url" | "lucide"; // union identical to plugin.schema.json iconSource (contract generation source)
+    iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared"; // union identical to plugin.schema.json iconSource (contract generation source)
 }
 /** Bottom panel view metadata — serialized from the panel view registry */
 export interface PanelViewMeta {
@@ -2113,7 +2115,9 @@ export interface PluginManifest {
     name: string;
     version: string;
     icon?: string;
-    iconSource?: "codicon" | "svg" | "url" | "lucide";
+    /** 🔴 "shared"（04 内置配置组图标 2026-11-18）：按名引用 IconRegistry 共享图标（contributes.icons
+     *  登记面或宿主默认项）——渲染需调用方注入 sharedIcons 快照（PluginIcon 同名 prop）。 */
+    iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared";
     /** Marketplace display art (cover art, archive 14's dual-icon model ) — relative path of an svg asset, may be drawn elaborately and complex
      *  (semantically separate from icon's "monochrome small UI icon": the shell's icon bar/tab bar read only icon). Omitted → the marketplace falls back to icon.
      *  Convention: value = a relative path into package resources (e.g. "resources/cover.svg"); iconSource omitted → inferred as a linkdesk:// path. */
@@ -2344,7 +2348,8 @@ export interface PluginInfoEntry {
     updatable?: boolean;
     /** small UI icon (Type-1 silhouette for icon-bar plugins / Type-2 identity art for the rest) */
     icon?: string;
-    iconSource?: "codicon" | "svg" | "url" | "lucide";
+    /** 🔴 "shared"（04 内置配置组图标 2026-11-18）：按名引用 IconRegistry 共享图标——渲染需注入 sharedIcons 快照 */
+    iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared";
     /** plugin identity color art (Type-2) — first candidate for row/detail display positions */
     marketIcon?: string;
     marketIconSource?: "codicon" | "svg" | "url" | "lucide";
@@ -3155,7 +3160,7 @@ export interface OpenWithHandler {
     /** Icon manifest subset — produced by the shell with the shared helper `pickIdentityArt()` (same source as the settings page/tab bar) */
     manifest?: {
         icon?: string;
-        iconSource?: "codicon" | "svg" | "url" | "lucide";
+        iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared";
     };
     /** Whether this handler is the current default */
     isDefault: boolean;

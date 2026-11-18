@@ -137,6 +137,10 @@ export interface ConfigurationProperty {
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */
 export interface ConfigurationContribution {
   title: string;                                    // 分组名——Settings Editor 左侧树节点
+  /** 04「内置配置组图标声明」（2026-11-18）：组图标 = **IconRegistry 共享图标名**（宿主默认项
+   *  `app.group-*` 由 registerHostGroupIcons 登记；第三方插件可引用自己的 contributes.icons 名）。
+   *  可选；缺省 = 导航行纯文字不空位（settings 侧空消费既有口径：宁缺毋滥）。 */
+  icon?: string;
   /** M4 AI#38.12（P-3 拍板 A）：分区大标题下的一行副标题（可选；通用能力，任何插件可用）。
    *  走壳 t() i18n（lang-defaults）。缺省 = 不渲染（零侵入）。 */
   subtitle?: string;

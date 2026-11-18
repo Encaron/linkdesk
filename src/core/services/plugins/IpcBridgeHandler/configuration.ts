@@ -106,6 +106,9 @@ export async function handleConfigurationMethod(method: string, args: unknown[])
         // 是 contribution 级字段，这里显式带上——未声明 = undefined，结构化克隆后即缺席，零侵入）
         return [pluginId, {
           title: contrib.title,
+          // 04 内置配置组图标（2026-11-18）：组图标声明（IconRegistry 共享图标名）随组下发——
+          // ⛔ 不带这一行投影会把字段静默剥掉（settings 导航行图标源）
+          icon: contrib.icon,
           subtitle: contrib.subtitle,
           groupDescriptions: contrib.groupDescriptions,
           properties: safeProps,

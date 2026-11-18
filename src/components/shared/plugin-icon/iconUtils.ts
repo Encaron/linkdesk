@@ -5,7 +5,8 @@
  * 的 icon/iconSource，零运行时依赖、零 window.linkdesk 调用），搬包零行为变化。
  *
  * 消费方：
- *  - shared PluginIcon.tsx（组件内 resolvePluginIcon(pluginId, manifest)）
+ *  - shared PluginIcon.tsx（组件内 resolvePluginIcon(pluginId, manifest)；iconSource:"shared"
+ *    按名查共享图标需调用方注入 sharedIcons 快照——04 内置配置组图标 2026-11-18）
  *  - 壳 usePoolSync（iconbar/windowLayout 序列化进 pool 布局前先解析）——两处壳消费维持同源，
  *    pool/PluginIcon 不 import pluginLoader/viewRegistry（特权假设已除）。
  *
@@ -23,6 +24,18 @@ export interface ResolvedIcon {
   codicon?: string;
   /** emoji fallback——无 lucide/src/codicon 时用 */
   emoji?: string;
+  /** iconSource: "shared"——按名引用 IconRegistry 共享图标（04 内置配置组图标 2026-11-18）。
+   *  渲染需调用方注入 sharedIcons 快照（PluginIcon 同名 prop）；无快照/名字缺省 → emoji 兜底。 */
+  sharedName?: string;
+}
+
+/** IconContribution.default 的池侧渲染所需最小结构——共享图标定义快照的值形状（零壳依赖，
+ *  与壳 core IconContribution.default 结构同构；04 内置配置组图标 2026-11-18） */
+export interface SharedIconDefault {
+  fontPath?: string;
+  fontCharacter?: string;
+  /** 图片资产默认项——PluginIcon 按 **ink 剪影**渲染（mask ＋ --icon-ink，VS Code product-icon 语义） */
+  url?: string;
 }
 
 /** manifest 中图标相关的最小结构——函数只消费这两字段，任何 manifest 形状（完整 PluginManifest /
@@ -50,6 +63,12 @@ export function resolvePluginIcon(pluginId: string, manifest: ManifestIconShape)
 
   if (source === "codicon" && icon) {
     return { codicon: `codicon-${icon}` };
+  }
+
+  // 04 内置配置组图标（2026-11-18）：按名引用共享图标——名字原样带回，渲染由 PluginIcon
+  // 对注入的 sharedIcons 快照查（image 默认项 → ink 剪影；缺快照/缺名 → emoji 兜底）
+  if (source === "shared" && icon) {
+    return { sharedName: icon };
   }
 
   if (icon && (source === "svg" || source === "url")) {

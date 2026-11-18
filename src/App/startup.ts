@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { pushToast, clearDismissedState } from "../core/services/ui/NotificationService";
 import { registerFallbackThemes, normalizeThemeValue } from "../core/services/ui/ThemeEngine";
+import { registerHostGroupIcons } from "../core/registry/appearance/hostGroupIcons";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "../pluginLoader/loader";
 import { consumeUnfinishedInstallJobs } from "../pluginLoader/lifecycle/install-queue";
 import { factorySlots } from "../core/services/bootstrap/FactorySlots";
@@ -91,6 +92,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // M2：注册内置兜底主题——插件主题后注册同名覆盖。确保卸载全部主题插件后下拉框不为空
       registerFallbackThemes();
 
+      // 04「内置配置组图标声明」（2026-11-18）：宿主共享图标默认项——本体组四枚墨线图标
+      // 以 IconRegistry 共享图标名声明（settings 导航按名解析，ink 渲染随主题）
+      registerHostGroupIcons();
+
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组。
       // E5.8#50.19：app.theme + 5 外观覆盖 key 已迁入「主题」组（第二贡献 pluginId "appearance"，08 §5 决策 D）。
       // E5.8#79：app.accentColor 强调色也迁入「主题」组（accent 本质 = 主题色域颜色覆盖）。
@@ -100,6 +105,9 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       //   判据：一级目录留给条目多、成体系的域，更新域只有 2 条撑不起目录。节顺序 = 声明首现序：界面 → 系统集成 → 更新。
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
+        // 04「内置配置组图标声明」（2026-11-18）：本体组图标 = IconRegistry 共享图标名
+        // （宿主默认项 registerHostGroupIcons 登记；settings 导航空消费按名解析）
+        icon: "app.group-general",
         properties: {
           "app.language": {
             type: "string",
