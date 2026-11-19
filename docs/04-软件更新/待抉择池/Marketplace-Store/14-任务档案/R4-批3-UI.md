@@ -88,3 +88,39 @@
 | 作者知晓面三通道（文档全表/validate 可用清单/schema description） | 2026-11-20 小分类封闭拍板配套 | 棒 12 R4-4.6（文档全表）＋棒 11 R4-4.2（validate 清单）＋棒 3 R4-2.8（schema description） |
 | 作者页缺省平铺/视图记忆 6 键 | 08 §三·137-139 | 棒 7 R4-3.9＋R4-2.4（06 §八） |
 | 整卡入口/hover 不闪 refreshEntry/检查更新全局入口/位置记忆/卸载双击确认/已禁用态 | 08 §三·106 | 棒 6/8/9（照 HTML；位置记忆见上） |
+
+## 附二：蓝图资产搬运清单（2026-11-20 防遗忘造册——四份 HTML 的 JS 函数与机制全点名）
+
+> 🔴 **为什么存在**：03 蓝图 JS 有 **76 个函数＋40 个常量**，05/04 各有十余个——「照 HTML 抄」的总纲靠不住（执行 AI 上下文装不下四份 HTML）。**执行规矩：本清单逐项勾对，HTML 全文仍是细节真源（数值/样式以 HTML 为准），清单防遗忘、不替代通读。** 缺一项 = 返工。
+
+### 03-主区专注蓝图-v3.html（76 函数＋40 常量，棒 6–10 主战场）
+
+| 组 | 函数/常量（蓝图原名） | 归格 |
+|---|---|---|
+| 卡原型五件＋作者 | `cardMega/cardDuo/cardGrid/cardRow/tile(小卡)/authorCard/authorDeck` | 棒 6 R4-3.5 ＋ 棒 7 R4-3.8/3.9 |
+| 归一化原语 | `viewSeg/applyView/sortChips/applySort/emptyView/hueBG/head/groupH/secH` | 棒 5 R4-3.1–3.3 |
+| 状态机 | `statusTag/moreMenu/badges/priceTag/licBadge/LIC/saveLic/badge(kind,text)` | 棒 5 R4-3.2/3.3 ＋ 棒 10 |
+| 交互三件 | `applyFilters/applySort/applyView`（即时重排/滚动位保持） | 棒 6 R4-3.6 |
+| 位置记忆 | `beginView/endView/savePref/PREFS` | 棒 6 R4-3.5/3.6 ＋ 棒 8（会话级，⛔ 弹回顶部） |
+| 横排 strip | `mountStrips`（统一挂载＋no-overflow——内容不超一屏箭头不显示，34 处 strip） | 棒 6 R4-3.5（所有横排板块统一） |
+| 环境辉光 | `--glow` 封面主色喂色（**24 处**：hero 静态微光/hover 增强/mega·duo/作者色辉光；glow:false 回落中性） | 棒 6 R4-3.5 ＋ 棒 7（作者色辉光＋glow:false） |
+| hover 不闪 | `refreshEntry(id)` 只替换 `.js-act/.js-badges`（**9 处**——卡片节点保留 ⇒ :hover 不丢） | 棒 6 R4-3.5（⛔ 整页重绘） |
+| 检查更新 | 头部「检查更新＋红点计数」全局入口 | 棒 6 R4-3.4 |
+| 位置序 | `renderHome/renderCategory/renderSearch/renderRankFull/renderLibrary/renderSources/renderAuthors/renderRail/renderDetail`（七视图＋rail） | 棒 6/7/8/9 对应格 |
+| 加源 | `srcChanged/srcCheck/srcSubmit/askRemoveSource/srcNameOf`（校验→拉取→预览→并入提示/移除二次确认） | 棒 8 R4-3.15/3.14 |
+| 声明提示 | `authorWarnings`（重复大屏/未知板块/引用缺失→来源页计数） | 棒 7 R4-3.11 |
+| 动作委托 | `simulateInstall`（**10 §8.1 #11——动作按钮所在的每一个容器**） | 棒 6/8/9 各动作面 |
+| 焦点圈 | `trapFocus`（弹窗内 Tab 圈＋来源焦点归还） | 棒 8 弹窗 ＋ 棒 9 |
+| 安装演示 | `simulateInstall/localPlugins/it/one/owner/slug/sync/step/gc/k/h` | 各状态机面（照 HTML） |
+
+### 04-边界蓝图.html（状态与边界演示，棒 15/16 对账源）
+
+`toast/closeToast/renderStates/renderOffline/renderSync/renderUpd/updateOne/stateCard/syncBtn/startSync/showMem/prog` —— 内容热更新三态/离线/同步/更新流程/内存边界 → 棒 15 R4-5.6 实现的**行为样板**＋棒 16 验收对照。
+
+### 05-详情页设计.html（详情专项，棒 9 对账源）
+
+`badgeHTML/drawBadge/drawSide` ＋ §00 勿动清单/§01 徽标派生/§02 有才显/§03 三页签/§04 画廊视频/§05 动作四态/§06 商店接线 —— 棒 9 R4-3.16–3.19 逐节照抄；⚠️ §07 待定项 D1–D4 **已全部闭环**（进 12 I12/I11＋棒 16 验收），不是未决事项。
+
+### 全局 CSS 形态（三份 HTML 共通，⛔ 照抄数值）
+
+机械守则（状态变化仅 transform/opacity/颜色）· hover 放大分级（1.1/1.12/1.08/1.03/1.02）· 横排容器余量（22/30/18＋大卡 56/-32）· 窄窗五档（1080/900/700/480）· `prefers-reduced-motion` 全局降级 · 焦点环 `:focus-visible` 2px accent · 滚动条/选区主题化 · ⛔ emoji 图标（全手绘 SVG）· 对比度 ≥4.5:1 → 棒 6–10 各自 CSS ＋ 棒 16 验收。
