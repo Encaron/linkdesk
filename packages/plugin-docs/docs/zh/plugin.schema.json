@@ -88,6 +88,16 @@
       "type": "string",
       "description": "Author name"
     },
+    "category": {
+      "type": "string",
+      "description": "Primary marketplace category slug — the single value that decides which category drawer the plugin files under in the Plugin Store (Marketplace-Store v2). Category is data, not code: the display name lives in the marketplace's i18n value table, so the declared value is a lowercase slug only. The schema checks SHAPE, never a whitelist — an unregistered slug is legal and the store files it under its fallback bucket instead of erroring. Omitted → the store's fallback (Other) bucket. Mirrors the catalog entry `category` (copied into marketplace.json by publish).",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "categories": {
+      "type": "array",
+      "description": "Secondary category slugs (tags) — feed search and sub-category chips; the primary drawer is decided by `category` alone so an entry never appears twice in the grid. Same shape-only rule as `category` (no whitelist, unknown slugs legal). Omitted → no chips; the plugin stays in the All list.",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+    },
     "entry": {
       "type": "string",
       "description": "Entry file path, relative to the plugin directory. Required for view/card/protocol."

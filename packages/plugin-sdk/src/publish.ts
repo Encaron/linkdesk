@@ -80,6 +80,18 @@ export interface CatalogPluginEntry {
   marketIcon?: string;
   marketIconSource?: string;
   category?: string;
+  /** Marketplace-Store v2：主分类下的副标签 slug（喂搜索/小类 chips；抽屉归属只看 category，防双重陈列） */
+  categories?: string[];
+  /** v2：作者身份聚合键——接 `authors/<authorId>.json` 作者块与 `vendors.json` 注册表（判定链：命中 ⇒ 官方 ✓） */
+  authorId?: string;
+  /** v2：画廊媒体——string = 图片（旧数据原样）；视频项至多 1 段且必须排第一（解析期丢越位视频并记声明提示） */
+  screenshots?: CatalogScreenshot[];
+  /** 作者声明的许可证（展示字段） */
+  license?: string;
+  /** 作者显式声明的插件主页（完整 URL；非 GitHub 托管/自有官网的唯一出口） */
+  repository?: string;
+  /** v2：定价声明——只展示不裁决（购买走外链、验签在壳；09 §三·补3） */
+  pricing?: PricingDecl;
   downloadUrl: string;
   size?: number;
   publishedAt?: string;
@@ -95,6 +107,127 @@ export interface MarketplaceCatalog {
   version?: string;
   updatedAt?: string;
   plugins: CatalogPluginEntry[];
+  /** v2：官方目录的已审核第三方源清单（只有官方运营者可写；收录 = 背书不复制条目） */
+  sources?: SourceLink[];
+  /** v2：合集声明（可声明于任意仓的 marketplace.json——推荐落点；成员按 id 引用，缺失静默跳过） */
+  collections?: CollectionDecl[];
+  /** v2：分类 rail 展示顺序（未注册 slug 落「其他」桶，不报错） */
+  categoryRail?: CategoryRailDecl;
+}
+
+/* ── Marketplace-Store v2 数据形状（R4-0.2 · 09-API设计 正典）────────────────────
+ *  🔴 本组类型与 `schemas/marketplace.schema.json` $defs 是同一契约的两面（E6#135 同源纪律）——
+ *  加/删字段必须同笔改 schema，对账测试 marketplace-schema.test.ts 用 key bag 集合 diff 钉住。 */
+
+/** 画廊媒体项：string = 图片 URL（旧形态）；视频对象至多 1 段且必须排第一（06 §二·2 媒体契约） */
+export type CatalogScreenshot = string | { type: "video"; url: string; poster?: string };
+
+/** 定价声明（v1 只展示：外链收钱＋壳 Ed25519 离线验签；subscription/channel 为 B3 预留枚举位） */
+export interface PricingDecl {
+  model: "paid" | "subscription";
+  price?: number;
+  currency?: string;
+  period?: string;
+  /** 销售页——购买流 openExternal 的目标；model:"paid" 时必填（schema if/then 钉住） */
+  licenseUrl?: string;
+  refundUrl?: string;
+  /** 试用天数＝详情页静态说明（真试用门在作者代码，壳不管） */
+  trialDays?: number;
+  /** B3 双轨预留：self = 自销（离线签名 0 抽成）· managed = 托管（我们签发/收款/抽成） */
+  channel?: "self" | "managed";
+}
+
+/** 已审核第三方源清单条目（官方目录根级；收录 = 背书，⛔ 不收条目副本） */
+export interface SourceLink {
+  url: string;
+  authorId: string;
+  addedAt: string;
+}
+
+/** 合集声明（06 §二·3；作者数据直显不走 t()——先例：目录条目标题/作者/来源仓库名） */
+export interface CollectionDecl {
+  id: string;
+  title: string;
+  subtitle?: string;
+  /** 板块副题说明字——不声明不渲染（09 §五） */
+  hint?: string;
+  cover?: string;
+  /** 卡片原型映射：banner→hero · strip→sm 横排 · duo→lg×2 · grid→md 网格（05 §四） */
+  layout?: "banner" | "strip" | "duo" | "grid";
+  /** 成员 pluginId 引用——缺失条目静默跳过（照目录 merge 防御语义） */
+  items: string[];
+  order?: number;
+}
+
+/** 分类 rail 展示顺序声明（06 §二·3） */
+export interface CategoryRailDecl {
+  order: string[];
+  icons?: Record<string, string>;
+}
+
+/** 作者块内单个仓段——多仓归属（同 authorId 跨仓聚合；intro/image 仅显示于店内仓卡） */
+export interface AuthorRepo {
+  id: string;
+  name: string;
+  intro?: string;
+  image?: string;
+  /** 本仓 marketplace.json URL——仓切换拉取目标 */
+  sourceUrl: string;
+}
+
+/** 板块跳转字——label 文案完全归作者；target 封闭集合（category:<slug> / rank / repo:<id>） */
+export interface SectionMore {
+  label: string;
+  target: string;
+}
+
+/** hero 轮播单张（作者自选哪几张上大屏，上限 5 同官方） */
+export interface HeroSlide {
+  plugin: string;
+  tag?: string;
+}
+
+/** 作者主页板块声明——「UI 界面必须有对应的指令」（09 §二）。type 封闭四件；标题/副题/跳转字全归作者，
+ *  ⛔ 渲染器不自动造任何板块名与「更多」；「按分类浏览」渲染器硬保留、不在可声明清单。 */
+export type HomepageSection =
+  | { type: "hero"; slides: HeroSlide[]; title?: string; hint?: string; glow?: boolean; more?: SectionMore }
+  | {
+      type: "collection";
+      collection: string;
+      /** 卡片原型（整块统一，⛔ 卡级混排——想混 = 拆两个板块） */
+      layout?: "small" | "mega" | "duo";
+      title?: string;
+      hint?: string;
+      glow?: boolean;
+      more?: SectionMore;
+    }
+  | { type: "grid"; title: string; hint?: string; glow?: boolean; more?: SectionMore }
+  | { type: "rank"; top?: number; scope?: "self"; title?: string; hint?: string; glow?: boolean; more?: SectionMore };
+
+/** 作者块（authors/<authorId>.json）——authorId 去中心化聚合键（推荐 GitHub 用户名＝身份正典） */
+export interface AuthorBlock {
+  authorId: string;
+  name: string;
+  /** 非 GitHub 作者兜底（GitHub 正典可解时优先取 GitHub） */
+  avatar?: string;
+  introImage?: string;
+  intro?: string;
+  /** 作者店名，缺省「〈作者名〉的 Plugin Store」 */
+  storeTitle?: string;
+  /** Ed25519 公钥（kit keygen 生成）——壳离线验签许可密钥 */
+  publicKey?: string;
+  repos: AuthorRepo[];
+  homepage?: { sections?: HomepageSection[] };
+}
+
+/** 厂商注册表条目（vendors.json 独立文件，官方目录仓根；判定链唯一：authorId 命中 ⇒ 官方 ✓） */
+export interface VendorDecl {
+  vendorId: string;
+  name: string;
+  domains?: string[];
+  githubOrgs?: string[];
+  verifiedBy: "domain" | "github-org" | "manual";
+  verifiedAt?: string;
 }
 
 export interface PublishOptions {
@@ -398,6 +531,14 @@ export interface ManifestView {
    * ⚠️ 字段缺省 ⇒ **不写该键**（沿用本仓「缺省即不写」纪律；市场侧对 undefined 天然放行）。
    */
   minAppVersion?: string;
+  /**
+   * 🔴 R4-0.2（Marketplace-Store v2）：分类声明透传——plugin.json `category`（主分类 slug）与
+   * `categories[]`（副标签）复制进目录条目。04-分类体系 §四声明链路的环①→②：分类页/搜索/chips
+   * 读的是**目录条目**（插件侧 parse 白名单已收这两键），生产端此前从不写 ⇒ 作者声明了也静默丢
+   * （E6#106/E6#77乙 同一类「静默丢」坑）。缺省不写键；存量条目等下次发布带上。
+   */
+  category?: string;
+  categories?: string[];
 }
 
 export function collectManifestView(manifest: unknown, sourceDirName: string): ManifestView {
@@ -419,6 +560,11 @@ export function collectManifestView(manifest: unknown, sourceDirName: string): M
     marketIconSource: str(m.marketIconSource),
     // 🔴 E6#109p-b（1.28）：最低宿主版本随条目走——市场「拒装」腿的唯一数据源（见 ManifestView 该字段说明）
     minAppVersion: str(m.minAppVersion),
+    // 🔴 R4-0.2：分类声明透传（manifest → 条目；声明链路环①→②，见 ManifestView 该字段说明）
+    category: str(m.category),
+    categories: Array.isArray(m.categories)
+      ? (m.categories.filter((v) => typeof v === "string" && v.trim()) as string[])
+      : undefined,
   };
 }
 
@@ -452,6 +598,9 @@ export function buildCatalogEntry(
     ...(v.marketIconSource !== undefined ? { marketIconSource: v.marketIconSource } : {}),
     // 🔴 E6#109p-b（1.28）：最低宿主版本——**市场「拒装」腿的输入**（缺省不写键，市场侧对 undefined 放行）
     ...(v.minAppVersion !== undefined ? { minAppVersion: v.minAppVersion } : {}),
+    // 🔴 R4-0.2：分类声明随条目走（缺省不写键；分类页/搜索/chips 的唯一数据源）
+    ...(v.category !== undefined ? { category: v.category } : {}),
+    ...(v.categories !== undefined ? { categories: v.categories } : {}),
     ...(extras.readmeUrl !== undefined ? { readmeUrl: extras.readmeUrl } : {}),
     downloadUrl,
     size,
@@ -500,11 +649,16 @@ export function upsertCatalogEntry(catalog: MarketplaceCatalog, entry: CatalogPl
       marketIconSource: entry.marketIconSource ?? existing.marketIconSource,
       description: entry.description ?? existing.description,
       category: entry.category ?? existing.category,
+      // R4-0.2：分类副标签同待遇（作者漏写 categories 时不抹掉历史值）
+      categories: entry.categories ?? existing.categories,
       minAppVersion: entry.minAppVersion ?? existing.minAppVersion,
     };
     next[idx] = merged;
   }
-  return { version: catalog.version ?? "1", updatedAt: now, plugins: next };
+  // 🔴 R4-0.2：**根级字段原样带过**（sources/collections/categoryRail 及任何未知根键）——publish 只拥有
+  //  version/updatedAt/plugins 三键；此前整根重建会把官方目录仓根级的 `sources`/`collections` 等静默抹掉
+  //  （目录仓 v2 骨架 R4-0.3 恰恰往根上放这些键，下次收录发布就会丢——先例级坑，同笔修）。
+  return { ...catalog, version: catalog.version ?? "1", updatedAt: now, plugins: next };
 }
 
 /** release tag = v{version} */

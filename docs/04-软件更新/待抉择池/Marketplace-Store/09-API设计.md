@@ -21,8 +21,10 @@
 > 现状裂缝：`entry.official` ＝「来自官方默认源」，是**分发事实**不是**发布者身份**——STM32/NI/Adobe 自家插件会被错标「第三方」。用户拍板：「官方」＝**该实体自己的官方发布**（搜索引擎「官方」角标语义），我们只是其中一个实体。
 
 ```jsonc
-// 官方目录 marketplace.json 根级（只有官方运营者可写——能自封的身份就不是身份）
-"vendors": [
+// vendors.json —— 官方目录仓根的**独立注册表文件**（R4-0.2/0.3 按本节「实施后目录仓结构」落为独立
+// 文件，⛔ 不进 marketplace.json 根级——一处事实一处真相源；形状真源 = SDK marketplace.schema.json
+// $defs.vendor）。只有官方运营者可写——能自封的身份就不是身份。
+[
   { "vendorId": "st",
     "name": "STMicroelectronics",
     "domains": ["st.com"],            // 域名自证：官网 /.well-known/linkdesk-vendor.txt 内写 vendorId
@@ -217,6 +219,7 @@
 | 字段 | 住哪 | 必填 | 责任 |
 |---|---|---|---|
 | `authorId` | authors/*.json | ✅（聚合键） | 作者写 → 市场读 |
+| `authorId`（条目级） | 仓 marketplace.json 条目 | 可选 | **判定链输入**（§一·补2）：条目 authorId → vendors 注册表命中 ⇒「官方 ✓」，未命中 ⇒「社区」；作者仓条目由作者声明、官方收录随条目录入（R4-0.2 已落 SDK schema＋TS＋插件白名单，对账腿随行） |
 | `name` | 同上 | ✅ | 作者写 → 市场直显 |
 | `avatar`／`introImage`／`intro` | 同上 | 可选 | 缺省回落链：作者介绍→总仓介绍→不渲染（B15 同款诚实降级） |
 | `repos[]`（id/name/intro/sourceUrl） | 同上 | ✅ ≥1 | 多仓归属与店内切换 |

@@ -747,6 +747,8 @@
     "appearsIn.tabBar": [],
     "author": [],
     "cardDocMap": [],
+    "categories": [],
+    "category": [],
     "contributes": [],
     "contributes.commands": [],
     "contributes.commands[].category": [],

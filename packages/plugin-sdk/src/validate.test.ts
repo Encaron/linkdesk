@@ -216,3 +216,52 @@ describe("validatePluginJson——pluginId 显式声明提醒（E6#98g）", () =
     expect(res.warnings).toBeUndefined();
   });
 });
+
+/**
+ * 顶层 `category` / `categories[]`（Marketplace-Store v2 分类声明，R4-0.1）——**只校形状、不校白名单**。
+ *
+ * 机制出处：04-分类体系 §三机制1/4 ＋ 06-数据设计 §二·1——分类是数据不是代码：声明值 = 英文 slug，
+ * 显示名住市场 i18n 值表；schema 拦的只有 slug 形状（`[a-z][a-z0-9-]*`，E6#32b 既有语义）。
+ * **未注册 slug 必须绿**（归位规则在市场侧「其他」桶——校白名单 = 审查流程 = 拓展性天花板）；
+ * 形状非法（大写/空格/数字开头）才是红。schema 是这条契约唯一拦得住的地方（市场侧只消费、不裁决）。
+ */
+describe("validatePluginJson——顶层 category/categories（v2 分类声明：只校形状）", () => {
+  it("合法 slug → valid（category 单值 ＋ categories 副标签数组）", () => {
+    const res = validatePluginJson(fixture({ category: "hardware", categories: ["serial", "dev-tools"] }));
+    expect(res.valid).toBe(true);
+    expect(res.errors).toEqual([]);
+  });
+
+  it("🔴 未注册 slug → 仍 valid（不校白名单——归位规则在市场侧「其他」桶）", () => {
+    const res = validatePluginJson(fixture({ category: "hello-world", categories: ["whatever"] }));
+    expect(res.valid).toBe(true);
+    expect(res.errors).toEqual([]);
+  });
+
+  it("缺省两字段 → valid（旧 manifest 天然合法——存量作者零回归）", () => {
+    const res = validatePluginJson(fixture({}));
+    expect(res.valid).toBe(true);
+    expect(res.errors).toEqual([]);
+  });
+
+  it("category 非字符串 → invalid（形状红线）", () => {
+    const res = validatePluginJson(fixture({ category: 123 }));
+    expect(res.valid).toBe(false);
+    expect(res.errors.some((e) => e.includes("category"))).toBe(true);
+  });
+
+  it("slug 形状非法（大写 / 空格 / 数字开头）→ invalid", () => {
+    for (const bad of ["Hardware", "hello world", "9lives"]) {
+      const res = validatePluginJson(fixture({ category: bad }));
+      expect(res.valid, `category=${bad} 应判红`).toBe(false);
+    }
+    const res = validatePluginJson(fixture({ categories: ["ok-slug", "Bad Slug"] }));
+    expect(res.valid).toBe(false);
+    expect(res.errors.some((e) => e.includes("categories"))).toBe(true);
+  });
+
+  it("categories 含非字符串元素 → invalid", () => {
+    const res = validatePluginJson(fixture({ categories: ["ok-slug", 42] }));
+    expect(res.valid).toBe(false);
+  });
+});
