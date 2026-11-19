@@ -6,7 +6,7 @@
      border 基 1px transparent（border-box 全局 → 尺寸零跳变）——实心钮边框同底，变体钮换 border-color。 */
 .ldk-button {
   /* 2026-11-07：基类补 display/align-items——此前只在 --sm 档有，非 sm 档的「图标＋文字」按钮
-   * 不居中（serial-monitor 收编试验暴露；04-软件更新/待抉择池/壳工具链小修二连）。
+   * 不居中（serial-monitor 收编试验暴露；04-软件更新/已落地/壳工具链小修二连）。
    * 文字钮视觉零变（单行文本在 inline-flex 与 inline-block 下渲染相同）。 */
   display: inline-flex;
   align-items: center;

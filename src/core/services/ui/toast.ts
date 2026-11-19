@@ -6,11 +6,14 @@
  * 设计文档：docs/phase4_插件系统/V3-Phase4-通知系统设计.md
  * 隔离模型（S3/S4/S6）见：docs/02-Electron架构/插件生态与发布/03-插件市场/18-通知系统全账与设计定案.md §五 E
  *
- * 🔴 **全仓只有一个通知呈现面 = 状态栏铃铛宽面板**（`src/pool/zones/status-bar/StatusBarZone.tsx`）。
- *    本 store 里的条目**全部**进那个面板。右下角历史上长过两次第二张卡，两次都被删：E6#72 的常驻
- *    窄小卡（与面板重叠、拖选被破坏），以及 2026-10-01 用户指令整笔删除的 W3a/T5「轻提示小卡」
- *    （与面板同角落、两套卡、组件名都撞 `ToastHost`）。**不许再建第二呈现面**——要「看一眼就过去」
- *    的回执就用面板缺省：插件面通知 `wake:true` 会把面板弹开、到点自消，事后在铃铛里也翻得到。
+ * 🔴 **通知呈现面**（2026-11-19 用户授权改判，见 memory `notification-surface-single-panel` §改判）：
+ *    仍是**同一个 store**，允许两种呈现模式 —— `presentation:"panel"` → 状态栏铃铛宽面板（留存）／
+ *    `presentation:"toast"` → `TransientToast`（底部居中、3s 轻提示）。**一条条目只进一个面**，
+ *    去重键 / severity / 动作 / a11y 共用。⛔ 不建第二个队列或第二个 store。
+ *    历史（仍有效的禁忌）：右下角曾长过两次第二张卡（E6#72 常驻窄卡、2026-10-01 W3a 轻提示小卡），
+ *    两次被删的根因＝**与铃铛面板同处右下 ＋ 组件重名 `ToastHost` ＋ 两套状态**。
+ *    新面据此三条硬约束：**组件名 `TransientToast`（⛔ ToastHost）· 落底部居中（⛔ 右下）· 复用本 store（⛔ 第二队列）**。
+ *    降级规则：错误 / 需决策 / 多动作 / 超 2 行文本 ⇒ 走 panel，不进 toast。
  */
 
 import { readSync, writeSync } from "../configuration/StorageService";
