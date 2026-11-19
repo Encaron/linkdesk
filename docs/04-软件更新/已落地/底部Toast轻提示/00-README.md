@@ -60,7 +60,7 @@ E6#72 删的是「**右下窄卡作为唯一通知面**」——当时的问题�
 ## 五、API 草案（壳层）
 
 ```ts
-// window.linkdesk.ui.toasts
+// window.linkdesk.toasts
 show(opts: {
   key?: string;                 // 去重键：同 key 更新而非新增
   message: string;
@@ -70,7 +70,7 @@ show(opts: {
 }): Promise<ToastHandle>;       // handle.dismiss()
 ```
 
-- **命名**：新增 `ui.toasts`；⛔ 不复用已删的 `toast` 旧名（避免与死面混淆）。
+- **命名**：新增 `toasts`；⛔ 不复用已删的 `toast` 旧名（避免与死面混淆）。
 - **类型面**：`linkdesk-api/types.ts` 增 `ToastHandle` / `ToastOptions`；`ui.ts` 增 surface；preload 同步暴露。
 - **门禁**：`scripts/check-namespace-matrix.mjs` 同步（否则契约对账失败）。
 - **服务落点**：`core/services/ui/NotificationService` 旁新增 toast store（独立于面板 store，共用 severity 枚举与 i18n）。
@@ -85,7 +85,7 @@ show(opts: {
 
 ## 七、验收
 
-- [ ] `window.linkdesk.ui.toasts.show({key,message})` 任意插件可调；连发 5 条同 key → 只有 1 条节点。
+- [ ] `window.linkdesk.toasts.show({key,message})` 任意插件可调；连发 5 条同 key → 只有 1 条节点。
 - [ ] 连发 4 条不同 key → 最多 3 条可见，最旧先退。
 - [ ] hover 暂停 ttl；移开后继续倒计时。
 - [ ] 带 action 的 Toast 可键盘 Tab 到按钮并按 Enter 触发。

@@ -7,7 +7,7 @@
 
 | 层 | 名字 | ⛔ 禁止 |
 |---|---|---|
-| 插件侧 API | `window.linkdesk.ui.toasts` | ⛔ `ui.toast`（E6#72 删除的死面，名字带历史包袱） |
+| 插件侧 API | `window.linkdesk.toasts` | ⛔ 顶层单数 `toast`（E6#72 删除的死面——`window.linkdesk.toast`，名字带历史包袱） |
 | 方法 | `.show(options)` → `ToastHandle` | ⛔ `pushToast`（内部实现名，不对外） |
 | 组件 | `TransientToast`（feature-folder `transient-toast/`） | ⛔ `ToastHost`（历史撞名两次） |
 | store 字段 | `presentation: "panel" \| "toast"` | ⛔ 新建 `transientToastStore` |
@@ -17,7 +17,7 @@
 ## 二、API 正表
 
 ```ts
-window.linkdesk.ui.toasts.show({
+window.linkdesk.toasts.show({
   message: string,                       // 必填
   key?: string,                          // 去重键：同 key 更新而非新增（缺省=每次新条目）
   severity?: "info" | "success" | "warning",  // 缺省 info；⚠️ error 不接受（自动降级面板）
@@ -36,7 +36,7 @@ interface ToastHandle {
 }
 ```
 
-**兼容与互操作**：`ui.toasts.show` 内部调用同一个 `pushToast({ presentation:"toast", ... })`；
+**兼容与互操作**：`toasts.show` 内部调用同一个 `pushToast({ presentation:"toast", ... })`；
 `ui.notifications.show` 保持原样（`presentation` 缺省 `"panel"`）。**两套 API 共用一个队列、去重键空间、severity 枚举、动作模型、无障碍实现**。
 
 ## 三、降级规则（客户端自动，不由调用方决定）
@@ -91,7 +91,7 @@ interface ToastHandle {
 | store（`toast.ts`） | 条目生命周期、去重、TTL、动作派发 | **与面板共用** |
 
 ⛔ 组件内不得出现业务文案；⛔ 不得为某个插件定制样式（severity 已够表达）。
-✅ 任何插件、壳自身、将来的权限系统都用同一个 `ui.toasts.show`。
+✅ 任何插件、壳自身、将来的权限系统都用同一个 `toasts.show`。
 
 ## 七、归一化硬约束（对应 00 工程规范）
 

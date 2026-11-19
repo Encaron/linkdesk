@@ -211,7 +211,7 @@ API 长什么样、组件怎么拼、文字多长会"撑爆"并被降级、队�
 </table>
 </div>
 <p class="note"><b>返回</b>：<code>ToastHandle { update(msg), dismiss(), presentation }</code>。
-<b>命名</b>：命名空间 <code>ui.toasts</code>（复数）——⛔ 不用已删的 <code>ui.toast</code>。</p>
+<b>命名</b>：命名空间 <code>toasts</code>（复数）——⛔ 不用已删的 <code>ui.toast</code>。</p>
 
 <h2>③ 组件解剖</h2>
 <p>一条 Toast 只有六个部件。任何新增部件都要先问"是不是该用面板"。</p>
@@ -453,7 +453,7 @@ document.getElementById("decideBtn").addEventListener("click",()=>{
   out.style.display="block";
   out.className="result "+v;
   out.innerHTML=v==="toast"
-    ? `<b>→ 轻 Toast</b>：不需要回看、无进度、一句话。<br><code>ui.toasts.show({message:"${sel.selectedOptions[0].text}",key:"…"})</code>`
+    ? `<b>→ 轻 Toast</b>：不需要回看、无进度、一句话。<br><code>toasts.show({message:"${sel.selectedOptions[0].text}",key:"…"})</code>`
     : `<b>→ 铃铛面板</b>：需要留存 / 有进度 / 需决策 / 文本过长。<br><code>ui.notifications.show("…",{type:"…"})</code>`;
 });
 </script>

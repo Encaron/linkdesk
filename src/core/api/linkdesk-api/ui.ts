@@ -78,7 +78,7 @@ export interface UiAPI {
    * 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store、不同名、不同角落）。
    * 分工判据（00 §二）：**Toast 是「路过」，面板是「留存」**——短、轻、无动作/1 动作的一句话走这里；
    * 错误/需决策/进度/长文本仍走 `notifications`（自动降级路由，调用方不预判）。
-   * 🔴 ⛔ 不用已删的 `ui.toast` 旧名（E6#72 死面，名字带历史包袱）；⛔ 第二个 store（与 notifications 同一后端队列）。
+   * 🔴 ⛔ 不用已删的顶层单数 `toast` 旧名（E6#72 死面，名字带历史包袱）；⛔ 第二个 store（与 notifications 同一后端队列）。
    */
   toasts: {
     /** Raises a light toast — returns a handle (update/dismiss/presentation). Degradation rules are pure-function

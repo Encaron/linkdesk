@@ -355,7 +355,7 @@ const file = await window.linkdesk.dialog.openFile({
 > ⚠️ **Notifications are not "auto-vanishing floating cards"** (notification-surface unification and correction): the bottom-right narrow toast pipeline has been deleted entirely, and **the only notification surface = the status bar bell wide panel**. Three things authors need to know:
 > 1. **Notifications don't pop a card, don't steal focus, and don't block interaction**—they go into the bell (unread count +1), and the user only sees them after opening it. Don't treat notifications as a "must be seen" channel: if the user has to decide on the spot → use `dialog.confirm` (modal, steals focus).
 > 2. **Persistent notifications per source are quota-limited**—grouped by `options.source`, at most 5 persistent per group; beyond that, the oldest one from the same source is pushed out. A flood won't pile into a wall, but **don't count on notifications for long-term records either**.
-> 3. **Keyboard reachability means "the panel is reachable", not "notifications are reachable"**—the bell can be focused and opened with the keyboard, everything inside the panel can be reached with Tab, and `Esc` closes it; but the panel **has no focus trap** (non-modal, focus can leave freely). **Don't write assumptions like "Tab gets you to my notification button"**—the user may never open the panel at all. **Light feedback ≠ notifications**: after the 2026-11-19 authorization reversal there is a separate light-toast channel (see below)—short, lightweight, one-liner acknowledgements go through `ui.toasts.show`; anything that must be retained / decided on / shows progress still goes through notifications.
+> 3. **Keyboard reachability means "the panel is reachable", not "notifications are reachable"**—the bell can be focused and opened with the keyboard, everything inside the panel can be reached with Tab, and `Esc` closes it; but the panel **has no focus trap** (non-modal, focus can leave freely). **Don't write assumptions like "Tab gets you to my notification button"**—the user may never open the panel at all. **Light feedback ≠ notifications**: after the 2026-11-19 authorization reversal there is a separate light-toast channel (see below)—short, lightweight, one-liner acknowledgements go through `toasts.show`; anything that must be retained / decided on / shows progress still goes through notifications.
 
 **Notification action buttons (`actions` on `notifications.show`):** failure / user-action-required notifications can carry an `actions` button array—clicking runs through the **command system** (modeled after VS Code's `showErrorMessage(msg, { title, command })` actions). Command handlers are registered by the plugin itself (`commands.registerCommand`):
 
@@ -407,12 +407,12 @@ await window.linkdesk.notifications.show("Sync failed", { source: "myplugin" });
 
 > The full **behavior contract** (not signatures—for signatures see `contracts/linkdesk.d.ts`) is in the `notifications` row of [`01-plugin-api-contract.md`](01-plugin-api-contract.md) §3.2—this section only covers usage, and that one is authoritative for semantics.
 
-**Light toast (`ui.toasts.show`)—short, lightweight, one-liner acknowledgements (restored by user authorization 2026-11-19):** light feedback that needs no follow-up ("copied / check finished / refreshed") goes here; bottom-centered, auto-dismisses in 3s by default, at most 1 action. **The division of labor in one sentence: toast = "passing by", panel = "kept"**—errors / decisions / progress / long text still go through `notifications.show`:
+**Light toast (`toasts.show`)—short, lightweight, one-liner acknowledgements (restored by user authorization 2026-11-19):** light feedback that needs no follow-up ("copied / check finished / refreshed") goes here; bottom-centered, auto-dismisses in 3s by default, at most 1 action. **The division of labor in one sentence: toast = "passing by", panel = "kept"**—errors / decisions / progress / long text still go through `notifications.show`:
 
 ```tsx
 // Light toast—bottom-centered, auto-dismisses in 3s; same key updates the existing entry (no card stacking)
-await window.linkdesk.ui.toasts.show({ message: "Link copied", key: "copy-done" });
-await window.linkdesk.ui.toasts.show({
+await window.linkdesk.toasts.show({ message: "Link copied", key: "copy-done" });
+await window.linkdesk.toasts.show({
   message: "Check finished—3 updates available",
   severity: "success",                  // info | success | warning (error auto-routes to the panel)
   key: "check-updates",
@@ -420,7 +420,7 @@ await window.linkdesk.ui.toasts.show({
 });
 ```
 
-**Degradation routing runs on the shell, callers don't pre-judge**: `error` severity / more than 1 action / text beyond two visual lines (CJK counts 2) / `ttl ≥ 8000ms` entries auto-route to the panel—you express intent only; the shell decides the surface, and the handle's `presentation` field honestly reports where it landed. ⛔ Don't pre-route to another surface "to make sure it pops" (that's a second ruler); ⛔ don't hand-draw bottom hint overlays (all plugins share the same channel). Full contract in `contracts/linkdesk.d.ts` (`ui.toasts`).
+**Degradation routing runs on the shell, callers don't pre-judge**: `error` severity / more than 1 action / text beyond two visual lines (CJK counts 2) / `ttl ≥ 8000ms` entries auto-route to the panel—you express intent only; the shell decides the surface, and the handle's `presentation` field honestly reports where it landed. ⛔ Don't pre-route to another surface "to make sure it pops" (that's a second ruler); ⛔ don't hand-draw bottom hint overlays (all plugins share the same channel). Full contract in `contracts/linkdesk.d.ts` (`toasts`).
 
 **Rich-content confirm dialogs (`dialog.confirmContent`):** use this when the confirm dialog needs **more than one line of text** (a form / list / screenshot / custom layout)—**the dialog is the shell (centered, masking, Esc, focus lock, click-mask to cancel) and your view draws the content** (modeled after VS Code's "the dialog is the shell, the plugin defines the content"):
 

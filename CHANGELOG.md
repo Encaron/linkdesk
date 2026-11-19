@@ -6,7 +6,7 @@
 
 ### feat
 
-- 🔔 **轻 Toast 能力回归（`ui.toasts`）**：底部居中的临时轻提示这一层 UI，2026-11-19 用户授权恢复（E6#72 删除令改判——同 store 不同名不同角落，非回滚）。插件/壳经 `window.linkdesk.ui.toasts.show({message, key?, severity?, action?, ttl?})` 弹「已复制／检查完成」这类**路过型**回执；错误／需决策／长文本自动降级铃铛面板（壳侧纯函数路由，调用方不预判）。同 key 合并不叠卡、栈上限 3 最旧先退、hover/焦点暂停计时、reduced-motion 降级、× 常驻占位。**配套**：命名空间矩阵/契约包（`@linkdesk/contracts` 面变更累积待发 npm）/作者面文档双语同笔；插件卸载即清其来源条目（B20）。首个消费者 = Marketplace-Store「检查完成」轻反馈（棒 15 接入）。
+- 🔔 **轻 Toast 能力回归（`toasts`）**：底部居中的临时轻提示这一层 UI，2026-11-19 用户授权恢复（E6#72 删除令改判——同 store 不同名不同角落，非回滚）。插件/壳经 `window.linkdesk.toasts.show({message, key?, severity?, action?, ttl?})` 弹「已复制／检查完成」这类**路过型**回执；错误／需决策／长文本自动降级铃铛面板（壳侧纯函数路由，调用方不预判）。同 key 合并不叠卡、栈上限 3 最旧先退、hover/焦点暂停计时、reduced-motion 降级、× 常驻占位。**配套**：命名空间矩阵/契约包（`@linkdesk/contracts` 面变更累积待发 npm）/作者面文档双语同笔；插件卸载即清其来源条目（B20）。首个消费者 = Marketplace-Store「检查完成」轻反馈（棒 15 接入）。
 
 ## v0.2.54（攒批进行中）
 

@@ -452,7 +452,7 @@ export interface PluginToastAction {
 /** Light-toast presentation — which surface the entry actually landed on (2026-11-19 改判: one store, two presentations) */
 export type ToastPresentation = "toast" | "panel";
 
-/** Light-toast action (ui.toasts.show options.action, 01 contract §2) — the **serializable subset**: pool→shell IPC cannot carry closures,
+/** Light-toast action (toasts.show options.action, 01 contract §2) — the **serializable subset**: pool→shell IPC cannot carry closures,
  *  so the click path is `command`/`args` only (shell executeCommand). The `onClick` slot of the 01 §2 table is the **in-shell same-process** face
  *  (direct pushToast callers); it has no physical carrier on this cross-process surface. Unknown command → click just closes (02 B10, no error). */
 export interface ToastShowAction {
@@ -464,7 +464,7 @@ export interface ToastShowAction {
   args?: unknown[];
 }
 
-/** ui.toasts.show options (01 contract §2 verbatim, minus the in-shell-only onClick slot — see ToastShowAction) */
+/** toasts.show options (01 contract §2 verbatim, minus the in-shell-only onClick slot — see ToastShowAction) */
 export interface ToastShowOptions {
   /** 必填 — one-liner; >2 visual lines ⇒ auto-degrades to the panel (caller does not decide) */
   message: string;
