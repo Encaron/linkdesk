@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · 设计图 · 轻 Toast（TransientToast）</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   本页照「已落地/滑杆件-Slider能力扩展/05-设计图-Slider.html」的绘图法：
+   文档式设计页（导语/meta/读法 → 编号章节 → 虚线舞台现场 → 规格表 → 竖线注记）
+   token 与壳 src/index.css 同源（暗面）
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0E639C; --accent-hover:#1177BB;
+  --border:#3C3C3C; --separator:#474747; --tab-hover-bg:#353535;
+  --ok:#4EC9B0; --warn:#E5C07B; --err:#E06C75; --info:#4FA3D1;
+  --shadow-2:0 2px 4px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.4);
+  --radius-sm:4px; --radius-md:6px; --radius-lg:10px;
+  --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px;
+  --ease:cubic-bezier(.2,.7,.3,1);
+  --statusbar-height:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-window);color:var(--text-primary);
+  font:var(--font-size-md)/1.6 "Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+main{max-width:980px;margin:0 auto;padding:40px 28px 120px}
+h1{font-size:26px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:17px;margin:52px 0 12px}
+h3{font-size:var(--font-size-md);margin:24px 0 8px}
+p{margin:10px 0;max-width:74ch}
+.lede{color:var(--text-secondary);max-width:74ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
+.meta li{font-size:var(--font-size-xs);color:var(--text-secondary);border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:3px 9px;background:var(--bg-card)}
+.note{border-left:1px solid var(--accent);padding:2px 0 2px 12px;color:var(--text-secondary);max-width:74ch}
+.note b{color:var(--text-primary)}
+.ban{border-left:2px solid var(--err);background:color-mix(in srgb,var(--err) 9%,transparent);
+  padding:9px 12px;border-radius:0 8px 8px 0;color:var(--text-secondary);font-size:12.5px;margin:12px 0}
+.ban b{color:var(--err)}
+code{font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:1px 5px}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:var(--font-size-sm)}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--text-secondary);font-weight:600;background:var(--bg-card)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md)}
+.stage{border:1px dashed var(--border);border-radius:var(--radius-md);padding:16px;margin:14px 0;
+  background:color-mix(in srgb,var(--bg-card) 40%,var(--bg-window))}
+.stage-cap{font-size:var(--font-size-xs);color:var(--text-secondary);margin:0 0 10px;
+  display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.stage-cap b{color:var(--text-primary)}
+.st-chip{font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--accent);
+  border-radius:4px;padding:1px 6px;flex:none}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0;
+  font-size:var(--font-size-sm)}
+.toolbar label{display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary)}
+.toolbar input[type=text]{font:inherit;color:var(--text-primary);background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;width:300px}
+.toolbar select{font:inherit;color:var(--text-primary);background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 6px}
+.btn{font:inherit;color:#fff;background:var(--accent);border:1px solid transparent;
+  border-radius:var(--radius-sm);padding:4px 11px;cursor:pointer;font-size:12.5px}
+.btn:hover{background:var(--accent-hover)}
+.btn.secondary{background:var(--bg-input);border-color:var(--border);color:var(--text-secondary)}
+.btn.secondary:hover{border-color:var(--accent);color:var(--text-primary)}
+.badge{font-size:11px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:1px 6px;color:var(--text-secondary)}
+
+/* ── 模拟窗口（现场用）── */
+.win{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  background:var(--bg-window);height:300px}
+.win-bar{height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;
+  background:#252528;border-bottom:1px solid var(--border)}
+.win-bar i{width:8px;height:8px;border-radius:50%;background:#4a4a4a;display:block}
+.win-body{padding:14px;color:var(--text-muted);font-size:12px}
+.win-status{position:absolute;left:0;right:0;bottom:0;height:var(--statusbar-height);
+  background:#252528;border-top:1px solid var(--border);display:flex;align-items:center;
+  justify-content:flex-end;padding:0 10px;font-size:10px;color:var(--text-muted)}
+.bell{display:inline-flex;align-items:center;gap:4px}
+
+/* ── 轻 Toast 本体（与 01 契约一致）── */
+.tt-stack{position:absolute;left:50%;transform:translateX(-50%);
+  bottom:calc(var(--statusbar-height) + 12px);display:flex;flex-direction:column;gap:8px;
+  align-items:center;z-index:30;pointer-events:none}
+.tt{pointer-events:auto;display:flex;align-items:center;gap:10px;
+  min-width:240px;max-width:360px;padding:10px 12px;border-radius:8px;
+  background:var(--bg-card);border:1px solid var(--border);box-shadow:var(--shadow-2);
+  font-size:12.5px;color:var(--text-primary);animation:tt-in .16s var(--ease)}
+@keyframes tt-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.tt .sev{width:14px;height:14px;flex:none;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;color:#111}
+.tt .msg{flex:1;min-width:0;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden}
+.tt .act{flex:none;border:none;background:transparent;color:var(--accent-hover);
+  font:inherit;font-weight:600;cursor:pointer;padding:2px 4px;border-radius:4px}
+.tt .act:hover{background:var(--tab-hover-bg)}
+/* × 常驻占位：宽度固定，只有透明度变化（⛔ 不做布局位移） */
+.tt .x{flex:none;width:18px;height:18px;border:none;background:transparent;color:var(--text-secondary);
+  cursor:pointer;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center}
+.tt:hover .x,.tt:focus-within .x{opacity:1}
+.sev.info{background:var(--info)}.sev.success{background:var(--ok)}
+.sev.warning{background:var(--warn)}.sev.error{background:var(--err)}
+
+/* ── 面板迷你示意（降级落点）── */
+.panel-mini{margin-top:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);
+  padding:10px 12px}
+.panel-mini .ph{font-size:10.5px;color:var(--text-muted);font-weight:600;letter-spacing:.05em;margin-bottom:6px}
+.panel-mini .pi{font-size:12px;color:var(--text-secondary);padding:6px 0;border-bottom:1px solid var(--separator)}
+.panel-mini .pi:last-child{border-bottom:none}
+.panel-mini .pi .tag{font-size:10px;color:var(--warn);margin-left:6px}
+
+/* ── 解剖图 ── */
+.anatomy{position:relative;padding:28px 20px 24px;display:flex;justify-content:center}
+.anatomy .demo{max-width:360px;width:100%}
+.marker{position:absolute;width:18px;height:18px;border-radius:50%;background:var(--accent);
+  color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--bg-window);z-index:5}
+
+/* ── 分工对照 ── */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.vs{grid-template-columns:1fr}}
+.cmp{border:1px solid var(--border);border-radius:10px;background:var(--bg-card);padding:14px}
+.cmp h4{margin:0 0 8px;font-size:13px}
+.cmp ul{margin:0;padding-left:18px;color:var(--text-secondary);font-size:12.5px;line-height:1.7}
+.cmp .tag{font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;margin-left:6px}
+.tag.toast{background:color-mix(in srgb,var(--info) 25%,transparent);color:var(--info)}
+.tag.panel{background:color-mix(in srgb,var(--warn) 25%,transparent);color:var(--warn)}
+
+/* 决策助手 */
+.decide{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.decide select{min-width:320px}
+.result{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border)}
+.result.toast{background:color-mix(in srgb,var(--info) 10%,var(--bg-card))}
+.result.panel{background:color-mix(in srgb,var(--warn) 10%,var(--bg-card))}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+
+<h1>轻 Toast：TransientToast</h1>
+<p class="lede">壳层通用能力：一句话、看一眼就过去。本图给的是 <b>形与边界</b>——它与铃铛面板的分工、
+API 长什么样、组件怎么拼、文字多长会"撑爆"并被降级、队列与位置怎么定。
+所有现场都可点：<b>发一条、连发十条、同 key 覆盖、hover 暂停</b>都是真的。</p>
+<ul class="meta">
+  <li>布置任务阶段 · 本页不落产品代码</li>
+  <li>上游：00 分工判据 · 01 API 契约 · 02 边界清单</li>
+  <li>2026-11-19 用户授权恢复（覆盖 10-01 删除令）</li>
+  <li>绘图法：照 已落地/滑杆件-Slider能力扩展/05-设计图-Slider.html</li>
+</ul>
+<p class="note">读法：① 先看与铃铛面板的分工（决定"该不该用它"）② API ③ 组件解剖 ④ 四种严重级现场
+  ⑤ 文本长度的三道坎 ⑥ 队列规则 ⑦ 位置与避让 ⑧ 无障碍 ⑨ 禁令 ⑩ 验收。</p>
+
+<h2>① 定位：先说清它和铃铛面板的区别</h2>
+<p>两者**不是替代关系**：铃铛面板是"通知中心"，负责**留存**；轻 Toast 是"回执条"，负责**路过**。
+判断只需一句：<b>这条消息用户需要回头再找吗？</b> 需要 → 面板；不需要 → Toast。</p>
+
+<div class="vs">
+  <div class="cmp">
+    <h4>轻 Toast <span class="tag toast">TransientToast</span></h4>
+    <ul>
+      <li>底部居中，3 秒自动消失</li>
+      <li>最多 2 行文本、最多 1 个动作</li>
+      <li>不进历史、不能回看</li>
+      <li>典型：已复制、检查完成、已刷新、已停用</li>
+    </ul>
+  </div>
+  <div class="cmp">
+    <h4>铃铛通知面板 <span class="tag panel">Notification Center</span></h4>
+    <ul>
+      <li>右下角，可展开、可留存、可清除</li>
+      <li>长文本、错误、进度条、多动作</li>
+      <li>有未读角标，事后可翻</li>
+      <li>典型：安装失败、需要授权、更新进度、需决策</li>
+    </ul>
+  </div>
+</div>
+
+<div class="stage">
+  <p class="stage-cap"><span class="st-chip">现场</span><b>决策助手</b>——选一个场景，看它应该走哪个面</p>
+  <div class="decide">
+    <select id="scenario">
+      <option value="toast">已复制链接</option>
+      <option value="toast">检查完成 · 发现 3 个更新</option>
+      <option value="toast">已停用「极客工坊」</option>
+      <option value="panel">安装失败：网络超时</option>
+      <option value="panel">需要「串口」权限才能继续</option>
+      <option value="panel">正在更新 3 个插件（进度）</option>
+      <option value="panel">这条说明很长，需要用户回头再看</option>
+    </select>
+    <button class="btn" id="decideBtn">判定</button>
+  </div>
+  <div id="decideOut" class="result toast" style="display:none"></div>
+</div>
+
+<h2>② API 正表</h2>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>字段</th><th>类型</th><th>缺省</th><th>语义</th></tr></thead>
+  <tbody>
+    <tr><td><code>message</code></td><td>string</td><td>必填</td><td>一句话；超过 2 行视觉宽度 ⇒ 自动降级面板</td></tr>
+    <tr><td><code>key</code></td><td>string</td><td>无（每次新条）</td><td>去重键：同 key <b>更新原条</b>，不新增节点</td></tr>
+    <tr><td><code>severity</code></td><td>info | success | warning</td><td>info</td><td>⚠️ 不接受 error（自动走面板）</td></tr>
+    <tr><td><code>action</code></td><td>{ title, command?, args?, onClick? }</td><td>无</td><td>最多 1 个；多动作 ⇒ 面板</td></tr>
+    <tr><td><code>ttl</code></td><td>number</td><td>3000</td><td>夹取 [1500,10000]；≥8000 ⇒ 面板</td></tr>
+    <tr><td><code>icon</code></td><td>boolean</td><td>true</td><td>严重级图标</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note"><b>返回</b>：<code>ToastHandle { update(msg), dismiss(), presentation }</code>。
+<b>命名</b>：命名空间 <code>ui.toasts</code>（复数）——⛔ 不用已删的 <code>ui.toast</code>。</p>
+
+<h2>③ 组件解剖</h2>
+<p>一条 Toast 只有六个部件。任何新增部件都要先问"是不是该用面板"。</p>
+<div class="stage">
+  <p class="stage-cap"><span class="st-chip">规格</span>宽 240–360 · 内边距 10/12 · 圆角 8 · 间距 10 · 文本 12.5/1.45 · 最多 2 行</p>
+  <div class="anatomy">
+    <div class="demo">
+      <div class="tt" style="position:relative">
+        <span class="marker" style="left:-9px;top:-9px">1</span>
+        <span class="sev success">✓</span>
+        <span class="msg">检查完成——发现 3 个可用更新</span>
+        <button class="act">查看</button>
+        <button class="x">✕</button>
+      </div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>部件</th><th>规则</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>容器</td><td>min 240 / max 360；底部居中；圆角 8；阴影与面板同级</td></tr>
+      <tr><td>2</td><td>严重级图标</td><td>info/success/warning 三色 token；<code>aria-hidden</code></td></tr>
+      <tr><td>3</td><td>文本</td><td>12.5px；<code>line-clamp:2</code>；超限整条降级（不截断）</td></tr>
+      <tr><td>4</td><td>动作</td><td>最多 1 个；文本按钮；点击后关闭</td></tr>
+      <tr><td>5</td><td>关闭 ×</td><td><b>常驻占位</b>（宽度固定），仅 opacity 0→1；⛔ hover 才占位</td></tr>
+      <tr><td>6</td><td>栈容器</td><td>最多 3 条；新条贴底；<code>pointer-events</code> 容器穿透、条目接收</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>④ 四种严重级 · 现场</h2>
+<p>点按钮发一条真的。注意：<b>error 不会出现在底部</b>——它会被路由到面板，下方"面板"区会多一条。</p>
+<div class="stage">
+  <div class="toolbar">
+    <button class="btn secondary" data-fire="info">info</button>
+    <button class="btn secondary" data-fire="success">success</button>
+    <button class="btn secondary" data-fire="warning">warning</button>
+    <button class="btn secondary" data-fire="error">error（会降级）</button>
+  </div>
+  <div class="win">
+    <div class="win-bar"><i></i><i></i><i></i></div>
+    <div class="win-body">主区内容（示意）</div>
+    <div class="tt-stack" id="stack"></div>
+    <div class="win-status"><span class="bell">🔔 铃铛面板在右下</span></div>
+  </div>
+  <div class="panel-mini"><div class="ph">降级落点 · 铃铛面板</div><div id="panelList"><div class="pi" style="color:var(--text-muted)">（暂无）</div></div></div>
+</div>
+
+<h2>⑤ 文本长度：三道坎 · 现场</h2>
+<p>输入任意文字，实时看到判定。<b>96 视觉单位</b>（中文=2、英文=1）以内可两行显示；超过则整条降级到面板，
+⛔ 不截断、⛔ 不缩字号、⛔ 不滚动。</p>
+<div class="stage">
+  <div class="toolbar">
+    <label>文本 <input type="text" id="msgInput" value="检查完成——发现 3 个可用更新"></label>
+    <span class="badge" id="lenOut">0 单位 · 1 行</span>
+    <button class="btn" id="sendBtn">发送</button>
+  </div>
+  <table>
+    <thead><tr><th>档</th><th>视觉宽度</th><th>结果</th></tr></thead>
+    <tbody>
+      <tr><td>单行</td><td>≤ 48</td><td>一行显示</td></tr>
+      <tr><td>两行</td><td>49–96</td><td>两行显示（仍无省略号）</td></tr>
+      <tr><td>超限</td><td>&gt; 96</td><td><b>降级到铃铛面板</b>（完整性优先）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>⑥ 队列：同 key 覆盖 / 上限 3 条 / hover 暂停</h2>
+<p>三个按钮分别演示：同 key 连发只占一条；十连发只留最后三条；鼠标停在 Toast 上倒计时暂停。</p>
+<div class="stage">
+  <div class="toolbar">
+    <button class="btn secondary" id="sameKey">同 key 连发 ×5</button>
+    <button class="btn secondary" id="flood">连发 10 条</button>
+    <span class="badge">栈上限 3 · 最旧先退</span>
+  </div>
+  <p class="stage-cap">把鼠标停在任意 Toast 上：倒计时暂停（移开后继续）</p>
+</div>
+
+<h2>⑦ 位置与避让</h2>
+<div class="stage">
+  <p class="stage-cap"><span class="st-chip">示意</span>轻 Toast 底部居中；铃铛面板固定在右下；两者水平不重叠</p>
+  <div class="win" style="height:220px">
+    <div class="tt-stack" style="bottom:calc(var(--statusbar-height) + 12px)">
+      <div class="tt"><span class="sev success">✓</span><span class="msg">已复制链接</span><button class="x">✕</button></div>
+    </div>
+    <div style="position:absolute;right:12px;bottom:calc(var(--statusbar-height) + 8px);
+      width:190px;border:1px dashed var(--warn);border-radius:8px;padding:8px;font-size:11px;
+      color:var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent)">
+      铃铛面板（留存）<br>right:7 · bottom:22+7
+    </div>
+    <div class="win-status"><span>状态栏</span></div>
+  </div>
+  <p class="note"><b>为什么不能放右下</b>：铃铛面板就在右下；10-01 那次删除的直接理由正是"两套卡同角落"。
+    ⛔ 同角落 = 直接复现历史缺陷。</p>
+</div>
+
+<h2>⑧ 无障碍与动效</h2>
+<table>
+  <tbody>
+    <tr><td>读屏</td><td><code>role="status"</code> + <code>aria-live="polite"</code>；多条只播最新；与面板同事件只播一次</td></tr>
+    <tr><td>键盘</td><td>动作与 × 可 Tab；Esc 关闭当前条；焦点进入暂停计时</td></tr>
+    <tr><td>动效</td><td>进入 160ms 位移+淡入；<code>prefers-reduced-motion</code> 下仅淡入或不动</td></tr>
+    <tr><td>对比度</td><td>文本 ≥4.5:1（亮暗两套 token 都过）</td></tr>
+  </tbody>
+</table>
+
+<h2>⑨ 禁令（一眼判死）</h2>
+<div class="ban"><b>禁止</b>① 新建第二个 store/队列 · ② 组件名用 <code>ToastHost</code> · ③ 放右下角 ·
+  ④ 超长文本截断/缩字号/滚动 · ⑤ hover 才给 × 占位 · ⑥ Toast 里画进度条 · ⑦ 在 Toast 内做业务判断。</div>
+<p class="note">这七条对应历史上两次删除的根因（E6#72 与 2026-10-01 W3a/T5）。
+  新方案的三条硬约束是：<b>同一 store、不同名、不同角落</b>。</p>
+
+<h2>⑩ 验收清单</h2>
+<table>
+  <tbody>
+    <tr><td>□</td><td>同 key 连发 5 次 → 只有 1 条节点</td></tr>
+    <tr><td>□</td><td>连发 10 条 → 最多 3 条可见，最旧先退</td></tr>
+    <tr><td>□</td><td>hover 暂停、移开继续；到期自动消失</td></tr>
+    <tr><td>□</td><td>输入 97 单位文本 → 底部不出现、面板多一条</td></tr>
+    <tr><td>□</td><td>error 级 → 底部不出现、面板多一条</td></tr>
+    <tr><td>□</td><td>hover 前后，文本 <code>getBoundingClientRect</code> 不变（× 常驻占位）</td></tr>
+    <tr><td>□</td><td>640px 窄窗下宽度自适应且仍居中</td></tr>
+    <tr><td>□</td><td>与铃铛面板不重叠；读屏只播一次</td></tr>
+  </tbody>
+</table>
+
+</main>
+
+<script>
+/* ══════════ 工具：视觉宽度 ══════════ */
+const CJK=/[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/;
+function visualLen(s){
+  let n=0;
+  for(const ch of s) n += CJK.test(ch) ? 2 : 1;
+  return n;
+}
+function linesOf(s){const n=visualLen(s);return n<=48?1:n<=96?2:Math.ceil(n/96)+1;}
+
+/* ══════════ 模拟 store ══════════ */
+let toasts=[];          // {id,key,message,severity,action,ttl,left,timer}
+let uid=1;
+const stack=document.getElementById("stack");
+const panelList=document.getElementById("panelList");
+let paused=false;
+
+function decide({message,severity,actionCount,ttl}){
+  if(severity==="error")return "panel";
+  if(actionCount>1)return "panel";
+  if(visualLen(message)>96)return "panel";
+  if(ttl&&ttl>=8000)return "panel";
+  return "toast";
+}
+
+function fire(opts){
+  const actionCount=opts.action?1:0;
+  const target=decide({message:opts.message,severity:opts.severity||"info",
+    actionCount,ttl:opts.ttl||3000});
+  if(target==="panel"){addPanel(opts.message,opts.severity||"info");return;}
+  const key=opts.key||("k"+uid);
+  const exist=toasts.find(t=>t.key===key);
+  if(exist){exist.message=opts.message;exist.severity=opts.severity||"info";
+    exist.action=opts.action;exist.left=opts.ttl||3000;render();return;}
+  toasts.push({id:uid++,key,message:opts.message,severity:opts.severity||"info",
+    action:opts.action,ttl:opts.ttl||3000,left:opts.ttl||3000});
+  if(toasts.length>3){const old=toasts.shift();clearTimeout(old.timer);}
+  render();
+}
+
+function addPanel(msg,sev){
+  if(panelList.firstElementChild?.textContent==="（暂无）")panelList.innerHTML="";
+  const d=document.createElement("div");d.className="pi";
+  d.innerHTML=`${msg}<span class="tag">${sev} · 降级</span>`;
+  panelList.prepend(d);
+}
+
+function render(){
+  stack.innerHTML=toasts.map(t=>`
+    <div class="tt" data-id="${t.id}">
+      <span class="sev ${t.severity}">${t.severity==="success"?"✓":t.severity==="warning"?"!":"i"}</span>
+      <span class="msg">${t.message}</span>
+      ${t.action?`<button class="act" data-act="${t.id}">${t.action}</button>`:""}
+      <button class="x" data-x="${t.id}" aria-label="关闭">✕</button>
+    </div>`).join("");
+  bind();
+}
+/* 统一计时：每 100ms 扣减；hover 全局暂停（不移除、不重置） */
+setInterval(()=>{
+  if(paused||!toasts.length)return;
+  toasts.forEach(t=>{t.left-=100;});
+  const kept=toasts.filter(t=>t.left>0);
+  if(kept.length!==toasts.length){toasts=kept;render();}
+},100);
+
+function bind(){
+  stack.querySelectorAll(".tt").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{paused=true;});
+    el.addEventListener("mouseleave",()=>{paused=false;});
+  });
+  stack.querySelectorAll("[data-x]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation();
+    toasts=toasts.filter(t=>t.id!=b.dataset.x);render();}));
+  stack.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",e=>{
+    e.stopPropagation();
+    toasts=toasts.filter(t=>t.id!=b.dataset.act);render();}));
+}
+
+/* ══════════ ④ 严重级现场 ══════════ */
+document.querySelectorAll("[data-fire]").forEach(b=>b.addEventListener("click",()=>{
+  const sev=b.dataset.fire;
+  const map={info:"这是一条提示",success:"已复制链接",warning:"该插件来源已停用",error:"安装失败：网络超时"};
+  fire({message:map[sev],severity:sev});
+}));
+
+/* ══════════ ⑤ 文本边界 ══════════ */
+const msgInput=document.getElementById("msgInput"),lenOut=document.getElementById("lenOut");
+function updateLen(){
+  const v=msgInput.value||"";
+  const n=visualLen(v),l=linesOf(v);
+  lenOut.textContent=`${n} 单位 · ${n<=48?1:n<=96?2:"超限"}${n>96?"（将降级）":""}`;
+  lenOut.style.borderColor=n>96?"var(--err)":"var(--border)";
+}
+msgInput.addEventListener("input",updateLen);updateLen();
+document.getElementById("sendBtn").addEventListener("click",()=>{
+  fire({message:msgInput.value||"（空）",severity:"info"});
+});
+
+/* ══════════ ⑥ 队列 ══════════ */
+document.getElementById("sameKey").addEventListener("click",()=>{
+  for(let i=1;i<=5;i++)fire({key:"same",message:`同一任务 · 第 ${i} 次更新`});
+});
+document.getElementById("flood").addEventListener("click",()=>{
+  for(let i=1;i<=10;i++)fire({message:`第 ${i} 条广播`});
+});
+
+/* ══════════ ① 决策助手 ══════════ */
+document.getElementById("decideBtn").addEventListener("click",()=>{
+  const sel=document.getElementById("scenario");
+  const v=sel.value;
+  const out=document.getElementById("decideOut");
+  out.style.display="block";
+  out.className="result "+v;
+  out.innerHTML=v==="toast"
+    ? `<b>→ 轻 Toast</b>：不需要回看、无进度、一句话。<br><code>ui.toasts.show({message:"${sel.selectedOptions[0].text}",key:"…"})</code>`
+    : `<b>→ 铃铛面板</b>：需要留存 / 有进度 / 需决策 / 文本过长。<br><code>ui.notifications.show("…",{type:"…"})</code>`;
+});
+</script>
+</body>
+</html>
