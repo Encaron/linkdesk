@@ -38,12 +38,14 @@
  * 容器 z-index = Z_INDEX.floatLayer（浮层层级基准）——#26 常量表。
  */
 import { Z_INDEX } from "../../../constants";
+import type { PoolLayout } from "../../../core/types/pool/poolLayout";
+import { TransientToastStack } from "../../floating/transient-toast";
 import QuickPickHost from "../../floating/quick-pick/QuickPickHost";
 import DialogHost from "../../floating/dialog/DialogHost";
 import FloatingPanelHost from "../../floating/floating-panel/FloatingPanelHost"; // E5.8#37（Phase 8 类型 B）：壳内悬浮面板哑渲染
 import OpenWithPickerHost from "../../floating/open-with/OpenWithPickerHost"; // 案 10/01：打开方式选择器转正归壳（共享件 + 池侧哑宿主）
 
-function FloatingLayerHost() {
+function FloatingLayerHost({ toastStack }: { toastStack?: PoolLayout["toastStack"] }) {
   return (
     <div
       id="ld-float-layer"
@@ -59,6 +61,15 @@ function FloatingLayerHost() {
           静态 div 不建 stacking context——portal 遮罩内联 z-index 仍在层上下文参与自分层。
           pointer-events:auto（遮罩需接收点击——容器 none 下渗，本平面统一 opt-in）。 */}
       <div id="ld-scrim-plane" style={{ pointerEvents: "auto" }} />
+
+      {/* 轻 Toast 栈（TransientToast，2026-11-19 改判恢复）——🔴 **浮空覆盖层必进浮层权威容器**（用户
+          2026-11-20 硬性规定：凡浮空面板必须吃隔离地板统一磨砂，⛔ 层外自绘 backdrop-filter——玻璃主题下
+          层外实底会透字叠字）。DOM 序放 scrim-plane 之后：遮罩 < Toast < 系统级（02 表 B33）。
+          stack 作本 root 的直接子 → 命中隔离地板深度 2 → 整栈一块玻璃（与铃铛面板同构）。
+          数据 = toastStack prop（壳想池画）。 */}
+      <div id="transient-toast-root" style={{ pointerEvents: "auto" }}>
+        <TransientToastStack stack={toastStack} />
+      </div>
 
       {/* ContextMenu portal——#14 接入 */}
       <div id="context-menu-root" style={{ pointerEvents: "auto" }} />
