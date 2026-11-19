@@ -31,7 +31,7 @@
 | OLED | Canvas 逐像素模拟 128×64 OLED 屏幕 | 照抄 E1 串口服务模式 | [OLED/](OLED/00-README.md) |
 | AI与智能体 | 内嵌 AI 对话 + 代码补全 + 自主执行任务 | 对标 Copilot Chat | [AI与智能体/](AI与智能体/01-AI与智能体.md) |
 | Data-Playground | 数据演示器 | — | [Data-Playground/](Data-Playground/README.md) |
-| Marketplace-Store | 插件市场商店视图（橱窗=其顶部「编辑推荐」横幅，已并入作一章） | — | [Marketplace-Store/](Marketplace-Store/00-README.md) |
+| Marketplace-Store | 插件市场商店视图（橱窗=其顶部「编辑推荐」横幅，已并入作一章） | — | [04-软件更新/待抉择池/Marketplace-Store/](../04-软件更新/待抉择池/Marketplace-Store/00-README.md) |
 | Serial-Simulator | 串口模拟器 | — | [Serial-Simulator/](Serial-Simulator/README.md) |
 | Snapshot-Share | 快照分享（**普通插件**——旧档案里的「壳级」标记已过时，以本行为准） | — | [Snapshot-Share/](Snapshot-Share/README.md) |
 | Theme-Maker | 主题制作器 | ⚠️ **过时**——现主题系统已远超其设想；技术骨架尚可留用，重启前必须重新构思（见其 README 顶部标记） | [Theme-Maker/](Theme-Maker/00-README.md) |
@@ -67,7 +67,7 @@
 |:--|:--|
 | 01-Theme-Carousel-主题轮播（原 04-出厂制造） | 删——主题系统已大迭代，过时 |
 | 02-More-Themes-更多主题（原 04-出厂制造） | 删——同上 |
-| 06-Plugin-Showcase-插件橱窗（原 04-出厂制造） | 并入 Marketplace-Store 作一章（[03-插件橱窗.md](Marketplace-Store/03-插件橱窗.md)）——它本是商店顶部横幅组件，随 Marketplace 一起分发，不独立成插件 |
+| 06-Plugin-Showcase-插件橱窗（原 04-出厂制造） | 并入 Marketplace-Store 作一章（（旧章随 2026-11-19 系列重立删——现行设计见 [04-软件更新/待抉择池/Marketplace-Store/](../04-软件更新/待抉择池/Marketplace-Store/00-README.md)））——它本是商店顶部横幅组件，随 Marketplace 一起分发，不独立成插件 |
 
 ## 五、已完成升级点的归宿：归还插件仓 docs/（2026-09-30 定）
 

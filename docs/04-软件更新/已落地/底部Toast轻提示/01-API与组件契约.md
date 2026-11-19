@@ -98,7 +98,7 @@ interface ToastHandle {
 1. **无硬编码**：颜色/圆角/间距/字号全部取 `src/index.css` token；TTL、堆叠上限、文本阈值集中为常量（`TOAST_TTL_* / TOAST_MAX_STACK / TOAST_MAX_VISUAL_LEN`），⛔ 散落魔法数。
 2. **无死代码**：不复用已删的 `ToastHost` 与其通道；新组件落地时同笔删除遗留引用。
 3. **高内聚低耦合**：路由纯函数 / 单条组件 / 栈容器 / store 四件单一职责，依赖单向（组件 → store，store 不引 React）。
-4. **文件目录**：`src/components/shell/transient-toast/`（feature-folder：`TransientToast.tsx` / `TransientToastStack.tsx` / `transient-toast.css` / `index.ts`）。
+4. **文件目录**：`src/pool/floating/transient-toast/`（feature-folder：`TransientToast.tsx` / `TransientToastStack.tsx` / `transient-toast.css` / `index.ts`）。🔴 **落点订正（2026-11-20 落码实查）**：立档时写的是 `src/components/shell/`，但壳窗口 DOM 自 E5.7#9 起空壳化（`App.tsx` 无可见 DOM、池 WCV 满窗覆盖）——`components/` 里的组件渲染在壳进程**用户看不见**；且 `components/shared/` 是经 `@linkdesk/ui` 分发给插件 import 的共享件，本组件插件无权渲染（§〇 判定）。故按池侧浮层先例落 `pool/floating/`（与 QuickPick/DialogHost/FloatingPanelHost 同族）——**状态与裁决仍全在壳**（store/routing/handler），本条「归一化约束」语义不变。
 5. **文件上限**：照仓内判据，超限即拆。
 6. **AI 友好**：字段谁写谁读在 §二/§六 一眼可见；`handle.presentation` 可断言，排障不用猜。
 

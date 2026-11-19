@@ -65,7 +65,7 @@
  * 🔒 安全边界（contextBridge 白名单）：
  *   ✅ serial / config / commands / filesystem / clipboard / env
  *   ✅ events / pluginManager / theme / language / keybindings / pluginState
- *   ✅ menu / contextKey / tabs / p2p / dialog / path / notifications
+ *   ✅ menu / contextKey / tabs / p2p / dialog / path / notifications / toasts
  *   ✅ window（E5.7#5：TitleBarZone 窗口控制——从 preload-shell 同款搬入）
  *   ✅ quickPick（E5.7#63：插件选择器 show——池内本地桥，零 IPC 零新通道）
  *   ✅ workspace（扩展）/ fileAssociation / search / decorations / encoding / viewContainer
@@ -105,7 +105,7 @@ import {
   buildSearch,
   buildFileAssociation,
 } from './preload-pool/namespaces-data';
-import { buildWorkspace, buildNotifications, buildTabs, buildP2p, buildDialog } from './preload-pool/namespaces-workspace';
+import { buildWorkspace, buildNotifications, buildToasts, buildTabs, buildP2p, buildDialog } from './preload-pool/namespaces-workspace';
 import {
   buildPluginManager,
   buildPlugins,
@@ -145,6 +145,7 @@ try {
     // ── 工作区/交互域（4d）──
     workspace: buildWorkspace(events),
     notifications: buildNotifications(events), // M1 AI#1：需 events 做 notif:changed 变更订阅
+    toasts: buildToasts(), // 轻 Toast show 面（2026-11-19 改判恢复；与 notifications 同一壳 store 双呈现）
     tabs: buildTabs(events),
     p2p: buildP2p(),
     dialog: buildDialog(),

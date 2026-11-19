@@ -449,6 +449,53 @@ export interface PluginToastAction {
   args?: unknown[];
 }
 
+/** Light-toast presentation — which surface the entry actually landed on (2026-11-19 改判: one store, two presentations) */
+export type ToastPresentation = "toast" | "panel";
+
+/** Light-toast action (ui.toasts.show options.action, 01 contract §2) — the **serializable subset**: pool→shell IPC cannot carry closures,
+ *  so the click path is `command`/`args` only (shell executeCommand). The `onClick` slot of the 01 §2 table is the **in-shell same-process** face
+ *  (direct pushToast callers); it has no physical carrier on this cross-process surface. Unknown command → click just closes (02 B10, no error). */
+export interface ToastShowAction {
+  /** Button label — final display text, resolved by the producer (display-text iron rule) */
+  title: string;
+  /** Command id run on click — executeCommand(command, ...args); unregistered → click just closes (B10) */
+  command?: string;
+  /** ...args passed through to the command handler */
+  args?: unknown[];
+}
+
+/** ui.toasts.show options (01 contract §2 verbatim, minus the in-shell-only onClick slot — see ToastShowAction) */
+export interface ToastShowOptions {
+  /** 必填 — one-liner; >2 visual lines ⇒ auto-degrades to the panel (caller does not decide) */
+  message: string;
+  /** 去重键 — same key updates the existing entry (B16) instead of adding one; omitted = a new entry each call */
+  key?: string;
+  /** 缺省 info; ⚠️ error not accepted — auto-degrades to the panel (caller passes it anyway, routing decides) */
+  severity?: "info" | "success" | "warning";
+  /** 最多 1 个；>1 ⇒ panel（B9）。轻提示的常见形态是无动作 */
+  action?: ToastShowAction;
+  /** ms，缺省 3000，夹取 [1500,10000]（B15）；≥8000 ⇒ 面板（B14） */
+  ttl?: number;
+  /** 缺省 true 恒显 severity 图标；显式 false 隐藏（语义由文案承载） */
+  icon?: boolean;
+  /**
+   * 生产者身份（notifications.show 的 source 同款约定，E6#73g）——轻 Toast 不进面板分组，
+   * 但 02 表 B20「插件卸载 → 其来源条目立即清除」的**来源键**由此而来；缺省归「其他」桶。
+   * ⚠️ 01 契约 §2 表未列此字段（立档时序），此处为 B20 判据的机械前置——与 notifications.source 同形。
+   */
+  source?: string;
+}
+
+/** Light-toast handle — update/dismiss route back to the same entry; presentation reports where it actually landed */
+export interface ToastHandle {
+  /** 更新同一条目文案（toast 呈现时 TTL 重置；panel 呈现时原位改写） */
+  update(message: string): Promise<void>;
+  /** 立即关闭 */
+  dismiss(): Promise<void>;
+  /** 只读：实际落在了哪个面 — 排障与断言用（⛔ 调用方预判降级的那把尺不给他用） */
+  readonly presentation: ToastPresentation;
+}
+
 /** Compatibility reading request (E6#117) — input to plugins.getCompatibility: plugin identity + catalog-side facts (for uninstalled plugins the caller
  *  supplies them from the catalog entry; for installed plugins the on-disk manifest is the effective value and the main process overrides) */
 export interface PluginCompatibilityRequest {

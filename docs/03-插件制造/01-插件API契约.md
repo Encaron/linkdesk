@@ -29,7 +29,7 @@
 
 | 事实 | 说明 |
 |------|------|
-| **契约 47 命名空间** | 池注入 45（壳侧独有面 `bridge`、`storage` 不进池）；壳注入 26；mock 注入 13——**以 `check-namespace-matrix` 门禁的活读数为准**（本行已由它机械对账，⛔ 别照 `surfaces.ts` 里的注释抄，那份也在漂） |
+| **契约 48 命名空间** | 池注入 46（壳侧独有面 `bridge`、`storage` 不进池）；壳注入 26；mock 注入 13——**以 `check-namespace-matrix` 门禁的活读数为准**（本行已由它机械对账，⛔ 别照 `surfaces.ts` 里的注释抄，那份也在漂） |
 | **池 = 插件运行时真相源** | 插件运行在池（pool）preload——池注入的命名空间为 **required**；`bridge` 真壳独有 |
 | **「仅壳」≠ 插件不可调** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` 池**实有注入**——旧版把这几面标 ❌ 仅壳是错的 |
 | **契约必选面漂移已清零** | `env.get(pluginId)` 转发、`clipboard.readText` 壳补、`dialog.openFile` 壳补——三项都已补齐实现，无 `?` 降级 |

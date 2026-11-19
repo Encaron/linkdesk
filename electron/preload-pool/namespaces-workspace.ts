@@ -72,6 +72,33 @@ export function buildNotifications(events: EventSystemApi) {
   };
 }
 
+/** toasts 命名空间——轻 Toast（TransientToast）show 面（2026-11-19 改判恢复；01 契约 §二）。
+ *  与 notifications 同一壳侧后端队列（⛔ 第二 store）——壳端路由纯函数决定落面（toast|panel），
+ *  handle.presentation 如实回传实际落面；update/dismiss 回路由同一 id（跨 IPC 无闭包，
+ *  click 动作只带 command/args——B10 未注册命令点击仅关闭）。 */
+export function buildToasts() {
+  return {
+    show: (options: {
+      message: string;
+      key?: string;
+      severity?: "info" | "success" | "warning";
+      action?: { title: string; command?: string; args?: unknown[] };
+      ttl?: number;
+      icon?: boolean;
+      source?: string;
+    }) => {
+      return ipcRenderer
+        .invoke(IPC.plugins.call, 'showToast', options)
+        .then((r: { id: string; presentation: "toast" | "panel" }) => ({
+          presentation: r.presentation,
+          update: (message: string) =>
+            ipcRenderer.invoke(IPC.plugins.call, 'updateToastItem', r.id, message),
+          dismiss: () => ipcRenderer.invoke(IPC.plugins.call, 'dismissToastItem', r.id),
+        }));
+    },
+  };
+}
+
 /** tabs 命名空间——标签页操作 */
 export function buildTabs(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（tabs 命名空间），无法共享

@@ -45,6 +45,10 @@
     {
       "name": "ldk-welcome-in",
       "why": "宿主欢迎页入场 fade-up（W6/T13：§六#2 全页唯一一处 authored moment）"
+    },
+    {
+      "name": "ldk-tt-in",
+      "why": "宿主轻 Toast（TransientToast）条目入场位移+淡入（04「底部Toast轻提示」棒 0）"
     }
   ]
 }

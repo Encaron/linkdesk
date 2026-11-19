@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**16 domain interfaces → 47 namespaces / 260 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**16 domain interfaces → 48 namespaces / 261 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -32,6 +32,7 @@ npm install -D @linkdesk/plugin-sdk
 | `tabs` | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `keybindings` | 13 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `clearKeybindingForCommand` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
 | `notifications` | 3 | `show` `list` `subscribe` | Notifications — plugins raise notifications ( the only noti… |
+| `toasts` | 1 | `show` | 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store… |
 | `menu` | 2 | `registerItems` `getItems` | Menus — declarative read/write for plugins |
 | `contextKey` | 1 | `set` | ContextKey — plugins SET state for the shell's when clauses… |
 | `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | Dialogs — confirm/alert/file selection |

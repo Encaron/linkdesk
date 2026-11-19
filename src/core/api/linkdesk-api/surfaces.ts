@@ -23,10 +23,10 @@ import type { ProductInfo } from "../../types/ipc/product";
 import type { AiManualPayload } from "../../types/ipc/aiManual";
 import type { AiBridgeInfo, AiBridgeInfoRequest } from "../../types/ipc/aiBridge";
 
-/** The pool preload's required exposure surface (45 = 44 unique + the config alias; the only omission is bridge; E6#72 removed the toast host bridge surface) — E5.8#34.5 added panel (the pool-side channel for plugins calling reveal); E5.8#37 added floatingPanelHost (the dumb-render bridge of the in-shell floating panel); E5.8#41.12 added settings (settings suite enum/switching, the settings UI renders inside the pool); E5.8#41.14 added factorySlots (candidate enum/switching for any role, the data source of the settings UI's general section); E5.8#50.11 added appearance (appearance assets — selected images copied into the store); E6#57.2a added app (read-only product identity — consumed by the marketplace's minAppVersion E6#30.8c) */
+/** The pool preload's required exposure surface (46 = 45 unique + the config alias; the only omission is bridge; E6#72 removed the toast host bridge surface) — E5.8#34.5 added panel (the pool-side channel for plugins calling reveal); E5.8#37 added floatingPanelHost (the dumb-render bridge of the in-shell floating panel); E5.8#41.12 added settings (settings suite enum/switching, the settings UI renders inside the pool); E5.8#41.14 added factorySlots (candidate enum/switching for any role, the data source of the settings UI's general section); E5.8#50.11 added appearance (appearance assets — selected images copied into the store); E6#57.2a added app (read-only product identity — consumed by the marketplace's minAppVersion E6#30.8c); 2026-11-20 added toasts (light-toast show — the TransientToast channel restored by the 2026-11-19 改判) */
 export type PoolExposed = Pick<LinkDeskAPI,
   | "commands" | "configuration" | "config" | "theme" | "language" | "app" | "appearance"
-  | "tabs" | "keybindings" | "notifications" | "menu" | "contextKey"
+  | "tabs" | "keybindings" | "notifications" | "toasts" | "menu" | "contextKey"
   | "dialog" | "quickPick" | "quickPickHost" | "dialogHost" | "floatingPanelHost"
   | "serial" | "clipboard" | "p2p" | "events" | "pluginState"
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"

@@ -12,12 +12,12 @@
 .ldk-status-bar {
   display: flex;
   align-items: center;
-  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 高+行高链乘 scale */
+  height: calc(var(--statusbar-height) * var(--ui-scale)); /* T13 token 化：真相源在 index.css --statusbar-height（22px，值不变） */
   /* 右端让位上限（2026-10-03「状态栏右端-圆角适配」D2）＝栏高的一半。
      11px 不是间距选择、是**几何推论**：22px 栏被浏览器钳到的圆角实际上限就是半高，
      让位超过它没有意义（内容只会离边更远）。故它不在 4px 间距刻度上——单列成派生量，
      与 ThemeEngine 的 --surface-inset 同款「派生而非手写」。 */
-  --status-bar-pad-max: calc(11px * var(--ui-scale));
+  --status-bar-pad-max: calc(var(--statusbar-height) * var(--ui-scale) / 2);
   /* 右端让位：栏 padding 跟随 --surface-radius，把右端三件带离圆角弧线。
      ⚠️ 必须钳到 --status-bar-pad-max——直接写 var(--surface-radius) 时半径 32 会把内容
      推离边缘 32px。半径 0 → max(8px, 0) = 8px＝现状零变化。 */
@@ -28,7 +28,7 @@
   font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-muted);
   flex-shrink: 0;
-  line-height: calc(22px * var(--ui-scale));
+  line-height: calc(var(--statusbar-height) * var(--ui-scale));
 }
 
 .ldk-status-text {
@@ -128,7 +128,7 @@
 .ldk-status-bar-notif-panel {
   position: fixed;
   right: 7px;
-  bottom: calc(22px * var(--ui-scale) + 7px); /* E5.8 Phase 12 #166：22px status bar（scaled）+ 7px */
+  bottom: calc(var(--statusbar-height) * var(--ui-scale) + 7px); /* T13 token 化：01 契约 §五面板位（right:7/bottom:22+7）——栏高真相源单一 */
   width: 420px;
   max-height: 400px;
   background: var(--bg-card);
@@ -266,7 +266,7 @@
 .ldk-notif-panel-item .notif-icon {
   flex: 0 0 16px;
   width: 16px;
-  height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
+  height: calc(var(--statusbar-height) * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -286,7 +286,7 @@
   flex: 1;
   font-size: var(--font-size-sm); /* 12→sm */
   color: var(--text-primary);
-  line-height: calc(22px * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
+  line-height: calc(var(--statusbar-height) * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;

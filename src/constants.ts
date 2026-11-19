@@ -20,5 +20,8 @@ export const Z_INDEX = {
   contextMenu: 3000,         // 右键菜单（E6#54b：@linkdesk/ui 包内同名携带——ContextMenu.tsx CONTEXT_MENU_Z_INDEX 3000 互指，改此处须同步）
   quickPick: 4000,           // 命令面板 / QuickPick
   dialog: 5000,              // 对话框 / Modal
+  // 轻 Toast（TransientToast，2026-11-19 改判恢复）——02 表 B33 层次「模态遮罩 < Toast < 系统级」：
+  // 全屏模态打开时 Toast 仍可见（盖 dialog 5000 的遮罩与表面），但不盖 tooltip（6000）。
+  transientToast: 5500,
   tooltip: 6000,             // 工具提示
 } as const;

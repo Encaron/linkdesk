@@ -18,8 +18,8 @@
 
 import { readSync, writeSync } from "../configuration/StorageService";
 
-/** 对标 VS Code Severity */
-export type ToastSeverity = "info" | "warning" | "error";
+/** 对标 VS Code Severity——success 随轻 Toast 契约（01 §二）加宽：success 条目降级进面板时图标/色照语义显示 */
+export type ToastSeverity = "info" | "success" | "warning" | "error";
 
 export interface ToastAction {
   label: string;
@@ -44,6 +44,23 @@ export interface Toast {
   id: string;
   message: string;
   severity?: ToastSeverity;
+  /**
+   * 呈现面（轻 Toast 改判 2026-11-19，01 契约 §一）——同一 store 的两种呈现模式：
+   * `"panel"`（缺省）→ 状态栏铃铛宽面板；`"toast"` → 底部居中 `TransientToast`（池浮层哑渲染）。
+   * 缺省语义按 panel 处理（`presentation ?? "panel"`）——旧生产者零字段零回归。
+   * 🔴 面板 DTO（buildNotif）只收 panel 条目、池栈（toastStack DTO）只收 toast 条目——
+   *   一条条目只进一个面；降级路由的**唯一判据** = toastRouting.decidePresentation。
+   * 🔴 toast 条目的**生命周期计时在池侧**（expiresAt 时间戳，B21 hover 暂停/B34 最小化继续计时
+   *   都要 time-based 判定——壳侧 setTimeout 做不了暂停），故 armTimer 对 toast 条目跳过，
+   *   池过期/× /上限退场时经 dismissToastItem 回壳删条目（单一写入路径仍是 dismissToast）。
+   */
+  presentation?: "panel" | "toast";
+  /** 去重键（01 契约 §二）——同 key 更新原条目而非新增（B16：位置不变、TTL 重置）；缺省 = 每次新条目 */
+  key?: string;
+  /** severity 图标显示（01 契约 §二 icon 形参）——缺省 true 恒显；显式 false 隐藏（图标语义由文案承载） */
+  icon?: boolean;
+  /** toast 条目到期时间戳（池侧计时真相）——panel 条目不带（壳 armTimer 管）。push/replace 时算好 */
+  expiresAt?: number;
   /** 来源（插件名等），显示在详情行；也是常驻上限分桶 + 面板分组的键（见 sourceKeyOf） */
   source?: string;
   actions?: ToastAction[];
@@ -80,6 +97,13 @@ type ToastListener = (toasts: Toast[]) => void;
 
 /** 对标 VS Code：无数量上限，通知自然堆叠 */
 const DEFAULT_TTL = 6000;
+
+/**
+ * 轻 Toast（presentation:"toast"）栈可见上限（01 契约 §四：最多 3 条；02 表 B17/B18）。
+ * 超出时**最旧先退场**（第 4 条 push 即丢第 1 条）——与常驻面板的 TOAST_SOURCE_CAP（按来源分桶、
+ * 折叠计数）是**两套独立配额**：面板管「留存不淹没」，栈管「路过不遮挡」，别合并成一个数。
+ */
+export const TOAST_MAX_STACK = 3;
 
 /** 错误 toast 持续更久——用户需要时间读诊断信息（B9 fix：消除裸数字） */
 export const TOAST_TTL_ERROR = 8000;
@@ -290,8 +314,29 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
     return "";
   }
 
+  const presentation = toast.presentation ?? "panel";
   const id = toast.id ?? `toast-${++_counter}`;
   const ttl = toast.ttl ?? DEFAULT_TTL;
+
+  // B16 同 key 合并（01 契约 §二）——key 空间两套 API 共用；同 key 更新原条目（文案/severity/
+  // 动作/呈现面都按新值），位置不变、TTL 重置。⛔ 新增节点。路由变了就跟着换面（原 toast 条目
+  // 降级 panel = 从池栈消失进面板）——「这条消息的最新状态落哪个面」以最后一次调用为准。
+  if (toast.key) {
+    const existing = _toasts.find((t) => t.key === toast.key);
+    if (existing) {
+      replaceToast(existing.id, {
+        message: toast.message,
+        severity: toast.severity,
+        actions: toast.actions,
+        ttl,
+        presentation,
+        icon: toast.icon,
+        expiresAt: presentation === "toast" ? Date.now() + ttl : undefined,
+      });
+      return existing.id;
+    }
+  }
+
   const t: Toast = {
     ...toast,
     id,
@@ -299,11 +344,28 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
     createdAt: toast.createdAt ?? Date.now(),
     wake: toast.wake ?? defaultWake(toast),
     persistent: toast.persistent ?? derivePersistent(ttl),
+    presentation,
+    // 池侧计时的到期真相（B21 hover 暂停/B34 最小化继续计时都要 time-based）——panel 条目不带
+    ...(presentation === "toast" ? { expiresAt: Date.now() + ttl } : {}),
   };
 
   _toasts.push(t);
   evictOverflow(t);
-  armTimer(t);
+  // toast 条目的 TTL 计时归池（expiresAt 时间戳；hover 暂停/最小化补判都按时间戳）——
+  // 壳 armTimer 只管 panel 条目；挂了就是双计时（壳先到点删条目，池栈还在渲染幽灵）
+  if (presentation !== "toast") armTimer(t);
+
+  // B17/B18 栈上限——toast 呈现条目最多 TOAST_MAX_STACK 条，超出**最旧先退场**（立即删，
+  // 不排队不延迟）。进栈后再裁：第 4 条 push 的瞬间第 1 条退场，始终 ≤3。⚠️ 只裁 toast 条目，
+  // 面板条目不在此配额内（它走 evictOverflow 的按来源分桶）。
+  if (presentation === "toast") {
+    const stack = _toasts.filter((x) => x.presentation === "toast");
+    // ⚠️ Math.max 钳零：length<3 时差值为负，slice(0, 负数) 会从头部丢到倒数第 1 条前（语义反转，
+    //    实测把栈裁成 1 条）——单测 B17 抓出。
+    for (const old of stack.slice(0, Math.max(0, stack.length - TOAST_MAX_STACK))) {
+      dismissToast(old.id);
+    }
+  }
 
   notify();
   return id;
@@ -337,7 +399,8 @@ export function replaceToast(id: string, patch: Partial<Omit<Toast, "id">>): boo
     next.persistent = derivePersistent(patch.ttl);
   }
   _toasts[idx] = next;
-  if (patch.ttl !== undefined) armTimer(next);
+  // toast 条目计时归池（见 pushToast）——replace 只重算 expiresAt，不挂壳 timer
+  if (patch.ttl !== undefined && next.presentation !== "toast") armTimer(next);
   evictOverflow(next);
   notify();
   return true;
@@ -355,6 +418,18 @@ export function updateToast(id: string, message: string, percent?: number): void
 /** 获取当前所有 toast */
 export function getToasts(): Toast[] {
   return [..._toasts];
+}
+
+/**
+ * 清除某来源的全部条目（02 表 B20：插件卸载/重载 → 其来源的 Toast 立即清除，不留幽灵提示）。
+ * 键与常驻淘汰分桶同源（sourceKeyOf）——`demo-plugin` 与 `demo-plugin.subA` 同桶同清。
+ * 消费点 = 插件卸载/停用流水线（卸载即调，防池栈/面板残留死来源的条目）。
+ */
+export function clearToastsBySource(source: string): void {
+  const key = sourceKeyOf(source);
+  for (const t of _toasts.filter((x) => sourceKeyOf(x.source) === key)) {
+    dismissToast(t.id);
+  }
 }
 
 /** 订阅 toast 变化（React hook 用） */

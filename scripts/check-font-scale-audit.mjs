@@ -55,6 +55,7 @@ const ROOT = resolve(__dirname, "..");
  * F7 固化 = 用户拍板基线；reconcile = #180 协调补录（同 §三.2 语义的现存独立显示图标）。
  */
 const WHITELIST = [
+  { sel: ".ldk-tt-sev", prop: "font-size", value: 10, why: "轻 Toast severity 圆形图标 glyph 10px（aria-hidden 装饰字符——语义由文案承载，01 契约 §四）" },
   // ── F7 固化（档案 §七） ──
   { sel: ".ldk-icon-btn .plugin-icon--codicon", prop: "font-size", value: 24, why: "F7 图标栏 codicon 24px" },
   { sel: ".plugin-icon--emoji", prop: "font-size", value: 24, why: "F7 图标栏 emoji 24px" },

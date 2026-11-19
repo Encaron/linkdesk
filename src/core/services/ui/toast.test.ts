@@ -318,3 +318,83 @@ describe("E6#73j G3：常驻判据由 ttl 派生（ttl<=0 ⇒ persistent）", ()
     expect(getToasts()[0]!.persistent).toBe(true);
   });
 });
+
+/**
+ * 轻 Toast（TransientToast）——2026-11-19 改判恢复（单 store 双呈现）。
+ * 覆盖：presentation 缺省向后兼容 / 同 key 合并（B16）/ 栈上限 3 + 第 4 条退场（B17/B18）/ /
+ * toast 条目不挂壳 timer（池侧 expiresAt 计时）/ icon 显式 false / B20 来源清理 / Q6 死面防复生。
+ * fixture 全虚构值（硬约束 21）。
+ */
+describe("轻 Toast（2026-11-19 改判）：单 store 双呈现", () => {
+  it("presentation 缺省 = panel（规范化写出——旧生产者零回归：行为同 panel）", () => {
+    pushToast({ message: "演示消息 旧生产者", source: "demo-plugin", ttl: 0 });
+    expect(getToasts()[0]!.presentation).toBe("panel");
+    expect(getToasts()[0]!.expiresAt).toBeUndefined(); // panel 条目不带池侧到期（壳 timer 管）
+  });
+
+  it("显式 presentation:'toast' 原样存下 + expiresAt 到期真相（壳不挂 timer）", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-20T00:00:00Z"));
+    pushToast({ message: "演示消息 轻提示", source: "demo-plugin", presentation: "toast", ttl: 3000 });
+    const t = getToasts()[0]!;
+    expect(t.presentation).toBe("toast");
+    expect(t.expiresAt).toBe(Date.now() + 3000);
+    // 池侧计时分工：壳 timer 到点不删（TTL 归池）——advance 3s 后条目仍在
+    vi.advanceTimersByTime(3000);
+    expect(getToasts()).toHaveLength(1);
+    vi.setSystemTime(new Date());
+    vi.useRealTimers();
+  });
+
+  it("B16 同 key 合并：更新原条目（位置/id 不变）+ TTL 重置，⛔ 新增节点", () => {
+    pushToast({ message: "演示消息 第一版", source: "demo-plugin", key: "demo-key", presentation: "toast", ttl: 3000 });
+    const first = getToasts()[0]!;
+    pushToast({ message: "演示消息 第二版", source: "demo-plugin", key: "demo-key", presentation: "toast", ttl: 3000 });
+    expect(getToasts()).toHaveLength(1);
+    expect(getToasts()[0]!.id).toBe(first.id);
+    expect(getToasts()[0]!.message).toBe("演示消息 第二版");
+    expect(getToasts()[0]!.createdAt).toBe(first.createdAt); // 时间标签不跳
+  });
+
+  it("B16 同 key 合并路由变更 → 跟着换面（toast 降 panel）", () => {
+    pushToast({ message: "演示消息 先轻", source: "demo-plugin", key: "demo-k2", presentation: "toast", ttl: 3000 });
+    pushToast({ message: "演示消息 转面板", source: "demo-plugin", key: "demo-k2", presentation: "panel", ttl: 0 });
+    expect(getToasts()).toHaveLength(1);
+    expect(getToasts()[0]!.presentation).toBe("panel");
+    expect(getToasts()[0]!.expiresAt).toBeUndefined(); // panel 条目不带池侧到期
+  });
+
+  it("B17/B18 栈上限：第 4 条 push 即丢最旧（恒 ≤3，立即退场不排队）", () => {
+    for (let i = 0; i < 5; i++) {
+      pushToast({ message: `演示消息 轻提示 ${i}`, source: "demo-plugin", presentation: "toast", ttl: 3000 });
+    }
+    const stack = getToasts().filter((t) => t.presentation === "toast");
+    expect(stack).toHaveLength(3);
+    expect(stack.map((t) => t.message)).toEqual(["演示消息 轻提示 2", "演示消息 轻提示 3", "演示消息 轻提示 4"]);
+    // 面板条目不受栈配额影响（两套独立配额）
+    pushToast({ message: "演示消息 面板独苗", source: "demo-plugin", ttl: 0 });
+    expect(getToasts().some((t) => t.message === "演示消息 面板独苗")).toBe(true);
+  });
+
+  it("B20 来源清理：clearToastsBySource 清同桶全部条目（池栈 + 面板），别的来源不动", () => {
+    pushToast({ message: "演示消息 待清 A", source: "demo-plugin.subA", presentation: "toast", ttl: 3000 });
+    pushToast({ message: "演示消息 待清 B", source: "demo-plugin", ttl: 0 });
+    pushToast({ message: "演示消息 别家", source: "demo-other", presentation: "toast", ttl: 3000 });
+    toast.clearToastsBySource("demo-plugin");
+    expect(getToasts().some((t) => t.message === "演示消息 别家")).toBe(true);
+    expect(getToasts().filter((t) => t.message.startsWith("演示消息 待清"))).toHaveLength(0);
+  });
+
+  it("icon 显式 false 才带字段（不传无字段——死代码断言口径不破）", () => {
+    pushToast({ message: "演示消息 无图标", source: "demo-plugin", presentation: "toast", ttl: 3000, icon: false });
+    expect(getToasts().find((t) => t.message === "演示消息 无图标")!.icon).toBe(false);
+    pushToast({ message: "演示消息 缺省图标", source: "demo-plugin", presentation: "toast", ttl: 3000 });
+    expect("icon" in getToasts().find((t) => t.message === "演示消息 缺省图标")!).toBe(false);
+  });
+
+  it("Q6 死面防复生：store 不导出 toast 命名空间残留（runToastAction/getUnreadCount 哨兵之外，presentation 键空间无双 store）", () => {
+    // 一条条目只进一个面：presentation:"toast" 的条目绝不因 pushToast 被复制出第二个队列
+    pushToast({ message: "演示消息 单面", source: "demo-plugin", presentation: "toast", ttl: 3000 });
+    expect(getToasts()).toHaveLength(1);
+  });
+});

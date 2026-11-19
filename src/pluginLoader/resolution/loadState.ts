@@ -42,7 +42,7 @@ import { loadedPluginIds, _pendingPlugins, getLoadedManifest } from "./state";
 import { registrationCount } from "../../core/registry/registrationTracker";
 import { findActiveConsumers, formatPendingReason } from "./dependencies";
 // E5.8#15.5：连带挂起后果 toast（对标 lifecycle 消费端 3 的 pushToast 机制——用户主动卸载依赖时知道后果）
-import { pushToast, TOAST_TTL_ERROR } from "../../core/services/ui/NotificationService";
+import { pushToast, clearToastsBySource, TOAST_TTL_ERROR } from "../../core/services/ui/NotificationService";
 
 /** 加载状态——三方边界之"LoadState"，见模块头注释。
  *  不 export——零外部消费方（knip 实锤）；消费方（dev 面板等）出现时再开。 */
@@ -207,6 +207,9 @@ export function unloadPlugin(
   PluginLifecycle.onWillUninstall.fire({ pluginId, reason, displayName, restorable });
   loadedPluginIds.delete(pluginId);
   transition(pluginId, "disposed");
+  // 02 表 B20：插件卸载/重载 → 其来源的 Toast 立即清除（池栈/面板都不留幽灵提示）。
+  // clearToastsBySource 与常驻淘汰分桶同键（sourceKeyOf 首段）——`demo-plugin.subA` 与 `demo-plugin` 同桶同清。
+  clearToastsBySource(pluginId);
   PluginLifecycle.onDidUninstall.fire({ pluginId, reason, displayName, restorable });
   // E5.8#15.5：连带后果 toast——一次连带一次通知（有连带才弹）。用户主动卸载/禁用依赖时知道
   // 哪些消费插件转入等待；目录删除（watcher）无既有 toast，此通知独立承担告知。依赖恢复后 sweep 自动补载。

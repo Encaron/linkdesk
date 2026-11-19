@@ -116,6 +116,9 @@ export const linkdeskMock: Record<string, unknown> = {
     list: async (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.list", ..._args); },
     subscribe: (..._args: unknown[]) => { console.info("[linkdesk-mock] notifications.subscribe", ..._args); return () => {}; },
   },
+  toasts: {
+    show: async (..._args: unknown[]) => { console.info("[linkdesk-mock] toasts.show", ..._args); },
+  },
   menu: {
     registerItems: async (..._args: unknown[]) => { console.info("[linkdesk-mock] menu.registerItems", ..._args); },
     getItems: async (..._args: unknown[]) => { console.info("[linkdesk-mock] menu.getItems", ..._args); return []; },

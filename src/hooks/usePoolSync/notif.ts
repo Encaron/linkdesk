@@ -6,7 +6,7 @@
  */
 
 import type { TFunction } from "i18next";
-import type { NotifLayout, NotifSection } from "../../core/types/pool/poolLayout";
+import type { NotifLayout, NotifSection, ToastStackLayout } from "../../core/types/pool/poolLayout";
 import { getToasts, getFoldedCount, isNotifPanelOpen, isPending, OTHER_SOURCE_KEY, sourceKeyOf, type Toast } from "../../core/services/ui/toast";
 import { listInstallJobs } from "../../pluginLoader/lifecycle/install-queue";
 import { getManifestById } from "../../pluginLoader/resolution/state";
@@ -95,6 +95,7 @@ function getNotifIconClass(n: Toast): string {
   switch (n.severity) {
     case "error": return "codicon codicon-error ldk-notif-severity-error";
     case "warning": return "codicon codicon-warning ldk-notif-severity-warning";
+    case "success": return "codicon codicon-check ldk-notif-severity-success"; // 轻 Toast success 降级进面板时照语义显色
     case "info":
     default: return "codicon codicon-info";
   }
@@ -268,6 +269,32 @@ function toNotifItem(t: TFunction) {
   });
 }
 
+/**
+ * 轻 Toast 栈序列化——池 TransientToastStack 的 DTO（单 store 双呈现的**池侧那一半**；
+ * 面板那一半由上方 buildNotif 的 presentation 过滤保证互斥）。
+ * 呈现面铁律：message/action.title 是**生产者最终显示文本**（显示文本铁律——壳不翻）；
+ * expiresAt 是池侧计时的唯一真相（壳 pushToast/同 key 合并时算好）。
+ */
+export function buildToastStack(t: TFunction): ToastStackLayout {
+  return {
+    dismissLabel: t("关闭"),
+    items: getToasts()
+      .filter((n) => n.presentation === "toast")
+      .map((n) => {
+        const a = n.actions?.[0];
+        return {
+          id: n.id,
+          ...(n.key ? { key: n.key } : {}),
+          message: n.message,
+          severity: n.severity === "warning" ? "warning" : n.severity === "success" ? "success" : "info",
+          ...(a ? { action: { title: a.label, ...(a.command ? { command: a.command } : {}), ...(a.args ? { args: a.args } : {}) } } : {}),
+          ...(n.icon === false ? { icon: false } : {}),
+          expiresAt: n.expiresAt ?? Date.now() + (n.ttl ?? 0),
+        };
+      }),
+  };
+}
+
 /** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
 export function buildNotif(t: TFunction): NotifLayout {
   // 🔴 全仓只有**一个**通知呈现面 = 状态栏铃铛宽面板（`StatusBarZone`）——本函数产出的就是那个
@@ -275,12 +302,14 @@ export function buildNotif(t: TFunction): NotifLayout {
   // ToastHost 小卡）：它与面板**同处右下角、两套卡、连组件名都撞**（两个 `ToastHost`），等于
   // E6#72 已归一过的第二通知面换个名字复活。**不许再长第二条呈现出口**——要回执就走面板缺省
   // （插件面 `wake=true` 会把面板弹开，到点自消，用户点开铃铛也翻得到）。
-  const all = getToasts();
+  const all = getToasts().filter((n) => n.presentation !== "toast");
   const unread = all.filter(isUnread).length;
 
   // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）。
   // E6#73f 归一：分桶键走 toast 的 sourceKeyOf——与常驻上限淘汰分桶**同一个键函数**，
   // 面板分组与淘汰分桶不会各算各的（此前两处各写一遍 split(".")[0] || "__other__"）。
+  // 轻 Toast 改判（2026-11-19）：presentation:"toast" 条目归**池栈**（buildToastStack），不进面板——
+  // 一条条目只进一个面；缺省无字段 = panel（旧生产者零回归）。
   const map = new Map<string, Toast[]>();
   for (const n of all) {
     const key = sourceKeyOf(n.source);

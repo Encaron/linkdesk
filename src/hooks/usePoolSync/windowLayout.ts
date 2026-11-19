@@ -51,6 +51,9 @@ export interface WindowLayoutContext {
   rightSidebar: PoolLayout["rightSidebar"];
   panel: PoolLayout["panel"];
   statusBar: StatusBarLayout;
+  /** 轻 Toast 栈 DTO（buildToastStack）——壳 store presentation:"toast" 条目；主窗全局，随 statusBar 同策略推。
+   *  可选：测试夹具/纯前端预览不必都补（缺省 = 池不渲染栈）。 */
+  toastStack?: PoolLayout["toastStack"];
   /** E5.8#45：面板已脱出到漂移窗（windows 存在 mode:"drift"）——main 停推 panel（面板独占性：
    *  面板恒只在一个窗口渲染；漂移窗按 zones 推 panel，main 按本标记抑制） */
   panelDetached: boolean;
@@ -251,6 +254,9 @@ export function assembleWindowLayout(win: WindowShellState, ctx: WindowLayoutCon
     // 漂移窗恒推 panel（I9-13——漂移窗 = 面板专用窗）
     panel: include("panel") && !(win.mode === "main" && ctx.panelDetached) ? ctx.panel : undefined,
     statusBar: include("statusBar") ? ctx.statusBar : undefined,
+    // 轻 Toast 栈——与 statusBar 同域（主窗全局状态），随 statusBar 同策略推（脱出窗不推）。
+    // 池 TransientToastStack 哑渲染 + 池侧计时（expiresAt），过期/× /动作经 toasts/dismissToastItem 回壳。
+    toastStack: include("statusBar") ? ctx.toastStack : undefined,
     // 04「悬停提示系统」件 1：提示条开关 + 命令表**不吃 zones 策略**——它们不是 zone，
     // 而是一层挂在文档上的行为（脱出窗/漂移窗里的图标栏、标签栏、面板切换器一样有 title 提示）。
     // 只随 windowLayout 无 zone 走 ⇒ 每窗都推同一份。

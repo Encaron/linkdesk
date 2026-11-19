@@ -11,7 +11,9 @@
  */
 
 import { confirm, alert, confirmContent, getPendingDialogs } from "../../ui/DialogService"; // E5#67 + E6#71c 富内容确认 + M1 AI#5 在途读取面
-import { pushToast, dismissToast, getToasts, updateToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
+import { pushToast, dismissToast, getToasts, updateToast, replaceToast, TOAST_TTL_ERROR, type ToastSeverity } from "../../ui/toast";
+import { clampTtl, decidePresentation } from "../../ui/toastRouting"; // 轻 Toast 降级路由（01 契约 §三纯函数——调用方不预判）
+import type { ToastShowOptions } from "../../../api/linkdesk-api/types"; // 轻 Toast 契约（2026-11-19 改判）
 import { notifSnapshot } from "../readSnapshots"; // M1 AI#1：通知面板快照（usePoolSync 注册的 buildNotif(t) 闭包）
 import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
@@ -330,6 +332,63 @@ export async function handleUiMethod(method: string, args: unknown[]): Promise<u
       break;
     }
     case "cancelNotification": {
+      const [handleId] = args as [string];
+      dismissToast(handleId);
+      break;
+    }
+    // ── 轻 Toast（TransientToast）三方法（2026-11-19 改判恢复；01 契约 §二/§三）──
+    // showToast：降级路由在壳（decidePresentation 纯函数——02 表 B12/B9/B3/B4/B14 逐条），
+    // handle.presentation 如实回传实际落面。⛔ 调用方自己预判后改走 notifications = 第二把尺。
+    // toast 呈现条目的 TTL 计时在池侧（expiresAt 时间戳——B21 hover 暂停/B34 最小化继续都要
+    // time-based 判定），壳不挂 timer（pushToast 内已分工）。
+    case "showToast": {
+      const [options] = args as [ToastShowOptions | undefined];
+      const message = options?.message ?? "";
+      // B13 防御在 decidePresentation（未知 severity 出声按 info）；store severity 照传（success 已扩）
+      const severity: ToastSeverity = (options?.severity ?? "info") as ToastSeverity;
+      const ttl = clampTtl(options?.ttl);
+      // 单动作构建（01 §二：action 最多 1 个；>1 由契约类型挡住，池侧传数组不可能）。
+      // onClick 闭包是 **panel 降级条目**的执行路径（面板 notif:action 回传位置序号 → 壳执行）；
+      // toast 呈现条目的动作由池执行 DTO 里的 command/args（插件命令注册在池）——两面各自闭环。
+      // B10：command 未注册/执行异常 → 只关闭，无副作用（catch 保证「关闭」不受执行失败牵连）。
+      const actions = options?.action
+        ? [{
+            label: options.action.title,
+            command: options.action.command,
+            args: options.action.args,
+            onClick: () => {
+              try {
+                if (options.action!.command) void executeCommand(options.action!.command, undefined, ...(options.action!.args ?? []));
+              } catch { /* B10：命令不存在/执行失败——点击只关闭，不报错不假装成功 */ }
+            },
+          }]
+        : undefined;
+      const route = decidePresentation({ message, severity, actionCount: actions ? 1 : 0, ttl });
+      const id = pushToast({
+        message,
+        severity,
+        actions,
+        ttl,
+        ...(options?.key !== undefined ? { key: options.key } : {}),
+        ...(options?.icon !== undefined ? { icon: options.icon } : {}),
+        ...(options?.source !== undefined ? { source: options.source } : {}),
+        presentation: route,
+      });
+      return { id, presentation: route };
+    }
+    // handle.update —— toast 呈现时 TTL 重置（B16：同 key 合并与句柄 update 同一重置语义）；
+    // expiresAt 由壳重算（池侧计时的到期真相随文案更新走），panel 条目原位改写不动 ttl。
+    case "updateToastItem": {
+      const [handleId, message] = args as [string, string];
+      const prev = getToasts().find((t) => t.id === handleId);
+      replaceToast(handleId, {
+        message,
+        ...(prev?.presentation === "toast" && prev.ttl ? { expiresAt: Date.now() + prev.ttl } : {}),
+      });
+      break;
+    }
+    // handle.dismiss —— 池侧过期/× /上限退场的唯一回程（单一写入路径仍是 dismissToast）
+    case "dismissToastItem": {
       const [handleId] = args as [string];
       dismissToast(handleId);
       break;

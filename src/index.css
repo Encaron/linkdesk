@@ -69,6 +69,10 @@
      :root 静态默认 = 100%（ratio 1）新设计基准（⑤ 拍板：sm 13 对齐 VS Code / md 14 文件树 name /
      lg 16 文件树 icon / xl 18 / 2xl 22 / 3xl 28 / 4xl 30）；引擎 applyOverrides ④ 动态写覆盖。 */
   --ui-scale: 1;
+  /* T13（轻 Toast 立项 04 任务清单）：状态栏高度真相源——22px × ui-scale（StatusBarZone.css 同值，
+     此前两处各写 22px 字面量）。消费方：TransientToast 栈的底部避让（01 契约 §五「距状态栏 12px」）＋
+     StatusBarZone 自身高度/派生让位——栏高改动一处生效。 */
+  --statusbar-height: 22px;
   --font-size-2xs: 11px;
   --font-size-xs: 12px;
   --font-size-sm: 13px;

@@ -43,7 +43,7 @@ import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups, b
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";
 import { buildIconBar } from "./usePoolSync/iconbar";
 import { buildStatusBarItems } from "./usePoolSync/statusbar";
-import { buildNotif } from "./usePoolSync/notif";
+import { buildNotif, buildToastStack } from "./usePoolSync/notif";
 import { buildCommandHints } from "./usePoolSync/hints"; // 04「悬停提示系统」件 1：命令表（提示条自动补文案/快捷键）
 import { useSyncSubscriptions } from "./usePoolSync/useSubscriptions";
 import { assembleWindowLayout, serializeGroups, type WindowLayoutContext } from "./usePoolSync/windowLayout";
@@ -331,6 +331,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         ...(chordLabel ? { chordLabel } : {}),
         notif: buildNotif(t),
       },
+      // 轻 Toast 栈（TransientToast）——store 变化经 subscribeToasts 的 layoutVersion bump 自动重推（零新增接线）
+      toastStack: buildToastStack(t),
       // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）。
       // W1 图标链：icon/iconSource 由壳侧 pickIdentityArt() 预解析（恒返有效 descriptor）——
       // 解析在壳、池零逻辑（与标签栏 windowLayout 同源同函数，防漂移重演）。

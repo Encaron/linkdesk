@@ -31,6 +31,7 @@ import MainZone from "./zones/main/MainZone"; // E5.7#20：Phase 5 替换主区�
 import PanelZone from "./zones/panel/PanelZone"; // E5.7#21 骨架 + #63.7 数据生产者（贡献路由/动态加载/高度持久化已落地）
 import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（壳侧暂无容器生产者）
 import BackgroundLayer from "./zones/BackgroundLayer"; // E5.8#50.8：全窗背景图片层（shell 首子，z-index 0——FloatingLayerHost 底镜像）
+import { TransientToastStack } from "./floating/transient-toast"; // 轻 Toast（2026-11-19 改判恢复）：壳想池画——栈容器池侧哑渲染
 import HintTipRenderer from "../components/shared/hint-tip/HintTipRenderer"; // 04「悬停提示系统」件 1：提示条单例渲染器
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
@@ -124,6 +125,12 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
       {/* FloatingLayerHost——#25（Phase 4）：浮层统一容器——始终挂载 + pointer-events: none 默认穿透 */}
       <FloatingLayerHost />
+
+      {/* 轻 Toast 栈（TransientToast，2026-11-19 改判恢复）——壳 store presentation:"toast" 条目的池侧哑渲染。
+          计时/去重/降级路由/上限全在壳；本件只画 + 池侧 expiresAt 巡查（B21 hover 暂停/B34 time-based）。
+          × /动作经既有 notif:dismiss / notif:action 回程（与铃铛面板同管道）。落点在 PoolZoneShell 而非
+          FloatingLayerHost：layout 在手零穿层（照 HintTipRenderer「池根无条件挂载」同款理由 ③）。 */}
+      <TransientToastStack stack={layout.toastStack} />
 
       {/* 04「悬停提示系统」件 1：提示条单例渲染器——**池根无条件挂载**。
           ① 全软件只需这一处：壳文档是纯状态持有者（App.tsx 的 ldk-app-shell 空壳，无可见 DOM），

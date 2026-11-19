@@ -983,14 +983,6 @@ export interface PoolStatusBarItem {
     /** Leading divider — shell StatusBar render semantics (every item except the first in the left zone; except the first within a group in the right zone) */
     dividerBefore?: boolean;
 }
-/**
- * a row for an install job — the **only** row shape of the panel's "In progress / Waiting to install" two sections (dossier 18 §5 I.4).
- *
- * **Why the results area is not here**: install terminal states (success / failure / installed but missing dependencies) are announced by the existing toasts
- * (success = the sole outlet of the lifecycle consumer; failure = the settle failure toast with [Retry], see 73h/73e);
- * the results area is still grouped by source (`NotifGroup`). Job rows appear only in the two sections "not yet resulted" —
- * one install is always visible in exactly one place, never "installed twice".
- */
 export interface NotifJobRow {
     /** Row key — jobId (**not** the display name: same-named plugins must stay distinguishable, dossier 18 §7 73d row). */
     id: string;
@@ -1134,6 +1126,31 @@ export type PoolCommandHints = Record<string, {
     title: string;
     keybinding?: string;
 }>;
+/** 轻 Toast 栈条目——壳 store `presentation:"toast"` 条目的 DTO（TransientToast 池侧哑渲染）。
+ *  与面板 DTO（NotifItem）同源异面：一条条目只进一个面（2026-11-19 改判）。 */
+export interface ToastStackItem {
+    id: string;
+    key?: string;
+    message: string;
+    severity: "info" | "success" | "warning";
+    /** 动作（最多 1 个）——command/args 由**池**执行（插件命令注册在池；未注册 → 点击只关闭 B10） */
+    action?: {
+        title: string;
+        command?: string;
+        args?: unknown[];
+    };
+    /** false = 隐藏 severity 图标（01 契约 §2 icon 形参）；缺省/true = 恒显 */
+    icon?: boolean;
+    /** 到期时间戳（epoch ms）——池侧计时真相（B21 hover 暂停 / B34 最小化继续都按 time-based 判定；
+     *  池侧 interval 比对 now 与本值，过期即经 dismissToastItem 回壳删条目）。壳侧已按同 key 合并/上限 3 裁剪。 */
+    expiresAt: number;
+}
+/** 轻 Toast 栈 DTO——挂在 PoolLayout 顶层与 statusBar.notif 同帧推送（壳想池画）。空数组 = 无在显条目 */
+export interface ToastStackLayout {
+    items: ToastStackItem[];
+    /** × 按钮文案（壳 t("关闭")——显示文本铁律） */
+    dismissLabel?: string;
+}
 export interface PoolLayout {
     version: 2;
     titleBar: TitleBarLayout;
@@ -1161,6 +1178,8 @@ export interface PoolLayout {
     hintEnabled?: boolean;
     /** 04 "hover hint system" piece 1: command table — source of the automatic copy and shortcuts for `data-hint-command`. Window-agnostic ⇒ always pushed. */
     commands?: PoolCommandHints;
+    /** 轻 Toast 栈（2026-11-19 改判恢复）——主窗随 statusBar 同策略推；缺省 = 池不渲染 */
+    toastStack?: ToastStackLayout;
 }
 /**
  * per-window tab list — produced by **the same serializer** (`serializeGroups`) as the layout tree pushed to the pool,
@@ -1313,6 +1332,49 @@ export interface NotificationHandle {
     finish(message?: string): Promise<void>;
     /** Cancel — closes directly, no completion toast */
     cancel(): Promise<void>;
+}
+/** Light-toast action (ui.toasts.show options.action, 01 contract §2) — the **serializable subset**: pool→shell IPC cannot carry closures,
+ *  so the click path is `command`/`args` only (shell executeCommand). The `onClick` slot of the 01 §2 table is the **in-shell same-process** face
+ *  (direct pushToast callers); it has no physical carrier on this cross-process surface. Unknown command → click just closes (02 B10, no error). */
+export interface ToastShowAction {
+    /** Button label — final display text, resolved by the producer (display-text iron rule) */
+    title: string;
+    /** Command id run on click — executeCommand(command, ...args); unregistered → click just closes (B10) */
+    command?: string;
+    /** ...args passed through to the command handler */
+    args?: unknown[];
+}
+/** ui.toasts.show options (01 contract §2 verbatim, minus the in-shell-only onClick slot — see ToastShowAction) */
+export interface ToastShowOptions {
+    /** 必填 — one-liner; >2 visual lines ⇒ auto-degrades to the panel (caller does not decide) */
+    message: string;
+    /** 去重键 — same key updates the existing entry (B16) instead of adding one; omitted = a new entry each call */
+    key?: string;
+    /** 缺省 info; ⚠️ error not accepted — auto-degrades to the panel (caller passes it anyway, routing decides) */
+    severity?: "info" | "success" | "warning";
+    /** 最多 1 个；>1 ⇒ panel（B9）。轻提示的常见形态是无动作 */
+    action?: ToastShowAction;
+    /** ms，缺省 3000，夹取 [1500,10000]（B15）；≥8000 ⇒ 面板（B14） */
+    ttl?: number;
+    /** 缺省 true 恒显 severity 图标；显式 false 隐藏（语义由文案承载） */
+    icon?: boolean;
+    /**
+     * 生产者身份（notifications.show 的 source 同款约定）——轻 Toast 不进面板分组，
+     * 但 02 表 B20「插件卸载 → 其来源条目立即清除」的**来源键**由此而来；缺省归「其他」桶。
+     * ⚠️ 01 契约 §2 表未列此字段（立档时序），此处为 B20 判据的机械前置——与 notifications.source 同形。
+     */
+    source?: string;
+}
+/** Light-toast presentation — which surface the entry actually landed on (2026-11-19 改判: one store, two presentations) */
+export type ToastPresentation = "toast" | "panel";
+/** Light-toast handle — update/dismiss route back to the same entry; presentation reports where it actually landed */
+export interface ToastHandle {
+    /** 更新同一条目文案（toast 呈现时 TTL 重置；panel 呈现时原位改写） */
+    update(message: string): Promise<void>;
+    /** 立即关闭 */
+    dismiss(): Promise<void>;
+    /** 只读：实际落在了哪个面 — 排障与断言用（⛔ 调用方预判降级的那把尺不给他用） */
+    readonly presentation: ToastPresentation;
 }
 /** A menu item declared by a plugin in plugin.json—either a command or a submenu, never both */
 export type ManifestMenuItem = string | {
@@ -1620,6 +1682,17 @@ export interface UiAPI {
          * @returns unsubscribe function
          */
         subscribe(cb: () => void): () => void;
+    };
+    /**
+     * 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store、不同名、不同角落）。
+     * 分工判据（00 §二）：**Toast 是「路过」，面板是「留存」**——短、轻、无动作/1 动作的一句话走这里；
+     * 错误/需决策/进度/长文本仍走 `notifications`（自动降级路由，调用方不预判）。
+     * 🔴 ⛔ 不用已删的 `ui.toast` 旧名（死面，名字带历史包袱）；⛔ 第二个 store（与 notifications 同一后端队列）。
+     */
+    toasts: {
+        /** Raises a light toast — returns a handle (update/dismiss/presentation). Degradation rules are pure-function
+         *  routed on the shell (01 §3): error / >1 action / >96 visual units / ttl ≥8000 / >2 explicit lines ⇒ panel. */
+        show(options: ToastShowOptions): Promise<ToastHandle>;
     };
     /** Menus — declarative read/write for plugins */
     menu: {

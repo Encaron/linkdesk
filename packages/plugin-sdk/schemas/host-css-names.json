@@ -1167,6 +1167,12 @@
     "ldk-titlebar-menus",
     "ldk-titlebar-slot-btn",
     "ldk-toggle",
+    "ldk-tt",
+    "ldk-tt-act",
+    "ldk-tt-msg",
+    "ldk-tt-sev",
+    "ldk-tt-stack",
+    "ldk-tt-x",
     "ldk-view-skeleton",
     "ldk-view-skeleton-card",
     "ldk-view-skeleton-row",
@@ -1266,9 +1272,10 @@
     "ldk-notif-progress-scan",
     "ldk-rn-spin",
     "ldk-selectbox-in",
+    "ldk-tt-in",
     "ldk-view-skeleton-breath",
     "ldk-welcome-in",
     "ldk-welcome-skeleton-breath"
   ],
-  "reservedKeyframeCount": 11
+  "reservedKeyframeCount": 12
 }

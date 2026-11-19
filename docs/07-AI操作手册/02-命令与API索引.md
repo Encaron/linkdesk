@@ -195,7 +195,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**16 个域接口 → 47 个命名空间 / 260 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**16 个域接口 → 48 个命名空间 / 261 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -242,6 +242,7 @@
 | `storage` ⚠️ | StorageAPI | 2 | `revealCache` `cacheDir` | —— |
 | `tabs` | TabsAPI | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `theme` | AppearanceAPI | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
+| `toasts` | UiAPI | 1 | `show` | 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store、不同名、不同角落）。 |
 | `update` | UpdateAPI | 1 | `getState` | The update namespace — read-only update state (for "About"-type plugins to read the host version/update state). |
 | `viewContainer` | EditorAPI | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side registry). The DTO contains only serializable public fields |
 | `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | Window control — TitleBar button mapping, injected on both ends (11 methods on one channel, shared module electron/wind… |

@@ -1,0 +1,110 @@
+/**
+ * TransientToast 样式——照 05-设计图-Toast.html §③/§⑦/§⑧ 逐规格落码（全 token，⛔ hex）。
+ * 规格：min 240 / max 360 · padding 10/12 · 圆角 var(--radius-lg)=8 · 条内 gap 10 / 条间 gap 8 ·
+ * 文本 var(--font-size-sm)/1.45 · line-clamp:2 · × 常驻占位 18px 仅 opacity 变化 · 进入 160ms 位移+淡入。
+ * 位置（01 契约 §五）：**底部居中**，距状态栏 12px（--statusbar-height × --ui-scale）；
+ * ⛔ 右下角——铃铛面板在右下，同角落 = 复现 2026-10-01 删除令的直接根因。
+ */
+.ldk-tt-stack {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--statusbar-height) * var(--ui-scale) + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none; /* 容器穿透、条目接收（01 §四 stack） */
+}
+
+.ldk-tt {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px; /* 设计稿 05 为 10px——check-spacing-grid 4px 刻度归格到 12（10 距 8/12 等距，取大值贴近稿重） */
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 32px)); /* B29：窄窗（<640px）自适应宽度且仍居中 */
+  padding: 12px; /* 设计稿 10px 12px——上下 10 同规归格 12，横向 12 原样 */
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--text-primary);
+  animation: ldk-tt-in 160ms ease-out; /* 05 §⑧：160ms 位移+淡入 */
+}
+
+@keyframes ldk-tt-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* severity 圆形图标（14px，aria-hidden——语义由文案承载） */
+.ldk-tt-sev {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  /* 彩底深字（05 设计稿 #111 的 token 化：静态标尺「亮表面墨色」，亮暗主题同值） */
+  color: var(--tone-ink-on-light);
+}
+
+.ldk-tt[data-severity="info"] .ldk-tt-sev { background: var(--accent); }
+.ldk-tt[data-severity="success"] .ldk-tt-sev { background: var(--success); }
+.ldk-tt[data-severity="warning"] .ldk-tt-sev { background: var(--warning); }
+
+/* 文本：≤96 视觉单位两行内；超限已在壳侧整条降级（B3 ⛔ 截断），clamp 只是视觉兜底 */
+.ldk-tt-msg {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 动作：最多 1 个，文本按钮 accent 色（01 §四） */
+.ldk-tt-act {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--accent-hover);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap; /* 08 v3.56 行数上限：按钮单行 nowrap */
+}
+.ldk-tt-act:hover { background: var(--hover-overlay); }
+
+/* × 常驻占位（02 B23）：宽度恒定只有透明度变化——⛔ hover 才占位（历史：文字被推走/弹回/拖选破坏） */
+.ldk-tt-x {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.ldk-tt:hover .ldk-tt-x,
+.ldk-tt:focus-within .ldk-tt-x { opacity: 1; }
+.ldk-tt-x:hover { color: var(--text-primary); }
+
+/* B27：reduced-motion——不做位移，仅保留出现（透明度由动画首帧承担，禁掉即直出） */
+@media (prefers-reduced-motion: reduce) {
+  .ldk-tt { animation: none; }
+}

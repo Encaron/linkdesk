@@ -261,6 +261,10 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "updateNotification":
     case "finishNotification":
     case "cancelNotification":
+    // 轻 Toast 三方法（2026-11-19 改判恢复；与 notifications 同壳 store 双呈现——ui 域委派）
+    case "showToast":
+    case "updateToastItem":
+    case "dismissToastItem":
     // M1 AI#1：通知读取面（面板 DTO 本体——壳持全量，脱出窗也问得到）
     case "listNotifications":
     // M1 AI#5：在途弹窗读取面（DialogService 单槽——读得到"在等什么"，不改 Promise 语义）
