@@ -1,0 +1,3318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugin Store 主区专注蓝图 v3 — 只讨论主区</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  Plugin Store 主区专注蓝图 v3（2026-11-19）
+  ═══════════════════════════════════════════════════════════════════════
+  · 定位：**只显示主区**——侧栏/图标栏/标题栏已定稿（冻结于 02-PluginStore蓝图-v2.html），
+    本稿整窗即主区，专门逐块讨论商店与详情的全部 UI。
+  · 继承 02 全部拍板与交互（五卡片原型 / hover 悬浮放大卡 / 真轮播 / 三页签详情 /
+    跨标签跳转 / 状态机 / 响应式），数据同源（16 条真实目录）。
+  · 🔴 机械守则（2026-11-19 硬性要求）：一个元素的状态变化不得影响其他任何元素——
+    hover/选中/进行中只许 transform／opacity／颜色／遮罩／portal 浮层；
+    ⛔ display、height、width、margin 等参与文档流几何的属性不得参与状态展示。
+    验收判据：hover 任意卡片，页面上其他一切元素的像素位置不变。
+  · 规矩：用户批注 → 先改本文件 → 同笔登记 07 → 推翻拍板才回改档 → R4 逐 data-spec 对账
+  · 色板 = 官方主题「深色」配方实值；深色单主题。
+-->
+<style>
+/* ═══ 令牌（theme-defaults 深色配方实值） ═══ */
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:rgba(14, 99, 156, 0.1); --accent-hover:#1177BB; --text-on-accent:#FFFFFF;
+  --border:#3C3C3C; --separator:#474747; --icon-inactive:#858585;
+  --bg-toolbar:#1E1E22; --tab-hover-bg:#353535; --hover-overlay:rgba(255,255,255,.06);
+  --status-connected:#4EC9B0;
+  --danger:#E06C75; --danger-quiet:#F48771; --warn:#E5C07B; --note:#CCA700;
+  --badge-alert:#C24E4E; --surface-strong:#4A5568; --text-on-strong:#C6CDD5; --bg-side-panel:#1E1E22;
+  --scrollbar-thumb:rgba(255,255,255,.15);
+  --scrollbar-thumb-hover:rgba(255,255,255,.25);
+  --shadow-1:0 1px 2px rgba(0,0,0,.25),0 2px 6px rgba(0,0,0,.2);
+  --shadow-2:0 2px 4px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.4);
+  --radius:6px; --radius-lg:10px;
+  --font:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  --mono:"Cascadia Code",Consolas,monospace;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);font-size:13px;color:var(--text-primary);
+  background:var(--bg-window);overflow:hidden}
+::selection{background:var(--accent);color:var(--text-on-accent)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--accent-hover);outline-offset:1px;border-radius:3px}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input{font-family:inherit;font-size:inherit;color:inherit}
+svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+
+/* ═══ 主区 = 整窗（本稿只有主区） ═══ */
+.app{display:flex;flex-direction:column;height:100vh}
+.mainzone{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg-window)}
+.tabbar{height:35px;background:var(--bg-toolbar);display:flex;align-items:stretch;flex:none;
+  border-bottom:1px solid var(--border)}
+.tab{display:flex;align-items:center;gap:7px;padding:0 12px;font-size:12.5px;
+  color:var(--text-secondary);border-right:1px solid var(--separator);position:relative;
+  max-width:220px}
+.tab svg{width:15px;height:15px}
+.tab:hover{background:var(--tab-hover-bg)}
+.tab.active{background:var(--bg-window);color:var(--text-primary)}
+.tab.active::before{content:"";position:absolute;top:0;left:0;right:0;height:1.5px;
+  background:var(--accent)}
+.tab .t-close{width:16px;height:16px;border-radius:3px;display:flex;align-items:center;
+  justify-content:center;color:var(--text-muted)}
+.tab .t-close:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.tabview{flex:1;display:flex;min-height:0}
+.tabview.hidden{display:none}
+
+/* ═══ Store：rail + 内容（04 §七） ═══ */
+.store{display:flex;flex:1;min-height:0;min-width:0}
+.store-rail{width:110px;background:var(--bg-side-panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:10px 7px;gap:0;overflow:hidden;flex:none}
+.store-rail .rail-top{display:flex;flex-direction:column;gap:6px;flex:none;
+  padding:0 0 8px;margin:0 -7px 8px;border-bottom:1px solid var(--border);padding-left:7px;padding-right:7px}
+/* 首页＝品牌块（v3.47）：固定项里唯一有强调色底/图标块/副标题的——高度仍紧凑，但视觉最重 */
+.store-rail .rail-home{display:flex;align-items:center;gap:9px;width:100%;padding:9px 8px;
+  border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 22%,transparent),transparent 72%);
+  color:var(--text-primary);cursor:pointer;text-align:left;
+  transition:background .15s,border-color .15s,box-shadow .15s}
+.store-rail .rail-home:hover{background:color-mix(in srgb,var(--accent) 18%,var(--tab-hover-bg))}
+.store-rail .rail-home.active{border-color:var(--accent-hover);
+  box-shadow:0 6px 18px -8px color-mix(in srgb,var(--accent) 75%,transparent)}
+.store-rail .rail-home .hi{width:30px;height:30px;border-radius:8px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;flex:none;color:var(--text-on-accent)}
+.store-rail .rail-home .hi svg{width:17px;height:17px}
+.store-rail .rail-home .htx{min-width:0;display:flex;flex-direction:column}
+.store-rail .rail-home .ht{font-size:13px;font-weight:700;line-height:1.25}
+.store-rail .rail-home .hs{font-size:9.5px;color:var(--text-secondary);line-height:1.2}
+/* 固定项＝紧凑行（横向 icon+文字；比竖排瓷片矮一半，v3.44；v3.45 回抬一档） */
+.store-rail .rail-item.compact{flex-direction:row;justify-content:flex-start;gap:9px;
+  padding:10px 9px;border-radius:8px;font-size:12px;min-height:38px}
+.store-rail .rail-item.compact .ic{width:16px;height:16px}
+.store-rail .rail-item.compact .cnt{margin-left:auto;font-size:11px}
+.store-rail .rail-scroll{display:flex;flex-direction:column;gap:6px;overflow-y:auto;
+  flex:1;min-height:0;margin:0 -7px;padding:0 7px}
+.store-rail .rail-foot{display:flex;flex-direction:column;gap:6px;flex:none;
+  border-top:1px solid var(--border);margin:8px -7px 0;padding:8px 7px 0}
+.store-rail .rail-label{font-size:10.5px;font-weight:600;letter-spacing:.06em;
+  color:var(--text-muted);padding:2px 4px 2px;text-align:center}
+.store-rail .rail-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;
+  padding:12px 4px 10px;border-radius:var(--radius-lg);color:var(--text-secondary);
+  font-size:11.5px;text-align:center;width:100%;transition:background .15s,color .15s,
+  box-shadow .15s}
+.store-rail .rail-item svg{width:20px;height:20px}
+.store-rail .rail-item:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.store-rail .rail-item.active{background:color-mix(in srgb,var(--accent) 16%,transparent);
+  color:var(--text-primary);font-weight:600;
+  box-shadow:inset 0 0 0 1.5px var(--accent)}
+.store-rail .rail-item .cnt{margin:0;font-size:10px;color:var(--text-muted);
+  font-variant-numeric:tabular-nums;line-height:1}
+.store-rail .rail-item.empty{opacity:.5}
+.store-rail .rail-gap{height:12px}
+.store-rail .rail-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);
+  position:absolute;top:9px;right:9px}
+.store-rail .rail-dot.new{background:var(--accent-hover);box-shadow:0 0 6px color-mix(in srgb,var(--accent-hover) 60%,transparent)}
+.store-rail .rail-item.compact .rail-dot{top:50%;right:8px;transform:translateY(-50%)}
+.store-rail .cnt.warn{color:var(--warn);font-weight:600}
+.store-content{flex:1;min-width:0;overflow-y:auto}
+.store-page{width:100%;max-width:1280px;margin:0 auto;padding:26px 36px 60px;box-sizing:border-box}
+.store-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.store-head h1{font-size:23px;font-weight:600;letter-spacing:-.01em}
+.store-head .sub{color:var(--text-muted);font-size:12px;margin-top:2px}
+.store-search{margin-left:auto;display:flex;align-items:center;gap:8px;
+  background:var(--bg-input);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));
+  border-radius:var(--radius);padding:7px 12px;width:360px;color:var(--text-secondary);
+  transition:border-color .15s}
+.store-search svg{width:15px;height:15px;color:var(--accent-hover)}
+.store-search:focus-within{border-color:var(--accent-hover)}
+.store-search input{flex:1;background:none;border:none;outline:none;color:var(--text-primary)}
+.store-search input::placeholder{color:var(--text-secondary)}
+.cat-note{display:flex;align-items:center;gap:8px;padding:7px 12px;margin-bottom:18px;
+  border:1px solid var(--separator);border-radius:var(--radius);background:var(--bg-card);
+  color:var(--text-secondary);font-size:12px}
+.cat-note svg{width:14px;height:14px;color:var(--note)}
+
+/* 区块节奏：标题上多下少 */
+.sec{margin-bottom:36px}
+.sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.sec-head h3{font-size:16.5px;font-weight:600;letter-spacing:-.01em}
+.sec-head .hint{color:var(--text-muted);font-size:11.5px}
+.sec-head .more{margin-left:auto;font-size:14px;font-weight:700;color:var(--accent-hover);
+  display:flex;align-items:center;gap:4px}
+.sec-head .more svg{width:15px;height:15px}
+.sec-head .more:hover{text-decoration:underline;color:var(--accent-hover)}
+/* 整卡＝入口（v3.38 自 04 移植）：卡内不再有「查看详情」，root 带 data-open */
+.card[data-open]{cursor:pointer}
+.card:focus-visible{outline:2px solid var(--accent-hover);outline-offset:2px}
+/* 卡片「更多」菜单：破坏性动作（卸载/禁用）不进主位 */
+.icon-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:transparent;
+  color:var(--text-secondary);cursor:pointer;font-size:14px;line-height:1;flex:none;
+  display:flex;align-items:center;justify-content:center}
+.icon-btn:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.more-menu{position:absolute;right:10px;top:calc(50% + 14px);z-index:60;width:146px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:8px;
+  box-shadow:var(--shadow-2);padding:5px}
+.more-menu.hidden{display:none}
+.card:not(:hover) .more-menu{display:none} /* 菜单只在悬停该卡时可见 */
+.more-menu .mi{display:block;width:100%;text-align:left;padding:7px 9px;border:none;background:transparent;
+  color:var(--text-secondary);font-size:12.5px;border-radius:6px;cursor:pointer}
+.more-menu .mi:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.more-menu .mi.danger{color:var(--danger)}
+.more-menu .mi-sep{height:1px;background:var(--separator);margin:4px 6px}
+/* 头部检查更新钮 */
+.head-check{height:34px;padding:0 11px;border-radius:9px;display:flex;align-items:center;gap:6px;
+  border:1px solid var(--border);background:var(--bg-input);color:var(--text-secondary);
+  font-size:12.5px;cursor:pointer;flex:none;position:relative}
+.head-check:hover{color:var(--text-primary);border-color:var(--separator)}
+.head-check svg{width:15px;height:15px}
+.head-check .n{min-width:16px;padding:0 5px;border-radius:99px;background:var(--badge-alert);color:var(--text-on-accent);
+  font-size:10px;line-height:15px;text-align:center}
+/* 内容已更新：常驻条（⛔ 只靠 3 秒 Toast） */
+.content-bar{display:flex;align-items:center;gap:10px;margin:0 2px 16px;padding:9px 12px;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:9px;
+  background:color-mix(in srgb,var(--accent) 12%,var(--bg-card));font-size:12.5px;
+  color:var(--text-secondary)}
+.content-bar.hidden{display:none}
+.content-bar svg{width:15px;height:15px;color:var(--accent-hover);flex:none}
+.content-bar .grow{flex:1}
+.linkbtn{border:none;background:transparent;color:var(--text-muted);font-size:11px;
+  cursor:pointer;text-decoration:underline;padding:0}
+.linkbtn:hover{color:var(--accent-hover)}
+
+/* ═══ 英雄轮播 ═══ */
+.hero{position:relative;border-radius:var(--radius-lg);overflow:hidden;margin-bottom:4px;
+  border:1px solid var(--separator);background:var(--bg-card);
+  box-shadow:0 10px 44px -10px color-mix(in srgb,var(--glow,transparent) 45%,transparent);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+/* v3.8：设计语言全域——hero 同样 hover 放大（大版面微幅度 1.02，hold 住的感觉） */
+/* v3.10 环境辉光：散光颜色实时跟随封面主色（--glow 由 JS 按当前张写入），静态微环境光、hover 增强 */
+.hero:hover{transform:scale(1.02);
+  box-shadow:0 14px 60px -8px color-mix(in srgb,var(--glow,transparent) 75%,transparent),
+    var(--shadow-1);
+  z-index:30}
+.hero-track{display:flex;transition:transform .4s var(--ease)}
+.hero-slide{min-width:100%;display:grid;grid-template-columns:1.1fr .9fr;min-height:270px}
+.hero-copy{padding:30px 8px 26px 34px;display:flex;flex-direction:column;justify-content:center}
+.hero-tag{align-self:flex-start;font-size:11px;font-weight:600;color:var(--text-on-accent);
+  background:var(--accent);border-radius:4px;padding:2px 9px;margin-bottom:12px}
+.hero-copy h2{font-size:27px;font-weight:600;letter-spacing:-.02em;margin-bottom:9px}
+.hero-copy p{color:var(--text-secondary);font-size:13px;line-height:1.6;margin-bottom:14px;
+  max-width:46ch}
+.hero-meta{display:flex;gap:14px;color:var(--text-muted);font-size:12px;margin-bottom:18px;
+  align-items:center;font-variant-numeric:tabular-nums}
+.hero-meta b{color:var(--text-primary);font-weight:600}
+.hero-cta{display:flex;gap:10px}
+.hero-art{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.hero-art .hglyph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.hero-art .hglyph svg{width:126px;height:126px;stroke-width:1;opacity:.9;color:var(--text-on-accent);
+  filter:drop-shadow(0 6px 18px rgba(0,0,0,.35));transition:transform .25s var(--ease)}
+.hero:hover .hglyph svg{transform:scale(1.06)}
+/* .hname 水印已删（B15）：占位物易误读；真封面将来由目录条目 cover/screenshots 数据驱动 */
+.hero-nav{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:10px}
+.hero-nav .dot{width:7px;height:7px;border-radius:50%;background:var(--separator);
+  padding:0;transition:background .15s,transform .15s}
+.hero-nav .dot.on{background:var(--accent-hover);transform:scale(1.15)}
+.hero-arrow{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:30px;
+  border-radius:50%;background:color-mix(in srgb,var(--bg-input) 80%,transparent);
+  color:var(--text-secondary);display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-1);z-index:2;transition:background .15s,color .15s}
+.hero-arrow svg{width:15px;height:15px}
+.hero-arrow:hover{color:var(--text-primary);background:var(--bg-input)}
+.hero-arrow.l{left:10px}.hero-arrow.r{right:10px}
+
+/* ═══ 横排滚动（归一化：所有横排板块同一套左右切换能力）═══
+   规矩（拍板）：内容超出可视一屏 → 显示装机必备同款左右圆钮＋原生横滑；
+   占的格子不够（不超一屏）→ 箭头不显示。 */
+.strip{position:relative}
+.strip-row{display:flex;gap:14px;overflow-x:auto;scroll-behavior:smooth;
+  padding:22px 30px 18px; /* 放大余量：首/末卡 scale＋外扩层不切边（机械守则验收项） */
+  scrollbar-width:none;overscroll-behavior-x:contain}
+.strip-row::-webkit-scrollbar{display:none}
+/* 小卡两行（装机必备形态）：2×N 列一炉横滚，箭头按列翻页 */
+/* 小卡横排＝恒两行·列优先（v3.37）：
+   行高钉死 84px×2、列宽 236px——**区块高度与内容数量/窗口宽度都无关**，
+   窗口缩放只改变"能看见几列"，⛔ 不会让下方板块位移（机械守则）；
+   填充顺序＝先上到下、再下一列；溢出才出箭头（箭头 absolute 覆层） */
+.strip-row.rows2{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,84px);
+  grid-auto-columns:236px;gap:12px 14px;justify-content:start;align-items:stretch}
+/* 大卡行（mega/duo）：辉光/放大/延伸余量做进 padding——overflow 滚动容器连垂直方向
+   一起裁（实测 bug：延伸区/按钮被吞），底部加深＋负外边距补节奏后延伸层不出边界，
+   机械守则不受影响 */
+.strip-row.mega-row,.strip-row.duo-row{padding:26px 30px 56px;margin-bottom:-32px}
+.strip-row.duo-row .card-duo{flex:0 0 calc(50% - 7px);min-width:0}
+.strip-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;
+  background:var(--bg-input);color:var(--text-secondary);display:flex;align-items:center;
+  justify-content:center;box-shadow:var(--shadow-1);z-index:2;transition:background .15s,color .15s}
+.strip-arrow svg{width:14px;height:14px}
+.strip-arrow:hover{color:var(--text-primary);background:var(--tab-hover-bg)}
+.strip-arrow.l{left:-9px}.strip-arrow.r{right:-9px}
+.strip.no-overflow .strip-arrow{display:none} /* 少则不显示（拍板：占的格子不够→不显示它） */
+
+/* ═══ 瓷片 ═══ */
+/* 分类瓷片（v3.33 重做）：三列横排卡——图标＋名/数量/说明＋箭头；
+   🔴 空分类已不进瓷片区（两店同规）——⛔ 任何修饰类都别用 empty 这类通用词：会撞上全局空态 .empty（padding 80px 撑高整行，v3.33 修） */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.cat-tile{display:flex;align-items:center;gap:14px;padding:15px 16px;cursor:pointer}
+.cat-tile .ct-icon{width:40px;height:40px;border-radius:11px;flex:none;display:flex;
+  align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.cat-tile .ct-icon svg{width:19px;height:19px;color:var(--accent-hover)}
+.cat-tile .ct-main{min-width:0;flex:1}
+.cat-tile .ct-name{font-weight:600;font-size:13.5px}
+.cat-tile .ct-count{font-size:11.5px;color:var(--text-secondary);margin-top:2px;
+  font-variant-numeric:tabular-nums}
+.cat-tile .ct-desc{font-size:11.5px;color:var(--text-muted);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-tile .ct-go{flex:none;color:var(--text-muted);opacity:.45;
+  transition:opacity .15s,transform .15s,color .15s}
+.cat-tile .ct-go svg{width:14px;height:14px}
+.cat-tile:hover .ct-go{opacity:1;transform:translateX(2px);color:var(--accent-hover)}
+
+/* ═══ 卡片原型族（05 §四） ═══ */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease),border-color .18s;
+  position:relative}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-2);border-color:var(--separator);
+  z-index:30}
+/* 通用设计语言（v3.3）：hover = 自身显著放大盖住邻元素——不是抬高一点/高亮一下 */
+.card-small:hover,.card-grid:hover{transform:translateY(-4px) scale(1.1)}
+.card-mega:hover{transform:scale(1.12);
+  box-shadow:0 14px 50px -8px color-mix(in srgb,var(--glow,transparent) 65%,transparent)}
+.card-duo:hover{transform:scale(1.08);
+  box-shadow:0 12px 44px -8px color-mix(in srgb,var(--glow,transparent) 60%,transparent)}
+.cat-tile:hover{transform:scale(1.08);
+  box-shadow:0 12px 44px -8px color-mix(in srgb,var(--accent) 55%,transparent)}
+.card .c-hit{all:unset;cursor:pointer;display:block;width:100%}
+.card .c-hit:focus-visible{outline:2px solid var(--accent-hover);outline-offset:-2px;
+  border-radius:var(--radius-lg)}
+
+/* small 小卡——比例对标 MS Store（10:3~3.5，图标加大） */
+.card-small{width:236px;flex:none;height:84px;padding:0 16px;display:flex;align-items:center}
+.card-small .cs-top{display:flex;gap:13px;align-items:center;width:100%}
+.card-small .cs-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.card-small .cs-cat{font-size:11px;color:var(--text-muted);margin-top:3px}
+.card-small .cs-free{margin-left:auto;font-size:11px;color:var(--text-muted);flex:none}
+
+/* ═══ 原位放大展开层（v3.1：卡片自己展开放大——absolute 不占布局，scale 进出，盖住邻元素） ═══ */
+.x-over{position:absolute;left:-16px;top:50%;width:calc(100% + 32px);
+  transform:translateY(-50%) scale(.94);opacity:0;pointer-events:none;
+  background:var(--bg-card);border:1px solid var(--separator);border-radius:12px;
+  box-shadow:var(--shadow-2);padding:14px;
+  transition:opacity .18s var(--ease),transform .22s var(--ease)}
+.card:hover .x-over,.card:focus-within .x-over{opacity:1;
+  transform:translateY(-50%) scale(1);pointer-events:auto}
+.x-head{display:flex;gap:12px;align-items:center;margin-bottom:9px}
+.x-head .x-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.x-head .x-cat{font-size:11px;color:var(--text-muted);margin-top:3px}
+.x-desc{font-size:11.5px;color:var(--text-secondary);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* grid 网格卡 */
+.card-grid{padding:16px}
+.card-grid .cg-top{display:flex;gap:12px;align-items:flex-start}
+.card-grid .cg-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.card-grid .cg-author{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.card-grid .cg-stats{display:flex;gap:12px;align-items:center;margin-top:12px;
+  color:var(--text-muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.card-grid .cg-badge{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:50%}
+
+/* mega 超大卡（v3.7：hover＝本体放大＋底部灰条向上延伸——标语/简介/按钮长进条里，字不碰封面） */
+.card-mega{width:312px;flex:none;cursor:pointer;overflow:hidden}
+.card-mega .cm-art{height:200px;display:flex;align-items:center;justify-content:center;
+  position:relative}
+.card-mega .cm-art>svg{width:66px;height:66px;stroke-width:1.1;color:rgba(255,255,255,.92);
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,.3));transition:transform .24s var(--ease)}
+.card-mega:hover .cm-art>svg{transform:translateY(-32px) scale(.72)}
+.card-mega .cm-foot{height:60px;padding:0 16px;display:flex;align-items:center;gap:10px}
+.card-mega .cm-name{font-size:14px;font-weight:600}
+.card-mega .cm-cat{font-size:11px;color:var(--text-muted);margin-top:2px}
+.card-mega .cm-free{margin-left:auto;font-size:11px;color:var(--text-muted)}
+/* 付费强调（v3.64c 用户拍板：钱数要显眼、订阅/买断要写明）——不 hover 也看得见 */
+.cs-free.paid,.cm-free.paid,.rr-corner.paid{background:var(--accent);color:var(--text-on-accent);
+  font-weight:700;font-size:12px;padding:2px 9px;border-radius:99px;letter-spacing:.02em}
+/* v3.65b 用户拍板：⛔ 描边框——实底系（paid 蓝/update 橙/expired 红/soon 黄）+ 纯字系（installed/free 灰字无底） */
+.cs-free.paid,.cm-free.paid,.rr-corner.paid,.cg-corner.paid,
+.cs-free.update,.cm-free.update,.rr-corner.update,.cg-corner.update,
+.cs-free.expired,.cm-free.expired,.rr-corner.expired,.cg-corner.expired,
+.cs-free.soon,.cm-free.soon,.rr-corner.soon,.cg-corner.soon{
+  font-weight:700;font-size:12px;padding:2px 9px;border-radius:99px;letter-spacing:.02em}
+.cs-free.paid,.cm-free.paid,.rr-corner.paid,.cg-corner.paid{background:var(--accent);color:var(--text-on-accent)}
+.cs-free.update,.cm-free.update,.rr-corner.update,.cg-corner.update{background:#B26A1B;color:#fff}
+.cs-free.expired,.cm-free.expired,.rr-corner.expired,.cg-corner.expired{background:var(--danger);color:#fff}
+.cs-free.soon,.cm-free.soon,.rr-corner.soon,.cg-corner.soon{background:var(--warn);color:#3B2F0B}
+.cs-free.installed,.cm-free.installed,.rr-corner.installed,.cg-corner.installed,
+.cs-free.free,.cg-corner.free{color:var(--text-muted);font-size:11px}
+/* 延伸条：与脚区同底色、紧贴其上（bottom:60px），hover 向上滑出——与本体放大同一时序的一次运动 */
+.card-mega .cm-band{position:absolute;left:0;right:0;bottom:60px;height:108px;
+  background:var(--bg-card);padding:12px 16px;display:flex;flex-direction:column;
+  justify-content:flex-end;gap:5px;transform:translateY(110%);opacity:0;
+  transition:transform .24s var(--ease),opacity .15s var(--ease)}
+.card-mega:hover .cm-band,.card-mega:focus-within .cm-band{transform:translateY(0);opacity:1}
+.card-mega .cm-band .t{font-size:14px;font-weight:600;color:var(--text-primary)}
+.card-mega .cm-band .s{font-size:11.5px;color:var(--text-secondary);line-height:1.45}
+.card-mega .cm-band .row{display:flex;gap:10px;align-items:center;margin-top:3px}
+
+/* ═══ 作者精选板块＋作者首页（首页构成：官方槽恒定＋动态作者域，v3.11） ═══ */
+/* author-head/src-badge 已删（v3.18：作者头降级为 crumb 提示行，门店卡承担身份切换） */
+/* 作者卡片区（v3.30：仓卡扇出——多仓＝这张卡的视觉主角；⛔ 无实体凸起层，全部长在卡片自身表面） */
+.author-card{width:264px;flex:none;padding:16px;cursor:pointer}
+.author-card .ac-top{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.author-card .ac-avatar{position:relative;width:52px;height:52px;border-radius:12px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;color:var(--text-on-accent);flex:none}
+.author-card .ac-avatar svg{width:26px;height:26px}
+.author-card .ac-name{font-size:15px;font-weight:600}
+.author-card .ac-badge{font-size:10.5px;color:var(--accent-hover);margin-top:2px}
+.author-card .ac-intro{color:var(--text-secondary);font-size:12px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:10px}
+.author-card .ac-meta{display:flex;gap:10px;color:var(--text-muted);font-size:11.5px;
+  font-variant-numeric:tabular-nums;align-items:center}
+.author-card .ac-meta .go{margin-left:auto;color:var(--accent-hover);font-weight:600;
+  display:flex;align-items:center;gap:4px}
+.author-card.has-deck{width:340px;overflow:hidden}
+.author-card.has-deck .ac-top,
+.author-card.has-deck .ac-intro,
+.author-card.has-deck .ac-deck,
+.author-card.has-deck .ac-meta{position:relative;z-index:1}
+/* 作者色晕染（静止极淡，hover 增强）——纯渐变无边界，不产生「凸起」 */
+.author-card.has-deck::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(130% 100% at 8% 0%,color-mix(in srgb,var(--glow) 26%,transparent),transparent 62%);
+  opacity:.32;transition:opacity .22s var(--ease)}
+.author-card.has-deck:hover::after{opacity:.85}
+/* 斜向高光扫描（transform+opacity，与本体放大同一拍） */
+.ac-sheen{position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:3;
+  background:linear-gradient(104deg,transparent 38%,rgba(255,255,255,.10) 48%,transparent 60%);
+  transform:translateX(-130%);opacity:0;transition:transform .24s var(--ease),opacity .18s linear}
+.author-card.has-deck:hover .ac-sheen{transform:translateX(130%);opacity:1}
+/* 头像光环：hover 出现作者色环＋外发光（transform+opacity） */
+.ac-ring{position:absolute;inset:-5px;border-radius:16px;pointer-events:none;
+  border:1.5px solid color-mix(in srgb,var(--glow,var(--accent)) 78%,transparent);
+  box-shadow:0 0 20px color-mix(in srgb,var(--glow,var(--accent)) 48%,transparent);
+  opacity:0;transform:scale(.9);transition:opacity .22s var(--ease),transform .22s var(--ease)}
+.author-card:hover .ac-ring{opacity:1;transform:scale(1)}
+/* 仓卡扇出：静止＝一沓叠错（只露边），hover＝同一拍扇开成横排 */
+.ac-deck{position:relative;height:40px;margin:2px 0 10px}
+.ac-repo{position:absolute;top:0;left:0;width:98px;height:38px;box-sizing:border-box;
+  display:flex;flex-direction:column;justify-content:center;gap:1px;padding:0 10px;
+  border-radius:9px;border:1px solid var(--border);background:var(--bg-input);
+  transform:translate(calc(var(--i)*6px),calc(var(--i)*4px));
+  transition:transform .22s var(--ease),border-color .22s,background .22s}
+.ac-repo b{font-size:11.5px;font-weight:600;color:var(--text-primary);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-repo i{font-style:normal;font-size:10.5px;color:var(--text-muted)}
+.author-card:hover .ac-repo{transform:translate(calc(var(--i)*104px),0);
+  border-color:color-mix(in srgb,var(--glow) 45%,var(--border))}
+/* 边界①单仓：一张满宽卡，诚实「唯一仓库」，不假装扇出 */
+.author-card.solo .ac-deck{height:38px}
+.author-card.solo .ac-repo{width:100%;flex-direction:row;align-items:center;gap:8px}
+.author-card.solo:hover .ac-repo{transform:translateY(-3px)}
+/* 边界②超容量（4+ 仓）：第三张＝+N 汇总卡 */
+.ac-repo.more b{color:var(--text-secondary)}
+.author-card:hover{transform:translateY(-3px) scale(1.08);
+  box-shadow:0 18px 52px -12px color-mix(in srgb,var(--glow,var(--accent)) 62%,transparent),
+    var(--shadow-2);
+  border-color:color-mix(in srgb,var(--glow,var(--accent)) 30%,var(--border))}
+/* 作者店内：门店切换＝作者卡同款组件（v3.21——官方卡第一/自有仓随后/当前仓高亮；⛔ 第四方） */
+.author-card.as-switch.on{box-shadow:inset 0 0 0 1.5px var(--accent),
+  0 12px 44px -8px color-mix(in srgb,var(--accent) 55%,transparent);
+  background:color-mix(in srgb,var(--accent) 10%,var(--bg-card))}
+
+/* duo 编辑精选 */
+.card-duo{display:grid;grid-template-columns:1.05fr .95fr;min-height:192px;cursor:pointer}
+.card-duo .cd-copy{padding:20px 6px 20px 24px;display:flex;flex-direction:column;
+  justify-content:center}
+.card-duo .cd-tag{align-self:flex-start;font-size:10.5px;font-weight:600;
+  border:1px solid var(--separator);color:var(--text-secondary);border-radius:4px;
+  padding:1px 8px;margin-bottom:10px}
+.card-duo .cd-name{font-size:17px;font-weight:600;margin-bottom:7px}
+.card-duo .cd-desc{font-size:12px;color:var(--text-secondary);line-height:1.55;margin-bottom:14px;
+  max-width:42ch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-duo .cd-acts{display:flex;gap:8px;align-items:center}
+.card-duo .cd-art{position:relative;display:flex;align-items:center;justify-content:center}
+.card-duo .cd-art svg{width:78px;height:78px;stroke-width:1;opacity:.92;color:var(--text-on-accent);
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,.3))}
+
+/* rank 名次行（hover = 原位替换，几何不动） */
+.rank-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--radius-lg);
+  border:1px solid transparent;transition:background .15s,border-color .15s,
+  transform .18s var(--ease),box-shadow .18s var(--ease);position:relative}
+.rank-row:hover{background:var(--bg-card);border-color:var(--border);transform:scale(1.03);
+  transform-origin:left center;box-shadow:var(--shadow-2);z-index:30}
+.rank-row .rk{font-size:17px;font-weight:700;color:var(--text-muted);width:26px;text-align:center;
+  flex:none;font-variant-numeric:tabular-nums}
+.rank-row:nth-child(1) .rk{color:var(--accent-hover)}
+.rank-row:nth-child(2) .rk{color:var(--accent-hover)}
+.rank-row:nth-child(3) .rk{color:var(--accent)}
+.rank-row .rr-mid{flex:1;min-width:0}
+.rank-row .rr-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.rank-row .rr-cat{font-size:11px;color:var(--text-muted);margin-top:1px}
+.rank-row .rr-dl{color:var(--text-muted);font-size:11.5px;font-variant-numeric:tabular-nums;
+  flex:none;transition:opacity .15s}
+.rank-row:hover .rr-dl{opacity:0}
+.rank-row .rr-act{position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  opacity:0;transition:opacity .18s var(--ease)}
+.rank-row:hover .rr-act{opacity:1}
+
+/* ═══ 通用小件 ═══ */
+.tile{width:40px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;
+  justify-content:center;color:var(--text-on-accent)}
+.tile svg{width:20px;height:20px;stroke-width:1.6}
+.tile.xl{width:76px;height:76px;border-radius:16px}
+.tile.xl svg{width:38px;height:38px;stroke-width:1.3}
+.badge{font-size:10.5px;border-radius:8px;padding:1px 7px;line-height:15px;flex:none}
+.badge.installed{background:color-mix(in srgb,var(--status-connected) 18%,transparent);
+  color:var(--status-connected)}
+.badge.update{background:var(--accent);color:var(--text-on-accent)}
+.badge.core{border:1px solid var(--separator);color:var(--text-muted)}
+.badge.official{border:1px solid var(--separator);color:var(--text-secondary)}
+.badge.fail{color:var(--danger-quiet)}
+.chip{font-size:11.5px;color:var(--text-secondary);border:1px solid var(--separator);
+  border-radius:13px;padding:3px 11px;cursor:pointer;transition:all .15s}
+.chip:hover{color:var(--text-primary);border-color:var(--accent)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--text-on-accent)}
+/* ═══ 加源（v3.31）：头部常驻钮＋弹窗（先拉后入）＋来源管理页 ═══ */
+.sp-head-acts{display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap}
+.sp-head-acts .store-search{margin-left:0}
+.head-add{width:34px;height:34px;border-radius:9px;flex:none;display:flex;align-items:center;
+  justify-content:center;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));
+  background:var(--bg-input);color:var(--accent-hover);cursor:pointer;
+  transition:background .15s,transform .15s}
+.head-add:hover{background:color-mix(in srgb,var(--accent) 16%,var(--bg-input));transform:scale(1.06)}
+.head-add svg{width:16px;height:16px}
+/* 作者区空态引导卡（无任何作者源时）——最重要的发现路径 */
+.author-empty{width:340px;flex:none;display:flex;align-items:center;gap:14px;padding:18px;
+  border-style:dashed;background:transparent;cursor:pointer;color:var(--text-secondary)}
+.author-empty:hover{transform:scale(1.03);border-color:var(--accent-hover);box-shadow:var(--shadow-2)}
+.author-empty .ae-ico{width:40px;height:40px;border-radius:11px;flex:none;display:flex;align-items:center;
+  justify-content:center;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-hover)}
+.author-empty .ae-t{font-weight:600;color:var(--text-primary);font-size:13.5px}
+.author-empty .ae-s{font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45}
+/* 弹窗 */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;
+  justify-content:center;z-index:80;padding:24px}
+.modal-bg.hidden{display:none}
+.modal{width:520px;max-width:100%;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:14px;box-shadow:var(--shadow-2);padding:20px 20px 16px}
+.modal h2{font-size:16px;font-weight:600;margin-bottom:4px}
+.modal .m-sub{font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.5}
+.m-tabs{display:flex;gap:6px;margin:12px 0 10px}
+.m-tab{flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;
+  color:var(--text-secondary);font-size:12.5px;cursor:pointer;transition:background .15s,color .15s}
+.m-tab.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--text-primary);
+  border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+.modal .m-field{display:flex;align-items:center;gap:9px;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:9px;padding:9px 12px;transition:border-color .15s}
+.modal .m-field:focus-within{border-color:var(--accent-hover)}
+.modal .m-field input{flex:1;background:none;border:none;outline:none;color:var(--text-primary);
+  font-size:13px;min-width:0}
+.modal .m-hint{font-size:11.5px;color:var(--text-muted);margin:8px 2px 0}
+.modal .m-msg{font-size:12px;margin:8px 2px 0;min-height:17px}
+.modal .m-msg.bad{color:var(--danger)}
+.modal .m-msg.ok{color:var(--accent-hover)}
+.modal .m-preview{margin-top:12px;border:1px solid var(--border);border-radius:10px;
+  padding:12px;display:flex;align-items:center;gap:12px;background:var(--bg-input)}
+.modal .m-preview.hidden{display:none}
+.modal .mp-av{width:40px;height:40px;border-radius:10px;flex:none;display:flex;
+  align-items:center;justify-content:center;color:var(--text-on-accent);font-weight:600;font-size:16px}
+.modal .mp-n{font-weight:600;font-size:13.5px}
+.modal .mp-s{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.modal .m-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+/* 来源管理页 */
+.src-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.src-row{display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--border);
+  border-radius:12px;background:var(--bg-card)}
+.src-row.locked{background:color-mix(in srgb,var(--accent) 7%,var(--bg-card))}
+.src-row.off{opacity:.55}
+.src-ico{width:38px;height:38px;border-radius:10px;flex:none;display:flex;align-items:center;
+  justify-content:center;color:var(--text-on-accent);font-weight:600;font-size:15px}
+.src-main{min-width:0;flex:1}
+.src-name{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.src-url{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;margin-top:2px;font-variant-numeric:tabular-nums}
+.src-meta{font-size:11.5px;color:var(--text-muted);flex:none}
+.src-meta .err{color:var(--danger);font-weight:600}
+.src-acts{display:flex;gap:4px;flex:none}
+.icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;
+  color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:12px;transition:background .15s,color .15s}
+.icon-btn svg{width:13px;height:13px}
+.icon-btn:hover:not(:disabled){background:var(--tab-hover-bg);color:var(--text-primary)}
+.icon-btn:disabled{opacity:.3;cursor:default}
+.icon-btn.danger:hover{color:var(--danger);border-color:var(--danger)}
+.sbtn{height:28px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:transparent;
+  color:var(--text-secondary);font-size:12px;cursor:pointer}
+.sbtn:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.src-note{font-size:11.5px;color:var(--text-muted);margin:4px 2px 16px;line-height:1.6}
+/* 来源页：作者分组（展示单位）＋仓行（条目单位） */
+.src-topbar{display:flex;align-items:center;gap:12px;margin:0 2px 16px;flex-wrap:wrap}
+.src-add-big{padding:10px 16px;font-size:13px;gap:8px}
+.src-topnote{font-size:11.5px;color:var(--text-muted)}
+.src-group{border:1px solid var(--border);border-radius:12px;background:var(--bg-card);overflow:hidden}
+.src-ghead{display:flex;align-items:center;gap:14px;padding:12px 14px;
+  background:color-mix(in srgb,var(--text-primary) 4%,transparent)}
+.src-ghead .src-pill{margin-left:0}
+.src-pill{display:inline-flex;align-items:baseline;gap:3px;padding:4px 11px;border-radius:99px;
+  background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent-hover);
+  font-size:11.5px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
+.src-pill b{font-size:13.5px}
+.src-warn{font-size:11px;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);
+  border-radius:99px;padding:3px 9px;flex:none;cursor:help;white-space:nowrap}
+.src-sub{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.src-line{display:flex;align-items:center;gap:12px;padding:9px 14px 9px 18px;
+  border-top:1px solid var(--separator)}
+/* 停用只淡化文字区，⛔ 不动按钮（旧版整行 opacity .5 让 ↑↓/刷新 看起来全灰=不可用，v3.36 修） */
+.src-line.off .src-repo,.src-line.off .src-url,.src-line.off .src-meta{opacity:.45}
+.src-group.collapsed .src-line{display:none}
+.src-collapse{width:22px;height:22px;flex:none;border:none;background:transparent;
+  color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  border-radius:6px;transition:transform .16s var(--ease),background .15s}
+.src-collapse:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.src-group.collapsed .src-collapse{transform:rotate(-90deg)}
+.src-ghead .src-name{cursor:pointer}
+.src-ghead .src-name:hover{color:var(--accent-hover)}
+.src-enter{font-size:11px;color:var(--accent-hover);font-weight:600;flex:none;cursor:pointer;
+  display:inline-flex;align-items:center;gap:3px}
+.src-enter svg{width:12px;height:12px}
+.src-repo{font-size:12.5px;font-weight:600;flex:none;width:88px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.src-line .src-url{flex:1;min-width:0}
+.cfm-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;
+  color:var(--danger);cursor:pointer}
+.modal.sm{width:460px}
+/* toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,10px);opacity:0;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;
+  font-size:12.5px;color:var(--text-secondary);box-shadow:var(--shadow-2);z-index:90;
+  transition:opacity .18s,transform .18s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.chip-hint{font-size:11px;color:var(--text-muted);margin-left:2px}
+/* ═══ 分类页深化（v3.23）：页头＋排序/显示工具行＋分组头＋详细信息行 ═══ */
+.cat-head{margin:4px 2px 16px}
+.cat-head .cat-title{font-size:22px;font-weight:700;letter-spacing:.2px}
+.cat-head .cat-sub{font-size:12.5px;color:var(--text-muted);margin-top:5px}
+.cat-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 14px}
+.tb-label{font-size:12px;color:var(--text-muted);margin-right:2px}
+.seg{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-left:auto;flex:none}
+.seg-btn{padding:6px 14px;font-size:12.5px;color:var(--text-secondary);background:transparent;
+  border:none;cursor:pointer;transition:background .15s,color .15s}
+.seg-btn+.seg-btn{border-left:1px solid var(--border)}
+.seg-btn.on{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--text-primary)}
+.seg-btn svg{width:15px;height:15px;display:block}
+.seg-btn{padding:6px 11px;display:flex;align-items:center}
+/* 筛选（v3.36）：与搜索正交的维度——
+   ⛔ 不放「作者名输入框」（那等于搜索）；只放**可枚举的事实**：安装状态 / 更新 / 来源 */
+.filter-wrap{position:relative;flex:none}
+/* 通用下拉（Select 同形态）：触发器＋勾选菜单 */
+.sel-wrap{position:relative;flex:none}
+.sel{display:flex;align-items:center;gap:7px;height:30px;padding:0 10px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg-input);color:var(--text-secondary);
+  font-size:12.5px;cursor:pointer;transition:border-color .15s,color .15s}
+.sel:hover{color:var(--text-primary);border-color:var(--separator)}
+.sel .ic{width:13px;height:13px}
+.sel .sel-caret{width:12px;height:12px;margin-left:2px;opacity:.7}
+.sel-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;width:208px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:11px;
+  box-shadow:var(--shadow-2);padding:6px}
+.sel-sec{font-size:10.5px;font-weight:600;color:var(--text-muted);padding:7px 8px 3px;letter-spacing:.04em}
+.sel-item{display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;border:none;
+  background:transparent;color:var(--text-secondary);font-size:12.5px;text-align:left;
+  border-radius:7px;cursor:pointer}
+.sel-item:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.sel-item .ck{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--separator);flex:none;
+  display:flex;align-items:center;justify-content:center}
+.sel-item.on .ck{background:var(--accent);border-color:var(--accent)}
+.sel-item.on .ck::after{content:"";width:8px;height:5px;border-left:1.6px solid #fff;
+  border-bottom:1.6px solid #fff;transform:rotate(-45deg) translateY(-1px)}
+.sel-sep{height:1px;background:var(--separator);margin:6px 4px}
+.filter-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:40;width:220px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:11px;
+  box-shadow:var(--shadow-2);padding:10px 12px}
+.filter-panel.hidden{display:none}
+.filter-panel .fp-t{font-size:11px;font-weight:600;color:var(--text-muted);margin:2px 0 6px}
+.filter-panel label{display:flex;align-items:center;gap:8px;font-size:12.5px;
+  color:var(--text-secondary);padding:5px 2px;cursor:pointer;border-radius:6px}
+.filter-panel label:hover{color:var(--text-primary)}
+.filter-panel .fp-sep{height:1px;background:var(--separator);margin:6px 0}
+/* 作者列表页（v3.36）：来源页之外的正规入口 */
+.author-list{display:flex;flex-direction:column;gap:10px}
+/* 作者页平铺（v3.52）：首页同款作者卡进网格——卡宽自适应格宽，扇出/辉光全继承 */
+.author-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.author-grid .author-card{width:auto}
+.author-row{display:flex;align-items:center;gap:14px;padding:12px 14px;cursor:pointer}
+.author-row .ar-av{width:44px;height:44px;border-radius:11px;flex:none;display:flex;
+  align-items:center;justify-content:center;color:var(--text-on-accent);font-weight:600;font-size:17px}
+.author-row .ar-main{min-width:0;flex:1}
+.author-row .ar-name{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.author-row .ar-sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.author-row .ar-pill{display:inline-flex;align-items:baseline;gap:3px;padding:4px 11px;border-radius:99px;
+  background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent-hover);
+  font-size:11.5px;font-weight:600;flex:none}
+.author-row .ar-pill b{font-size:13.5px}
+.author-row .ar-go{flex:none;color:var(--text-muted);opacity:.5;transition:opacity .15s,transform .15s}
+.author-row:hover .ar-go{opacity:1;transform:translateX(2px);color:var(--accent-hover)}
+.badge.third{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-hover)}
+.badge.local{background:color-mix(in srgb,var(--surface-strong) 30%,transparent);color:var(--text-on-strong)}
+/* 付费（v3.64）：价格/临期/过期——许可徽标优先于来源徽标（用户先看到"要花钱/出问题了"） */
+.badge.price{background:var(--accent);color:var(--text-on-accent)}
+.badge.soon{color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent)}
+.badge.expired{color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
+.badge.owned{color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 45%,transparent)}
+.lic-fp{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--separator)}
+.lic-fp code{flex:none;user-select:all}
+.d-trial{font-size:11px;color:var(--text-muted);margin-top:6px}
+.buy-modal{max-width:520px;padding:0;overflow:hidden}
+.buy-chrome{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-toolbar);
+  border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)}
+.buy-url{display:flex;align-items:center;gap:6px;background:var(--bg-input);border-radius:99px;
+  padding:3px 12px;font-family:var(--mono);font-size:11px;color:var(--text-secondary)}
+.buy-tag{margin-left:auto;font-size:10px}
+.buy-body{padding:18px 20px 20px}
+.buy-item{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;margin-bottom:8px}
+.buy-step{margin-top:14px}
+.buy-key{display:flex;align-items:center;gap:10px;margin-top:8px}
+.buy-key code{font-size:13px;padding:6px 12px;user-select:all}
+.rr-badges{display:inline-flex;gap:6px}
+.no-glow .card{--glow:transparent!important} /* 板块辉光开关（09 §二 glow:false）——整块回落中性阴影，⛔ 自定辉光色 */
+/* 作者跳转落页（拍板：预过滤＋显示全部）——过滤条 */
+.filterbar{margin:0 2px 10px}
+.filter-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 7px 5px 12px;border-radius:99px;
+  background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-hover);
+  font-size:12.5px;font-weight:600}
+.filter-chip .fx{width:18px;height:18px;border-radius:50%;border:none;cursor:pointer;
+  background:color-mix(in srgb,var(--accent) 26%,transparent);color:inherit;
+  display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
+.filter-chip .fx:hover{background:color-mix(in srgb,var(--accent) 40%,transparent)}
+.rows{display:flex;flex-direction:column;gap:10px}
+.group-h{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;margin:14px 2px 2px;
+  padding-bottom:7px;border-bottom:1px solid var(--separator)}
+.group-h .gh-name{font-weight:600;color:var(--text-primary);font-size:13px}
+.group-h .gh-n{font-size:11.5px;color:var(--text-muted)}
+.card-row{display:flex;align-items:center;gap:14px;padding:12px 16px 12px 14px;cursor:pointer;
+  transform-origin:left center}
+.card-row:hover{transform:scale(1.02);box-shadow:var(--shadow-2);z-index:30}
+.card-row .cr-main{min-width:0;flex:1}
+.card-row .cr-l1{display:flex;align-items:center;gap:8px;min-width:0}
+.card-row .cr-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-row .cr-cat{font-size:11.5px;color:var(--text-muted);flex:none}
+.card-row .cr-desc{font-size:12px;color:var(--text-secondary);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-row .cr-dl{font-size:12px;color:var(--text-muted);flex:none;font-variant-numeric:tabular-nums}
+
+/* ═══ 按钮 ═══ */
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius);
+  padding:5px 13px;font-size:12px;font-weight:600;transition:background .15s,border-color .15s;
+  min-height:27px;white-space:nowrap;flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.btn svg{width:14px;height:14px}
+.btn.primary{background:var(--accent);color:var(--text-on-accent)}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.secondary{border:1px solid var(--border);color:var(--text-secondary)}
+.btn.secondary:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.btn.danger{border:1px solid var(--border);color:var(--danger-quiet)}
+.btn.danger:hover{border-color:var(--danger-quiet)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn .prog{font-variant-numeric:tabular-nums}
+.spin{width:12px;height:12px;border:2px solid var(--text-on-accent);
+  border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ═══ 分类页 ═══ */
+.crumb{font-size:12px;color:var(--text-muted);margin-bottom:6px}
+.crumb b{color:var(--text-primary);font-size:15px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:9px;padding:80px 0;color:var(--text-muted)}
+.empty svg{width:36px;height:36px;stroke-width:1.1}
+.empty .t2{font-size:11.5px}
+
+/* ═══ 详情页 ═══ */
+.detail{flex:1;display:flex;min-height:0}
+.detail-scroll{flex:1;min-width:0;overflow-y:auto}
+.detail-inner{max-width:880px;padding:28px 34px 60px}
+.d-note{font-size:11px;color:var(--text-muted);border-top:1px solid var(--separator);
+  margin-top:18px;padding-top:12px}
+.detail-side{width:270px;flex:none;border-left:1px solid var(--separator);overflow-y:auto;
+  padding:22px 18px}
+.d-head{display:flex;gap:16px;align-items:center;margin-bottom:16px}
+.d-head h2{font-size:21px;font-weight:600;letter-spacing:-.01em;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.d-sub{color:var(--text-muted);font-size:12px;margin-top:4px;display:flex;gap:4px 8px;align-items:center;
+  flex-wrap:wrap}
+/* 副题里的每一项各自不换行——整行可以换行，项内不许"一字一行" */
+.d-sub>*{white-space:nowrap;flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.d-acts{display:flex;gap:8px;margin-bottom:4px}
+.d-tabs{display:flex;gap:2px;border-bottom:1px solid var(--separator);margin:18px 0 20px}
+.d-tab{padding:8px 16px;font-size:12.5px;color:var(--text-secondary);
+  border-bottom:2px solid transparent;transition:color .15s}
+.d-tab:hover{color:var(--text-primary)}
+.d-tab.on{color:var(--text-primary);border-bottom-color:var(--accent)}
+.d-pane{display:none}
+.d-pane.on{display:block}
+.shots{display:flex;gap:12px;margin-bottom:22px}
+.shot{flex:1;height:150px;border-radius:var(--radius);border:1px solid var(--separator);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  color:var(--text-muted);font-size:11px;overflow:hidden;position:relative}
+.shot .bar{position:absolute;top:0;left:0;right:0;height:22px;background:var(--bg-toolbar);
+  border-bottom:1px solid var(--separator);display:flex;align-items:center;gap:4px;padding:0 8px}
+.shot .bar i{width:7px;height:7px;border-radius:50%;background:var(--separator);display:block}
+.shot .lines{width:70%;display:flex;flex-direction:column;gap:5px}
+/* 画廊视频项（v3.54）：与图片同尺寸，中心播放钮＋右下时长；封面视频最多 1 段且必须第一项 */
+.shot.vid{display:flex;align-items:center;justify-content:center;position:relative;
+  background:linear-gradient(135deg,#1A2630,#141418)}
+.shot.vid .play{width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.3);position:relative}
+.shot.vid .play::after{content:"";position:absolute;inset:0;margin:auto;width:0;height:0;margin-left:4px;
+  border-left:12px solid #fff;border-top:8px solid transparent;border-bottom:8px solid transparent}
+.shot.vid .dur{position:absolute;right:9px;bottom:8px;font-size:10px;color:#C9D1D9;
+  background:rgba(0,0,0,.55);border-radius:4px;padding:0 5px}
+.shot .lines i{height:5px;border-radius:2px;background:var(--separator);display:block}
+.shot .lines i:nth-child(2){width:85%}.shot .lines i:nth-child(3){width:60%}
+.shot .lines i:nth-child(4){width:75%}
+.readme{color:var(--text-secondary);line-height:1.75;font-size:13px;max-width:72ch}
+.readme p{margin-bottom:11px}
+.readme h4{color:var(--text-primary);font-size:13.5px;margin:18px 0 8px}
+.feat-group{margin-bottom:16px}
+.feat-group h4{font-size:13px;color:var(--text-primary);margin-bottom:8px}
+.feat-group ul{margin-left:18px;color:var(--text-secondary);font-size:12.5px;line-height:1.7}
+.ver-item{border-bottom:1px solid var(--separator);padding:14px 0}
+.ver-item .vh{display:flex;gap:10px;align-items:baseline}
+.ver-item .vh b{font-family:var(--mono);font-size:13.5px}
+.ver-item .vh time{color:var(--text-muted);font-size:11px}
+.ver-item .vh .badge{margin-left:auto}
+.ver-item ul{margin:9px 0 0 18px;color:var(--text-secondary);font-size:12.5px;line-height:1.65}
+.d-meta-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;
+  border-bottom:1px solid var(--separator);font-size:12px}
+.d-meta-row .k{color:var(--text-muted);flex:none}
+.d-meta-row .v{text-align:right;color:var(--text-primary);word-break:break-all;
+  font-variant-numeric:tabular-nums}
+.d-side-title{font-size:12.5px;font-weight:600;margin-bottom:8px}
+
+/* ═══ 我的库（v3.41）——已安装插件的管理面 ═══ */
+.lib-head{display:flex;align-items:flex-end;gap:14px;margin:4px 2px 14px;flex-wrap:wrap}
+.lib-title{font-size:22px;font-weight:700;letter-spacing:.2px}
+.lib-sub{font-size:12.5px;color:var(--text-muted);margin-top:4px}
+.lib-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.lib-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 12px}
+.lib-search{display:flex;align-items:center;gap:8px;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:9px;padding:6px 10px;width:250px;color:var(--text-secondary)}
+.lib-search svg{width:14px;height:14px;flex:none}
+.lib-search input{flex:1;background:none;border:none;outline:none;color:var(--text-primary);
+  font-size:12.5px;min-width:0}
+.lib-select{height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg-input);color:var(--text-secondary);font-size:12.5px;outline:none;cursor:pointer}
+.lib-list{display:flex;flex-direction:column;gap:6px}
+.lib-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:10px;cursor:pointer;transform-origin:left center;
+  transition:transform .16s var(--ease),border-color .16s,background .16s}
+.lib-row:hover{transform:scale(1.01);border-color:var(--separator);background:var(--tab-hover-bg);z-index:5}
+.lib-row.disabled{opacity:.7}
+.lib-check{width:15px;height:15px;flex:none;accent-color:var(--accent-hover);cursor:pointer;display:none}
+/* 编辑模式才显示勾选框（v3.46） */
+.lib-list.editing .lib-check{display:block}
+.lib-grid-wrap{position:relative}
+.lib-grid-wrap .lib-check{position:absolute;top:10px;left:10px;z-index:45;display:none;width:16px;height:16px}
+.lib-grid-wrap.editing .lib-check{display:block}
+.lib-group-h{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;margin:10px 2px 2px;
+  padding-bottom:6px;border-bottom:1px solid var(--separator)}
+.lib-group-h .t{font-size:12.5px;font-weight:600}
+.lib-group-h .n{font-size:11px;color:var(--text-muted)}
+.lib-main{min-width:0;flex:1}
+.lib-name{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-ver{font-size:11px;color:var(--text-muted);font-weight:400;font-variant-numeric:tabular-nums}
+.lib-sub2{font-size:11.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.lib-size{width:76px;flex:none;text-align:right;font-size:11.5px;color:var(--text-muted);
+  font-variant-numeric:tabular-nums}
+.lib-state{width:86px;flex:none;display:flex;justify-content:flex-end}
+.lib-act{flex:none;min-width:76px;display:flex;justify-content:flex-end}
+.lib-badge{font-size:10.5px;font-weight:600;border-radius:99px;padding:2px 8px;border:1px solid transparent}
+.lib-badge.on{background:color-mix(in srgb,var(--status-connected) 16%,transparent);color:var(--status-connected)}
+.lib-badge.upd{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.lib-badge.off{background:var(--bg-input);color:var(--text-muted)}
+.lib-badge.core{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent-hover)}
+.lib-bulk{position:sticky;bottom:8px;display:flex;align-items:center;gap:8px;margin-top:10px;
+  padding:9px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));
+  background:color-mix(in srgb,var(--accent) 14%,var(--bg-card));box-shadow:var(--shadow-1);
+  font-size:12.5px;z-index:20}
+.lib-bulk.hidden{display:none}
+.lib-bulk .grow{flex:1}
+.lib-sec{margin-top:24px}
+.lib-sec-h{display:flex;align-items:baseline;gap:10px;margin:0 2px 8px;padding-bottom:6px;
+  border-bottom:1px solid var(--separator)}
+.lib-sec-h .t{font-size:13px;font-weight:600;color:var(--text-secondary)}
+.lib-sec-h .n{font-size:11px;color:var(--text-muted)}
+.lib-sec-empty{border:1px dashed var(--border);border-radius:10px;padding:18px;text-align:center;
+  color:var(--text-muted);font-size:12px;line-height:1.6}
+
+/* ═══ 响应式 ═══ */
+@media (max-width:1080px){.store-rail{width:96px}.detail-side{width:236px}}
+@media (max-width:900px){
+  .store{flex-direction:column}
+  .store-head{flex-wrap:wrap;gap:10px}
+  .store-head h1{font-size:20px}
+  .store-head .sub{flex-basis:100%;order:3}
+  /* 窄窗：rail = 一条横向可滚工具条（v3.55）——⛔ flex-wrap 会铺成 200px+ 高的多行墙 */
+  .store-rail{width:100%;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+    padding:6px 8px;gap:6px;border-right:none;border-bottom:1px solid var(--border);scrollbar-width:thin}
+  .store-rail .rail-top{flex-direction:row;flex-wrap:nowrap;border-bottom:none;margin:0;padding:0;gap:6px}
+  .store-rail .rail-home{width:auto;flex:none}
+  .store-rail .rail-scroll{flex-direction:row;flex-wrap:nowrap;overflow:visible;flex:0 0 auto;
+    margin:0;padding:0;gap:6px}
+  .store-rail .rail-foot{flex-direction:row;flex-wrap:nowrap;border-top:none;margin:0;padding:0;gap:6px;flex:none}
+  /* 横条里的项＝横向小 chip（图标＋名＋计数），高度钉 40px——⛔ 竖排瓷片会把条子撑到 99px */
+  .store-rail .rail-item{flex:0 0 auto;width:auto;flex-direction:row;align-items:center;gap:6px;
+    height:40px;padding:0 12px;min-width:0;border-radius:8px}
+  .store-rail .rail-label,.store-rail .rail-gap{display:none}
+  .strip-row.duo-row .card-duo{flex-basis:100%}
+  .detail-side{display:none}
+  .hero-slide{grid-template-columns:1fr}
+  .hero-art{min-height:150px}
+  .card-mega{width:262px}
+}
+
+@media (max-width:700px){
+  .grid{grid-template-columns:1fr}
+  .store-page{padding:18px 16px 48px}
+  .store-head h1{font-size:18px}
+  .sp-head-acts{flex-wrap:wrap}
+  .hero-copy h2{font-size:21px}
+  .hero-copy{padding:20px 20px}
+  .store-search{width:100%;max-width:360px}
+}
+
+/* ═══ 工具类（v3.53）——高频结构样式只定义一次，模板里不许再写同款 inline style ═══ */
+.fx1{min-width:0;flex:1}
+.flat{display:contents}
+.ic13{width:13px;height:13px}
+.ic18{width:18px;height:18px}
+.span-all{grid-column:1/-1}
+/* 文字行数上限（v3.56）：容器再窄也不许"一字一行"——标题 2 行、说明 3 行、按钮/元数据单行 */
+.clamp1,.clamp2,.clamp3{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.clamp1{-webkit-line-clamp:1}.clamp2{-webkit-line-clamp:2}.clamp3{-webkit-line-clamp:3}
+.ellip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* 可点语义只此一条：任何入口元素（data-open/data-author）都在这里拿 cursor */
+[data-open],[data-author]{cursor:pointer}
+.mt10{margin-top:10px}
+.ico-muted{background:var(--bg-input);color:var(--text-secondary)}
+.mn0{min-width:0}
+.cat-state{display:flex;align-items:center;gap:12px;padding:14px 16px;width:300px;flex:none}
+.cat-state b{display:block;font-size:13px;margin-bottom:3px}
+.cat-state .t2{font-size:11.5px;color:var(--text-muted);line-height:1.5}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></symbol>
+  <symbol id="i-grid2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+  <symbol id="i-funnel" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+  <symbol id="i-filetext" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-gamepad" viewBox="0 0 24 24"><path d="M6 11h4M8 9v4"/><path d="M15.5 12h.01M18 10h.01"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-blocks" viewBox="0 0 24 24"><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="tabbar" id="tabbar" role="tablist">
+    <button class="tab active" id="tabbtn-store" role="tab" aria-selected="true">
+      <svg class="ic"><use href="#i-bag"/></svg>Plugin Store</button>
+  </div>
+
+  <!-- ── Plugin Store ── -->
+  <div class="tabview" id="view-store">
+    <div class="store">
+      <nav class="store-rail" id="storeRail" aria-label="商店分类导航" data-spec="04§七"></nav>
+      <div class="store-content" id="storeContent" role="main" tabindex="-1"></div>
+    </div>
+    <!-- 加源弹窗（v3.31）：先拉后入；住在 store 外，重绘不丢输入态 -->
+    <div class="modal-bg hidden" id="addSourceModal" role="dialog" aria-modal="true" aria-label="添加市场源">
+      <div class="modal">
+        <h2>添加来源</h2>
+        <div class="m-tabs" role="tablist" aria-label="来源类型">
+          <button class="m-tab on" data-srcmode="remote" role="tab">网络地址</button>
+          <button class="m-tab" data-srcmode="local" role="tab">本地文件夹</button>
+        </div>
+        <div class="m-sub" id="srcSub">粘贴 GitHub 仓库主页，或 marketplace.json 直链——官方源已内置，无需添加。</div>
+        <div class="m-field"><svg class="ic"><use href="#i-link"/></svg>
+          <input id="srcUrl" placeholder="https://github.com/owner/repo" aria-label="来源地址">
+          <button class="sbtn hidden" id="srcBrowse" title="真机由系统目录选择器接管">浏览…</button></div>
+        <div class="m-hint" id="srcHint">支持 github.com/owner/repo 或 raw.githubusercontent.com/…/marketplace.json</div>
+        <div class="m-msg" id="srcMsg"></div>
+        <div class="m-preview hidden" id="srcPreview"></div>
+        <div class="m-foot">
+          <button class="btn secondary" id="srcCancel">取消</button>
+          <button class="btn primary" id="srcSubmit" data-stage="check" disabled>添加</button>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <!-- 移除源二次确认（默认不动已装插件） -->
+    <!-- 模拟购买页（v3.64b）：buy/renew 真的开"另一个网页"——仿浏览器 chrome；真机=openExternal 后离开应用 -->
+    <div class="modal-bg hidden" id="buyPage" role="dialog" aria-modal="true" aria-label="作者销售页（模拟浏览器）">
+      <div class="modal buy-modal">
+        <div class="buy-chrome">
+          <button class="sbtn" id="buyBack" title="返回 LinkDesk">← 返回</button>
+          <span class="buy-url"><svg class="ic" style="width:12px;height:12px"><use href="#i-link"/></svg><span id="buyUrl">buy.example.com</span></span>
+          <span class="buy-tag">模拟浏览器 · 真机为系统浏览器（shell.openExternal）· 弹不弹由作者声明 licenseUrl 决定，LinkDesk 只提供 API</span>
+        </div>
+        <div class="buy-body">
+          <div class="buy-item"><span id="buyName">编辑器 Pro</span>
+            <span class="badge price" id="buyPrice">¥30</span></div>
+          <div class="m-sub" id="buyDesc">作者自营销售页——付款由作者渠道完成，LinkDesk 不经手钱。</div>
+          <div class="buy-step" id="buyStep1">
+            <button class="btn primary" id="buyPay">模拟付款完成</button>
+          </div>
+          <div class="buy-step hidden" id="buyStep2">
+            <div class="m-msg ok">付款成功——你的许可密钥（演示）：</div>
+            <div class="buy-key"><code id="buyKey">DEMO-VALID-KEY-2026</code>
+              <button class="sbtn" id="buyCopy">复制</button></div>
+            <div class="m-hint">点「← 返回」回到 LinkDesk → 详情页「我有密钥」→ 粘贴 → 验签解锁</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 许可弹窗（v3.64）：与加源弹窗同构（归一化）；真机验证=壳 licenses.verify（Ed25519 本地） -->
+    <div class="modal-bg hidden" id="licenseModal" role="dialog" aria-modal="true" aria-label="输入许可密钥">
+      <div class="modal">
+        <h2 id="licTitle">输入许可密钥</h2>
+        <div class="m-sub" id="licSub"></div>
+        <div class="m-field"><svg class="ic"><use href="#i-filetext"/></svg>
+          <input id="licKey" placeholder="粘贴作者发给你的许可密钥" aria-label="许可密钥" autocomplete="off"></div>
+        <div class="m-msg" id="licMsg"></div>
+        <div class="lic-fp"><span>本机指纹（真机 = env.machineFingerprint；作者可绑定它签发——分享密钥到别的机器将无效）</span>
+          <code id="licFp">8F3A-21C9</code>
+          <button class="sbtn" id="licFpCopy" type="button">复制</button></div>
+        <div class="m-hint">演示规则：粘贴含 VALID＝有效（临期演示）· EXPIRED＝已过期 · WRONG＝签名无效 · 其余＝无法识别。真机无此规则——一切以验签结果为准。</div>
+        <div class="m-foot">
+          <button class="btn secondary" id="licCancel">取消</button>
+          <button class="btn primary" id="licOk" disabled>验证并解锁</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-bg hidden" id="confirmModal" role="dialog" aria-modal="true" aria-label="确认移除源">
+      <div class="modal sm">
+        <h2>移除市场源</h2>
+        <div class="m-sub" id="cfmBody"></div>
+        <div class="m-foot">
+          <button class="btn secondary" id="cfmCancel">取消</button>
+          <button class="btn danger" id="cfmOk">移除源</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 插件详情（跨标签跳转落点） ── -->
+  <div class="tabview hidden" id="view-detail">
+    <div class="detail">
+      <div class="detail-scroll"><div class="detail-inner" id="detailMain"></div></div>
+      <aside class="detail-side" id="detailSide"></aside>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════ UI 偏好持久化（v3.52）══════════════
+ * 用户要求：整个插件界面的「上次怎么看的」都要记住——库／作者页／分类页各自的「平铺⇄详细」与排序。
+ * 真机落点：window.linkdesk.pluginState.get/set("marketplace","ui.prefs",…)
+ *   → 壳写 plugin-states.json（%APPDATA%/linkdesk 下，跨重启保留）。
+ * ⛔ 不进 contributes.configuration——那是给用户看的公开设置项；视图习惯是静默状态，不占设置页一行。
+ * 本稿是独立 HTML，用 localStorage 模拟同一份键值（键名与真机一致）。 */
+const PREFS_KEY="linkdesk.marketplace.uiPrefs";
+const PREFS=(()=>{try{return JSON.parse(localStorage.getItem(PREFS_KEY)||"{}")||{};}catch{return {};}})();
+function savePref(k,v){PREFS[k]=v;try{localStorage.setItem(PREFS_KEY,JSON.stringify(PREFS));}catch{}}
+/* 作者色渐变（v3.53）：头像/图标底色只此一处生成——⛔ 不许再逐处拼 linear-gradient */
+const hueBG=h=>`background:linear-gradient(135deg,${h},${h}C8)`;
+/* ══════════════ 目录数据（与 02 同源；分类按 04 §五种子归位） ══════════════ */
+const OTHER="other";
+const CATALOG=[
+ {id:"editor",name:"编辑器",author:"官方",cat:"development",tags:["code","diff"],dl:12840,
+  video:"demo/editor-intro.mp4",
+  pricing:{model:"paid",price:30,currency:"¥",licenseUrl:"https://buy.example.com/editor",trialDays:7},
+  ver:"1.0.25",size:"8.3 MB",state:"installed",update:true,icon:"i-code",hue:"#2563A8",
+  desc:"Monaco 代码编辑器——语法高亮、智能提示、Diff 对比",
+  tag:"写好每一行代码",
+  readme:["基于 Monaco Editor 的完整代码编辑表面：语法高亮、智能提示、多光标编辑与 Diff 对比视图。",
+    "对二进制文件提供「按文本强制打开」通道——顶部细字条标注当前状态，保存前二次确认，外部文件变更重载保持强制态。"],
+  features:[{g:"命令",items:["editor.forceOpenAsText — 按文本强制打开当前文件"]},
+            {g:"打开方式",items:["文本 / 二进制提示页双路贡献"]},
+            {g:"配置",items:["editor.tabSize / editor.wordWrap / editor.minimap"]}],
+  versions:[
+    {v:"1.0.25",d:"2026-10-07",badge:"最新",notes:["二进制提示页新增「仍以该编辑器打开」第三按钮——按文本强制打开，保存前确认一次。","强制打开后顶部细字条说明状态，右侧「退回提示页」随时返回。","命令面板路径 editor.forceOpenAsText 同步可用。"]},
+    {v:"1.0.24",d:"2026-10-05",notes:["外部文件变更重载保持强制态、不再退回提示页模态。"]},
+    {v:"1.0.23",d:"2026-09-28",notes:["Diff 对比视图性能优化。"]}]},
+ {id:"pdf-reader",name:"PDF 阅读器",author:"官方",cat:"documents",tags:["pdf"],dl:9830,
+  ver:"1.1.8",size:"2.1 MB",state:"installed",icon:"i-filetext",hue:"#B25B1F",
+  desc:"轻量 PDF 阅读器——缩放、书签、全文检索",
+  tag:"文档就该这样读",
+  readme:["在标签页中直接打开 PDF 文件：连续滚动、缩放、书签导航与全文检索。",
+    "不依赖外部浏览器，与大文件打开方式贡献点协同。"],
+  features:[{g:"打开方式",items:[".pdf — 默认打开方式声明"]},{g:"配置",items:["pdf-reader.zoom / pdf-reader.sidebar"]}],
+  versions:[{v:"1.1.8",d:"2026-10-11",badge:"最新",notes:["全文检索高亮性能优化。"]},
+    {v:"1.1.7",d:"2026-09-30",notes:["书签导航面板。"]}]},
+ {id:"file-tree",name:"文件树",author:"官方",cat:"documents",tags:["files"],dl:8412,
+  ver:"1.0.9",size:"0.4 MB",state:"installed",icon:"i-folder",hue:"#2F855A",
+  desc:"工作区文件树——打开方式贡献点、右键菜单",
+  tag:"工作区一目了然",
+  readme:["以文件树浏览工作区目录，贡献「打开方式」入口与右键菜单动作。",
+    "与其他插件的打开方式声明协同：每个文件类型都可被合适的应用接管。"],
+  features:[{g:"视图",items:["侧栏 files 容器视图"]},{g:"右键菜单",items:["新建文件 / 新建文件夹 / 在文件管理器中显示"]}],
+  versions:[{v:"1.0.9",d:"2026-09-22",badge:"最新",notes:["右键菜单动作扩展。"]}]},
+ {id:"pro-pack",name:"编辑器 Pro Pack",author:"官方",cat:"development",tags:["editor","pro"],dl:9320,
+  ver:"2.0.1",size:"12.6 MB",state:"none",icon:"i-code",hue:"#6E40C9",
+  desc:"编辑器高级包：重构引擎、远程调试、语义搜索——付费插件全流程演示条目",tag:"付费示例",
+  pricing:{model:"paid",price:68,currency:"¥",licenseUrl:"https://buy.example.com/editor-pro",trialDays:14},
+  readme:["买断制：一次购买永久使用。本条目演示付费插件全流程——价格徽标、获取许可（外链）、输入密钥（即时验签）、临期/过期徽标与续费。"],
+  features:[{g:"命令",items:["pro.refactor 重构引擎（演示）","pro.semsearch 语义搜索（演示）"]}],
+  versions:[{v:"2.0.1",d:"2026-11-20",badge:"最新",notes:["付费流程演示数据。"]}]},
+ {id:"ai-sub",name:"AI 助手（订阅）",author:"官方",cat:"productivity",tags:["ai","pro"],dl:2100,
+  ver:"0.9.0",size:"2.1 MB",state:"none",icon:"i-zap",hue:"#0E7490",
+  desc:"订阅制演示——服务器校验（B3）上线前显示「即将支持」；上线后此处显示剩余天数与自动续费",tag:"订阅演示",
+  pricing:{model:"subscription",price:8,currency:"¥",period:"月"},
+  readme:["订阅制演示条目：v1 不可购买（无服务器无法校验续费），仅展示订阅形态。"],
+  features:[{g:"命令",items:["ai.ask 演示命令"]}],
+  versions:[{v:"0.9.0",d:"2026-11-20",badge:"最新",notes:["订阅形态演示。"]}]},
+ {id:"st-serial",name:"ST 串口工具包",author:"STMicroelectronics",cat:"hardware",tags:["serial","st"],dl:3210,
+  ver:"2.1.0",size:"5.1 MB",state:"none",icon:"i-plug",hue:"#03234B",
+  desc:"STM32 官方串口调试套件——板级连接、固件版本读取、寄存器视图",tag:"厂商入驻",
+  readme:["STM32 官方提供的串口调试套件。"],
+  features:[{g:"命令",items:["st.connect 板级连接","st.regview 寄存器视图"]}],
+  versions:[{v:"2.1.0",d:"2026-11-19",badge:"最新",notes:["厂商认证首发。"]}]},
+ {id:"serial-monitor",name:"串口监视器",author:"官方",cat:"hardware",tags:["serial"],dl:7654,
+  ver:"1.0.37",size:"1.2 MB",state:"installed",update:true,icon:"i-plug",hue:"#6B46C1",
+  desc:"串口收发监视——时间戳、十六进制视图、日志导出",
+  tag:"硬件玩家的工具箱",
+  readme:["连接串口设备进行收发监视：时间戳逐行标注、HEX/文本双视图、会话日志导出。",
+    "断线自动重连提示；与烧录类工具协同使用。"],
+  features:[{g:"命令",items:["serial.connect / serial.disconnect / serial.exportLog"]},
+            {g:"视图",items:["侧栏 serial 容器视图"]},
+            {g:"配置",items:["serial.baudRate / serial.lineEnding"]}],
+  versions:[
+    {v:"1.0.37",d:"2026-11-12",badge:"最新",notes:["会话日志导出支持 HEX 与文本双格式。"]},
+    {v:"1.0.36",d:"2026-10-20",notes:["断线重连提示与自动恢复。"]},
+    {v:"1.0.35",d:"2026-09-15",notes:["时间戳逐行标注。"]}]},
+ {id:"python",name:"Python 环境",author:"官方",cat:"development",tags:["runtime"],dl:6120,
+  ver:"0.9.2",size:"5.5 MB",state:"none",icon:"i-terminal",hue:"#2F855A",
+  desc:"内嵌 Python 运行时——脚本面板与环境管理",
+  tag:"自动化执行底座",
+  readme:["提供内嵌 Python 运行时与脚本面板，可管理多套环境；为自动化类插件提供执行底座。"],
+  features:[{g:"命令",items:["python.run / python.selectEnv"]},{g:"配置",items:["python.defaultEnv"]}],
+  versions:[{v:"0.9.2",d:"2026-08-30",badge:"最新",notes:["多环境管理面板。"]}]},
+ {id:"lang-defaults",name:"语言包",author:"官方",cat:"development",dl:5330,
+  ver:"1.0.4",size:"0.1 MB",state:"none",icon:"i-globe",hue:"#3182CE",
+  desc:"界面语言包——声明式翻译字典",
+  tag:"一台软件，两种语言",
+  readme:["声明式界面翻译字典插件，为壳与官方插件提供英文界面文案。"],
+  features:[{g:"i18n",items:["en 字典——声明式贡献"]}],
+  versions:[{v:"1.0.4",d:"2026-08-18",badge:"最新",notes:["覆盖官方插件新增文案。"]}]},
+ {id:"code-formatter",name:"代码格式化",author:"官方",cat:"development",tags:["editor","code"],dl:4120,
+  ver:"1.2.1",size:"2.1 MB",state:"none",icon:"i-code",hue:"#2563A8",
+  desc:"多语言格式化——保存时自动整理",tag:"让代码整齐一点",
+  readme:["支持多种语言的保存时格式化。"],
+  features:[{g:"命令",items:["format.document"]}],
+  versions:[{v:"1.2.1",d:"2026-10-28",badge:"最新",notes:["新增语言。"]}]},
+ {id:"snippet-pack",name:"代码片段包",author:"官方",cat:"development",tags:["editor"],dl:3680,
+  pricing:{model:"paid",price:12,currency:"¥"},
+  ver:"0.9.0",size:"1.5 MB",state:"none",icon:"i-filetext",hue:"#7C3AED",
+  desc:"常用代码片段——前缀展开",tag:"少敲几下",
+  readme:["内置常用片段，支持前缀展开。"],
+  features:[{g:"视图",items:["片段管理"]}],
+  versions:[{v:"0.9.0",d:"2026-10-12",badge:"最新",notes:["首发。"]}]},
+ {id:"diff-viewer",name:"差异对比",author:"官方",cat:"development",tags:["editor","diff"],dl:5230,
+  pricing:{model:"paid",price:18,currency:"¥",licenseUrl:"https://buy.example.com/diff",trialDays:7},
+  ver:"1.0.2",size:"1.0 MB",state:"none",icon:"i-filetext",hue:"#B45309",
+  desc:"并排差异对比——支持三方合并",tag:"改了什么一目了然",
+  readme:["并排/行内差异对比，支持三方合并。"],
+  features:[{g:"视图",items:["差异视图"]}],
+  versions:[{v:"1.0.2",d:"2026-11-01",badge:"最新",notes:["三方合并。"]}]},
+ {id:"serial-helper",name:"串口调试助手",author:"官方",cat:"hardware",tags:["serial"],dl:4410,
+  ver:"0.7.3",size:"0.9 MB",state:"none",icon:"i-plug",hue:"#0E7490",
+  desc:"串口调试——收发记录与快捷指令",tag:"调试串口的老伙计",
+  readme:["串口收发记录、快捷指令与自动应答。"],
+  features:[{g:"命令",items:["serial.send"]}],
+  versions:[{v:"0.7.3",d:"2026-10-20",badge:"最新",notes:["新增自动应答。"]}]},
+ {id:"settings",name:"设置",author:"官方",cat:"productivity",tags:[],dl:15990,
+  ver:"1.0.41",size:"0.8 MB",state:"installed",core:true,icon:"i-gear",hue:"#4A5568",
+  desc:"软件设置中心——配置项聚合界面",
+  tag:"一切配置的聚合地",
+  readme:["聚合呈现全部插件与壳的配置项。设置页本体本身也是一台普通插件，可被第三方整套替换。"],
+  features:[{g:"视图",items:["主区 settings 表面（默认激活）"]},{g:"配置",items:["全部配置项的聚合渲染"]}],
+  versions:[{v:"1.0.41",d:"2026-11-08",badge:"最新",notes:["设置页四行图标接入 IconRegistry 共享图标名声明。"]}]},
+ {id:"marketplace",name:"插件市场",author:"官方",cat:"productivity",tags:["store"],dl:15990,
+  ver:"1.2.0",size:"1.5 MB",state:"installed",core:true,icon:"i-bag",hue:"#0E639C",
+  desc:"浏览、安装和管理插件",
+  tag:"你现在看到的就是它",
+  readme:["浏览、安装、卸载、更新、禁用插件的内置商店。主区大屏 Plugin Store 即本插件的改造计划。"],
+  features:[{g:"视图",items:["侧栏五段容器 / 主区 plugin-detail / 主区商店（蓝图改造中）"]}],
+  versions:[{v:"1.2.0",d:"2026-11-05",badge:"最新",notes:["minAppVersion 版本门槛；详情侧栏 sticky。"]}]},
+ {id:"theme-aurora-glass",name:"极光玻璃",author:"官方",cat:"themes",
+  pricing:{model:"paid",price:25,currency:"¥",licenseUrl:"https://buy.example.com/aurora",trialDays:0},tags:["theme","glass"],dl:4210,
+  ver:"1.0.2",size:"0.05 MB",state:"none",icon:"i-palette",hue:"#00B5D8",
+  desc:"玻璃质感暗色主题——冷色极光",tag:"冷色极光，低白光发射",
+  readme:["冷色极光配方的暗色主题；半透明面板质感（主题配方为纯数据声明）。"],
+  features:[{g:"主题",items:["深色配方 ×1"]}],
+  versions:[{v:"1.0.2",d:"2026-09-18",badge:"最新",notes:["极光冷色微调。"]}]},
+ {id:"theme-mint-soda",name:"薄荷苏打",author:"官方",cat:"themes",tags:["theme"],dl:3980,
+  ver:"1.0.3",size:"0.05 MB",state:"none",icon:"i-palette",hue:"#38B2AC",
+  desc:"清爽薄荷浅色主题",tag:"低饱和薄荷绿，久读不累",
+  readme:["低饱和薄荷绿浅色主题，长时间阅读友好。"],
+  features:[{g:"主题",items:["浅色配方 ×1"]}],
+  versions:[{v:"1.0.3",d:"2026-09-30",badge:"最新",notes:["双语名清理（纯中文化）。"]}]},
+ {id:"theme-terminal",name:"终端复古",author:"官方",cat:"themes",tags:["theme","retro"],dl:3660,
+  ver:"1.0.1",size:"0.05 MB",state:"none",icon:"i-terminal",hue:"#DD6B20",
+  desc:"CRT 终端复古主题",tag:"磷光绿 CRT，等宽优先",
+  readme:["磷光绿 CRT 复古配方，等宽字体优先排版。"],
+  features:[{g:"主题",items:["深色配方 ×1"]}],
+  versions:[{v:"1.0.1",d:"2026-09-18",badge:"最新",notes:["首发。"]}]},
+ {id:"theme-panorama",name:"全景",author:"官方",cat:"themes",tags:["theme"],dl:3120,
+  ver:"1.0.1",size:"0.05 MB",state:"none",icon:"i-palette",hue:"#6B8F71",
+  desc:"自然绿调浅色主题",tag:"自然绿调，像在户外",
+  readme:["自然绿调浅色主题，低对比长时间使用友好。"],
+  features:[{g:"主题",items:["浅色配方 ×1"]}],
+  versions:[{v:"1.0.1",d:"2026-10-02",badge:"最新",notes:["首发。"]}]},
+ {id:"theme-pill",name:"胶囊",author:"官方",cat:"themes",tags:["theme"],dl:2870,
+  ver:"1.0.1",size:"0.05 MB",state:"none",icon:"i-palette",hue:"#9B59D0",
+  desc:"圆润胶囊风深色主题",tag:"圆角一切，柔软手感",
+  readme:["大圆角胶囊视觉的深色主题，控件圆角与阴影统一放大。"],
+  features:[{g:"主题",items:["深色配方 ×1"]}],
+  versions:[{v:"1.0.1",d:"2026-10-02",badge:"最新",notes:["首发。"]}]},
+ {id:"theme-songti",name:"宋体雅致",author:"官方",cat:"themes",tags:["theme","serif"],dl:2440,
+  ver:"1.0.1",size:"0.05 MB",state:"none",icon:"i-book",hue:"#8A3B3B",
+  desc:"宋体排印浅色主题",tag:"纸面排印感",
+  readme:["以宋体为显示字体的浅色主题，文档阅读场景优先。"],
+  features:[{g:"主题",items:["浅色配方 ×1"]}],
+  versions:[{v:"1.0.1",d:"2026-10-02",badge:"最新",notes:["首发。"]}]},
+ {id:"theme-twilight-forest",name:"暮光森林",author:"官方",cat:"themes",tags:["theme"],dl:2210,
+  ver:"1.0.1",size:"0.05 MB",state:"none",icon:"i-palette",hue:"#3D6B4F",
+  desc:"暮光森林深色主题",tag:"深林暮色",
+  readme:["深绿暮色调暗色主题，低刺激夜间使用。"],
+  features:[{g:"主题",items:["深色配方 ×1"]}],
+  versions:[{v:"1.0.1",d:"2026-10-02",badge:"最新",notes:["首发。"]}]},
+ {id:"theme-iconset-pastel",name:"柔和图标包",author:"官方",cat:"themes",tags:["theme","icons"],dl:1980,
+  ver:"1.0.0",size:"0.06 MB",state:"none",icon:"i-palette",hue:"#D08770",
+  desc:"柔和色系图标包——贡献点 icons",tag:"换一套图标心情",
+  readme:["柔和色系图标包，经 contributes.icons 共享图标点声明，供壳与插件引用。"],
+  features:[{g:"图标",items:["contributes.icons 声明集"]}],
+  versions:[{v:"1.0.0",d:"2026-10-02",badge:"最新",notes:["首发。"]}]},
+];
+/* 演示态（真机 = installJobs 中央订阅驱动）：python 安装中｜lang-defaults 失败｜theme-pill 离线 */
+const DEMO_STATE={python:"installing","lang-defaults":"failed","theme-pill":"offline"};
+/* 权益模拟（v3.64）：真机 = 壳 licenses 命名空间（verify/list/remove；Ed25519 本地验签；权益住壳——
+   市场被整体替换权益仍在）。本稿用 localStorage 持久化（重开页面不丢，模拟"重装重输"边界）。
+   弹窗演示规则：粘贴含 VALID→有效（exp=+20 天，演示临期黄徽标）；含 EXPIRED→有效但过期（红徽标+续费）；
+   含 WRONG→签名无效；其余→格式无法识别。真机没有这些魔法串——一切以验签结果为准。 */
+const LIC=(()=>{try{return JSON.parse(localStorage.getItem("linkdesk.demo.licenses")||"{}")||{};}catch{return {};}})();
+/* isPaid＝「收费域」：买断与订阅都算（订阅在分支内自行处理）；判"买断"用 model==="paid" */
+const isPaid=e=>!!e.pricing;
+const entOf=e=>!!LIC[e.id];
+const licOf=e=>LIC[e.id]||null;
+const saveLic=()=>{try{localStorage.setItem("linkdesk.demo.licenses",JSON.stringify(LIC));}catch{}};
+if(LIC.editor===undefined&&LIC["ai-sub"]===undefined){
+  LIC.editor={expDays:20};LIC["diff-viewer"]={expDays:-3};LIC["ai-sub"]={subDays:5};saveLic();}
+// 演示种子：editor 已购临期 20 天 / diff-viewer 过期 / ai-sub 订阅剩 5 天
+/* 单角标状态机（v3.65 用户拍板「同意」）：五卡主面右上＝唯一状态位，按优先级只显当前最要紧的一个词。
+   优先级：已停用＞许可过期＞有更新＞订阅临期＞剩 N 天＞已安装＞订阅价＞买断价＞免费。
+   全量徽标只在 hover 层与详情——主面与 hover 之间不许再有任何第二实现。 */
+const statusTag=e=>{
+  const s=stateOf(e),p=e.pricing,lic=licOf(e);
+  if(s==="disabled")return {t:"已停用",c:"installed"};
+  if(lic&&lic.expDays<0)return {t:"许可过期",c:"expired"};
+  if(s==="installed"&&e.update)return {t:"有更新",c:"update"};
+  if(lic&&lic.subDays!==undefined)return {t:`订阅剩 ${lic.subDays} 天`,c:"soon"};
+  if(lic&&lic.expDays!==undefined&&lic.expDays<=30)return {t:`剩 ${lic.expDays} 天`,c:"soon"};
+  if(s==="installed")return {t:"已安装",c:"installed"};
+  if(p&&p.model==="subscription")return {t:`订阅 ${p.currency}${p.price}/${p.period||"月"}`,c:"paid"};
+  if(p)return {t:`买断 ${p.currency}${p.price}`,c:"paid"};
+  return {t:"免费",c:"free"};
+};
+/* ⋯ 菜单＝一件（v3.65）：五卡同构，项随安装态——未装只有查看详情（⛔ 静态全项） */
+const moreMenu=e=>{const st=stateOf(e);
+  return `<div class="more-menu hidden" data-menu="${e.id}">
+    <button class="mi" data-open="${e.id}">查看详情</button>
+    ${st==="disabled"?`<button class="mi" data-act="enable">启用</button>`
+      :st==="installed"?`<button class="mi" data-act="disable">禁用</button>`:""}
+    <div class="mi-sep"></div>
+    <button class="mi danger" data-act="uninstall" ${st!=="installed"&&st!=="disabled"?"disabled":""}>卸载…</button>
+  </div>`;};
+const priceTag=e=>{ // 兼容旧调用（cs-free 角标文本已并入 statusTag）
+  const st=statusTag(e);return st.t;
+  if(!isPaid(e))return "免费";
+  const p=e.pricing,lic=licOf(e);
+  if(p.model==="subscription")return lic?(lic.subDays<0?"订阅过期":`订阅剩 ${lic.subDays} 天`):`订阅 ${p.currency}${p.price}/${p.period||"月"}`;
+  if(!lic)return `买断 ${p.currency}${p.price}`;
+  if(lic.expDays<0)return "许可过期";
+  if(lic.expDays<=30)return `剩 ${lic.expDays} 天`;
+  return "已购";
+};
+const licBadge=e=>{ // 许可徽标（优先级：过期>临期>已购>价格；⛔ 静默降级——过期必须显眼）
+  if(!isPaid(e))return "";
+  const p=e.pricing,lic=licOf(e);
+  if(p.model==="subscription"){
+    const base=`<span class="badge price">订阅 ${p.currency}${p.price}/${p.period||"月"}</span>`;
+    return lic?base+`<span class="badge soon">剩 ${lic.subDays} 天</span>`:base;}
+  if(!lic)return `<span class="badge price">买断 ${p.currency}${p.price}</span>`;
+  if(lic.expDays<0)return `<span class="badge expired">许可已过期</span>`;
+  if(lic.expDays<=30)return `<span class="badge soon">${lic.expDays} 天后到期</span>`;
+  return `<span class="badge owned">已购 ✓</span>`;};
+
+/* ═══ 第三方作者域（演示数据——真实环境来自用户添加的 marketplaceSources URL） ═══
+   v3.12：一个作者可有多仓多源（authorId 去中心化聚合）——AUTHOR.repos[] 即其名下仓库；
+   蓝图范围内仅在本板块/作者页可见；真机多源合并后其插件进全源池（分类/搜索/榜单带来源标注）。
+   官方收录强制带分类；第三方源不强制——缺分类统一落全局「其他」桶（04 §六 单一统一池；v3.24 演示：剪贴板同步未声明分类 → 其他桶活态）。 */
+const AUTHOR={
+ id:"geek",name:"极客工坊",storeTitle:"极客工坊 Store",github:"Encaron",hue:"#0E7490",icon:"i-bag",desc:"社区硬件与 DIY 精选",intro:"极客工坊——把串口、灯光和宏按键做成开箱即用的桌面工具。",
+ repos:[
+  {id:"hw",name:"硬件仓",intro:"串口与灯光系插件",image:true,
+   plugins:[
+    {id:"osc-panel",name:"示波器面板",author:"极客工坊",cat:"hardware",tags:["serial","scope"],dl:2140,
+     ver:"0.4.1",size:"1.1 MB",state:"installed",update:true,icon:"i-terminal",hue:"#0E7490",
+     desc:"串口示波器——波形绘制与测量",tag:"把串口数据画成波形",
+     readme:["把串口数据流画成波形：双通道绘制、游标测量、CSV 导出。"],
+     features:[{g:"视图",items:["硬件容器视图"]}],
+     versions:[{v:"0.4.1",d:"2026-11-10",badge:"最新",notes:["双通道绘制。"]}]},
+    {id:"rgb-fx",name:"RGB 灯效控制",author:"极客工坊",cat:"hardware",tags:["led"],dl:1860,
+     ver:"0.2.0",size:"0.6 MB",state:"installed",update:true,icon:"i-zap",hue:"#7C3AED",
+     desc:"RGB 灯效控制台——调色、序列、固件联动",tag:"一键点亮你的灯",
+     readme:["面向 RGB 灯具的控制台：调色板、灯效序列编辑、与固件联动。"],
+     features:[{g:"命令",items:["rgb.color / rgb.sequence"]}],
+     versions:[{v:"0.2.0",d:"2026-11-02",badge:"最新",notes:["首发。"]}]},
+    {id:"clip-sync",name:"剪贴板同步",author:"极客工坊",tags:["clipboard"],dl:640,
+     ver:"0.1.0",size:"0.2 MB",state:"none",icon:"i-filetext",hue:"#6D28D9",
+     desc:"跨设备剪贴板同步——历史记录、常用片段、端到端加密",tag:"复制一次，处处可用",
+     readme:["跨设备剪贴板同步：历史记录、常用片段、端到端加密。"],
+     features:[{g:"命令",items:["clip.history / clip.send"]}],
+     versions:[{v:"0.1.0",d:"2026-11-12",badge:"最新",notes:["首发。"]}]}],
+   collections:[
+    {id:"hw-must",title:"装机必备",hint:"作者声明·横排",layout:"strip",items:["osc-panel","rgb-fx"],
+     more:{label:"全部硬件",target:"hardware"}},
+    {id:"hw-recommend",title:"作者推荐",hint:"作者声明·双大卡——板块名作者自定",layout:"duo",items:["osc-panel","rgb-fx"],glow:false}],
+   homepage:{storeTitle:"极客工坊 Store",sections:[{type:"hero",slides:[
+    {plugin:"osc-panel",tag:"作者精选"},{plugin:"rgb-fx",tag:"上新"}]},
+    {type:"collection",collection:"hw-must"},{type:"collection",collection:"hw-recommend"},{type:"grid",title:"全部插件"},
+    {type:"hero",title:"第二块大屏（声明位）",hint:"只有第 1 个大屏占据置顶首视觉；这个按声明顺序就地渲染",
+     slides:[{plugin:"rgb-fx",tag:"第二块大屏"},{plugin:"osc-panel",tag:"同仓推荐"}]}]}},
+  {id:"fx",name:"效率仓",intro:"效率小件与快捷触发",
+   plugins:[
+    {id:"macro-pad",name:"宏面板",author:"极客工坊",cat:"productivity",tags:["keys"],dl:1520,
+     ver:"0.1.3",size:"0.3 MB",state:"disabled",icon:"i-gamepad",hue:"#B45309",
+     desc:"可编程宏按键面板",tag:"一键触发你的工作流",
+     readme:["可编程宏按键面板：按钮网格、动作绑定、一键触发。"],
+     features:[{g:"视图",items:["效率容器视图"]}],
+     versions:[{v:"0.1.3",d:"2026-10-26",badge:"最新",notes:["动作绑定编辑器。"]}]},
+    {id:"quick-set",name:"快捷指令集",author:"极客工坊",cat:"productivity",tags:["keys","automation"],dl:980,
+     ver:"0.1.0",size:"0.2 MB",state:"none",icon:"i-zap",hue:"#0E7490",
+     desc:"常用快捷指令一键集",tag:"少点几下鼠标",
+     readme:["把常用操作收进一枚面板：指令卡片、热键绑定、导入分享。"],
+     features:[{g:"命令",items:["quickset.open"]}],
+     versions:[{v:"0.1.0",d:"2026-11-14",badge:"最新",notes:["首发。"]}]}],
+   collections:[
+    {id:"fx-must",title:"装机必备",hint:"作者声明·横排",layout:"strip",items:["macro-pad","quick-set"],
+     more:{label:"全部效率",target:"productivity"}},
+    {id:"fx-recommend",title:"作者推荐",hint:"作者声明·双大卡——板块名作者自定",layout:"duo",items:["macro-pad","quick-set"]}],
+   homepage:{storeTitle:"极客工坊 Store",sections:[{type:"hero",slides:[
+    {plugin:"macro-pad",tag:"作者精选"}]},
+    {type:"collection",collection:"fx-must"},{type:"rank",top:5,scope:"self",title:"效率下载榜",hint:"作者声明·榜单（scope:self 只算本店）",more:{label:"完整榜单",target:"rank"}},{type:"collection",collection:"fx-recommend"},{type:"grid",title:"全部插件"}]}}
+ ]};
+/* ══ 作者卡边界演示（v3.30）：单仓＝不扇出满宽卡；4 仓＝前 2 张＋「+N」汇总；空仓＝诚实空态 ══ */
+const AUTHOR_SOLO={id:"linke",name:"林可",storeTitle:"林可壁纸铺",github:"linke",hue:"#B45309",icon:"i-palette",
+ desc:"独立主题作者",intro:"一个人一间铺——壁纸和配色都在这一个仓库里，没有第二个。",
+ repos:[{id:"main",name:"主仓",intro:"壁纸与配色主题",image:true,
+  plugins:[
+   {id:"wp-dusk",name:"暮色壁纸",author:"林可",cat:"themes",tags:["theme","wallpaper"],dl:1240,
+    ver:"1.0.2",size:"4.2 MB",state:"none",icon:"i-palette",hue:"#B45309",
+    desc:"低饱和暮色壁纸集——按日落时间自动切换",tag:"天黑了，壁纸也天黑",
+    readme:["二十张低饱和暮色壁纸，按日落时间自动切换。"],
+    features:[{g:"视图",items:["壁纸轮播"]}],
+    versions:[{v:"1.0.2",d:"2026-11-06",badge:"最新",notes:["新增自动切换。"]}]},
+   {id:"wp-ink",name:"墨色壁纸",author:"林可",cat:"themes",tags:["theme","wallpaper"],dl:880,
+    ver:"1.0.0",size:"3.1 MB",state:"none",icon:"i-palette",hue:"#4A5568",
+    desc:"水墨晕染壁纸集——静态八张、留白构图",tag:"把宣纸贴上桌面",
+    readme:["八张水墨晕染壁纸，留白构图、不抢内容。"],
+    features:[{g:"视图",items:["壁纸轮播"]}],
+    versions:[{v:"1.0.0",d:"2026-10-21",badge:"最新",notes:["首发。"]}]}],
+  collections:[],homepage:{storeTitle:"林可壁纸铺",sections:[{type:"grid",title:"全部插件"}]}}]};
+const AUTHOR_MULTI={id:"weekend",name:"周末工程师",storeTitle:"周末工坊",github:"weekend-eng",hue:"#7C3AED",icon:"i-code",
+ desc:"四间小仓",intro:"四间小仓：脚本、字体、音效，还有一间空着——多仓聚合的活样板。",
+ repos:[
+  {id:"r-script",name:"脚本仓",intro:"日常自动化脚本",image:true,
+   plugins:[
+    {id:"script-clean",name:"清理脚本集",author:"周末工程师",cat:"development",tags:["script"],dl:1420,
+     ver:"0.3.0",size:"0.4 MB",state:"none",icon:"i-code",hue:"#7C3AED",
+     desc:"常用清理与批处理脚本——一键运行、可编辑",tag:"脏活交给它",
+     readme:["内置常用清理脚本，支持一键运行与自定义编辑。"],
+     features:[{g:"命令",items:["script.run"]}],
+     versions:[{v:"0.3.0",d:"2026-11-04",badge:"最新",notes:["新增脚本编辑器。"]}]},
+    {id:"script-cron",name:"定时任务",author:"周末工程师",cat:"productivity",tags:["automation","script"],dl:960,
+     ver:"0.1.2",size:"0.3 MB",state:"none",icon:"i-zap",hue:"#7C3AED",
+     desc:"Cron 风格定时任务——可视化编辑",tag:"到点就办",
+     readme:["可视化编辑 cron 表达式，到点执行脚本。"],
+     features:[{g:"命令",items:["cron.add"]}],
+     versions:[{v:"0.1.2",d:"2026-10-30",badge:"最新",notes:["支持秒级。"]}]}],
+   collections:[],homepage:{storeTitle:"周末工坊",sections:[{type:"grid",title:"全部插件"}]}},
+  {id:"r-font",name:"字体仓",intro:"等宽与手写字体",
+   plugins:[
+    {id:"font-mono-pro",name:"等宽字体增强",author:"周末工程师",cat:"themes",tags:["theme","font"],dl:760,
+     ver:"1.1.0",size:"6.8 MB",state:"none",icon:"i-filetext",hue:"#B45309",
+     desc:"编辑区等宽字体——连字、字重细分",tag:"代码也要好看",
+     readme:["为编辑区提供连字与多字重等宽字体。"],
+     features:[{g:"视图",items:["字体设置页"]}],
+     versions:[{v:"1.1.0",d:"2026-10-18",badge:"最新",notes:["新增连字开关。"]}]}],
+   collections:[],homepage:{storeTitle:"周末工坊",sections:[{type:"grid",title:"全部插件"}]}},
+  {id:"r-sound",name:"音效仓",intro:"提示音与白噪音",
+   plugins:[
+    {id:"sound-pack",name:"提示音包",author:"周末工程师",cat:"entertainment",tags:["sound"],dl:540,
+     ver:"0.2.0",size:"2.4 MB",state:"none",icon:"i-gamepad",hue:"#0E7490",
+     desc:"事件提示音包——可逐事件替换",tag:"耳朵记住的反馈",
+     readme:["为各类事件提供提示音，可按事件逐条替换。"],
+     features:[{g:"视图",items:["音效设置页"]}],
+     versions:[{v:"0.2.0",d:"2026-10-09",badge:"最新",notes:["新增白噪音。"]}]}],
+   collections:[],homepage:{storeTitle:"周末工坊",sections:[{type:"grid",title:"全部插件"}]}},
+  {id:"r-icon",name:"图标仓",intro:"还没上架（空仓边界演示）",
+   plugins:[],collections:[],homepage:{storeTitle:"周末工坊",sections:[{type:"grid",title:"全部插件"}]}}]};
+const AUTHORS=[AUTHOR,AUTHOR_SOLO,AUTHOR_MULTI];
+const allAuthorPlugins=()=>AUTHORS.flatMap(a=>a.repos.flatMap(r=>r.plugins));
+/* 本地插件（v3.36）：与网络源并列的第二种来源——直接从本地文件夹加载（侧栏具备，主区补齐）。
+   本地条目不产生作者卡（没有 GitHub 身份），只进统一池＋来源页「本地」组 */
+const LOCAL_ITEMS=[
+ {id:"local-hexdump",name:"十六进制查看器",author:"本地",cat:"development",tags:["hex"],dl:0,
+  ver:"0.3.1",size:"0.4 MB",state:"none",icon:"i-filetext",hue:"#4A5568",source:"local",
+  desc:"从本地文件夹加载的调试小工具——不走网络源",tag:"本地插件",
+  path:"E:\\tools\\hexdump-plugin",
+  readme:["本地文件夹插件：从本机目录直接加载，无需市场源。"],
+  features:[{g:"视图",items:["十六进制视图"]}],
+  versions:[{v:"0.3.1",d:"2026-11-15",badge:"最新",notes:["本地构建。"]}]}];
+/* 🔴 市场源（v3.31）——真机键＝marketplace.marketplaceSources（设置插件同键同源，单一真相源）：
+   条目**以仓库为单位**（url+authorId+repoId），**展示以作者聚合**（同 authorId 多仓并一行、仓数件数聚合）；
+   顺序＝数组顺序（作者卡顺序＋非 GitHub 身份兜底）；enabled＝源级停用（不拉取/不进池，已装插件照常运行） */
+let SOURCES=[
+ {url:"https://github.com/encaron/hw-shop",authorId:"geek",repoId:"hw",enabled:true,status:"ok",fetched:"5 分钟前"},
+ {url:"https://github.com/encaron/fx-shop",authorId:"geek",repoId:"fx",enabled:true,status:"ok",fetched:"6 分钟前"},
+ {url:"https://github.com/linke/wallpapers",authorId:"linke",repoId:"main",enabled:true,status:"ok",fetched:"12 分钟前"},
+ {url:"https://github.com/weekend-eng/tools",authorId:"weekend",repoId:"r-script",enabled:true,status:"ok",fetched:"3 分钟前"},
+ {url:"https://github.com/weekend-eng/fonts",authorId:"weekend",repoId:"r-font",enabled:true,status:"ok",fetched:"3 分钟前"},
+ {url:"https://github.com/weekend-eng/sounds",authorId:"weekend",repoId:"r-sound",enabled:true,status:"error",fetched:""},
+ {url:"https://github.com/weekend-eng/icons",authorId:"weekend",repoId:"r-icon",enabled:true,status:"ok",fetched:"3 分钟前"},
+ {kind:"local",path:"E:\\tools\\hexdump-plugin",authorId:"__local",repoId:"local-hexdump",enabled:true,status:"ok",fetched:"本地"}];
+/* 作者域视角＝只算**启用**的源：某作者的源全停用 → 该作者整体退出（作者卡/统一池/分类计数同步） */
+const enabledRepoIds=a=>SOURCES.filter(s=>s.authorId===a.id&&s.enabled).map(s=>s.repoId);
+const effectiveAuthors=()=>AUTHORS.map(a=>{const ids=enabledRepoIds(a);
+  return ids.length?{...a,repos:a.repos.filter(r=>ids.includes(r.id))}:null;}).filter(Boolean);
+const visibleAuthors=effectiveAuthors;
+const localPlugins=()=>SOURCES.filter(s=>s.kind==="local"&&s.enabled)
+  .map(s=>LOCAL_ITEMS.find(i=>i.id===s.repoId)).filter(Boolean);
+const authorPlugins=()=>visibleAuthors().flatMap(a=>a.repos.flatMap(r=>r.plugins)).concat(localPlugins()); // 统一池＝作者源＋本地
+
+const RAIL=[
+  {slug:"home",label:"首页",icon:"i-home"},
+  {slug:"development",label:"开发",icon:"i-code"},
+  {slug:"documents",label:"文档",icon:"i-filetext"},
+  {slug:"hardware",label:"硬件",icon:"i-plug"},
+  {slug:"network",label:"网络",icon:"i-network"},
+  {slug:"productivity",label:"效率",icon:"i-zap"},
+  {slug:"themes",label:"主题",icon:"i-palette"},
+  {slug:"reading",label:"阅读",icon:"i-book"},
+  {slug:"entertainment",label:"娱乐",icon:"i-gamepad"},
+  {slug:OTHER,label:"其他",icon:"i-dots"},
+];
+const LABEL={home:"Plugin Store",development:"开发",documents:"文档",hardware:"硬件",
+  network:"网络",productivity:"效率",themes:"主题",reading:"阅读",entertainment:"娱乐",
+  [OTHER]:"其他"};
+
+/* ══════════════ 派生（06 §二·4 纯函数语义） ══════════════ */
+const stateOf=e=>DEMO_STATE[e.id]??e.state;
+const primaryOf=e=>e.cat??OTHER;
+const byCat=s=>[...CATALOG,...authorPlugins()].filter(e=>primaryOf(e)===s); // 🔴单一统一池：分类/计数全源合并
+const countOf=s=>byCat(s).length;
+const dl=n=>n>=10000?(n/10000).toFixed(1)+" 万":n.toLocaleString("zh-CN");
+const chipsOf=s=>{const t={};byCat(s).forEach(e=>e.tags?.forEach(x=>t[x]=(t[x]||0)+1));
+  return Object.entries(t).filter(([,c])=>c>=3).map(([x])=>x);};
+/* 小类显示名（tag 仍是英文 slug；显示名可换——同 category 两层分离原则） */
+const TAG_LABEL={editor:"编辑器",serial:"串口",theme:"主题",code:"代码",diff:"差异"};
+const tagLabel=t=>TAG_LABEL[t]||t;
+
+/* ══════════════ 小件 ══════════════ */
+const tile=(e,cls="")=>`<span class="tile ${cls}" style="${hueBG(e.hue)}"><svg class="ic"><use href="#${e.icon}"/></svg></span>`;
+const artBG=e=>`background:linear-gradient(128deg,${e.hue} 0%,${e.hue}B8 55%,${e.hue}70 100%)`;
+/* 来源身份（v3.54）：全图唯一判定——卡片徽标／详情徽标／来源筛选都从这里来。
+   ⛔ 不开放作者声明的徽标文本（可伪造）；⛔ 不按作者名猜官方（此处的 author 是合并注入的源身份）。 */
+/* 来源身份（v3.62）：「官方 ✓」＝发布者认证（vendors 注册表命中），非「来自官方源」——
+   分发事实 ≠ 发布者身份（STM32/NI 自家插件不该被标「社区」）。
+   演示注册表＝真机在官方目录 marketplace.json 根级 vendors[]，只有官方运营者可写（09 §一·补2）。
+   ⛔ 不开放作者声明的徽标文本（可伪造）；⛔ 不按作者名猜官方。 */
+const VENDORS=new Set(["官方","STMicroelectronics","NI","Adobe","DeepSeek"]);
+const srcKind=e=>e.author==="本地"?"local":(e.author&&VENDORS.has(e.author))?"official":"third";
+const srcLabel=e=>({local:"本地",third:"社区",official:"官方"})[srcKind(e)];
+const srcBadge=e=>`<span class="badge ${srcKind(e)}">${srcKind(e)==="official"?(srcLabel(e)+" ✓"):srcLabel(e)}</span>`;
+function srcNameOf(e){
+  if(srcKind(e)==="local")return "本机文件夹";
+  if(srcKind(e)==="official")return "官方 Plugin Store";
+  for(const a of AUTHORS)for(const r of a.repos)
+    if(r.plugins.some(x=>x.id===e.id))return `${a.name} · ${r.name}`;
+  return "社区作者";
+}
+const SHELL_VER="0.2.20"; // 演示用当前壳版本（真机读 env/app.getVersion）
+const badges=e=>{const s=stateOf(e);let h="";
+  if(s==="installed")h+=`<span class="badge installed">已安装</span>`;
+  if(s==="disabled")h+=`<span class="badge">已禁用</span>`;
+  if(e.update&&s!=="installing")h+=`<span class="badge update">有更新</span>`;
+  if(e.core)h+=`<span class="badge core">内置</span>`;
+  h+=licBadge(e);
+  h+=`<span class="badge ${srcKind(e)}">${srcKind(e)==="official"?"官方 ✓":"社区"}</span>`;return h;};
+function actionBtn(e){
+  const s=stateOf(e);
+  /* 付费分支（v3.64）：许可裁决在壳——市场只渲染状态；未购/过期不给安装钮（⛔ 灰安装钮假象） */
+  if(isPaid(e)){
+    if(e.pricing.model==="subscription")return `<button class="btn primary" disabled title="订阅需服务器实时校验——B3 上线后开放">即将支持</button>`;
+    const lic=licOf(e);
+    const jump=e.pricing.licenseUrl?`<button class="btn primary" data-act="buy" title="作者声明了销售页——真机 shell.openExternal 弹到系统浏览器">获取许可 ${e.pricing.currency}${e.pricing.price}</button>`
+      :"";
+    if(lic&&lic.expDays<0)return `<button class="btn primary" data-act="have-key">输入新密钥</button>`
+      +(jump?`<button class="btn secondary" data-act="renew" title="跳转作者销售页续费（真机 shell.openExternal）">续费</button>`:"");
+    if(!entOf(e))return jump+`<button class="btn secondary" data-act="have-key" ${jump?'title="已有密钥？粘贴即可验证"':""}>我有密钥</button>`;
+  }
+  if(s==="disabled")return `<button class="btn secondary" data-act="enable">启用</button>`;
+  if(s==="installing")return `<button class="btn primary" disabled aria-busy="true">
+    <span class="spin"></span><span class="prog">安装中 62%</span></button>`;
+  if(s==="failed")return `<button class="btn primary" data-act="retry">
+    <svg class="ic"><use href="#i-refresh"/></svg>重试</button>
+    <span class="badge fail" title="网络超时">安装失败</span>`;
+  if(s==="offline")return `<button class="btn secondary" disabled title="联网后重试">安装</button>`;
+  if(s==="installed")return e.update
+    ? `<button class="btn primary" data-act="update">更新</button>`
+    : `<button class="btn secondary" disabled>已安装</button>`;
+  return `<button class="btn primary" data-act="install">
+    <svg class="ic"><use href="#i-download"/></svg>安装</button>`;
+}
+
+/* ══════════════ 卡片原型族（05 §四） ══════════════ */
+function cardSmall(e){ // 装机必备：整卡＝入口（v3.38）；hover 原位放大展开
+  return `<div class="card card-small" data-entry="${e.id}" tabindex="0" role="button"
+    aria-label="${e.name}——查看详情" data-open="${e.id}">
+    <div class="cs-top">
+      ${tile(e,"lg")}
+      <div class="fx1">
+        <div class="cs-name">${e.name}</div>
+        <div class="cs-cat">${LABEL[e.cat]}</div>
+      </div>
+      <span class="cs-free js-corner ${statusTag(e).c}" data-base="cs-free js-corner">${statusTag(e).t}</span>
+    </div>
+    <div class="x-over">
+      <div class="x-head">${tile(e,"lg")}
+        <div class="fx1">
+          <div class="x-name">${e.name}</div>
+          <div class="x-cat">${LABEL[e.cat]}</div>
+        </div>
+        <span class="js-act flat">${actionBtn(e)}</span>
+      <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button></div>
+      <div class="x-desc">${e.desc}</div>
+      <div class="js-badges" style="margin-top:8px">${badges(e)}</div>
+    </div>
+    ${moreMenu(e)}
+  </div>`;
+}
+function cardGrid(e){ // 分类网格卡：整卡＝入口；hover 同款原位放大展开
+  return `<div class="card card-grid" data-entry="${e.id}" tabindex="0" role="button"
+    aria-label="${e.name}——查看详情" data-open="${e.id}">
+    <div class="cg-top">
+      ${tile(e)}
+      <div class="fx1">
+        <div class="cg-name">${e.name}</div>
+        <div class="cg-author">${e.author}</div>
+      </div>
+      <span class="cg-corner js-corner ${statusTag(e).c}" data-base="cg-corner js-corner">${statusTag(e).t}</span>
+    </div>
+    <div class="cg-stats"><span title="下载量">▾ ${dl(e.dl)}</span></div>
+    <div class="x-over">
+      <div class="x-head">${tile(e)}
+        <div class="fx1">
+          <div class="x-name">${e.name}</div>
+          <div class="x-cat">${e.author}</div>
+        </div>
+        <span class="js-act flat">${actionBtn(e)}</span>
+        <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button></div>
+      <div class="x-desc">${e.desc}</div>
+      <div class="js-badges" style="margin-top:8px">${badges(e)}</div>
+    </div>
+    ${moreMenu(e)}
+  </div>`;
+}
+function cardRow(e){ // 详细信息行（分类页·详细视图——05 §四 row 原型；hover 原位放大 1.02 origin left 不横跳）
+  const third=e.author&&e.author!=="官方";
+  return `<div class="card card-row" data-entry="${e.id}" tabindex="0" role="button"
+    aria-label="${e.name}——查看详情" data-open="${e.id}" style="--glow:${e.hue}">
+    ${tile(e,"lg")}
+    <div class="cr-main">
+      <div class="cr-l1"><span class="cr-name">${e.name}</span>
+        ${third?`<span class="badge third">第三方 · ${e.author}</span>`
+               :`<span class="badge official">官方</span>`}
+        <span class="cr-cat">${LABEL[e.cat]||e.cat}</span></div>
+      <div class="cr-desc">${e.desc}</div>
+    </div>
+    <span class="cr-dl" title="下载量">▾ ${dl(e.dl)}</span>
+    <span class="js-act flat">${actionBtn(e)}</span>
+  </div>`;
+}
+function cardMega(e){ // 主题专区：hover＝本体放大＋底部灰条向上延伸（v3.7——字不碰封面，单一连续表面）
+  return `<div class="card card-mega" data-entry="${e.id}" tabindex="0" role="button"
+    aria-label="${e.name}——查看详情" data-open="${e.id}" style="--glow:${e.hue}">
+    <div class="cm-art" style="${artBG(e)}">
+      <svg><use href="#${e.icon}"/></svg>
+    </div>
+    <div class="cm-foot">
+      <div class="mn0"><div class="cm-name">${e.name}</div>
+        <div class="cm-cat">${LABEL[e.cat]}</div></div>
+      <span class="cm-free js-corner ${statusTag(e).c}" data-base="cm-free js-corner">${statusTag(e).t}</span>
+    </div>
+    <div class="cm-band">
+      <div class="t">${e.tag}</div>
+      <div class="s">${e.desc}</div>
+      <div class="row"><span class="js-badges flat">${badges(e)}</span><span class="js-act flat">${actionBtn(e)}</span>
+        <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button></div>
+    </div>
+    ${moreMenu(e)}
+  </div>`;
+}
+function cardDuo(e,tag){
+  return `<div class="card card-duo" data-entry="${e.id}" tabindex="0" role="button"
+    aria-label="${e.name}——查看详情" data-open="${e.id}" style="--glow:${e.hue}">
+    <div class="cd-copy">
+      <span class="cd-tag">${tag||"编辑精选"}</span>
+      <div class="cd-name">${e.name}</div>
+      <div class="cd-desc">${e.desc} ${e.tag?"· "+e.tag:""}</div>
+      <span class="js-corner ${statusTag(e).c}" data-base="js-corner" style="margin:0 0 8px">${statusTag(e).t}</span>
+      <div class="cd-acts"><span class="js-act flat">${actionBtn(e)}</span>
+        <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button></div>
+    ${moreMenu(e)}
+    </div>
+    <div class="cd-art" style="${artBG(e)}">
+      <svg><use href="#${e.icon}"/></svg></div>
+  </div>`;
+}
+function rankRow(e,i){
+  return `<div class="rank-row" data-entry="${e.id}" role="button" tabindex="0"
+    aria-label="${e.name}——查看详情" data-open="${e.id}">
+    <span class="rk">${i}</span>
+    ${tile(e)}
+    <div class="rr-mid">
+      <div class="rr-name">${e.name}</div>
+      <div class="rr-cat">${LABEL[e.cat]} · ${e.author}</div></div>
+    <span class="rr-corner js-corner ${statusTag(e).c}" data-base="rr-corner js-corner" style="flex:none">${statusTag(e).t}</span>
+    <span class="rr-dl">▾ ${dl(e.dl)}</span>
+    <span class="rr-act"><span class="js-act flat">${actionBtn(e)}</span>
+      <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button></span>
+    ${moreMenu(e)}
+  </div>`;
+}
+
+/* ══════════════ Store 视图 ══════════════ */
+let railActive="home",heroIdx=0;
+/* 视图位置记忆（v3.38 自 04 移植）：切视图再回来回到原滚动位，⛔ 一律弹回顶部 */
+let curViewKey="home";const viewMem={};
+function beginView(k){const sc=document.getElementById("storeContent");
+  if(sc)viewMem[curViewKey]=sc.scrollTop;curViewKey=k;}
+function endView(){const sc=document.getElementById("storeContent");
+  if(sc)sc.scrollTop=viewMem[curViewKey]||0;}
+const head=(t="Plugin Store",su="发现、安装和管理插件",canAdd=true)=>`<div class="store-head"><div>
+    <h1>${t}</h1><div class="sub">${su}</div></div>
+    <div class="sp-head-acts">
+      <div class="store-search"><svg class="ic"><use href="#i-search"/></svg>
+        <input id="storeSearch" placeholder="搜索名称、ID 或标签…" aria-label="搜索插件"></div>
+      ${canAdd?`<button class="head-check" data-check-updates title="检查所有插件的更新">
+        <svg class="ic"><use href="#i-refresh"/></svg>检查更新<span class="n" id="updCount">3</span></button>`:""}
+      <button class="head-check" data-refresh-content title="重新拉取目录内容（首页/合集/顺序）——不影响插件版本">
+        <svg class="ic"><use href="#i-refresh"/></svg>刷新内容</button>
+      ${canAdd?`<button class="head-add" data-add-source aria-label="添加市场源"
+        title="添加市场源（粘贴 GitHub 仓库地址或 marketplace.json 直链）">
+        <svg class="ic"><use href="#i-plus"/></svg></button>`:""}
+    </div></div>`;
+function renderRail(){
+  const el=document.getElementById("storeRail");
+  /* 结构（v3.44）：顶部固定「首页」＋中部滚动「浏览」＋底部固定「库＋来源」——
+     固定项全部走 compact 行，给滚动区让出空间（用户 2026-11-19 拍板） */
+  const railBtn=r=>{const c=countOf(r.slug);const empty=r.slug!=="home"&&c===0;
+    const nd=NEW_CONTENT.cats.has(r.slug)?`<span class="rail-dot new" title="有新插件"></span>`:"";
+    return `<button class="rail-item ${railActive===r.slug?"active":""} ${empty?"empty":""}"
+      data-rail="${r.slug}" ${empty?`title="暂无插件"`:""}>
+      <svg class="ic"><use href="#${r.icon}"/></svg>${r.label}
+      <span class="cnt">${r.slug==="home"?"":c}</span>${nd}</button>`;};
+  el.innerHTML=
+    `<div class="rail-top">
+      <button class="rail-home ${railActive==="home"?"active":""}" data-rail="home" aria-label="首页">
+        <span class="hi"><svg class="ic"><use href="#i-home"/></svg></span>
+        <span class="htx"><span class="ht">首页</span><span class="hs">Plugin Store</span></span>
+      </button>
+    </div>`+
+    `<div class="rail-scroll"><div class="rail-label">浏览</div>`+
+    RAIL.slice(1).map(railBtn).join("")+
+    `<div class="rail-gap"></div>
+      <button class="rail-item ${railActive==="rank"?"active":""}" data-rank
+        aria-label="完整排行榜——全源合并">
+        <svg class="ic"><use href="#i-trend"/></svg>排行榜</button>
+    </div>
+    <div class="rail-foot">
+      <button class="rail-item compact ${railActive==="library"?"active":""}" data-library
+        aria-label="我的库——已安装插件">
+        <svg class="ic"><use href="#i-folder"/></svg>库
+        ${(()=>{const n=libAll().filter(e=>e.update).length;
+          return `<span class="cnt ${n?"warn":""}" title="${n?`${n} 个可更新`:"已安装数"}">${n||libAll().length}</span>`;})()}</button>
+      <button class="rail-item compact ${railActive==="authors"?"active":""}" data-authors
+        aria-label="插件作者列表——进入作者主页">
+        <svg class="ic"><use href="#i-user"/></svg>作者
+        <span class="cnt">${visibleAuthors().length}</span>
+        ${[...NEW_CONTENT.authors].some(id=>visibleAuthors().some(a=>a.id===id))
+          ?`<span class="rail-dot new" title="有新内容"></span>`:""}</button>
+      <button class="rail-item compact ${railActive==="sources"?"active":""}" data-sources
+        aria-label="市场源管理——添加/移除/排序">
+        <svg class="ic"><use href="#i-link"/></svg>来源
+        ${SOURCES.some(s=>s.status==="error")?`<span class="rail-dot" title="有源加载失败"></span>`:""}</button>
+    </div>`;
+  el.onclick=ev=>{const rk=ev.target.closest("[data-rank]");
+    if(rk){railActive="rank";catFilter=null;lastAuthor=null;renderRail();renderRankFull();return;} // 侧栏排行榜入口（v3.29 拍板）
+    const srcBtn=ev.target.closest("[data-sources]");
+    if(srcBtn){renderSources();return;} // 来源管理页（v3.31）
+    const auBtn=ev.target.closest("[data-authors]");
+    if(auBtn){renderAuthors();return;} // 作者列表页（v3.36）
+    const libBtn=ev.target.closest("[data-library]");
+    if(libBtn){renderLibrary();return;} // 我的库（v3.41）
+    const b=ev.target.closest("[data-rail]");if(!b)return; // rail 在 storeContent 外——自绑点击（v3.23 修复侧栏失效）
+    gotoCategory(b.dataset.rail);};
+}
+/* secH 第三参 more＝板块跳转字（09 §二声明式）：{label,act,target}——声明才渲染强调色字（主题可变强调色，非固定蓝），
+   ⛔ 渲染器不自动造「更多」（官方装机必备无字＝拍板④同规）；target＝封闭集合 ⛔ 任意 URL（拍板）；
+   act：jump＝官方（分类/榜单）、cat-filter＝作者店→全局分类页＋authorId 预过滤（拍板：预过滤＋显示全部） */
+const secH=(t,hint,more)=>`<div class="sec-head"><h3>${t}</h3>
+  ${hint?`<span class="hint">${hint}</span>`:""}
+  ${more?`<button class="more" ${more.act==="cat-filter"
+    ?`data-cat-filter="${more.target}" data-filter-name="${more.name}"`
+    :`data-jump="${more.target}"`}>${more.label}<svg class="ic"><use href="#i-chev-r"/></svg></button>`:""}</div>`;
+/* 作者卡仓卡扇出（v3.30）：仓数决定形态——1 仓＝满宽单卡（不假装扇出）；
+   2~3 仓＝逐张扇开；4+＝前 2 张＋「+N 个仓」汇总卡（容量收敛，⛔ 溢出） */
+function authorDeck(a){
+  const total=a.repos.length;
+  let items=a.repos.map(r=>({name:r.name,n:r.plugins.length}));
+  if(total>3){
+    const rest=items.slice(2);
+    items=[...items.slice(0,2),{name:`${rest.length} 个仓库`,n:rest.reduce((s,r)=>s+r.n,0),more:true}];
+  }
+  return `<div class="ac-deck" aria-hidden="true">${items.map((r,i)=>
+    `<span class="ac-repo ${r.more?"more":""}" style="--i:${i};z-index:${9-i}">
+      <b>${r.name}</b><i>${r.n} 个插件${total===1?" · 唯一仓库":""}</i></span>`).join("")}</div>`;
+}
+/* 作者卡＝首页作者栏与作者页「平铺」共用同一件（归一化：平铺视图不另抄一份卡） */
+function authorCard(a){
+  return `<div class="card author-card has-deck ${a.repos.length===1?"solo":"fan"}"
+    style="--glow:${a.hue}" data-author="${a.id}" tabindex="0" role="button"
+    aria-label="${a.name}——进入作者主页，名下 ${a.repos.length} 个仓库">
+    <div class="ac-top">
+      <span class="ac-avatar" style="${hueBG(a.hue)}">
+        <span class="ac-ring"></span><svg class="ic"><use href="#${a.icon}"/></svg></span>
+      <div class="fx1">
+        <div class="ac-name">${a.name}</div>
+        <div class="ac-badge">社区源 · ${a.repos.length} 个仓库 · 身份：GitHub</div>
+      </div>
+    </div>
+    <div class="ac-intro">${a.intro}</div>
+    ${authorDeck(a)}
+    <div class="ac-meta"><span>${a.repos.reduce((n,r)=>n+r.plugins.length,0)} 个插件</span>
+      <span class="go">进入作者主页<svg class="ic"><use href="#i-chev-r"/></svg></span></div>
+    <span class="ac-sheen" aria-hidden="true"></span>
+  </div>`;
+}
+function renderHome(){
+  beginView("home");
+  searchQ="";catFilter=null;lastAuthor=null; // 离开搜索/作者态
+  const hot=[...CATALOG,...authorPlugins()].sort((a,b)=>b.dl-a.dl).slice(0,8); // 榜单＝计算位吃全源（拍板）——首页 top 8＝完整榜单 top 8 同源截断
+  const themes=CATALOG.filter(e=>e.cat==="themes").sort((a,b)=>b.dl-a.dl); // 合集无硬上限——全量横滚承载（拍板：截断仅演示）
+  const slides=[
+    {e:CATALOG.find(x=>x.id==="editor"),tag:"编辑推荐",
+     copy:"Monaco 内核的完整编辑表面——语法高亮、智能提示、Diff 对比；二进制文件按文本强制打开，保存前先确认。"},
+    {e:CATALOG.find(x=>x.id==="serial-monitor"),tag:"硬件玩家必备",
+     copy:"串口收发监视：时间戳逐行标注、HEX/文本双视图、会话日志导出，断线自动重连提示。"},
+    {e:CATALOG.find(x=>x.id==="theme-aurora-glass"),tag:"主题上新",
+     copy:"冷色极光配方的玻璃质感暗色主题，低白光发射、高可读性，夜间工作的护眼选择。"}];
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head()}
+    <div class="content-bar hidden" id="contentBar">
+      <svg class="ic"><use href="#i-refresh"/></svg>
+      <span class="grow">首页内容已更新——刷新后显示最新轮播与合集；你的滚动位置、筛选与排序会保留</span>
+      <button class="btn primary" data-refresh-apply>刷新</button>
+      <button class="sbtn" data-bar-dismiss>忽略</button>
+    </div>
+    <div class="sec" data-spec="04§六">
+      <div class="hero" id="hero" title="鼠标滚轮 / 左右箭头 / 圆点 翻页（共 ${slides.length} 张轮播）">
+        <div class="hero-track" id="heroTrack">${slides.map(s=>`
+          <div class="hero-slide" data-open="${s.e.id}" role="button" tabindex="0"
+            aria-label="${s.e.name}——查看详情" >
+            <div class="hero-copy">
+              <span class="hero-tag">${s.tag}</span>
+              <h2>${s.e.name}</h2>
+              <p>${s.copy}</p>
+              <div class="hero-meta"><span>作者 <b>${s.e.author}</b></span>
+                <span>▾ <b>${dl(s.e.dl)}</b> 下载</span><span>v${s.e.ver}</span></div>
+              <div class="hero-cta">${actionBtn(s.e)}</div>
+            </div>
+            <div class="hero-art" style="${artBG(s.e)}">
+              <span class="hglyph"><svg><use href="#${s.e.icon}"/></svg></span></div>
+          </div>`).join("")}</div>
+        <button class="hero-arrow l" id="heroL" aria-label="上一张"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+        <button class="hero-arrow r" id="heroR" aria-label="下一张"><svg class="ic"><use href="#i-chev-r"/></svg></button>
+      </div>
+      <div class="hero-nav" id="heroDots">${slides.map((_,i)=>
+        `<button class="dot ${i===0?"on":""}" data-dot="${i}" aria-label="第${i+1}张"></button>`).join("")}</div>
+    </div>
+
+    <div class="sec" data-spec="04§六作者卡片区">
+      ${secH("作者","万物皆可插件——第三方作者的店，点击进入他们的主页（hover 看仓卡扇出）")}
+      <div class="strip"><div class="strip-row">
+        ${visibleAuthors().length?visibleAuthors().map(authorCard).join(""):`<div class="card author-empty" data-add-source tabindex="0" role="button"
+          aria-label="添加市场源——还没有任何作者源">
+          <span class="ae-ico"><svg class="ic"><use href="#i-plus"/></svg></span>
+          <div><div class="ae-t">还没有作者源</div>
+            <div class="ae-s">粘贴 GitHub 仓库地址或 marketplace.json 直链——<br>添加后作者与本店插件会出现在这里</div></div>
+        </div>`}
+      </div></div>
+    </div>
+
+    <div class="sec" data-spec="05§四">
+      ${secH("装机必备","大家都在装——合集横滚本已全量可见，故无「更多」（拍板④）")}
+      <div class="strip">
+        <div class="strip-row rows2">
+          ${["editor","serial-monitor","pdf-reader","file-tree","python","lang-defaults","settings","marketplace"]
+            .map(id=>cardSmall(CATALOG.find(x=>x.id===id))).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" data-spec="04§六">
+      ${secH("主题专区","一套配方换一个心情",{label:"全部主题",act:"jump",target:"themes"})}
+      <div class="strip">
+        <div class="strip-row mega-row">${themes.map(cardMega).join("")}</div>
+      </div>
+    </div>
+
+    <div class="sec" data-spec="04§六">
+      ${secH("编辑精选")}
+      <div class="strip"><div class="strip-row duo-row">
+        ${cardDuo(CATALOG.find(x=>x.id==="editor"),"效率首选")}
+        ${cardDuo(CATALOG.find(x=>x.id==="serial-monitor"),"硬件必备")}
+      </div></div>
+    </div>
+
+    <div class="sec" data-spec="04§二收费（v3.64：04 §02 收费六态在 03 的可点对应）">
+      ${secH("付费插件","买断制全流程演示：价格徽标 → 获取许可（外链）→ 输入密钥（即时验签）→ 解锁安装 → 临期/过期/续费——点卡进详情走一遍")}
+      <div class="strip"><div class="strip-row rows2" style="margin-bottom:6px">
+          ${["pro-pack","snippet-pack","diff-viewer","ai-sub","editor","theme-aurora-glass"]
+            .map(id=>cardSmall(CATALOG.find(x=>x.id===id))).join("")}
+        </div></div>
+      <div class="strip"><div class="strip-row duo-row">
+        ${cardDuo(CATALOG.find(x=>x.id==="pro-pack"),"买断 ¥68 · 含 14 天试用")}
+        <div class="card author-card" style="--glow:#6E40C9" tabindex="0" role="button" aria-label="许可状态演示——点卡进详情切换演示密钥">
+          <div class="ac-top"><span class="ac-avatar" style="background:var(--bg-input);color:var(--text-muted)">
+            <svg class="ic"><use href="#i-filetext"/></svg></span>
+            <div class="fx1"><div class="ac-name">许可状态怎么看</div>
+              <div class="ac-badge">演示指引 · 非插件</div></div></div>
+          <div class="ac-intro">上方六张小卡＝六种态的实体陈列（同源渲染，一处声明处处生效）：<b>Pro Pack</b> 未购（¥68 获取许可，弹购买页）· <b>代码片段包</b> 付费但作者未声明销售页（⛔ 不弹，只有「我有密钥」——弹不弹作者说了算）· <b>差异对比</b> 许可已过期（红徽标＋输入新密钥＋续费）· <b>AI 助手</b> 订阅（¥8/月·剩 5 天·即将支持——B3 后开放）· <b>编辑器</b> 已购临期 20 天（装机必备/编辑精选/榜单/库全部联动）· <b>极光玻璃</b> 主题专区 mega 未购。大卡＝Pro Pack 完整购买流：获取许可→模拟购买页→付款→复制密钥→详情粘贴解锁。</div>
+          <div class="ac-meta"><span>04 §02 收费六态</span>
+            <span class="go">去详情页试<svg class="ic"><use href="#i-chev-r"/></svg></span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="sec" data-spec="06§六目录三态（v3.66）">
+      ${secH("目录拉取三态","打开商店/刷新目录时的三种脸——与真机 CatalogLoading/CatalogErrorState 同构；离线不是失败")}
+      <div class="strip"><div class="strip-row">
+        <div class="card cat-state">
+          <span class="spin"></span>
+          <div><b>正在拉取目录…</b><span class="t2">首次打开或手动刷新 · 拉到前显示骨架，不显示旧内容假装</span></div>
+        </div>
+        <div class="card cat-state">
+          <svg class="ic" style="width:20px;height:20px;color:var(--danger)"><use href="#i-alert"/></svg>
+          <div><b>目录拉取失败</b><span class="t2">网络问题 · <a href="javascript:void 0" style="color:var(--accent-hover)">重试</a> · 已装插件照常可用</span></div>
+        </div>
+        <div class="card cat-state">
+          <svg class="ic" style="width:20px;height:20px;color:var(--warn)"><use href="#i-globe"/></svg>
+          <div><b>离线 · 显示缓存目录</b><span class="t2">不伪装在线——安装/更新钮置灰＋「联网后重试」，浏览照常</span></div>
+        </div>
+      </div></div>
+      <div class="cat-note">三态判定与真机一致：ok 空＝诚实空态；corrupt/offline 才示故障＋重试（#30f）</div>
+    </div>
+
+    <div class="sec" data-spec="04§六">
+      ${secH("热门下载","按下载数排序——全源合并 top 8（计算位，与完整榜单同源）",{label:"完整榜单",act:"jump",target:"rank"})}
+      <div>${hot.map((e,i)=>rankRow(e,i+1)).join("")}</div>
+    </div>
+
+    <div class="sec" data-spec="04§七">
+      ${secH("按分类浏览","只列出有插件的分类——官方店与作者店同一规则（空分类不出瓷片）")}
+      <div class="tiles">
+        ${RAIL.filter(r=>r.slug!=="home"&&countOf(r.slug)>0).map(r=>{const c=countOf(r.slug);
+          return `<div class="card cat-tile" data-rail-jump="${r.slug}"
+            tabindex="0" role="button">
+            <div class="ct-icon"><svg class="ic"><use href="#${r.icon}"/></svg></div>
+            <div class="ct-main">
+              <div class="ct-name">${r.label}</div>
+              <div class="ct-count">${c} 个插件</div>
+              <div class="ct-desc">${CAT_DESC[r.slug]||""}</div>
+            </div>
+            <span class="ct-go"><svg class="ic"><use href="#i-chev-r"/></svg></span></div>`;}).join("")}
+      </div>
+    </div>
+
+    <div class="cat-note" data-spec="01§二目录防御" style="margin-top:-6px">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      部分来源加载失败，已显示可用目录（防御注记演示——真机由 catalog.errors 驱动）
+      <button class="linkbtn" style="margin-left:auto" data-sim-content>模拟：作者改了首页</button>
+    </div>
+  </div>`;
+  bindStoreContent();
+  window.HERO_HUES=slides.map(s=>s.e.hue);heroSyncGlow();
+}
+/* ══════════════ 分类页深化（v3.23）：统一池＋页头＋排序/显示工具行（用户拍板：
+   排序按钮组必须有＝下载量/热度/字母/最近更新/作者/仓；显示方式切换＝平铺/详细信息；
+   仓排序＝同仓挨一起、仓间 A→Z；排序/视图跨分类会话记忆） ══════════════ */
+let catSort=PREFS.catSort||"dl",catView=PREFS.catView||"grid",searchQ="",catFilter=null,lastAuthor=null;
+let collapsedGroups=new Set(),filterOpen=false,authorSort=PREFS.authorSort||"name",authorView=PREFS.authorView||"grid";
+/* 筛选（v3.36）：只放搜索表达不了的**可枚举事实**——⛔ 名称/作者名（那等于搜索） */
+let filters={installed:false,uninstalled:false,update:false,official:false,third:false,local:false};
+const filterCount=()=>Object.values(filters).filter(Boolean).length;
+const filterLabel=()=>filterCount()?`筛选 · ${filterCount()}`:"筛选";
+function applyFilters(list){
+  if(!filterCount())return list;
+  return list.filter(e=>{
+    const st=stateOf(e),isLocal=e.source==="local",isOfficial=e.author==="官方";
+    if(filters.installed&&st!=="installed")return false;
+    if(filters.uninstalled&&st==="installed")return false;
+    if(filters.update&&!(e.update&&st!=="installing"))return false;
+    if(filters.official&&!isOfficial)return false;
+    if(filters.third&&(isOfficial||isLocal))return false;
+    if(filters.local&&!isLocal)return false;
+    return true;
+  });
+}
+/* 通用下拉（与设置页 Select 同形态）：触发器＋勾选菜单 */
+function filterMenu(){
+  const it=(k,t)=>`<button class="sel-item ${filters[k]?"on":""}" data-filter-key="${k}" role="menuitemcheckbox"
+    aria-checked="${filters[k]}"><span class="ck"></span>${t}</button>`;
+  return `<div class="sel-wrap">
+    <button class="sel" data-filter-toggle aria-haspopup="true" aria-expanded="${filterOpen}">
+      <svg class="ic"><use href="#i-funnel"/></svg>${filterLabel()}
+      <svg class="ic sel-caret"><use href="#i-chev-d"/></svg></button>
+    ${filterOpen?`<div class="sel-menu" role="menu">
+      <div class="sel-sec">安装状态</div>${it("installed","已安装")}${it("uninstalled","未安装")}${it("update","有更新")}
+      <div class="sel-sec">来源</div>${it("official","官方")}${it("third","社区")}${it("local","本地插件")}
+      <div class="sel-sep"></div>
+      <button class="sel-item" data-filter-reset>清除筛选</button>
+    </div>`:""}
+  </div>`;
+}
+// searchQ＝搜索态（非空时重绘停留搜索页）；catFilter＝作者跳转预过滤（一次性：rail 重入即全量——拍板）；lastAuthor＝作者店视图标记（状态刷新不跳页）
+const CAT_DESC={development:"框架、运行时与编码工具",documents:"阅读、批注与文件整理",
+  hardware:"串口、外设与硬件玩家工具",network:"联网诊断与流量观察",
+  productivity:"效率、自动化与快捷触发",themes:"主题、图标与外观",
+  reading:"长读与订阅",entertainment:"消遣与媒体",
+  [OTHER]:"未声明分类的插件都落这里——作者在 manifest 声明 category 后自动归位"};
+const SORTS=[["dl","最多下载"],["upd","最近更新"],["az","字母 A→Z"],["author","按作者"],["repo","按仓库"]];
+const repoOf=id=>{if(LOCAL_ITEMS.some(i=>i.id===id))return "本地文件夹";
+  for(const a of AUTHORS)for(const r of a.repos)
+  if(r.plugins.some(p=>p.id===id))return `${a.name} · ${r.name}`;
+  return "官方 Plugin Store";};
+function catOrdered(list){ // 纯函数：author/repo 排序返回带分组头的序列（同仓挨一起，仓间 A→Z）
+  const byDl=(a,b)=>b.dl-a.dl;
+  if(catSort==="az")return[...list].sort((a,b)=>a.name.localeCompare(b.name,"zh"));
+  if(catSort==="upd")return[...list].sort((a,b)=>
+    ((b.versions?.[0]?.d)||"").localeCompare((a.versions?.[0]?.d)||"")||byDl(a,b));
+  if(catSort==="author"||catSort==="repo"){
+    const key=catSort==="author"?(e=>e.author||"官方"):(e=>repoOf(e.id));
+    const g={};list.forEach(e=>(g[key(e)]??=[]).push(e));
+    return Object.keys(g).sort((a,b)=>a.localeCompare(b,"zh"))
+      .flatMap(k=>[{__g:k,n:g[k].length},...g[k].sort(byDl)]);
+  }
+  return[...list].sort(byDl);
+}
+const groupH=x=>`<div class="group-h"><span class="gh-name">${x.__g}</span><span class="gh-n">${x.n} 个插件</span></div>`;
+const catCards=list=>catOrdered(list).map(x=>x.__g?groupH(x)
+  :(catView==="grid"?cardGrid(x):cardRow(x))).join("");
+
+/* ══════════════ UI 原语·归一化唯一来源（v3.53）══════════════
+ * 规则：视图切换与排序 chips 全站只有这一份——我的库／分类页与搜索页／作者页共用同一件组件、
+ * 同一套样式、同一套记忆键。⛔ 任何页面不得自己拼一遍 seg/chips；新增页面只要 railActive 能映射，
+ * 调 viewSeg() / sortChips() 即可（R4 落地＝feature-folder `src/ui/` 里的 ViewSeg / SortChips）。
+ * 记忆键：lib*、author*、cat*（分类页与搜索页共用 cat）。 */
+function viewCtx(){return railActive==="library"?"lib":railActive==="authors"?"author":"cat";}
+function getView(){const c=viewCtx();return c==="lib"?libView:c==="author"?authorView:catView;}
+function applyView(v){
+  const c=viewCtx();
+  if(c==="lib"){libView=v;savePref("libView",v);renderLibrary();}
+  else if(c==="author"){authorView=v;savePref("authorView",v);renderAuthors();}
+  else{catView=v;savePref("catView",v);rerenderCurrent();}
+}
+function viewSeg(){
+  const cur=getView();
+  const one=(k,icon,t)=>`<button class="seg-btn ${cur===k?"on":""}" data-view="${k}" title="${t}" aria-label="${t}">
+    <svg class="ic"><use href="#${icon}"/></svg></button>`;
+  /* 顺序全站固定：平铺(▦) 在前、详细(☰) 在后——⛔ 不许某页反过来 */
+  return `<div class="seg" role="group" aria-label="显示方式">${one("grid","i-grid2","平铺")}${one("list","i-list","详细")}</div>`;
+}
+const SORT_SETS={
+  lib:[["name","名称"],["updated","最近更新"],["size","包大小"],["source","来源"],["author","作者"],["repo","仓库"]],
+  cat:()=>SORTS,   // 分类页的算位排序，函数取值——避免在 SORTS 声明前求值（TDZ）
+  author:[["name","名称 A→Z"],["plugins","插件数"],["repos","仓库数"]]
+};
+function getSort(){const c=viewCtx();return c==="lib"?libSort:c==="author"?authorSort:catSort;}
+function applySort(k){
+  const c=viewCtx();
+  if(c==="lib"){libSort=k;savePref("libSort",k);renderLibrary();}
+  else if(c==="author"){authorSort=k;savePref("authorSort",k);renderAuthors();}
+  else{catSort=k;savePref("catSort",k);rerenderCurrent();}
+}
+function sortChips(){
+  const ctx=viewCtx(),cur=getSort(),opts=SORT_SETS[ctx];
+  return (typeof opts==="function"?opts():opts)
+    .map(([k,t])=>`<button class="chip ${cur===k?"on":""}" data-sort="${k}">${t}</button>`).join("");
+}
+/* 空态＝一件（v3.53 归一化）：图标＋标题＋说明＋可选动作。各页只给参数，⛔ 不再手拼 <div class="empty">。
+   cls 用于网格内跨列（span-all）；attrs 给 data-spec 这类锚点。 */
+function emptyView(o){
+  return `<div class="empty${o.cls?" "+o.cls:""}"${o.attrs?" "+o.attrs:""}>${
+    o.icon?`<svg class="ic"><use href="#${o.icon}"/></svg>`:""}<span>${o.title}</span>${
+    o.sub?`<span class="t2">${o.sub}</span>`:""}${o.action||""}</div>`;
+}
+function gotoCategory(slug,filter){ // 分类页导航统一入口：过滤随跳转生成、一次性——rail 重入＝全量（拍板）
+  filterOpen=false;
+  if(slug)NEW_CONTENT.cats.delete(slug); // 进入即已读（发现型角标）
+  railActive=slug||"home";catFilter=filter||null;lastAuthor=null;renderRail();
+  railActive==="home"?renderHome():renderCategory(railActive);}
+function renderCategory(slug){
+  beginView("cat:"+slug);
+  searchQ="";lastAuthor=null; // 离开搜索/作者态
+  const list=byCat(slug),chips=chipsOf(slug);
+  const filt=catFilter?list.filter(e=>e.author===catFilter.name):list; // 预过滤（拍板：authorId 聚合——蓝图按作者名演示，真机按 authorId）
+  const shown=applyFilters(filt); // 用户筛选（v3.36）
+  const untagged=shown.filter(e=>!(e.tags||[]).length).length; // 只声明大类、没声明小类的插件
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head()}
+    <div class="cat-head" data-spec="04§七分类页">
+      <div class="cat-title">${LABEL[slug]}</div>
+      <div class="cat-sub">${shown.length}${catFilter?`（全分类 ${list.length}）`:""} 个插件 · ${CAT_DESC[slug]||""} · 官方与第三方统一混排（单一统一池）</div>
+    </div>
+    ${list.length===0?`
+      ${emptyView({icon:"i-dots", title:`「${LABEL[slug]}」暂无插件`, sub:`空抽屉在 rail 灰显；点入显示诚实空态——不伪装、不报错`, attrs:'data-spec="04§五空分类"'})}`
+      :`${catFilter?`<div class="cat-toolbar filterbar">
+        <span class="tb-label">已过滤</span>
+        <span class="filter-chip">${catFilter.name} · ${filt.length}
+          <button class="fx" data-filter-clear aria-label="清除过滤">✕</button></span>
+        <button class="chip" data-filter-all>显示全部</button></div>`:""}
+      <div class="cat-toolbar">
+        <span class="tb-label">排序</span>
+        ${sortChips()}
+        ${filterMenu()}
+        ${viewSeg()}</div>
+      ${(chips.length||untagged)?`<div class="chiprow">
+          ${chips.map(c=>`<button class="chip" data-chip="${c}">${tagLabel(c)}</button>`).join("")}
+          ${untagged?`<button class="chip" data-chip="__none"
+            title="只声明了大类、没有声明 tags 的插件——不强行归类">未标注小类 · ${untagged}</button>`:""}
+          <span class="chip-hint">小类＝标签满 3 个才出现</span></div>`:""}
+      ${filt.length===0?`${emptyView({icon:"i-dots", title:`${catFilter.name} 在「${LABEL[slug]}」下暂无插件`, sub:`点上方「显示全部」查看该分类全部插件——逃生门常驻不锁`})}`
+      :shown.length===0?`${emptyView({icon:"i-funnel", title:`没有符合筛选条件的插件`, sub:`试着放宽筛选，或点排序旁的「筛选」清除条件`})}`
+      :`<div id="catBody" class="${catView==="list"?"rows":"grid"}">${catCards(shown)}</div>`}`}
+  </div>`;
+  bindStoreContent();
+}
+function renderSearch(q){ // 搜索页（v3.24 修复可达性）：与分类页同工具行（归一化）；键入重绘后焦点/光标保持
+  beginView("search");
+  const hits=[...CATALOG,...authorPlugins()].filter(e=> // 🔴单一统一池：搜索全源合并
+    (e.name+e.id+(e.tags||[]).join("")).toLowerCase().includes(q.toLowerCase()));
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head()}
+    <div class="cat-head" data-spec="04§七搜索页">
+      <div class="cat-title">搜索</div>
+      <div class="cat-sub">${hits.length} 个结果 · 「${q||"…"}」 · 官方与第三方统一混排（单一统一池）</div>
+    </div>
+    ${hits.length?`<div class="cat-toolbar">
+        <span class="tb-label">排序</span>
+        ${sortChips()}
+        ${filterMenu()}
+        ${viewSeg()}</div>
+      ${applyFilters(hits).length?`<div id="catBody" class="${catView==="list"?"rows":"grid"}">${catCards(applyFilters(hits))}</div>`
+        :`${emptyView({icon:"i-funnel", title:`没有符合筛选条件的插件`, sub:`试着放宽筛选条件`})}`}`
+      :`${emptyView({icon:"i-search", title:`未找到匹配插件`, sub:`试试更短的关键词，或按分类浏览`})}`}
+  </div>`;
+  const inp=document.getElementById("storeSearch"); // 整页重绘后保住输入框——键入连续（v3.24 修复失焦）
+  if(inp&&q&&document.activeElement===document.body){
+    inp.value=q;inp.focus();inp.setSelectionRange(q.length,q.length);}
+  bindStoreContent();
+}
+
+/* ══════════════ 作者主页（第三方源的门面——v3.12：多仓切换＋返回官方卡） ══════════════ */
+/* ══════════════ 完整榜单页（top 50——首页 top 6~8 的展开视图，拍板③） ══════════════ */
+function renderRankFull(){
+  beginView("rank");
+  lastAuthor=null;catFilter=null;railActive="rank";
+  const list=[...CATALOG,...authorPlugins()].sort((a,b)=>b.dl-a.dl).slice(0,50);
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head()}
+    <div class="crumb">完整榜单 · <b>热门下载 Top 50</b></div>
+    <div class="cat-note"><svg class="ic"><use href="#i-alert"/></svg>全源合并计算（官方＋已添加作者源），来源随行标注；将来接服务器换真实统计</div>
+    <div>${list.map((e,i)=>rankRow(e,i+1)).join("")}</div>
+  </div>`;
+  bindStoreContent();
+}
+
+/* ══════════════ 来源管理页（v3.31）——**展示以作者聚合、条目以仓库为单位**：
+   同 authorId 多仓并成一行（[N 仓][M 件] 醒目药丸）；行内源级操作（排序/刷新/停用/移除） ══════════════ */
+/* 声明提示（v3.34）：解析期产出的非致命告警——不静默吞掉，在来源管理页亮出来（作者自查用） */
+function authorWarnings(a){
+  const w=[];
+  a.repos.forEach(r=>{
+    const secs=r.homepage?.sections||[];
+    const hs=secs.filter(x=>x.type==="hero");
+    if(hs.length>1)w.push(`${r.name}：声明了 ${hs.length} 个大屏——只有第 1 个占据置顶首视觉，其余按声明顺序就地渲染`);
+    const known=new Set(["hero","collection","grid","rank"]);
+    secs.filter(x=>!known.has(x.type)).forEach(x=>w.push(`${r.name}：未知板块类型「${x.type}」——已跳过`));
+    secs.filter(x=>x.type==="collection"&&!r.collections.some(c=>c.id===x.collection))
+      .forEach(x=>w.push(`${r.name}：合集「${x.collection}」不存在——该板块未渲染`));
+  });
+  return w;
+}
+/* ══════════════ 作者列表页（v3.36）——来源页之外的正规入口：不必绕首页作者栏 ══════════════ */
+function renderAuthors(){
+  beginView("authors");
+  searchQ="";catFilter=null;lastAuthor=null;railActive="authors";filterOpen=false;renderRail();
+  const cnt=a=>a.repos.reduce((n,r)=>n+r.plugins.length,0);
+  const list=[...visibleAuthors()];
+  const cmp={name:(a,b)=>a.name.localeCompare(b.name,"zh"),
+    plugins:(a,b)=>cnt(b)-cnt(a),repos:(a,b)=>b.repos.length-a.repos.length}[authorSort];
+  list.sort(cmp);
+  const row=a=>`<div class="card author-row" data-author="${a.id}" tabindex="0" role="button"
+      aria-label="${a.name}——进入作者主页">
+      <span class="ar-av" style="${hueBG(a.hue)}">${a.name.slice(0,1)}</span>
+      <div class="ar-main">
+        <div class="ar-name">${a.name}<span class="badge third">GitHub</span></div>
+        <div class="ar-sub">${a.intro}</div></div>
+      <span class="ar-pill"><b>${a.repos.length}</b> 个仓库</span>
+      <span class="ar-pill"><b>${cnt(a)}</b> 个插件</span>
+      <span class="ar-go"><svg class="ic"><use href="#i-chev-r"/></svg></span>
+    </div>`;
+  const body=authorView==="grid"
+    ?`<div class="author-grid">${list.map(authorCard).join("")}</div>`
+    :`<div class="author-list">${list.map(row).join("")}</div>`;
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head("插件作者",`${list.length} 位第三方作者 · 共 ${authorPlugins().length} 个插件——点任一作者进入其店铺`)}
+    <div class="cat-toolbar">
+      <span class="tb-label">排序</span>
+      ${sortChips()}
+      ${viewSeg()}
+    </div>
+    ${list.length?body:`${emptyView({title:`还没有作者源`, sub:`到「来源」添加市场源后，作者会出现在这里`})}`}
+  </div>`;
+  bindStoreContent();
+}
+/* ══════════════ 我的库（v3.41）——已安装插件的管理面（状态管理，不是目录浏览） ══════════════ */
+let libSort=PREFS.libSort||"name",libView=PREFS.libView||"list",libStatus="all",libSource="all",libAuthor="all",libRepo="all",
+    libSearch="",libSel=new Set(),libEdit=false;
+/* 角标体系（v3.49）：任务型＝更新（库项数字，不可手清，更新完即消）／发现型＝新内容（分类·作者小点，可已读） */
+const NEW_CONTENT={cats:new Set(["development","hardware"]),authors:new Set(["geek"])};
+const libIsLocal=e=>e.source==="local"||e.author==="本地";
+const libIsOfficial=e=>e.author==="官方";
+const libSrc=e=>libIsLocal(e)?"本地":libIsOfficial(e)?"官方":"社区";
+const libSize=e=>{const m=parseFloat(e.size||"0");return isNaN(m)?0:m;};
+function libAll(){
+  return [...CATALOG,...authorPlugins()] // authorPlugins 已含本地插件，⛔ 不再单加 LOCAL_ITEMS（防重复）
+    .filter(e=>{const s=stateOf(e);return s==="installed"||s==="disabled";});
+}
+function libList(){
+  let list=libAll();
+  const q=libSearch.trim().toLowerCase();
+  if(q)list=list.filter(e=>(e.name+e.id+(e.author||"")).toLowerCase().includes(q));
+  if(libStatus==="upd")list=list.filter(e=>!!e.update);
+  if(libStatus==="off")list=list.filter(e=>stateOf(e)==="disabled");
+  if(libStatus==="core")list=list.filter(e=>!!e.core);
+  if(libSource==="official")list=list.filter(libIsOfficial);
+  if(libSource==="third")list=list.filter(e=>!libIsOfficial(e)&&!libIsLocal(e));
+  if(libSource==="local")list=list.filter(libIsLocal);
+  if(libAuthor!=="all")list=list.filter(e=>(e.author||"官方")===libAuthor);
+  if(libRepo!=="all")list=list.filter(e=>repoOf(e.id)===libRepo);
+  const byName=(a,b)=>a.name.localeCompare(b.name,"zh");
+  const cmp={name:byName,
+    updated:(a,b)=>((b.versions?.[0]?.d)||"").localeCompare((a.versions?.[0]?.d)||""),
+    size:(a,b)=>libSize(b)-libSize(a),
+    source:(a,b)=>libSrc(a).localeCompare(libSrc(b),"zh")||byName(a,b),
+    author:(a,b)=>(a.author||"官方").localeCompare(b.author||"官方","zh")||byName(a,b),
+    repo:(a,b)=>repoOf(a.id).localeCompare(repoOf(b.id),"zh")||byName(a,b)}[libSort];
+  list=[...list].sort(cmp);
+  /* 分组视图（按作者/仓库）——与分类页同一套组头语义 */
+  if(libSort==="author"||libSort==="repo"){
+    const key=e=>libSort==="author"?(e.author||"官方"):repoOf(e.id);
+    const g={};list.forEach(e=>(g[key(e)]??=[]).push(e));
+    const out=[];
+    Object.keys(g).sort((a,b)=>a.localeCompare(b,"zh")).forEach(k=>{
+      out.push({__g:k,n:g[k].length});
+      g[k].sort(byName).forEach(e=>out.push(e));
+    });
+    return out;
+  }
+  if(libStatus==="all"){ // 可更新置顶（拍板）
+    list=[...list.filter(e=>e.update),...list.filter(e=>!e.update)];
+  }
+  return list;
+}
+function libBadge(e){
+  const s=stateOf(e);
+  const lic=licBadge(e); // 付费许可态优先（价格/临期/过期/订阅——v3.64b 同源；样式全局 .badge.* 直接复用）
+  if(lic)return lic;
+  if(e.core)return `<span class="lib-badge core">内置</span>`;
+  if(s==="disabled")return `<span class="lib-badge off">已停用</span>`;
+  if(s==="installing")return `<span class="lib-badge upd">更新中</span>`;
+  if(e.update)return `<span class="lib-badge upd">可更新</span>`;
+  return `<span class="lib-badge on">已安装</span>`;
+}
+function libRow(e){
+  const s=stateOf(e);
+  return `<div class="lib-row ${s==="disabled"?"disabled":""}" data-entry="${e.id}"
+    data-open="${e.id}" role="button" tabindex="0" aria-label="${e.name}——查看详情">
+    <input type="checkbox" class="lib-check" data-lib-sel="${e.id}"
+      ${libSel.has(e.id)?"checked":""} aria-label="选择 ${e.name}">
+    ${tile(e)}
+    <div class="lib-main">
+      <div class="lib-name">${e.name}<span class="lib-ver">v${e.ver}</span></div>
+      <div class="lib-sub2">${libSrc(e)} · ${LABEL[e.cat]||e.cat||"其他"}</div>
+    </div>
+    <span class="lib-size">${e.size||"—"}</span>
+    <span class="lib-state">${libBadge(e)}</span>
+    <span class="lib-act"><span class="js-act flat">${actionBtn(e)}</span></span>
+    <button class="icon-btn" data-lib-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button>
+    <div class="more-menu hidden" data-menu="${e.id}">
+      <button class="mi" data-open="${e.id}">查看详情</button>
+      ${s==="disabled"?`<button class="mi" data-act="enable">启用</button>`
+        :`<button class="mi" data-act="disable">停用</button>`}
+      <div class="mi-sep"></div>
+      <button class="mi danger" data-act="uninstall" ${e.core?"disabled":""}>卸载…</button>
+    </div>
+  </div>`;
+}
+function renderLibrary(){
+  beginView("library");
+  searchQ="";catFilter=null;lastAuthor=null;railActive="library";filterOpen=false;renderRail();
+  const all=libAll(),list=libList();
+  const flat=list.filter(x=>!x.__g);
+  const allSel=flat.length>0&&flat.every(e=>libSel.has(e.id));
+  const upd=all.filter(e=>e.update).length,off=all.filter(e=>stateOf(e)==="disabled").length;
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head("我的库","已安装的插件——更新、停用与卸载都在这里")}
+    <div class="lib-head">
+      <div class="lib-sub" style="margin:0">${all.length} 个已安装 · ${upd} 个可更新 · ${off} 个已停用</div>
+      <div class="acts">
+        <button class="btn secondary" data-check-updates>检查更新${upd?` · ${upd}`:""}</button>
+        <button class="btn primary" data-lib-update-all ${upd?"":"disabled"}>全部更新</button>
+        <button class="btn secondary" data-lib-edit>${libEdit?"完成":"编辑"}</button>
+        ${(NEW_CONTENT.cats.size||NEW_CONTENT.authors.size)
+          ?`<button class="btn secondary" data-lib-readall title="清除分类/作者上的新内容角标">全部已读</button>`:""}
+      </div>
+    </div>
+    <div class="lib-toolbar">
+      <div class="lib-search"><svg class="ic"><use href="#i-search"/></svg>
+        <input id="libSearch" placeholder="在库中搜索…" value="${libSearch.replace(/"/g,"&quot;")}" aria-label="在库中搜索"></div>
+      <select class="lib-select" data-lib-status aria-label="状态筛选">
+        <option value="all" ${libStatus==="all"?"selected":""}>全部状态</option>
+        <option value="upd" ${libStatus==="upd"?"selected":""}>可更新</option>
+        <option value="off" ${libStatus==="off"?"selected":""}>已停用</option>
+        <option value="core" ${libStatus==="core"?"selected":""}>内置</option>
+      </select>
+      <select class="lib-select" data-lib-source aria-label="来源筛选">
+        <option value="all" ${libSource==="all"?"selected":""}>全部来源</option>
+        <option value="official" ${libSource==="official"?"selected":""}>官方</option>
+        <option value="third" ${libSource==="third"?"selected":""}>社区</option>
+        <option value="local" ${libSource==="local"?"selected":""}>本地插件</option>
+      </select>
+      <select class="lib-select" data-lib-author aria-label="作者筛选">
+        <option value="all" ${libAuthor==="all"?"selected":""}>全部作者</option>
+        ${[...new Set(libAll().map(e=>e.author||"官方"))].sort((a,b)=>a.localeCompare(b,"zh"))
+          .map(a=>`<option value="${a}" ${libAuthor===a?"selected":""}>${a}</option>`).join("")}
+      </select>
+      <select class="lib-select" data-lib-repo aria-label="仓库筛选">
+        <option value="all" ${libRepo==="all"?"selected":""}>全部仓库</option>
+        ${[...new Set(libAll().map(e=>repoOf(e.id)))].sort((a,b)=>a.localeCompare(b,"zh"))
+          .map(r=>`<option value="${r}" ${libRepo===r?"selected":""}>${r}</option>`).join("")}
+      </select>
+      <span class="tb-label">排序</span>
+      ${sortChips()}
+      ${viewSeg()}
+    </div>
+    ${all.length===0?`${emptyView({icon:"i-folder", title:`你的库还是空的`, sub:`去首页或分类页安装插件，它们会出现在这里`, action:`<button class="btn primary" data-goto-home class="mt10">去逛逛</button>`})}`
+    :list.length===0?`${emptyView({icon:"i-funnel", title:`没有符合条件的插件`, sub:`试试放宽筛选或清空搜索`})}`
+    :`<div class="${libView==="grid"?"grid":"lib-list"} ${libEdit?"editing":""}">
+        ${list.map(x=>x.__g
+          ?`<div class="lib-group-h"><span class="t">${x.__g}</span><span class="n">${x.n} 个插件</span></div>`
+          :libView==="grid"
+            ?`<div class="lib-grid-wrap ${libEdit?"editing":""}">
+                <input type="checkbox" class="lib-check" data-lib-sel="${x.id}"
+                  ${libSel.has(x.id)?"checked":""} aria-label="选择 ${x.name}">
+                ${cardGrid(x)}</div>`
+            :libRow(x)).join("")}
+      </div>`}
+    ${libEdit&&list.length?`<div class="lib-bulk">
+        <button class="sbtn" data-lib-all>${allSel?"取消全选":"全选"}</button>
+        <span>已选 ${libSel.size} 项</span><span class="grow"></span>
+        <button class="btn secondary" data-lib-bulk="disable">批量停用</button>
+        <button class="btn danger" data-lib-bulk="uninstall">批量卸载</button>
+        <button class="btn secondary" data-lib-edit>完成</button>
+      </div>`:""}
+    <div class="lib-sec">
+      <div class="lib-sec-h"><span class="t">已购未安装</span><span class="n">已验许可 · 未装包</span></div>
+      ${(()=>{const rows=[...CATALOG,...authorPlugins()].filter(e=>isPaid(e)&&entOf(e)&&stateOf(e)!=="installed"&&stateOf(e)!=="disabled");
+        return rows.length?rows.map(e=>libRow(e)).join("")
+          :`<div class="lib-sec-empty">还没有已购未安装的插件<br>
+        <span style="font-size:11px">买了许可还没装包的插件会出现在这里——一键安装</span></div>`;})()}
+    </div>
+  </div>`;
+  bindStoreContent();
+}
+function libUpdateAll(){
+  const ups=libAll().filter(e=>e.update&&stateOf(e)!=="installing");
+  if(!ups.length){toast("所有插件已是最新");return;}
+  ups.forEach(e=>{DEMO_STATE[e.id]="installing";});
+  renderLibrary();toast(`开始更新 ${ups.length} 个插件…`);
+  setTimeout(()=>{
+    ups.forEach(e=>{DEMO_STATE[e.id]="installed";delete e.update;});
+    renderLibrary();toast(`已更新 ${ups.length} 个插件`);
+  },1500);
+}
+function libBulk(kind){
+  const ids=[...libSel];
+  if(kind==="clear"){libSel.clear();renderLibrary();return;}
+  if(!ids.length)return;
+  if(kind==="disable"){
+    ids.forEach(id=>{const e=entryById(id);if(e&&!e.core)DEMO_STATE[id]="disabled";});
+    toast(`已停用 ${ids.length} 个插件`);
+  }else{
+    ids.forEach(id=>{const e=entryById(id);if(e&&!e.core)DEMO_STATE[id]="none";});
+    toast(`已卸载 ${ids.length} 个插件`);
+  }
+  libSel.clear();renderLibrary();
+}
+function renderSources(){
+  beginView("sources");
+  searchQ="";catFilter=null;lastAuthor=null;railActive="sources";renderRail();
+  const enabledCount=SOURCES.filter(s=>s.enabled&&s.kind!=="local").length;
+  const ids=[...new Set(SOURCES.filter(s=>s.kind!=="local").map(s=>s.authorId))];
+  const groupFor=id=>{
+    const a=AUTHORS.find(x=>x.id===id)||{name:id,hue:"#4A5568",repos:[]};
+    const srcs=SOURCES.map((s,i)=>({s,i})).filter(x=>x.s.authorId===id);
+    const onIds=srcs.filter(x=>x.s.enabled).map(x=>x.s.repoId);
+    const n=a.repos.filter(r=>onIds.includes(r.id)).reduce((t,r)=>t+r.plugins.length,0);
+    const cl=collapsedGroups.has(id); // 折叠＝只留作者头（v3.36）
+    return `<div class="src-group ${cl?"collapsed":""}">
+      <div class="src-ghead">
+        <button class="src-collapse" data-src-collapse="${id}" title="${cl?"展开":"折叠"}"
+          aria-label="${cl?"展开该作者的源":"折叠该作者的源"}">
+          <svg class="ic ic13"><use href="#i-chev-r"/></svg></button>
+        <span class="src-ico" style="${hueBG(a.hue)}">${(a.name||"?").slice(0,1)}</span>
+        <div class="src-main">
+          <div class="src-name" data-src-enter="${id}">${a.name}
+            <span class="src-enter">进入该作者主页<svg class="ic"><use href="#i-chev-r"/></svg></span></div>
+          <div class="src-sub">${srcs.length} 个市场源 · 同一作者多个仓库自动合并</div></div>
+        ${authorWarnings(a).length?`<span class="src-warn" title="${authorWarnings(a).join("&#10;")}">
+          ${authorWarnings(a).length} 条声明提示</span>`:""}
+        <span class="src-pill"><b>${onIds.length}</b> 个仓库</span>
+        <span class="src-pill"><b>${n}</b> 个插件</span>
+      </div>
+      ${srcs.map(({s,i})=>{const pos=srcs.findIndex(x=>x.i===i);return `<div class="src-line ${s.enabled?"":"off"}">
+        <span class="src-repo">${(a.repos.find(r=>r.id===s.repoId)||{}).name||s.repoId}</span>
+        <span class="src-url" title="${s.url}">${s.url}</span>
+        <span class="src-meta">${s.status==="error"?'<b class="err">加载失败 · 用缓存</b>':`目录拉取 ${s.fetched||"未拉取"}`}</span>
+        <div class="src-acts">
+          <button class="icon-btn" data-src-up="${i}" title="上移（限同作者内）" ${pos===0?"disabled":""}>↑</button>
+          <button class="icon-btn" data-src-down="${i}" title="下移（限同作者内）" ${pos===srcs.length-1?"disabled":""}>↓</button>
+          <button class="icon-btn" data-src-refresh="${i}" title="立即重拉该目录"><svg class="ic"><use href="#i-refresh"/></svg></button>
+          <button class="sbtn" data-src-toggle="${i}"
+            title="源级停用：不再拉取、插件退出商店；已安装的插件照常运行，不受影响">${s.enabled?"停用":"启用"}</button>
+          <button class="icon-btn danger" data-src-remove="${i}"
+            title="移除该源与缓存（作者信息一并清理）；已装插件保留、标「来源已移除」"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div></div>`;}).join("")}
+    </div>`;};
+  const groups=ids.map(groupFor).join("");
+  /* 本地组（v3.36）：与网络源并列，无作者身份、不进作者卡 */
+  const localSrcs=SOURCES.map((s,i)=>({s,i})).filter(x=>x.s.kind==="local");
+  const localGroup=localSrcs.length?`<div class="src-group ${collapsedGroups.has("__local")?"collapsed":""}">
+    <div class="src-ghead">
+      <button class="src-collapse" data-src-collapse="__local"
+        title="${collapsedGroups.has("__local")?"展开":"折叠"}" aria-label="折叠本地插件">
+        <svg class="ic ic13"><use href="#i-chev-r"/></svg></button>
+      <span class="src-ico ico-muted">
+        <svg class="ic ic18"><use href="#i-folder"/></svg></span>
+      <div class="src-main">
+        <div class="src-name">本地安装</div>
+        <div class="src-sub">从本机文件夹/离线包复制安装的插件——原路径只作溯源，不随外部改动</div></div>
+      <span class="src-pill"><b>${localSrcs.filter(x=>x.s.enabled).length}</b> 个插件</span>
+    </div>
+    ${localSrcs.map(({s,i})=>{const it=LOCAL_ITEMS.find(x=>x.id===s.repoId)||{name:s.repoId};
+      return `<div class="src-line ${s.enabled?"":"off"}">
+        <span class="src-repo">${it.name}</span>
+        <span class="src-url" title="${s.path}">${s.path}</span>
+        <span class="src-meta">${s.enabled?"已安装 · 复制自":"已安装 · 已停用"}</span>
+        <div class="src-acts">
+          <button class="sbtn" data-src-toggle="${i}"
+            title="插件级停用：不加载、退出商店；再次启用即恢复">${s.enabled?"停用":"启用"}</button>
+          <button class="icon-btn danger" data-src-remove="${i}"
+            title="卸载该插件（删除本机安装副本；原文件夹不受影响）"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div></div>`;}).join("")}
+  </div>`:"";
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head("市场源",`${ids.length} 位作者 · ${enabledCount} 个作者源 · ${localSrcs.length} 个本地插件 · 共 ${authorPlugins().length} 个插件（官方源恒内置）`)}
+    <div class="src-topbar">
+      <button class="btn primary src-add-big" data-add-source>
+        <svg class="ic"><use href="#i-link"/></svg>添加网络源</button>
+      <button class="btn secondary src-add-big" data-add-local>
+        <svg class="ic"><use href="#i-folder"/></svg>添加本地插件</button>
+      <span class="src-topnote">网络源＝仓库地址（同作者多仓自动合并）；本地＝直接选本机文件夹，不走网络</span>
+    </div>
+    <div class="src-list">
+      <div class="src-row locked">
+        <span class="src-ico" style="background:linear-gradient(135deg,#0E639C,#0E639CC8)">
+          <svg class="ic ic18"><use href="#i-bag"/></svg></span>
+        <div class="src-main">
+          <div class="src-name">官方 Plugin Store <span class="badge official">官方</span>
+            <span class="badge core">内置</span></div>
+          <div class="src-url">raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json</div></div>
+        <span class="src-meta">${CATALOG.length} 个插件 · 恒内置</span>
+        <div class="src-acts"><button class="sbtn" disabled title="官方源不可移除、不参与排序">不可操作</button></div>
+      </div>
+      ${groups}${localGroup}
+      ${(!groups&&!localGroup)?`${emptyView({title:`还没有作者源`, sub:`点上方「添加网络源」或「添加本地插件」`})}`:""}
+    </div>
+    <div class="src-note">排序影响：首页作者卡排列 ＋ 非 GitHub 作者的身份兜底（09 §二）。<br>
+      停用＝源级（不拉取/不进商店，<b>已装插件照常运行</b>）；移除＝删源与缓存（<b>已装插件保留</b>，可勾选一并卸载）。</div>
+  </div>`;
+  bindStoreContent();
+}
+function handleSrcAction(btn){
+  const d=btn.dataset;
+  const i=+(d.srcUp??d.srcDown??d.srcRefresh??d.srcToggle??d.srcRemove);
+  const cur=SOURCES[i];if(!cur)return;
+  const sameAuthor=id=>SOURCES[id].authorId===cur.authorId;
+  if(d.srcUp!==undefined){
+    let j=-1;for(let k=i-1;k>=0;k--)if(sameAuthor(k)){j=k;break;}
+    if(j>=0)[SOURCES[j],SOURCES[i]]=[SOURCES[i],SOURCES[j]];
+  } else if(d.srcDown!==undefined){
+    let j=-1;for(let k=i+1;k<SOURCES.length;k++)if(sameAuthor(k)){j=k;break;}
+    if(j>=0)[SOURCES[j],SOURCES[i]]=[SOURCES[i],SOURCES[j]];
+  } else if(d.srcRefresh!==undefined){
+    cur.status="ok";cur.fetched="刚刚";toast("已重拉目录");
+  } else if(d.srcToggle!==undefined){
+    cur.enabled=!cur.enabled;
+    toast(cur.enabled?"已启用——插件回到商店":"已停用——插件退出商店；已安装的照常运行");
+  } else if(d.srcRemove!==undefined){askRemoveSource(i);return;}
+  renderRail();renderSources();
+}
+/* 移除＝二次确认（默认**不**动已装插件；要卸必须显式勾选） */
+function askRemoveSource(i){
+  const s=SOURCES[i];
+  const isLocal=s.kind==="local";
+  const a=isLocal?null:AUTHORS.find(x=>x.id===s.authorId);
+  const repo=a?.repos.find(r=>r.id===s.repoId);
+  const it=isLocal?LOCAL_ITEMS.find(x=>x.id===s.repoId):null;
+  const inst=repo?repo.plugins.filter(p=>stateOf(p)==="installed"):[];
+  pendingRemove=i;
+  document.getElementById("cfmBody").innerHTML=
+    `将移除${isLocal?"本地插件":"源"} <b>${isLocal?(it?it.name:s.repoId):(a?a.name+" · ":"")+(repo?repo.name:s.repoId)}</b> 及其${isLocal?"记录":"缓存"}。<br>
+     ${inst.length?`该源有 <b>${inst.length}</b> 个已安装插件——已装插件默认保留（可更新性会失去）。`:"该源暂无已安装插件。"}
+     ${inst.length?`<label class="cfm-check"><input type="checkbox" id="cfmUninstall">
+       同时卸载这 ${inst.length} 个已装插件（不可撤销）</label>`:""}`;
+  modalOpen("confirmModal");
+  setTimeout(()=>document.getElementById("cfmCancel").focus(),30);
+}
+function doRemoveSource(){
+  const i=pendingRemove;if(i==null)return;
+  const s=SOURCES[i];
+  const un=document.getElementById("cfmUninstall")?.checked;
+  if(un){const a=AUTHORS.find(x=>x.id===s.authorId),repo=a?.repos.find(r=>r.id===s.repoId);
+    repo?.plugins.forEach(p=>{if(stateOf(p)==="installed")DEMO_STATE[p.id]="none";});}
+  SOURCES.splice(i,1);
+  if(s.kind==="local"){ // 本地条目：连插件条目一起清（统一池同步）
+    const k=LOCAL_ITEMS.findIndex(x=>x.id===s.repoId);if(k>=0)LOCAL_ITEMS.splice(k,1);
+  } else if(!SOURCES.some(x=>x.authorId===s.authorId)){ // 该作者已无任何源 → 作者信息一并清理
+    const k=AUTHORS.findIndex(x=>x.id===s.authorId);if(k>=0)AUTHORS.splice(k,1);}
+  pendingRemove=null;
+  document.getElementById("confirmModal").classList.add("hidden");
+  toast(un?"已移除源，并卸载其已装插件":"已移除源——已装插件保留");
+  renderRail();renderSources();
+}
+/* ══════════════ 加源弹窗（v3.31）：先拉后入——拉不到不落盘；校验复用侧栏同款规则 ══════════════ */
+let srcPending=null,pendingRemove=null,srcMode="remote";
+const OFFICIAL_RAW=/encaron\/linkdesk-marketplace/i;
+function setSrcMode(m){
+  srcMode=m;srcPending=null;
+  document.querySelectorAll("[data-srcmode]").forEach(b=>b.classList.toggle("on",b.dataset.srcmode===m));
+  document.getElementById("srcSub").textContent=m==="remote"
+    ?"粘贴 GitHub 仓库主页，或 marketplace.json 直链——官方源已内置，无需添加。"
+    :"选择一个插件文件夹（含 plugin.json）或 .linkdesk-plugin 离线包——确认后复制安装到本机插件目录，原路径只作溯源。";
+  const i=document.getElementById("srcUrl");
+  i.value="";i.placeholder=m==="remote"?"https://github.com/owner/repo":"E:\\tools\\my-plugin";
+  document.getElementById("srcHint").textContent=m==="remote"
+    ?"支持 github.com/owner/repo 或 raw.githubusercontent.com/…/marketplace.json"
+    :"只收单个插件（文件夹内有 plugin.json）或 .linkdesk-plugin 包；⛔ 多插件目录（marketplace.json）暂不支持";
+  const bl=document.getElementById("srcSubmit");
+  if(bl&&bl.dataset.stage==="check")bl.textContent=m==="local"?"选择文件夹":"添加";
+  document.getElementById("srcBrowse").classList.toggle("hidden",m!=="local");
+  document.getElementById("srcPreview").classList.add("hidden");
+  const b=document.getElementById("srcSubmit");b.dataset.stage="check";
+  b.textContent=m==="local"?"选择文件夹":"添加";b.disabled=true;
+  const msg=document.getElementById("srcMsg");msg.className="m-msg";msg.textContent="";
+}
+function srcCheck(v){
+  const s=v.trim();
+  if(!s)return {ok:false,msg:"",cls:""};
+  if(srcMode==="local"){
+    if(!/[\\/]/.test(s)||s.length<3)
+      return {ok:false,msg:"填完整文件夹路径，例如 E:\\tools\\my-plugin",cls:"bad"};
+    if(SOURCES.some(x=>x.kind==="local"&&x.path===s))
+      return {ok:false,msg:"该文件夹已在列表中",cls:"bad"};
+    return {ok:true,msg:"路径有效——将读取其中的 plugin.json / marketplace.json",cls:"ok"};
+  }
+  const gh=/^https?:\/\/(?:www\.)?github\.com\/[^/\s?#]+\/[^/\s?#]+/i.test(s);
+  const raw=/^https:\/\/raw\.githubusercontent\.com\/[^/\s]+\/[^/\s]+\/.+marketplace\.json$/i.test(s);
+  if(!gh&&!raw)return {ok:false,msg:"只认 GitHub 仓库主页（github.com/owner/repo）或 marketplace.json 直链",cls:"bad"};
+  if(OFFICIAL_RAW.test(s))return {ok:false,msg:"官方源恒内置，无需添加",cls:"bad"};
+  if(SOURCES.some(x=>x.url===s))return {ok:false,msg:"该源已在列表中",cls:"bad"};
+  return {ok:true,msg:"链接有效——可以拉取目录",cls:"ok"};
+}
+let focusReturn=null; // 弹窗关闭后焦点归还（U3：键盘用户不能被丢回 body）
+function modalOpen(id){
+  focusReturn=document.activeElement;
+  document.getElementById(id).classList.remove("hidden");
+}
+function modalClose(id){
+  document.getElementById(id).classList.add("hidden");
+  if(focusReturn&&document.contains(focusReturn)){focusReturn.focus({preventScroll:true});}
+  focusReturn=null;
+}
+function trapFocus(modal){
+  modal.addEventListener("keydown",ev=>{
+    if(ev.key!=="Tab")return;
+    const f=[...modal.querySelectorAll('button:not([disabled]),input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])')]
+      .filter(el=>el.offsetParent!==null);
+    if(!f.length)return;
+    const first=f[0],last=f[f.length-1];
+    if(ev.shiftKey&&document.activeElement===first){last.focus();ev.preventDefault();}
+    else if(!ev.shiftKey&&document.activeElement===last){first.focus();ev.preventDefault();}
+  });
+}
+trapFocus(document.getElementById("addSourceModal"));
+trapFocus(document.getElementById("confirmModal"));
+trapFocus(document.getElementById("licenseModal"));
+trapFocus(document.getElementById("buyPage"));
+/* 许可弹窗（v3.64）——真机：验证=壳 licenses.verify；本稿按演示规则模拟。⛔ 状态变化不换节点 */
+let licTarget=null;
+function openLicenseModal(id){
+  licTarget=id;const e=entryById(id);if(!e)return;
+  document.getElementById("licTitle").textContent=`输入许可密钥 · ${e.name}`;
+  const lic=licOf(e);
+  document.getElementById("licSub").textContent=lic&&lic.expDays<0
+    ?"当前许可已过期——输入作者续费后发你的新密钥"
+    :"买断制 · 一次验证，本机永久有效（重装软件后重新粘贴即可——密钥在作者订单页可找回）";
+  document.getElementById("licKey").value="";
+  document.getElementById("licMsg").className="m-msg";document.getElementById("licMsg").textContent="";
+  document.getElementById("licOk").disabled=true;
+  modalOpen("licenseModal");
+  setTimeout(()=>document.getElementById("licKey").focus(),30);
+}
+function licCheck(v){ // 真机=壳 licenses.verify(key) 返回 {ok,reason,expDays?}
+  if(v.includes("VALID"))return {ok:true,expDays:20};
+  if(v.includes("EXPIRED"))return {ok:true,expDays:-3};
+  if(v.includes("WRONG"))return {ok:false,msg:"签名无效——密钥与作者公钥不匹配"};
+  return {ok:false,msg:"无法识别的密钥格式"};
+}
+function licInput(){
+  const v=document.getElementById("licKey").value.trim(),msg=document.getElementById("licMsg"),ok=document.getElementById("licOk");
+  if(!v){msg.className="m-msg";msg.textContent="";ok.disabled=true;return;}
+  const r=licCheck(v);
+  if(!r.ok){msg.className="m-msg bad";msg.textContent=r.msg;ok.disabled=true;return;}
+  msg.className="m-msg ok";
+  msg.textContent=r.expDays<0?"密钥有效但已过期——验证通过将进入「续费」态（演示）":"签名有效 ✓ 权益将写入本机（真机 = 壳 licenses.verify 通过）";
+  ok.disabled=false;
+}
+function licSubmit(){
+  const e=entryById(licTarget);if(!e)return;
+  const r=licCheck(document.getElementById("licKey").value.trim());
+  if(!r.ok)return;
+  LIC[e.id]={expDays:r.expDays};saveLic();
+  modalClose("licenseModal");
+  refreshEntry(e.id);
+  toast(r.expDays<0?"许可已导入（已过期态演示）——点「续费」去买新密钥":"许可已验证 · 解锁安装");
+}
+document.getElementById("licKey").addEventListener("input",licInput);
+document.getElementById("licOk").addEventListener("click",licSubmit);
+document.getElementById("licCancel").addEventListener("click",()=>modalClose("licenseModal"));
+document.getElementById("licenseModal").addEventListener("click",ev=>{
+  if(ev.target.id==="licenseModal")modalClose("licenseModal");});
+document.getElementById("licFpCopy").addEventListener("click",()=>{
+  navigator.clipboard&&navigator.clipboard.writeText(document.getElementById("licFp").textContent);
+  toast("机器指纹已复制——购买时发给作者即可绑定本机");});
+/* 模拟购买页（v3.64b）：演示"跳出去→付款→拿密钥→回来输入"的完整闭环；真机=openExternal 离开应用 */
+let buyTarget=null;
+function openBuyPage(e,renew){
+  buyTarget=e.id;
+  document.getElementById("buyUrl").textContent=e.pricing.licenseUrl.replace("https://","");
+  document.getElementById("buyName").textContent=e.name+(renew?" · 续费":"");
+  document.getElementById("buyPrice").textContent=e.pricing.currency+e.pricing.price;
+  document.getElementById("buyDesc").textContent=renew
+    ?"续费后作者会签发新密钥（有效期顺延）——复制后回 LinkDesk 输入。"
+    :"作者自营销售页——付款由作者渠道完成，LinkDesk 不经手钱。";
+  document.getElementById("buyStep1").classList.toggle("hidden",renew); // 续费直接给新密钥（演示）
+  document.getElementById("buyStep2").classList.toggle("hidden",!renew);
+  modalOpen("buyPage");
+}
+document.getElementById("buyPay").addEventListener("click",()=>{
+  document.getElementById("buyStep1").classList.add("hidden");
+  document.getElementById("buyStep2").classList.remove("hidden");
+});
+document.getElementById("buyCopy").addEventListener("click",()=>{
+  navigator.clipboard&&navigator.clipboard.writeText(document.getElementById("buyKey").textContent);
+  toast("密钥已复制——返回 LinkDesk → 详情页「我有密钥」粘贴");});
+document.getElementById("buyBack").addEventListener("click",()=>modalClose("buyPage"));
+document.getElementById("buyPage").addEventListener("click",ev=>{
+  if(ev.target.id==="buyPage")modalClose("buyPage");});
+function openAddSource(mode="remote"){
+  modalOpen("addSourceModal");
+  srcPending=null;setSrcMode(mode);
+  const i=document.getElementById("srcUrl");setTimeout(()=>i.focus(),30);
+}
+function closeAddSource(){modalClose("addSourceModal");}
+function srcChanged(){
+  const v=document.getElementById("srcUrl").value,chk=srcCheck(v);
+  const msg=document.getElementById("srcMsg");msg.className="m-msg "+(chk.cls||"");msg.textContent=chk.msg;
+  document.getElementById("srcPreview").classList.add("hidden");
+  const b=document.getElementById("srcSubmit");b.dataset.stage="check";b.textContent="添加";b.disabled=!chk.ok;
+}
+function srcSubmit(){
+  const b=document.getElementById("srcSubmit");
+  if(b.dataset.stage==="confirm"){ // 第二步：确认入册
+    if(!srcPending)return;
+    if(srcMode==="local"){ // 本地：直接进池（无作者身份）
+      const {path,item}=srcPending;
+      LOCAL_ITEMS.push(item);
+      SOURCES.push({kind:"local",path,authorId:"__local",repoId:item.id,
+        enabled:true,status:"ok",fetched:"本地"});
+      closeAddSource();railActive="sources";renderRail();renderSources();
+      toast(`已添加本地插件 · ${item.name}`);
+      return;
+    }
+    const {url,owner,repo,existing}=srcPending; // 网络：同作者＝并入其仓，店铺数 +1
+    if(existing)existing.repos.push(repo);
+    else AUTHORS.push({id:"src-"+owner.toLowerCase(),name:owner,
+      storeTitle:`${owner} 的 Plugin Store`,github:owner,hue:repo.plugins[0].hue,icon:"i-blocks",
+      desc:"新添加的第三方源",intro:`来自 ${url} 的市场源——目录已拉取，身份按 GitHub 识别。`,
+      repos:[repo]});
+    const aid=existing?existing.id:"src-"+owner.toLowerCase();
+    SOURCES.push({url,authorId:aid,repoId:repo.id,enabled:true,status:"ok",fetched:"刚刚"});
+    closeAddSource();railActive="home";renderRail();renderHome();
+    toast(existing?`已并入 ${existing.name}——现有 ${existing.repos.length} 个仓库`
+                  :`已添加 · ${owner}——作者卡已出现在首页`);
+    return;
+  }
+  const v=document.getElementById("srcUrl").value.trim(),chk=srcCheck(v);
+  if(!chk.ok)return;
+  const msg=document.getElementById("srcMsg");
+  if(srcMode==="local"){ // 本地：不做网络拉取，直接出预览
+    const name=v.split(/[\\/]/).filter(Boolean).pop()||"本地插件";
+    const item=makeLocalItem(name,v);
+    srcPending={path:v,item};
+    document.getElementById("srcPreview").innerHTML=`
+      <span class="mp-av ico-muted">
+        <svg class="ic" style="width:19px;height:19px"><use href="#i-folder"/></svg></span>
+      <div><div class="mp-n">${name}</div>
+        <div class="mp-s">本地文件夹 · ${v} · 单插件（若含 marketplace.json 则按其中声明加载）</div></div>`;
+    document.getElementById("srcPreview").classList.remove("hidden");
+    msg.className="m-msg ok";msg.textContent="已读取文件夹——确认后加入来源（同时进入统一池）";
+    b.disabled=false;b.dataset.stage="confirm";b.textContent="确认装上";
+    return;
+  }
+  msg.className="m-msg ok";msg.textContent="正在获取目录…";
+  b.disabled=true;
+  setTimeout(()=>{ // 蓝图用超时模拟 fetch；真机走 marketSources 的注入 fetcher＋目录缓存（TTL 5 分钟）
+    const owner=(/(?:github\.com|raw\.githubusercontent\.com)\/([^/\s]+)/i.exec(v)||[])[1]||"新作者";
+    const existing=AUTHORS.find(a=>a.github&&a.github.toLowerCase()===owner.toLowerCase());
+    const repo=makeRepoFromUrl(owner,v);
+    srcPending={url:v,owner,repo,existing};
+    const hue=repo.plugins[0].hue;
+    document.getElementById("srcPreview").innerHTML=`
+      <span class="mp-av" style="background:linear-gradient(135deg,${hue},${hue}C8)">${owner.slice(0,1)}</span>
+      <div><div class="mp-n">${existing?existing.name:owner}${existing?"（已存在作者）":""}</div>
+        <div class="mp-s">${existing
+          ?`目录已拉到 —— 将并入该作者：仓库数 +1（${existing.repos.length} → ${existing.repos.length+1}），不新增作者`
+          :`新作者 · 1 个仓库 · ${repo.plugins.length} 个插件 · 身份按 GitHub 识别`}</div></div>`;
+    document.getElementById("srcPreview").classList.remove("hidden");
+    msg.className="m-msg ok";msg.textContent="目录获取成功——确认后写入市场源（与设置页同一配置项）";
+    b.disabled=false;b.dataset.stage="confirm";b.textContent="确认添加";
+  },700);
+}
+/* 本地插件条目（真机＝从文件夹读取 plugin.json / marketplace.json） */
+function makeLocalItem(name,path){
+  const id="local-"+name.toLowerCase().replace(/[^a-z0-9-]/gi,"-");
+  return {id,name,author:"本地",cat:"development",tags:["local"],dl:0,
+    ver:"0.1.0",size:"—",state:"none",icon:"i-folder",hue:"#4A5568",source:"local",
+    desc:"从本地文件夹加载的插件——不走网络源",tag:"本地插件",path,
+    readme:["本地插件：从本机文件夹直接加载。"],
+    features:[{g:"视图",items:["默认视图"]}],
+    versions:[{v:"0.1.0",d:"2026-11-19",badge:"本地",notes:["本地构建。"]}]};
+}
+/* 新源的仓库与首个插件（真机＝parse 白名单归一出真数据） */
+function makeRepoFromUrl(owner,url){
+  const hue=["#0E7490","#7C3AED","#B45309","#2563A8"][owner.length%4];
+  const slug=((url.split("/").filter(Boolean).pop()||"main").replace(/[^a-z0-9-]/gi,"-").toLowerCase())||"main";
+  return {id:slug,name:slug==="main"?"主仓":slug,intro:"默认仓库",image:true,
+    collections:[],homepage:{storeTitle:`${owner} 的 Plugin Store`,
+      sections:[{type:"grid",title:"全部插件"}]},
+    plugins:[
+    {id:"src-"+owner.toLowerCase()+"-"+slug,name:`${owner} 工具箱`,author:owner,cat:"development",tags:["tool"],dl:120,
+     ver:"0.1.0",size:"0.3 MB",state:"none",icon:"i-blocks",hue,
+     desc:"该源首个插件——蓝图占位演示",tag:"刚上架",
+     readme:["新添加市场源的演示插件。"],features:[{g:"视图",items:["默认视图"]}],
+     versions:[{v:"0.1.0",d:"2026-11-19",badge:"最新",notes:["首发。"]}]}]};
+}
+function toast(msg){
+  const t=document.getElementById("toast");t.textContent=msg;t.classList.add("on");
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("on"),2600);
+}
+/* 内联大屏（v3.34）：⚠ 只有**首个 hero** 占「首视觉」槽（置顶）；后续 hero 按 sections 原顺序渲染，
+   不是特权也不是丢弃——槽位判定，规则见 09 §二 */
+function inlineHero(sec,repo){
+  const slides=(sec.slides||[]).map(sl=>({f:repo.plugins.find(x=>x.id===sl.plugin)||repo.plugins[0],tag:sl.tag||"作者精选"}))
+    .filter(x=>x.f);
+  if(!slides.length)return "";
+  const au=repo.plugins[0]?repo.plugins[0].author:"";
+  return `<div class="hero" data-n="${slides.length}" data-i="0">
+    <div class="hero-track">${slides.map(sl=>`
+      <div class="hero-slide" data-open="${sl.f.id}" role="button" tabindex="0"
+        aria-label="${sl.f.name}——查看详情" >
+        <div class="hero-copy"><span class="hero-tag">${sl.tag}</span><h2>${sl.f.name}</h2>
+          <p>${sl.f.desc}——${sl.f.tag}。</p>
+          <div class="hero-meta"><span>作者 <b>${au}</b></span>
+            <span>▾ <b>${dl(sl.f.dl)}</b> 下载</span><span>v${sl.f.ver}</span></div>
+          <div class="hero-cta">${actionBtn(sl.f)}</div></div>
+        <div class="hero-art" style="${artBG(sl.f)}"><span class="hglyph"><svg><use href="#${sl.f.icon}"/></svg></span></div>
+      </div>`).join("")}</div>
+    ${slides.length>1?`<button class="hero-arrow l" data-ihero="-1" aria-label="上一张"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+    <button class="hero-arrow r" data-ihero="1" aria-label="下一张"><svg class="ic"><use href="#i-chev-r"/></svg></button>`:""}
+  </div>`;
+}
+function renderAuthor(id,repoId){
+  NEW_CONTENT.authors.delete(id); // 进入即已读（发现型角标）
+  searchQ="";catFilter=null; // 离开搜索/过滤态
+  railActive="author";renderRail(); // 作者店不属于任何 rail 项：清掉上一页的高亮（U4 修）
+  const s=effectiveAuthors().find(a=>a.id===id);if(!s)return;
+  const repo=s.repos.find(r=>r.id===repoId)||s.repos[0];lastAuthor={id,repoId:repo.id};
+  beginView("author:"+id+":"+repo.id);
+  /* v3.18：大屏轮播置顶（每个店面的第一视觉）；门店切换卡（官方第一）在其下；作者头降级为一行提示 */
+  const secs=repo.homepage.sections;
+  const heroSec=secs.find(x=>x.type==="hero");
+  const rest=secs.filter(x=>x!==heroSec);
+  const heroHtml=heroSec?(()=>{
+    /* 作者轮播：slides[] 作者自选哪几张上大屏（上限 3~5），箭头/圆点翻页 */
+    const slides=(heroSec.slides||[{plugin:heroSec.plugin,tag:heroSec.tag}]).map(sl=>({
+      f:repo.plugins.find(x=>x.id===sl.plugin)||repo.plugins[0],tag:sl.tag||"作者精选"}));
+    return `<div class="hero"><div class="hero-track" id="aHeroTrack">${slides.map(sl=>`
+      <div class="hero-slide" data-open="${sl.f.id}" role="button" tabindex="0"
+        aria-label="${sl.f.name}——查看详情" >
+        <div class="hero-copy">
+          <span class="hero-tag">${sl.tag}</span>
+          <h2>${sl.f.name}</h2>
+          <p>${sl.f.desc}——${sl.f.tag}。</p>
+          <div class="hero-meta"><span>作者 <b>${s.name}</b></span>
+            <span>▾ <b>${dl(sl.f.dl)}</b> 下载</span><span>v${sl.f.ver}</span></div>
+          <div class="hero-cta">${actionBtn(sl.f)}</div>
+        </div>
+        <div class="hero-art" style="${artBG(sl.f)}">
+          <span class="hglyph"><svg><use href="#${sl.f.icon}"/></svg></span></div>
+      </div>`).join("")}</div>
+      <button class="hero-arrow l" data-ahero="-1" aria-label="上一张"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+      <button class="hero-arrow r" data-ahero="1" aria-label="下一张"><svg class="ic"><use href="#i-chev-r"/></svg></button>
+      <div class="hero-nav" id="aHeroDots">${slides.map((_,i)=>
+        `<button class="dot ${i===0?"on":""}" data-adot="${i}" aria-label="第${i+1}张"></button>`).join("")}</div>
+    </div>`;})():"";
+  aHeroIdx=0;
+  const renderSec=sec=>{
+    const c0=repo.collections.find(x=>x.id===sec.collection);
+    /* 辉光开关＝可选声明（板块级或合集级都认——U4 修：此前只读 sec.glow，合集里的 glow:false 被吞） */
+    const gc=(sec.glow===false||(c0&&c0.glow===false))?" no-glow":"";
+    if(sec.type==="grid"){
+      if(!repo.plugins.length) // 边界③空仓：声明了仓但没上架——诚实空态，不伪装不报错
+        return `<div class="sec${gc}">${secH(sec.title||"全部插件",repo.intro)}
+          ${emptyView({icon:"i-dots", title:`「${repo.name}」暂无插件`, sub:`作者声明了这间仓但还没上架——空仓照实显示，不隐藏不报错`})}</div>`;
+      return `<div class="sec${gc}">${secH(sec.title||"全部插件",repo.intro)}
+        <div class="grid">${repo.plugins.map(cardGrid).join("")}</div></div>`;}
+    if(sec.type==="hero") // 第 2 个起的大屏：按声明顺序就地渲染（不置顶、不丢弃）
+      return `<div class="sec${gc}">${secH(sec.title||"大屏推荐",sec.hint)}${inlineHero(sec,repo)}</div>`;
+    if(sec.type==="rank"){ // 榜单＝计算位 API（09 §二）：scope 缺省＝全源合并，"self"＝只算店主自己的插件（拍板）
+      const pool=sec.scope==="self"?repo.plugins:[...CATALOG,...authorPlugins()];
+      const rows=[...pool].sort((a,b)=>b.dl-a.dl).slice(0,sec.top||6);
+      if(!rows.length)return "";
+      return `<div class="sec${gc}">${secH(sec.title||"排行榜",sec.hint,
+        sec.more?{label:sec.more.label,act:"jump",target:sec.more.target}:null)}
+        <div>${rows.map((e,i)=>rankRow(e,i+1)).join("")}</div></div>`;}
+    const c=repo.collections.find(x=>x.id===sec.collection);
+    if(!c)return "";
+    const items=c.items.map(pid=>repo.plugins.find(x=>x.id===pid)).filter(Boolean);
+    if(!items.length)return "";
+    const mh=c.more?{label:c.more.label,act:"cat-filter",target:c.more.target,name:s.name}:null; // 跳转字＝可选声明：作者店→全局分类页＋authorId 预过滤（拍板）；目标＝封闭集合
+    if(c.layout==="duo")return `<div class="sec${gc}">${secH(c.title,c.hint,mh)}
+      <div class="strip"><div class="strip-row duo-row">
+        ${items.slice(0,2).map(p=>cardDuo(p,c.title)).join("")}</div></div></div>`;
+    if(c.layout==="mega")return `<div class="sec${gc}">${secH(c.title,c.hint,mh)}
+      <div class="strip"><div class="strip-row mega-row">${items.map(cardMega).join("")}</div></div></div>`;
+    return `<div class="sec${gc}">${secH(c.title,c.hint,mh)}
+      <div class="strip"><div class="strip-row rows2">${items.map(cardSmall).join("")}</div></div></div>`;
+  };
+  document.getElementById("storeContent").innerHTML=`<div class="store-page">
+    ${head(s.storeTitle||`${s.name} 的 Plugin Store`,s.desc||"第三方作者店",false)}
+    <div class="crumb">作者店内 · <b>${s.name}</b>（演示第三方源）· 身份：GitHub（随目录缓存；从未取到→灰形占位）——店内不出现第四方；官方与切仓用下方门店卡</div>
+    ${heroHtml}
+    <div class="strip" style="margin-bottom:26px"><div class="strip-row">${/* 门店卡＝作者卡同款组件（v3.21 统一样式）；官方卡恒排第一位＝返回官方；⛔ 第四方 */""}
+      <div class="card author-card as-switch" data-gohome tabindex="0" role="button" aria-label="返回官方 Plugin Store">
+        <div class="ac-top">
+          <span class="ac-avatar" style="background:var(--accent)"><svg class="ic"><use href="#i-bag"/></svg></span>
+          <div class="fx1"><div class="ac-name">官方 Plugin Store</div>
+            <div class="ac-badge">官方 · 点击返回</div></div>
+        </div>
+        <div class="ac-intro">官方运营的插件与主题精选——覆盖全部分类。</div>
+        <div class="ac-meta"><span>${CATALOG.length} 个插件</span>
+          <span class="go">返回官方<svg class="ic"><use href="#i-chev-r"/></svg></span></div>
+      </div>
+      ${s.repos.map(r=>{
+        const on=r.id===repo.id;
+        return `<div class="card author-card as-switch ${on?"on":""}" ${on?`aria-current="true"`:""} data-author-repo="${r.id}" tabindex="0" role="button" aria-label="${r.name}——切换到该仓库">
+          <div class="ac-top">
+            <span class="ac-avatar" style="${r.image?`background:linear-gradient(135deg,#0E7490,#0E7490C8)`:`background:var(--bg-input);color:var(--text-muted)`}"><svg class="ic"><use href="#${r.image?"i-folder":"i-user"}"/></svg></span>
+            <div class="fx1"><div class="ac-name">${r.name}</div>
+              <div class="ac-badge">${r.image?"作者自建仓库 · 有门面图":"作者自建仓库 · 灰占位（身份未缓存演示）"}</div></div>
+          </div>
+          <div class="ac-intro">${r.intro}</div>
+          <div class="ac-meta"><span>${r.plugins.length} 个插件</span>
+            <span class="go">${on?"当前仓库":"切换到该仓库"}<svg class="ic"><use href="#i-chev-r"/></svg></span></div>
+        </div>`;}).join("")}
+    </div></div>
+    ${rest.map(renderSec).join("")}
+    <div class="sec">${secH("按分类浏览","看该作者在这一类的全部插件——只列出作者实际有货的分类")}
+      <div class="tiles">${[...new Set(repo.plugins.map(p=>p.cat).filter(Boolean))].map(cat=>{const n=repo.plugins.filter(p=>p.cat===cat).length;
+        return `<div class="card cat-tile" data-author-cat="${cat}" tabindex="0" role="button">
+          <div class="ct-icon"><svg class="ic"><use href="#i-dots"/></svg></div>
+          <div class="ct-main"><div class="ct-name">${LABEL[cat]}</div>
+            <div class="ct-count">${n} 个插件</div></div>
+          <span class="ct-go"><svg class="ic"><use href="#i-chev-r"/></svg></span></div>`;}).join("")}</div>
+      <div class="grid" id="authorCatGrid" style="display:none;margin-top:14px"></div>
+    </div>
+  </div>`;
+  bindStoreContent();
+}
+let aHeroIdx=0;
+function aHeroGo(n){const t=document.getElementById("aHeroTrack");if(!t)return;
+  const cnt=t.children.length;aHeroIdx=((n%cnt)+cnt)%cnt;
+  t.style.transform=`translateX(-${aHeroIdx*100}%)`;
+  document.querySelectorAll("#aHeroDots .dot").forEach((d,k)=>d.classList.toggle("on",k===aHeroIdx));}
+
+/* ══════════════ 详情页（三页签真实切换） ══════════════ */
+let detailId=null;
+function renderDetail(id){
+  detailId=id;const e=CATALOG.find(x=>x.id===id)||authorPlugins().find(x=>x.id===id);if(!e)return;
+  const s=stateOf(e);
+  document.getElementById("detailMain").innerHTML=`
+    <div class="d-head">${tile(e,"xl")}
+      <div class="fx1">
+        <h2>${e.name}</h2>
+        <div class="d-sub"><span>${e.author}</span>·<span>${LABEL[e.cat]}</span>
+          <span>▾ ${dl(e.dl)} 下载</span>
+          ${licBadge(e)}${srcBadge(e)}${e.core?`<span class="badge core">内置</span>`:""}</div>
+      </div></div>
+    <div class="d-acts" data-spec="05§三">
+      ${s==="installed"||s==="disabled"
+        ? (s==="installed"&&e.update?`<button class="btn primary" data-act="update">更新</button>`
+            :`<button class="btn primary" disabled>已是最新</button>`)
+          +`<button class="btn secondary" data-act="${s==="disabled"?"enable":"disable"}">${s==="disabled"?"启用":"禁用"}</button>`
+          +`<button class="btn danger" data-act="uninstall" ${e.core?"disabled title='core 插件不提供卸载按钮'":""}>卸载</button>`
+          +(isPaid(e)&&e.pricing.licenseUrl&&licOf(e)&&licOf(e).expDays>=0&&licOf(e).expDays<=30
+            ?`<button class="btn secondary" data-act="renew">续费</button>`:"")
+        :actionBtn(e)}
+    </div>
+    ${isPaid(e)?`<div class="d-trial">${e.pricing.model==="subscription"
+      ?`订阅制 · 需服务器实时校验——B3 上线后开放购买与自动续费${licOf(e)?` · 演示权益剩 ${licOf(e).subDays} 天`:""}`
+      :`${e.pricing.trialDays?`含 ${e.pricing.trialDays} 天免费试用——试用功能门由作者代码控制，壳不计时 · `:""}买断制 · 许可验证在壳层（Ed25519 本地验签，不联网）`}</div>`:""}
+    <div class="d-tabs" role="tablist">
+      <button class="d-tab on" data-dp="ov">概览</button>
+      <button class="d-tab" data-dp="feat">功能</button>
+      <button class="d-tab" data-dp="log">更改日志</button></div>
+    <div class="d-pane on" id="dp-ov">
+      <div class="shots">
+        ${e.video?`<div class="shot vid" title="封面视频 · controls · preload=metadata · 不自动播放">
+          <span class="play"></span><span class="dur">00:38</span></div>`:""}
+        <div class="shot"><div class="bar"><i></i><i></i><i></i></div>
+          <div class="lines"><i></i><i></i><i></i><i></i></div></div>
+        <div class="shot"><div class="bar"><i></i><i></i><i></i></div>
+          <div class="lines"><i></i><i></i><i></i><i></i></div></div>
+        <div class="shot"><div class="bar"><i></i><i></i><i></i></div>
+          <div class="lines"><i></i><i></i><i></i><i></i></div></div></div>
+      <div class="readme"><h4>介绍</h4>${e.readme.map(p=>`<p>${p}</p>`).join("")}
+        <p style="color:var(--text-muted);font-size:12px">（真机数据链：已装读包内 README → 未装读 readmeUrl → 再降级 description——01 §三·2）</p></div>
+    </div>
+    <div class="d-pane" id="dp-feat">
+      ${(e.features||[{g:"贡献点",items:["本插件未声明功能组（诚实空态）"]}]).map(f=>`
+        <div class="feat-group"><h4>${f.g}</h4>
+          <ul>${f.items.map(i=>`<li>${i}</li>`).join("")}</ul></div>`).join("")}
+    </div>
+    <div class="d-pane" id="dp-log">
+      ${(e.versions||[{v:e.ver,d:"—",notes:["真机：包内 CHANGELOG 缺段时读目录 versions（01 §五）。"]}]).slice(0,5).map(v=>`
+        <div class="ver-item"><div class="vh"><b>v${v.v}</b><time>${v.d}</time>
+          ${v.badge?`<span class="badge update">${v.badge}</span>`:""}</div>
+          <ul>${v.notes.map(n=>`<li>${n}</li>`).join("")}</ul></div>`).join("")}
+    </div>
+    <div class="d-note">标签：每个插件单独一个 · 同一插件再点只跳回 —— 标签由壳管理，插件只传 pinned</div>`;
+  /* 右栏（v3.54）：按字段性质分类——抓取/派生型网络源必有；作者声明型有才显；
+     本机事实本地也有；兼容性恒一行（唯一允许占位的一行）。⛔ 不再写死来源/最低壳版本/许可。 */
+  const vs=e.versions||[];
+  const firstRelease=vs.length?vs[vs.length-1].d:null, lastUpdate=vs.length?vs[0].d:null;
+  const rows=[
+    ["标识符",e.id,1],
+    ...(srcKind(e)!=="local"?[["作者",e.author]]:[]),
+    ["版本","v"+e.ver],["大小",e.size],["分类",LABEL[e.cat]],
+    ...(e.tags&&e.tags.length?[["标签",e.tags.join("、")]]:[]),
+    ...(srcKind(e)!=="local"?[["来源",srcNameOf(e),1]]:[]),
+    ...(firstRelease?[["首次发布",firstRelease],["更新时间",lastUpdate]]:[]),
+    ["下载数",dl(e.dl)],
+    ...(e.license?[["许可证",e.license]]:[]),
+    ...(e.minApp?[["需 LinkDesk","v"+e.minApp]]:[])
+  ];
+  document.getElementById("detailSide").innerHTML=`
+    <div class="d-side-title">其他信息</div>
+    ${rows.map(([k,v,mono])=>`<div class="d-meta-row"><span class="k">${k}</span><span class="v"${mono?' style="font-family:var(--mono)"':""}>${v}</span></div>`).join("")}
+    <div class="d-side-title" style="margin-top:18px">兼容性</div>
+    <div class="d-meta-row"><span class="k">状态</span><span class="v">${e.minApp&&e.minApp>SHELL_VER?"需升级壳":"可安装 · 当前壳满足"}</span></div>`;
+  document.querySelectorAll(".d-tab").forEach(t=>t.onclick=()=>{
+    document.querySelectorAll(".d-tab").forEach(x=>x.classList.toggle("on",x===t));
+    document.querySelectorAll(".d-pane").forEach(p=>
+      p.classList.toggle("on",p.id==="dp-"+t.dataset.dp));
+  });
+}
+/* ── 详情标签（v3.51 用户拍板：商店里每点一个卡片就新开一个标签）──────────────
+   壳的能力（src/hooks/useTabManager/reducers-tab.ts · defaults.ts · tabIdentity.ts）：
+   `tabs.create(type,{pluginId,pinned})` — pinned:true＝固定新开，pinned:false＝预览可替换。
+   · 本商店一律 pinned:true：点一个卡片开一个标签，可并排对比；
+     ⛔ 不用预览那套「再点别的就顶掉」的机制（用户否掉）。
+   · 同一插件再点＝壳按 detailPluginId 认身份，只聚焦，不会开第二个。
+   ⛔ 标签逻辑归壳，插件不自造标签栏。 */
+function detailTabOf(id){return document.querySelector(`.detail-tab[data-detail-id="${id}"]`);}
+function markDetailTabs(){
+  const detailOn=!document.getElementById("view-detail").classList.contains("hidden");
+  document.querySelectorAll(".detail-tab").forEach(t=>{
+    const on=detailOn&&t.dataset.detailId===detailId;
+    t.classList.toggle("active",on);t.setAttribute("aria-selected",on);});
+}
+function openDetail(id){
+  const e=entryById(id);if(!e)return;
+  let tab=detailTabOf(id);
+  if(!tab){
+    tab=document.createElement("button");
+    tab.type="button";tab.role="tab";tab.className="tab detail-tab";
+    tab.dataset.detailId=id;tab.title="同一插件再点只会跳回这个标签";
+    /* 真实壳的标签名 = 插件名；未装插件壳里没有 manifest，必须由调用方传 label
+       （否则一律显示「插件详情」——侧栏 ExploreView 就是这么补的）。 */
+    tab.innerHTML=`<svg class="ic"><use href="#i-filetext"/></svg><span class="t-label"></span>
+      <span class="t-close" role="button" aria-label="关闭" data-close-detail>
+        <svg class="ic" style="width:11px;height:11px"><use href="#i-x"/></svg></span>`;
+    document.getElementById("tabbar").appendChild(tab);
+  }
+  tab.querySelector(".t-label").textContent=e.name;
+  detailId=id;activateTab("detail");   // 渲染由 activateTab 统一做一次（不重复 renderDetail）
+  tab.focus({preventScroll:true});     // U3：键盘打开后焦点跟到新标签上
+}
+
+/* ══════════════ 标签页/交互 ══════════════ */
+function activateTab(w){
+  const st=w==="store";
+  document.getElementById("tabbtn-store").classList.toggle("active",st);
+  document.getElementById("tabbtn-store").setAttribute("aria-selected",st);
+  document.getElementById("view-store").classList.toggle("hidden",!st);
+  document.getElementById("view-detail").classList.toggle("hidden",st);
+  if(!st&&detailId)renderDetail(detailId);
+  markDetailTabs();
+}
+/* 详情视图的动作委托（v3.64 修）：详情 DOM 在 #view-detail，此前只有 #storeContent 有 data-act
+   委托——详情页「更新/禁用/卸载/获取许可/我有密钥/续费」全部点了没反应。同一入口 simulateInstall。 */
+document.getElementById("view-detail").addEventListener("click",ev=>{
+  const b=ev.target.closest("[data-act]");if(b)simulateInstall(b);
+});
+document.getElementById("tabbtn-store").addEventListener("click",()=>activateTab("store"));
+document.getElementById("tabbar").addEventListener("click",ev=>{
+  const close=ev.target.closest("[data-close-detail]");
+  if(close){
+    const tab=close.closest(".detail-tab");
+    const wasActive=tab.dataset.detailId===detailId;
+    tab.remove();
+    if(wasActive){
+      const rest=document.querySelector(".detail-tab");
+      if(rest){detailId=rest.dataset.detailId;activateTab("detail");}
+      else{detailId=null;activateTab("store");}
+    }else markDetailTabs();
+    return;}
+  const dt=ev.target.closest(".detail-tab");
+  if(dt){detailId=dt.dataset.detailId;activateTab("detail");}
+});
+/* 双击标签不需要特殊处理：商店一律固定打开，双击＝两次聚焦 */
+/* 横排归一化（v3.22）：所有 .strip 统一挂同款左右圆钮——内容超出可视一屏才显示
+   （占的格子不够→不显示，拍板）；点击滚动约一屏 85%，原生横滑/触控板照常；
+   箭头＝absolute 覆层，显隐不动文档流（机械守则）。 */
+function mountStrips(root){
+  root.querySelectorAll(".strip").forEach(st=>{
+    if(st.dataset.mounted)return;st.dataset.mounted="1";
+    const row=st.querySelector(".strip-row");if(!row)return;
+    const mk=cls=>{const b=document.createElement("button");b.type="button";
+      b.className="strip-arrow "+cls;b.setAttribute("aria-label",cls==="l"?"左移":"右移");
+      b.innerHTML=`<svg class="ic"><use href="#i-chev-${cls}"/></svg>`;
+      st.appendChild(b);return b;};
+    const L=mk("l"),R=mk("r");
+    const sync=()=>st.classList.toggle("no-overflow",row.scrollWidth<=row.clientWidth+1);
+    const step=()=>Math.round(row.clientWidth*.85);
+    L.onclick=()=>row.scrollBy({left:-step(),behavior:"smooth"});
+    R.onclick=()=>row.scrollBy({left:step(),behavior:"smooth"});
+    row.addEventListener("scroll",sync,{passive:true});
+    if(window.ResizeObserver)new ResizeObserver(sync).observe(row);
+    sync();
+  });
+}
+function bindStoreContent(){
+  const c=document.getElementById("storeContent");
+  mountStrips(c);
+  c.oninput=ev=>{
+    if(ev.target.id==="libSearch"){
+      libSearch=ev.target.value;renderLibrary();
+      const i=document.getElementById("libSearch");
+      if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}
+      return;}
+    if(ev.target.id!=="storeSearch")return;
+    searchQ=ev.target.value; // 登记搜索态；清空＝回原视图（分类/首页）
+    searchQ?renderSearch(searchQ):(railActive==="home"?renderHome():renderCategory(railActive));};
+  c.onchange=ev=>{
+    if(ev.target.matches("[data-lib-status]")){libStatus=ev.target.value;renderLibrary();return;}
+    if(ev.target.matches("[data-lib-source]")){libSource=ev.target.value;renderLibrary();return;}
+    if(ev.target.matches("[data-lib-author]")){libAuthor=ev.target.value;renderLibrary();return;}
+    if(ev.target.matches("[data-lib-repo]")){libRepo=ev.target.value;renderLibrary();return;}
+  };
+  c.onclick=ev=>{
+    /* UI 原语（v3.53 归一化）：视图与排序全站只有一条处理——上下文由 railActive 决定 */
+    const viewBtn=ev.target.closest("[data-view]");
+    if(viewBtn){applyView(viewBtn.dataset.view);return;}
+    const sortBtn=ev.target.closest("[data-sort]");
+    if(sortBtn){applySort(sortBtn.dataset.sort);return;}
+    /* 我的库（v3.41） */
+    const lsel=ev.target.closest("[data-lib-sel]");
+    if(lsel){ev.stopPropagation();const id=lsel.dataset.libSel;
+      libSel.has(id)?libSel.delete(id):libSel.add(id);renderLibrary();return;}
+    const lmore=ev.target.closest("[data-lib-more]");
+    if(lmore){ev.stopPropagation();
+      const menu=lmore.closest(".lib-row")?.querySelector("[data-menu]");
+      document.querySelectorAll(".more-menu").forEach(m=>{if(m!==menu)m.classList.add("hidden");});
+      menu?.classList.toggle("hidden");return;}
+    const ledit=ev.target.closest("[data-lib-edit]");
+    if(ledit){libEdit=!libEdit;if(!libEdit)libSel.clear();renderLibrary();return;}
+    const lselAll=ev.target.closest("[data-lib-all]");
+    if(lselAll){const ids=libList().filter(x=>!x.__g).map(e=>e.id);
+      const every=ids.length>0&&ids.every(id=>libSel.has(id));
+      if(every)libSel.clear();else ids.forEach(id=>libSel.add(id));
+      renderLibrary();return;}
+    const lread=ev.target.closest("[data-lib-readall]");
+    if(lread){NEW_CONTENT.cats.clear();NEW_CONTENT.authors.clear();
+      renderLibrary();toast("已全部标为已读");return;}
+    const lbulk=ev.target.closest("[data-lib-bulk]");
+    if(lbulk){libBulk(lbulk.dataset.libBulk);return;}
+    const lall=ev.target.closest("[data-lib-update-all]");
+    if(lall){libUpdateAll();return;}
+    const ghome=ev.target.closest("[data-goto-home]");
+    if(ghome){gotoCategory("home");return;}
+    const moreBtn=ev.target.closest("[data-more]");
+    if(moreBtn){ev.stopPropagation();
+      const menu=moreBtn.closest(".card")?.querySelector("[data-menu]");
+      document.querySelectorAll(".more-menu").forEach(m=>{if(m!==menu)m.classList.add("hidden");});
+      menu?.classList.toggle("hidden");return;}
+    const chk=ev.target.closest("[data-check-updates]");
+    if(chk){toast("检查完成 · 发现 3 个可用更新");return;} // 全局入口：任何视图都能触发
+    /* 内容热更新（v3.39）：按钮／常驻条／忽略 */
+    const rcont=ev.target.closest("[data-refresh-content]");
+    if(rcont){toast("正在检查内容…");setTimeout(()=>toast("内容已是最新 · 5 分钟前更新"),700);return;}
+    const simc=ev.target.closest("[data-sim-content]");
+    if(simc){document.getElementById("contentBar")?.classList.remove("hidden");
+      toast("首页内容已更新 · 刷新查看");return;}
+    const rapply=ev.target.closest("[data-refresh-apply]");
+    if(rapply){document.getElementById("contentBar")?.classList.add("hidden");
+      toast("内容已刷新 · 当前是最新轮播");return;}
+    const bdis=ev.target.closest("[data-bar-dismiss]");
+    if(bdis){document.getElementById("contentBar")?.classList.add("hidden");
+      toast("已忽略本次提示 · 铃铛面板仍留记录");return;}
+    const addLocal=ev.target.closest("[data-add-local]");
+    if(addLocal){openAddSource("local");return;}
+    const addSrc=ev.target.closest("[data-add-source]");
+    if(addSrc){openAddSource("remote");return;} // 加源弹窗（头部＋／作者区空态／来源页三处同一入口）
+    const srcAct=ev.target.closest("[data-src-up],[data-src-down],[data-src-refresh],[data-src-toggle],[data-src-remove]");
+    if(srcAct){handleSrcAction(srcAct);return;}
+    const gohome=ev.target.closest("[data-gohome]");
+    if(gohome){gotoCategory("home");return;}
+    const repoTab=ev.target.closest("[data-author-repo]");
+    if(repoTab){renderAuthor(lastAuthor?.id||AUTHOR.id,repoTab.dataset.authorRepo);return;}
+    const jumpBtn=ev.target.closest("[data-jump]");
+    if(jumpBtn){const j=jumpBtn.dataset.jump;
+      if(j==="rank"){railActive="rank";catFilter=null;lastAuthor=null;renderRail();renderRankFull();return;}
+      gotoCategory(j);return;}
+    const aarr=ev.target.closest("[data-ahero]");
+    if(aarr){aHeroGo(aHeroIdx+ +aarr.dataset.ahero);return;}
+    const adot=ev.target.closest("[data-adot]");
+    if(adot){aHeroGo(+adot.dataset.adot);return;}
+    const acat=ev.target.closest("[data-author-cat]");
+    if(acat){const cat=acat.dataset.authorCat,g=document.getElementById("authorCatGrid");
+      if(g){const on=g.dataset.cat===cat&&g.style.display==="grid";
+        g.dataset.cat=on?"":cat;g.style.display=on?"none":"grid";
+        /* U4 修：只筛**当前仓**的插件——此前 authorPlugins() 会把别的仓同类插件也带进来 */
+        const cur=effectiveAuthors().find(a=>a.id===lastAuthor?.id)?.repos.find(r=>r.id===lastAuthor?.repoId);
+        const pool=cur?cur.plugins:authorPlugins();
+        g.innerHTML=`<div class="crumb">作者店内分类 · <b>${LABEL[cat]}</b></div>`+
+          pool.filter(p=>p.cat===cat).map(cardGrid).join("");}
+      return;}
+    const au=ev.target.closest("[data-author]");
+    if(au){renderAuthor(au.dataset.author);return;}
+    const jump=ev.target.closest("[data-rail-jump]");
+    if(jump){gotoCategory(jump.dataset.railJump);return;}
+    const railBtn=ev.target.closest("[data-rail]");
+    if(railBtn){gotoCategory(railBtn.dataset.rail);return;}
+    const ftog=ev.target.closest("[data-filter-toggle]");
+    if(ftog){filterOpen=!filterOpen;rerenderCurrent();return;} // 通用下拉开合
+    const fkey=ev.target.closest("[data-filter-key]");
+    if(fkey){const k=fkey.dataset.filterKey;filters[k]=!filters[k];rerenderCurrent();return;}
+    const freset=ev.target.closest("[data-filter-reset]");
+    if(freset){Object.keys(filters).forEach(k=>filters[k]=false);rerenderCurrent();return;}
+    const scg=ev.target.closest("[data-src-collapse]");
+    if(scg){const id=scg.dataset.srcCollapse;
+      collapsedGroups.has(id)?collapsedGroups.delete(id):collapsedGroups.add(id);renderSources();return;} // 折叠作者组（v3.36）
+    const sent=ev.target.closest("[data-src-enter]");
+    if(sent){renderAuthor(sent.dataset.srcEnter);return;} // 来源页直达作者主页
+    const cf=ev.target.closest("[data-cat-filter]");
+    if(cf){gotoCategory(cf.dataset.catFilter,{name:cf.dataset.filterName});return;} // 作者跳转字→分类页预过滤（一次性）
+    const fclear=ev.target.closest("[data-filter-clear],[data-filter-all]");
+    if(fclear){catFilter=null;rerenderCurrent();return;} // 清除过滤/显示全部——就地回全量，滚动位保持
+    const chip=ev.target.closest("[data-chip]");
+    if(chip){
+      const wasOn=chip.classList.contains("on");
+      c.querySelectorAll(".chip[data-chip]").forEach(x=>x.classList.remove("on"));
+      if(!wasOn)chip.classList.add("on");
+      const tag=chip.dataset.chip;const on=!wasOn; // 再点同一个 chip＝取消过滤（U5 修）
+      const body=document.getElementById("catBody");if(!body)return;
+      const base=byCat(railActive);
+      body.className=catView==="list"?"rows":"grid";
+      if(!on){body.innerHTML=catCards(base);return;} // 取消过滤→回全量（保排序/视图）
+      if(tag==="__none"){body.innerHTML=base.filter(e=>!(e.tags||[]).length)
+        .map(x=>catView==="grid"?cardGrid(x):cardRow(x)).join("")||
+        `${emptyView({title:`该分类下没有未标注的插件`, cls:"span-all"})}`;
+        return;}
+      body.innerHTML=base.filter(e=>e.tags?.includes(tag))
+        .map(x=>catView==="grid"?cardGrid(x):cardRow(x)).join("")||
+        `${emptyView({title:`该标签下暂无插件`, cls:"span-all"})}`;
+      return;}
+    const dot=ev.target.closest("[data-dot]");
+    if(dot){heroGo(+dot.dataset.dot);return;}
+    const ih=ev.target.closest("[data-ihero]");
+    if(ih){const box=ih.closest(".hero");const tr=box.querySelector(".hero-track");
+      const n=+box.dataset.n,i=(+box.dataset.i||0)+ +ih.dataset.ihero;
+      const k=(i+n)%n;box.dataset.i=k;tr.style.transform=`translateX(-${k*100}%)`;return;}
+    if(ev.target.closest("#heroL"))heroGo(heroIdx-1);
+    if(ev.target.closest("#heroR"))heroGo(heroIdx+1);
+    /* 编辑态：点整行/整卡＝选中（不跳详情）；动作钮与 ⋯ 仍走各自逻辑 */
+    if(libEdit){
+      const lhost=ev.target.closest(".lib-row,.lib-grid-wrap");
+      if(lhost&&!ev.target.closest("[data-act],[data-lib-more],[data-lib-sel],.more-menu")){
+        const id=lhost.dataset.entry;
+        if(id){libSel.has(id)?libSel.delete(id):libSel.add(id);renderLibrary();return;}
+      }
+    }
+    const act=ev.target.closest("[data-act]");
+    if(act){simulateInstall(act);return;}
+    const open=ev.target.closest("[data-open]");
+    if(open)openDetail(open.dataset.open);
+  };
+  c.onkeydown=ev=>{
+    if(ev.key==="ArrowLeft"||ev.key==="ArrowRight"){ // 键盘横向翻页（v3.35）：焦点在卡片上时 ←/→ 滚动所在横排
+      const row=ev.target.closest(".strip-row");if(!row)return;
+      const card=ev.target.closest(".card");
+      const step=(card?card.getBoundingClientRect().width+14:220)*2;
+      row.scrollBy({left:(ev.key==="ArrowRight"?1:-1)*step,behavior:"smooth"});
+      ev.preventDefault();return;}
+    const t=ev.target.closest('[role="button"]');
+    if(t&&(ev.key==="Enter"||ev.key===" ")){ev.preventDefault();t.click();}};
+  endView(); // 视图渲染完毕：恢复该视图记住的滚动位
+}
+/* 大屏翻页（v3.35 修）：n 不再写死 3；到首/尾**放行**——滚轮回到页面滚动，⛔ 不把用户困在轮播里 */
+function heroGo(i){const n=document.querySelectorAll("#heroDots .dot").length||3;
+  heroIdx=(i+n)%n;
+  document.getElementById("heroTrack").style.transform=`translateX(-${heroIdx*100}%)`;
+  document.querySelectorAll("#heroDots .dot").forEach((d,k)=>d.classList.toggle("on",k===heroIdx));
+  heroSyncGlow();}
+/* 环境辉光（v3.10）：--glow 实时跟随当前张封面主色——蓝图由 e.hue 推导，
+   真机接真封面后＝取封面主色（canvas 取色或目录预存字段）喂同一变量，机制不变 */
+function heroSyncGlow(){const h=(window.HERO_HUES||[])[heroIdx];
+  document.getElementById("hero")?.style.setProperty("--glow",h||"transparent");}
+/* 只在可前进方向劫持滚轮；到首/尾放行（页面继续滚）——⛔ 横排一律不劫持，见 08 滚动交互纪律 */
+document.addEventListener("wheel",ev=>{
+  const hero=ev.target.closest?.("#hero");if(!hero)return;
+  if(Math.abs(ev.deltaY)<4)return;
+  const dir=ev.deltaY>0?1:-1;
+  const n=document.querySelectorAll("#heroDots .dot").length||3;
+  const next=heroIdx+dir;
+  if(next<0||next>=n)return;   // 到头：不 preventDefault，交给页面
+  ev.preventDefault();heroGo(next);},{passive:false});
+/* 键盘（U3）：rail 内方向键移动焦点——容器常驻，重绘不失效 */
+document.getElementById("storeRail").addEventListener("keydown",ev=>{
+  if(!["ArrowDown","ArrowRight","ArrowUp","ArrowLeft"].includes(ev.key))return;
+  const items=[...ev.currentTarget.querySelectorAll("button:not([disabled])")];
+  const i=items.indexOf(ev.target);
+  if(i<0)return;
+  const fwd=ev.key==="ArrowDown"||ev.key==="ArrowRight";
+  items[(i+(fwd?1:-1)+items.length)%items.length].focus();
+  ev.preventDefault();
+});
+/* 键盘（U3）：标签栏方向键切换并激活 */
+document.getElementById("tabbar").addEventListener("keydown",ev=>{
+  if(ev.key!=="ArrowLeft"&&ev.key!=="ArrowRight")return;
+  const tabs=[...document.querySelectorAll("#tabbar .tab")];
+  const i=tabs.indexOf(ev.target);
+  if(i<0)return;
+  const next=tabs[(i+(ev.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length];
+  next.focus();next.click();ev.preventDefault();
+});
+document.addEventListener("keydown",ev=>{ // 「/」聚焦商店搜索——入口常驻头部（v3.24 可达性）
+  if(ev.key!=="/"||ev.target.closest("input,textarea"))return;
+  const inp=document.getElementById("storeSearch");
+  if(inp&&!inp.closest(".hidden")){ev.preventDefault();inp.focus();}});
+/* 入口检索（官方 / 作者 / 本地） */
+function entryById(id){
+  return CATALOG.find(x=>x.id===id)||authorPlugins().find(x=>x.id===id)||LOCAL_ITEMS.find(x=>x.id===id);
+}
+/* 局部刷新（v3.38 自 04 移植）：只换动作区与徽标，**不换卡片节点**——
+   这样鼠标停着点安装，:hover 不丢、放大不闪（旧版整页重绘把节点换掉=闪一下再放大） */
+function refreshEntry(id){
+  const e=entryById(id);if(!e)return;
+  if(railActive==="library"){renderLibrary();return;} // 库里整行重绘（徽标/动作/进度同源）
+  document.querySelectorAll(`[data-entry="${id}"]`).forEach(host=>{
+    host.querySelectorAll(".js-act").forEach(el=>{el.innerHTML=actionBtn(e);});
+    host.querySelectorAll(".js-badges").forEach(el=>{el.innerHTML=badges(e);});
+    host.querySelectorAll(".js-corner").forEach(el=>{const st=statusTag(e);
+      el.innerHTML=st.t;el.className=(el.dataset.base||"js-corner")+" "+st.c;}); // 单角标状态机（v3.65）
+  });
+  if(detailId===id&&!document.getElementById("view-detail").classList.contains("hidden"))renderDetail(id);
+}
+function simulateInstall(btn){
+  const host=btn.closest("[data-entry]");
+  const id=host?.dataset.entry||detailId;if(!id)return;
+  const e=entryById(id);if(!e)return;
+  const act=btn.dataset.act;
+  if(act==="disable"){DEMO_STATE[id]="disabled";refreshEntry(id);
+    toast("已禁用 · 插件停止运行，数据保留");return;}
+  if(act==="enable"){DEMO_STATE[id]="installed";refreshEntry(id);toast("已启用");return;}
+  if(act==="uninstall"){ // 二次确认：同一按钮点两次
+    if(btn.dataset.confirm!=="1"){
+      btn.dataset.confirm="1";btn.textContent="确认卸载";
+      toast("再点一次确认卸载——已装数据会被删除");
+      setTimeout(()=>{if(btn.dataset.confirm==="1"){btn.dataset.confirm="";btn.textContent="卸载";}},3200);
+      return;
+    }
+    DEMO_STATE[id]="installing";refreshEntry(id);
+    setTimeout(()=>{DEMO_STATE[id]="none";refreshEntry(id);toast("已卸载 · "+e.name);},900);
+    return;
+  }
+  if(act==="buy"||act==="renew"){ // 真机 shell.openExternal(e.pricing.licenseUrl)——T4 受控外链
+    openBuyPage(e,act==="renew");return;}
+  if(act==="have-key"){openLicenseModal(id);return;}
+  if(act==="install"||act==="retry"||act==="update"){
+    DEMO_STATE[id]="installing";refreshEntry(id);
+    setTimeout(()=>{DEMO_STATE[id]="installed";const x=entryById(id);
+      if(x){x.state="installed";delete x.update;}refreshEntry(id);},1700);
+  }
+}
+function rerenderCurrent(){ // 机械守则：状态刷新只换变化元素的脸——滚动位保持，页面不跳
+  const sc=document.getElementById("storeContent"),st=sc.scrollTop;
+  renderRail();
+  if(lastAuthor)renderAuthor(lastAuthor.id,lastAuthor.repo); // 作者店安装演示不跳页
+  else if(railActive==="sources")renderSources();
+  else if(railActive==="authors")renderAuthors();
+  else if(railActive==="library")renderLibrary();
+  else if(railActive==="rank")renderRankFull();
+  else searchQ?renderSearch(searchQ):(railActive==="home"?renderHome():renderCategory(railActive));
+  sc.scrollTop=st;
+}
+
+/* 点空白处收起卡片「更多」菜单 */
+document.addEventListener("click",ev=>{
+  if(ev.target.closest("[data-more]")||ev.target.closest(".more-menu"))return;
+  document.querySelectorAll(".more-menu:not(.hidden)").forEach(m=>m.classList.add("hidden"));
+},true);
+renderRail();renderHome();
+/* 加源弹窗（静态节点，只绑一次） */
+document.getElementById("srcUrl").addEventListener("input",srcChanged);
+document.querySelectorAll("[data-srcmode]").forEach(b=>b.addEventListener("click",()=>setSrcMode(b.dataset.srcmode)));
+document.getElementById("srcBrowse").addEventListener("click",()=>{ // 真机＝系统目录选择器
+  document.getElementById("srcUrl").value="E:\\tools\\my-local-plugin";srcChanged();});
+document.getElementById("srcUrl").addEventListener("keydown",ev=>{if(ev.key==="Enter")srcSubmit();});
+document.getElementById("srcSubmit").addEventListener("click",srcSubmit);
+document.getElementById("srcCancel").addEventListener("click",closeAddSource);
+document.getElementById("addSourceModal").addEventListener("click",ev=>{
+  if(ev.target.id==="addSourceModal")closeAddSource();});
+document.getElementById("cfmCancel").addEventListener("click",()=>{
+  pendingRemove=null;modalClose("confirmModal");});
+document.getElementById("cfmOk").addEventListener("click",doRemoveSource);
+document.getElementById("confirmModal").addEventListener("click",ev=>{
+  if(ev.target.id==="confirmModal"){pendingRemove=null;modalClose("confirmModal");}});
+document.addEventListener("keydown",ev=>{
+  if(ev.key==="Escape"){
+    if(!document.getElementById("licenseModal").classList.contains("hidden"))modalClose("licenseModal");
+    if(!document.getElementById("buyPage").classList.contains("hidden"))modalClose("buyPage");
+    if(!document.getElementById("addSourceModal").classList.contains("hidden"))closeAddSource();
+    if(!document.getElementById("confirmModal").classList.contains("hidden")){
+      pendingRemove=null;modalClose("confirmModal");}
+  }});
+</script>
+</body>
+</html>

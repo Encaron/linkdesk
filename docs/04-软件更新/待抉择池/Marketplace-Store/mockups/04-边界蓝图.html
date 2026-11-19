@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · 边界蓝图 —— Plugin Store 的边界情况全集</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   本页的绘图法照「已落地/滑杆件-Slider能力扩展/05-设计图-Slider.html」：
+   文档式设计页（h1＋导语＋meta＋读法 → 编号章节 → 虚线舞台现场＋caption → 规格表 → 竖线注记）
+   视觉 token 与 03 主区蓝图同源：暗 #1E1E1E / 卡 #2D2D2D / 输入 #3C3C3C / 主色 #0E639C
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0E639C; --accent-hover:#1177BB; --text-on-accent:#FFFFFF;
+  --border:#3C3C3C; --separator:#474747;
+  --bg-toolbar:#1E1E22; --tab-hover-bg:#353535; --hover-overlay:rgba(255,255,255,.06);
+  --ok:#4EC9B0; --warn:#E5C07B; --err:#E06C75;
+  --shadow-1:0 1px 2px rgba(0,0,0,.25),0 2px 6px rgba(0,0,0,.2);
+  --shadow-2:0 2px 4px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.4);
+  --radius-sm:4px; --radius-md:6px; --radius-lg:10px;
+  --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-window);color:var(--text-primary);
+  font:var(--font-size-md)/1.6 "Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+::selection{background:var(--accent);color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:6px}
+
+/* ── 文档骨架（照滑杆稿） ── */
+.layout{display:grid;grid-template-columns:188px minmax(0,1fr);gap:36px;
+  max-width:1220px;margin:0 auto;padding:36px 28px 96px}
+main{min-width:0;max-width:860px}
+h1{font-size:26px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:19px;margin:0;letter-spacing:-.005em}
+h3{font-size:var(--font-size-md);margin:24px 0 8px}
+p{margin:10px 0;max-width:74ch}
+.lede{color:var(--text-secondary);max-width:74ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
+.meta li{font-size:var(--font-size-xs);color:var(--text-secondary);
+  border:1px solid var(--border);border-radius:var(--radius-md);padding:3px 9px;background:var(--bg-card)}
+.note{border-left:1px solid var(--accent);padding:2px 0 2px 12px;color:var(--text-secondary);max-width:74ch}
+.note b{color:var(--text-primary)}
+code{font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:1px 5px}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:var(--font-size-sm)}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--text-secondary);font-weight:600;background:var(--bg-card)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md)}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:16px 18px;margin:14px 0}
+.panel > h3:first-child{margin-top:0}
+
+/* ── ① 常驻目录：给「分类感」一个固定的骨架 ── */
+.toc{position:sticky;top:24px;align-self:start;font-size:12px}
+.toc .tt{font-size:10.5px;letter-spacing:.08em;color:var(--text-muted);font-weight:600;margin-bottom:10px}
+.toc a{display:block;color:var(--text-secondary);text-decoration:none;padding:5px 8px;
+  border-radius:6px;border-left:2px solid transparent;line-height:1.35}
+.toc a:hover{background:var(--bg-card);color:var(--text-primary)}
+.toc a.grp{margin-top:10px;font-weight:600;color:var(--text-primary);font-size:12px}
+.toc a.sub{padding-left:18px;font-size:11.5px;color:var(--text-muted)}
+.toc a.sub.on{border-left-color:var(--accent-hover);color:var(--accent-hover);background:var(--bg-card)}
+
+/* ── ② 宏分组：页面的第一层 ── */
+.group{margin-top:30px}
+.group-h{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 20%,var(--bg-card)),var(--bg-card) 70%);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border))}
+.gk{width:30px;height:30px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.gt{font-size:15px;font-weight:700}
+.gs{font-size:11.5px;color:var(--text-secondary);margin-top:2px}
+
+/* ── ③ 节：第二层（编号＋标题＋结论胶囊） ── */
+.sec{padding:24px 0 26px;border-bottom:1px solid var(--separator)}
+.sec:last-child{border-bottom:none}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+.no{font-size:26px;font-weight:700;line-height:1;
+  color:color-mix(in srgb,var(--accent-hover) 75%,var(--text-muted));font-variant-numeric:tabular-nums}
+.rule-chip{margin-left:auto;font-size:11px;font-weight:600;color:var(--accent-hover);
+  background:color-mix(in srgb,var(--accent) 16%,transparent);border-radius:99px;padding:3px 10px;
+  flex:none;white-space:nowrap}
+
+/* ── ④ 块：现场 / 禁止项 / 规格 —— 三种不同重量 ── */
+.stage{border:1px dashed var(--border);border-radius:var(--radius-md);padding:14px 16px;
+  background:color-mix(in srgb,var(--bg-card) 45%,var(--bg-window))}
+.stage + .stage{margin-top:10px}
+.stage-cap{font-size:var(--font-size-xs);color:var(--text-secondary);margin:0 0 10px;
+  display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.stage-cap b{color:var(--text-primary)}
+.st-chip{font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--accent);
+  border-radius:4px;padding:1px 6px;flex:none}
+.ban{display:flex;gap:9px;border-left:2px solid var(--err);
+  background:color-mix(in srgb,var(--err) 8%,transparent);padding:9px 12px;
+  border-radius:0 8px 8px 0;color:var(--text-secondary);font-size:12.5px;margin:12px 0}
+.ban b{color:var(--err);flex:none}
+.spec{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:12px 0}
+.spec .spec-t{font-size:10.5px;letter-spacing:.06em;color:var(--text-muted);font-weight:600;margin-bottom:8px}
+.tag-old,.tag-new{font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;flex:none}
+.tag-old{background:color-mix(in srgb,var(--text-muted) 28%,transparent);color:var(--text-secondary)}
+.tag-new{background:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent-hover)}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:900px){.layout{grid-template-columns:1fr;padding:24px 16px 72px}.toc{display:none}}
+@media (max-width:640px){.vs{grid-template-columns:1fr}}
+
+/* ── 舞台（虚线框＋caption）：本页所有现场都住这里 ── */
+.stage{border:1px dashed var(--border);border-radius:var(--radius-md);padding:16px;background:var(--bg-window)}
+.stage + .stage{margin-top:12px}
+.stage-cap{font-size:var(--font-size-xs);color:var(--text-secondary);margin:0 0 10px}
+.stage-cap b{color:var(--text-primary)}
+.row{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.row + .row{margin-top:8px}
+.row-label{font-size:var(--font-size-sm)}
+.row-grip{flex:0 0 auto;min-width:0;display:flex;justify-content:flex-end}
+.badge{font-size:var(--font-size-xs);color:var(--text-secondary);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:1px 6px;font-variant-numeric:tabular-nums}
+.badge.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--border))}
+.badge.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 45%,var(--border))}
+.badge.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--border))}
+.badge.paid{color:var(--accent-hover);border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}
+
+/* ── 组件（与 03 同形） ── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  position:relative;transition:transform .18s var(--ease),box-shadow .18s var(--ease),border-color .18s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 11px;
+  border-radius:var(--radius-md);border:1px solid transparent;background:var(--accent);color:#fff;
+  cursor:pointer;font-size:12px;transition:background .15s,opacity .15s}
+.btn:hover{background:var(--accent-hover)}
+.btn.secondary{background:transparent;border-color:var(--border);color:var(--text-secondary)}
+.btn.secondary:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.danger{background:transparent;border-color:var(--border);color:var(--err)}
+.tile{width:40px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-weight:600;font-size:14px}
+.mono{font-family:"Cascadia Mono",Consolas,monospace}
+
+/* ── 全局模拟器（文档页顶部工具条） ── */
+.sim{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0 4px;
+  padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card)}
+.sim .lbl{font-size:var(--font-size-xs);color:var(--text-secondary)}
+.sim-btn{height:28px;padding:0 11px;border-radius:var(--radius-md);border:1px solid var(--border);
+  background:var(--bg-input);color:var(--text-secondary);cursor:pointer;font-size:12px}
+.sim-btn.on{border-color:color-mix(in srgb,var(--accent) 60%,var(--border));
+  background:color-mix(in srgb,var(--accent) 20%,var(--bg-input));color:var(--text-primary)}
+.sim-btn .n{display:inline-block;min-width:16px;padding:0 5px;margin-left:5px;border-radius:99px;
+  background:var(--err);color:#fff;font-size:10.5px;line-height:16px;text-align:center}
+
+/* ── ① 作者域：四格 ── */
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.demo-grid{grid-template-columns:1fr}}
+.mini-store{border:1px solid var(--separator);border-radius:var(--radius-md);padding:10px;background:var(--bg-card)}
+.mini-title{font-size:12.5px;font-weight:600;margin-bottom:8px}
+.mini-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.mini-chip{font-size:10.5px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  color:var(--text-secondary);background:var(--bg-input)}
+.mini-chip.on{border-color:color-mix(in srgb,var(--accent) 60%,var(--border));
+  background:color-mix(in srgb,var(--accent) 16%,var(--bg-input));color:var(--text-primary)}
+.mini-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.mini-tile{border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px;background:var(--bg-window)}
+.mini-tile .mt{font-size:11px;font-weight:600}
+.mini-tile .mc{font-size:10px;color:var(--text-muted)}
+.mini-cards{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mini-card{display:flex;gap:7px;align-items:center;border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:6px;background:var(--bg-window)}
+.mini-card .sq{width:22px;height:22px;border-radius:5px;background:var(--bg-input);flex:none}
+.mini-card .nm{font-size:10.5px}
+.mini-empty{font-size:11px;color:var(--text-muted);text-align:center;padding:14px 0;
+  border:1px dashed var(--border);border-radius:var(--radius-sm)}
+
+/* ── ② 状态矩阵 ── */
+.state-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.state-card{padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:10px}
+.state-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.state-card.muted{opacity:.62}
+.state-card.muted .nm{color:var(--text-secondary)}
+.state-card .top{display:flex;gap:10px;align-items:center}
+.state-card .nm{font-size:13px;font-weight:600}
+.state-card .ct{font-size:11px;color:var(--text-muted);margin-top:1px}
+.state-card .st{margin-left:auto;font-size:9.5px;color:var(--text-muted);font-family:"Cascadia Mono",Consolas,monospace}
+.state-card .phase{font-size:10.5px;color:var(--accent-hover);font-weight:600}
+.pbar{height:5px;border-radius:99px;background:var(--bg-input);overflow:hidden}
+.pbar > i{display:block;height:100%;background:var(--accent-hover);border-radius:99px;
+  transition:width .25s linear}
+.pbar.indet > i{width:35% !important;animation:indet 1.1s var(--ease) infinite}
+@keyframes indet{0%{transform:translateX(-110%)}100%{transform:translateX(320%)}}
+.acts{display:flex;gap:6px;align-items:center;min-height:28px}
+
+/* ── ③ 收费 ── */
+.price-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.price-card{padding:14px;display:flex;flex-direction:column;gap:9px}
+.price-card .top{display:flex;gap:10px;align-items:center}
+.price-card .nm{font-size:13px;font-weight:600}
+.price{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.price small{font-size:10.5px;color:var(--text-muted);font-weight:400}
+
+/* ── 04 动作命令与可用面 ── */
+.act-card{position:relative;display:flex;gap:12px;align-items:center;padding:12px;
+  width:380px;max-width:100%}
+.icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;
+  color:var(--text-secondary);cursor:pointer;font-size:15px;line-height:1;flex:none}
+.icon-btn:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.more-menu{position:absolute;right:12px;top:calc(100% - 6px);z-index:5;width:150px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:8px;
+  box-shadow:var(--shadow-2);padding:5px}
+.more-menu[hidden]{display:none}
+.mi{display:block;width:100%;text-align:left;padding:7px 9px;border:none;background:transparent;
+  color:var(--text-secondary);font-size:12.5px;border-radius:6px;cursor:pointer}
+.mi:hover{background:var(--tab-hover-bg);color:var(--text-primary)}
+.mi.danger{color:var(--err)}
+.mi-sep{height:1px;background:var(--separator);margin:4px 6px}
+.act-bar{display:flex;gap:8px;align-items:center;border:1px solid var(--border);
+  border-radius:10px;background:var(--bg-card);padding:10px 12px}
+.ins-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);
+  border-radius:8px;padding:9px 12px;background:var(--bg-card);margin-bottom:8px;font-size:12.5px}
+.bulk-bar{display:flex;align-items:center;gap:8px;margin-top:10px;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));
+  background:color-mix(in srgb,var(--accent) 12%,var(--bg-card));border-radius:9px;
+  padding:9px 12px;font-size:12px;color:var(--text-secondary)}
+
+/* ── ④ 同源 ── */
+.sync-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.sync-wrap{grid-template-columns:1fr}}
+.surface{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);padding:12px}
+.surface h4{font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:8px;letter-spacing:.04em}
+.detail-bar{display:flex;gap:12px;align-items:center;border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:10px;background:var(--bg-window)}
+.detail-bar .dn{font-size:13px;font-weight:600}
+.detail-bar .dm{font-size:11px;color:var(--text-muted)}
+.sync-state{margin-top:10px;font-size:11px;color:var(--text-muted);font-family:"Cascadia Mono",Consolas,monospace}
+
+/* ── ⑤ 更新 ── */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);padding:10px 12px}
+.toolbar .grow{flex:1}
+.upd-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.upd-row{display:flex;align-items:center;gap:12px;border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:9px 12px;background:var(--bg-card)}
+.upd-row .un{font-size:12.5px;font-weight:600}
+.upd-row .us{font-size:11px;color:var(--text-muted)}
+.upd-row .grow{flex:1;min-width:0}
+.entry-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px}
+.entry{display:flex;flex-direction:column;gap:5px;border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:9px 12px;background:var(--bg-card)}
+.entry .en{font-size:11px;color:var(--text-muted)}
+.entry .ec{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+
+/* ── ⑥ 交互 ── */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.split{grid-template-columns:1fr}}
+.click-card{width:320px;max-width:100%;padding:12px;display:flex;gap:12px;align-items:center;
+  cursor:pointer;position:relative}
+.click-card:hover{transform:scale(1.03);
+  box-shadow:0 12px 40px -10px color-mix(in srgb,var(--accent) 60%,transparent)}
+.click-card .ring{position:absolute;inset:-3px;border:1.5px dashed var(--accent-hover);
+  border-radius:13px;opacity:0;transition:opacity .15s;pointer-events:none}
+.click-card:hover .ring{opacity:.9}
+.hovercard{width:300px;max-width:100%;padding:12px;display:flex;gap:12px;align-items:center;
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+.hovercard:hover{transform:scale(1.06);box-shadow:0 12px 40px -10px rgba(0,0,0,.5)}
+.link-row{display:flex;align-items:center;gap:10px;padding:7px 0}
+.more-link{color:var(--accent-hover);font-weight:600;display:inline-flex;align-items:center;gap:3px}
+.more-link.old{font-size:11.5px}
+.more-link.new{font-size:14px;font-weight:700}
+.headpad{border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;
+  background:var(--bg-card);margin-bottom:8px}
+.headpad .h{font-size:13.5px;font-weight:600}
+.headpad .lg{font-size:10px;color:var(--text-muted)}
+
+/* ── ⑦ 系统 ── */
+.banner{display:flex;align-items:center;gap:9px;
+  border:1px solid color-mix(in srgb,var(--warn) 40%,var(--border));
+  background:color-mix(in srgb,var(--warn) 10%,var(--bg-card));border-radius:var(--radius-md);
+  padding:9px 12px;font-size:12px;color:var(--warn);margin-bottom:10px}
+.toast-dock{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;
+  align-items:flex-end;z-index:99}
+.toast{min-width:240px;max-width:340px;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-md);box-shadow:var(--shadow-2);padding:10px 12px;font-size:12px;
+  color:var(--text-secondary);animation:tin .18s var(--ease)}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.toast .tt{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text-primary)}
+.toast .tp{margin-top:8px}
+.mem{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:760px){.mem{grid-template-columns:1fr}}
+.mem-pane{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);
+  height:150px;overflow-y:auto;padding:8px;cursor:pointer}
+.mem-pane .it{padding:7px;border-bottom:1px solid var(--separator);font-size:11.5px;color:var(--text-secondary)}
+.mem-view{font-size:11.5px;color:var(--text-secondary);margin-top:8px;
+  font-family:"Cascadia Mono",Consolas,monospace}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="toc" aria-label="本页目录">
+  <div class="tt">本页目录</div>
+  <a class="grp" href="#g1">组 A · 数据与声明</a>
+  <a class="sub" href="#s1">01 作者域缺省</a>
+  <a class="sub" href="#s2">02 收费与授权</a>
+  <a class="grp" href="#g2">组 B · 动作与状态</a>
+  <a class="sub" href="#s3">03 动作状态矩阵</a>
+  <a class="sub" href="#s4">04 动作 × 可用面</a>
+  <a class="sub" href="#s5">05 同源同步</a>
+  <a class="sub" href="#s6">06 更新流程</a>
+  <a class="grp" href="#g3">组 C · 交互与系统</a>
+  <a class="sub" href="#s7">07 交互边界</a>
+  <a class="sub" href="#s8">08 系统边界</a>
+  <a class="sub" href="#s9">09 归一化</a>
+</aside>
+
+<main>
+
+<h1>边界蓝图：Plugin Store 的边界情况全集</h1>
+<p class="lede">03 主区蓝图里被一句话带过的边界，在本页全部展开成<b>可交互的现场</b>。
+每节先给判据，再给虚线舞台；舞台里的东西是真能点的——状态会变、进度会走、Toast 会弹。
+定稿后，<b>整卡级修正</b>（整卡可点／删「查看详情」／hover 不闪／强调字加大／标题贴边／检查更新入口）移植回 03。</p>
+<ul class="meta">
+  <li>版本 v2 · 2026-11-19 按滑杆稿重排层次</li>
+  <li>布置任务阶段 · 本页不落产品代码</li>
+  <li>Toast 面依赖独立任务「底部Toast轻提示」（E6#72 已删）</li>
+  <li>上游：03 主区专注蓝图 · 08 批注要求档</li>
+  <li>边界来源：2026-11-19 用户口述 17 项</li>
+</ul>
+<p class="note">读法：全页分三组（数据／动作／交互系统），组下编号 01–08。每组内的<b>虚线框</b>就是现场，直接操作；
+<b>红边块</b>写「不允许」，<b>灰底块</b>写规格，每节末尾<b>竖线</b>写为什么这么定。</p>
+
+<div class="sim">
+  <span class="lbl">全局模拟器</span>
+  <button class="sim-btn on" id="netBtn">联网</button>
+  <button class="sim-btn" id="updBtn">有更新<span class="n" id="updN">3</span></button>
+  <span class="lbl">—— 影响 07 离线现场与 05 更新计数</span>
+</div>
+
+<!-- ══════════════ 组 A ══════════════ -->
+<div class="group" id="g1">
+  <div class="group-h"><span class="gk">A</span>
+    <div><div class="gt">数据与声明</div>
+      <div class="gs">作者没写、源是旧的、插件要收钱——先确认「数据是否成立」，再谈界面</div></div></div>
+
+  <section class="sec" id="s1">
+    <div class="sec-h"><span class="no">01</span><h2>作者域：声明缺席时，店面仍然合法</h2>
+      <span class="rule-chip">结论：缺省 ≠ 错误</span></div>
+    <p><code>homepage.sections</code> 是可选字段。四种缺席形态各自降级，但三样东西恒定存在：
+      <b>门店卡横排</b>（官方＋各仓，硬保留）、<b>按分类浏览</b>（固定板块）、<b>全量网格兜底</b>（缺省板块）。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>A · 完全没有 homepage</b>——只剩骨架三件；hero 槽空着，不占位不留白</p>
+      <div class="mini-store">
+        <div class="mini-title">林可壁纸铺</div>
+        <div class="mini-row"><span class="mini-chip on">官方 Plugin Store</span><span class="mini-chip on">主仓</span></div>
+        <div class="mini-tiles">
+          <div class="mini-tile"><div class="mt">主题</div><div class="mc">2 个插件</div></div>
+          <div class="mini-tile"><div class="mt">文档</div><div class="mc">0 · 不出瓷片</div></div>
+          <div class="mini-tile"><div class="mt">其他</div><div class="mc">0 · 不出瓷片</div></div>
+        </div>
+        <div class="mini-cards">
+          <div class="mini-card"><span class="sq"></span><span class="nm">暮色壁纸</span></div>
+          <div class="mini-card"><span class="sq"></span><span class="nm">墨色壁纸</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>B · 声明了板块但没有 hero</b>——槽 1 空 ⇒ 门店卡成为第一视觉</p>
+      <div class="mini-store">
+        <div class="mini-title">周末工坊</div>
+        <div class="mini-row"><span class="mini-chip on">官方 Plugin Store</span>
+          <span class="mini-chip on">脚本仓</span><span class="mini-chip">字体仓</span></div>
+        <div class="mini-tiles">
+          <div class="mini-tile"><div class="mt">开发</div><div class="mc">2 个插件</div></div>
+          <div class="mini-tile"><div class="mt">主题</div><div class="mc">1 个插件</div></div>
+          <div class="mini-tile"><div class="mt">效率</div><div class="mc">1 个插件</div></div>
+        </div>
+        <div class="mini-cards">
+          <div class="mini-card"><span class="sq"></span><span class="nm">清理脚本集</span></div>
+          <div class="mini-card"><span class="sq"></span><span class="nm">定时任务</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>C · 仓声明了但 0 个插件</b>——诚实空态，不伪造占位卡</p>
+      <div class="mini-store"><div class="mini-title">图标仓</div>
+        <div class="mini-empty">「图标仓」暂无插件<br>
+          <span style="font-size:10px">作者声明了这间仓但还没上架</span></div></div>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>D · v1 源（没有 authors/）</b>——插件进统一池，作者域整体缺席</p>
+      <div class="mini-store">
+        <div class="mini-title">Plugin Store</div>
+        <div class="mini-row"><span class="mini-chip on">官方 Plugin Store</span></div>
+        <div class="mini-tiles">
+          <div class="mini-tile"><div class="mt">开发</div><div class="mc">官方 3 ＋ v1 源 2</div></div>
+          <div class="mini-tile"><div class="mt">主题</div><div class="mc">官方 8</div></div>
+          <div class="mini-tile"><div class="mt">其他</div><div class="mc">v1 源 1</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>因缺声明而隐藏骨架；伪造「新品推荐」之类的占位板块；把 v1 源当坏源丢弃。</span></div>
+    <p class="note"><b>判据</b>：v1 源在来源页标 <span class="badge warn">v1 · 无作者信息</span>，插件照常可装。</p>
+  </section>
+
+  <section class="sec" id="s2">
+    <div class="sec-h"><span class="no">02</span><h2>收费：价格是数据，裁决在壳层</h2>
+      <span class="rule-chip">结论：市场只渲染，不校验</span></div>
+    <p>收费插件把动作区从「安装」换成「购买／试用／续费／重新验证」，但<b>付费校验绝不在插件侧</b>——
+      真正装不装由壳裁决（05 §三·4 三层模型）。这里的「购买」只是一个动作描述符。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span>六种授权形态并排；点「重新验证」看出口</p>
+      <div class="price-grid" id="priceGrid"></div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>未购时显示灰色安装按钮；静默把「授权失效」降级成「未购」；在插件侧做任何价格判断。</span></div>
+    <p class="note"><b>边界</b>：已购＝普通安装流程；试用与到期共用同一额度字段（剩余天数）；失效必须可重新验证。</p>
+  </section>
+</div>
+
+<!-- ══════════════ 组 B ══════════════ -->
+<div class="group" id="g2">
+  <div class="group-h"><span class="gk">B</span>
+    <div><div class="gt">动作与状态</div>
+      <div class="gs">安装、更新、进度、失败——同一条状态机，所有面读到同一份值</div></div></div>
+
+  <section class="sec" id="s3">
+    <div class="sec-h"><span class="no">03</span><h2>动作状态矩阵</h2>
+      <span class="rule-chip">结论：一条状态机，八种脸</span></div>
+    <p>「未安装／下载中／已安装／有更新／更新中／失败／离线／内置」不是八套 UI，而是同一条状态机的八个分支。
+      点任意卡切换——<b>动作区与进度条变，卡片尺寸与位置不动</b>。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span>点卡片切换下一态；观察外框尺寸始终不变</p>
+      <div class="state-grid" id="stateGrid"></div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>用同一个布尔同时表示「已安装」和「有更新」；状态变化导致卡片重排。</span></div>
+    <p class="note"><b>不变量</b>：进度来自同一份 store，任何面读到的百分比必须一致。</p>
+  </section>
+
+  <section class="sec" id="s4">
+    <div class="sec-h"><span class="no">04</span><h2>动作命令 × 可用面：破坏性动作不进卡片主位</h2>
+      <span class="rule-chip">结论：卸载在三处可达，但不在浏览流主位</span></div>
+    <p>商店不是「已安装列表」，它同时承担浏览与维护。同一个插件在不同面上有不同的「命令集」——
+      关键不是把所有按钮都摆出来，而是让<b>每个动作在对的面、以对的重量出现</b>。
+      动作用三级：<b>主行动</b>（安装/更新/购买）、<b>次行动</b>（取消/启用）、<b>破坏行动</b>（卸载）。</p>
+
+    <div class="spec">
+      <div class="spec-t">动作 × 面 矩阵（✅ 可见 / — 不出现）</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>动作</th><th>卡片主位</th><th>卡片「更多」</th><th>详情页</th><th>已安装列表</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>安装 / 更新</td><td>✅</td><td>—</td><td>✅</td><td>✅</td><td>高频主行动，直上卡面</td></tr>
+            <tr><td>取消（进行中）</td><td>✅</td><td>—</td><td>✅</td><td>✅</td><td>与进度同面</td></tr>
+            <tr><td>禁用 / 启用</td><td>—</td><td>✅</td><td>✅</td><td>✅</td><td>次行动：不常见但非破坏</td></tr>
+            <tr><td>卸载</td><td>—</td><td>✅</td><td>✅</td><td>✅</td><td><b>破坏行动</b>：⛔ 卡面主位，需二次确认</td></tr>
+            <tr><td>批量卸载 / 批量禁用</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>多选后出批量条</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>A · 卡片上的「更多」</b>——已安装态的卡，主位没有卸载；点 ⋯ 才出现禁用/卸载</p>
+      <div class="card act-card">
+        <span class="tile" style="background:linear-gradient(135deg,#7C3AED,#7C3AEDC8)">宏</span>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13.5px;font-weight:600">宏面板</div>
+          <div style="font-size:11px;color:var(--text-muted)">效率 · 极客工坊</div></div>
+        <span class="badge ok">已安装</span>
+        <button class="icon-btn js-more" aria-label="更多动作" title="更多动作">⋯</button>
+        <div class="more-menu" hidden>
+          <button class="mi">禁用</button>
+          <button class="mi">查看详情</button>
+          <div class="mi-sep"></div>
+          <button class="mi danger">卸载…</button>
+        </div>
+      </div>
+      <p class="stage-cap" style="margin-top:10px">卸载后面带省略号＝会弹确认；确认框里写清「会删除什么、保留什么」。</p>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>B · 详情页动作条</b>——主行动、次行动、破坏行动三种重量并排，但危险项在最后</p>
+      <div class="act-bar">
+        <button class="btn">更新到 0.2.0</button>
+        <button class="btn secondary">禁用</button>
+        <span style="flex:1"></span>
+        <button class="btn danger">卸载</button>
+      </div>
+      <p class="stage-cap" style="margin-top:10px">core 内置插件：卸载位换成 <span class="badge">不可卸载</span>（置灰＋原因），不是隐藏。</p>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>C · 已安装列表的批量</b>——勾选后底部浮出批量条；未选中时一个按钮都不多</p>
+      <div class="ins-row"><input type="checkbox" checked aria-label="选择 宏面板">
+        <span style="flex:1">宏面板</span><span class="badge ok">已安装</span>
+        <button class="btn secondary">禁用</button></div>
+      <div class="ins-row"><input type="checkbox" checked aria-label="选择 编辑器">
+        <span style="flex:1">编辑器</span><span class="badge warn">有更新</span>
+        <button class="btn">更新</button></div>
+      <div class="ins-row"><input type="checkbox" aria-label="选择 设置">
+        <span style="flex:1">设置</span><span class="badge">内置</span>
+        <span class="badge">不可卸载</span></div>
+      <div class="bulk-bar"><span>已选 2 项</span>
+        <span style="flex:1"></span>
+        <button class="btn secondary">批量禁用</button>
+        <button class="btn danger">批量卸载</button></div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>在浏览流卡面直接放「卸载」；卸载无二次确认；core 插件靠隐藏按钮假装不可卸载；批量操作不告诉用户影响范围。</span></div>
+    <p class="note"><b>为什么不能只留详情页</b>：卸载是高频维护动作，每次都进详情页成本过高；
+      <b>为什么不能上卡面主位</b>：浏览流里一次误触就是数据丢失。折中＝<b>卡片「更多」＋已安装列表批量＋详情页</b>，
+      三处都能到，但都不是「随手一点」。</p>
+  </section>
+
+  <section class="sec" id="s5">
+    <div class="sec-h"><span class="no">05</span><h2>同源同步：一个状态源，多个渲染面</h2>
+      <span class="rule-chip">结论：不存在第二个按钮</span></div>
+    <p>历史上详情页与侧栏各有一个「安装」按钮、各自维护状态，改了一边另一边不变。
+      根治办法不是「记得两边一起改」，而是<b>根本不存在第二个按钮</b>。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span>点「开始安装」：卡片与详情条同步走进度，右下角 Toast 只保留一条</p>
+      <div class="sync-wrap">
+        <div class="surface">
+          <h4>① 卡片面</h4>
+          <div class="card" style="padding:12px;display:flex;gap:12px;align-items:center">
+            <span class="tile" style="background:linear-gradient(135deg,#7C3AED,#7C3AEDC8)">宏</span>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13.5px;font-weight:600">宏面板</div>
+              <div style="font-size:11px;color:var(--text-muted)">效率 · 极客工坊</div></div>
+            <div id="syncCardAct"></div>
+          </div>
+          <div class="sync-state" id="syncState">state: none · progress: 0%</div>
+        </div>
+        <div class="surface">
+          <h4>② 详情条（跨标签详情页动作槽）</h4>
+          <div class="detail-bar">
+            <span class="tile" style="background:linear-gradient(135deg,#7C3AED,#7C3AEDC8);width:34px;height:34px">宏</span>
+            <div style="min-width:0;flex:1"><div class="dn">宏面板</div>
+              <div class="dm">可编程宏按键面板 · v0.1.3</div></div>
+            <div id="syncDetailAct"></div>
+          </div>
+          <h4 style="margin-top:14px">③ Toast（右下角系统提示）</h4>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:0">
+            开始/完成/失败各弹一次；<b>进行中的进度不重复弹</b>——同一任务 id 只更新那一条。</p>
+        </div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" id="syncStart">开始安装（三面同时变）</button>
+        <button class="btn secondary" id="syncReset" style="margin-left:8px">重置</button></div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>组件内部私存一份 state；为某个视图单独实现按钮。</span></div>
+    <p class="note"><b>实施纪律</b>：状态机是纯函数（事件 → 新状态），渲染器只读状态。</p>
+  </section>
+
+  <section class="sec" id="s6">
+    <div class="sec-h"><span class="no">06</span><h2>更新：检查、计数、处处可触发</h2>
+      <span class="rule-chip">结论：入口可多，命令唯一</span></div>
+    <p>主区原本<b>没有</b>「检查更新」入口（只有侧栏有），且更新动作只存在于来源页。
+      更新是<b>全局能力</b>：入口可以在任何视图出现，但都发同一条 <code>checkUpdates()</code>。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span>点「检查更新」→ 计数刷新；点某行「更新」看进度与 Toast</p>
+      <div class="toolbar">
+        <button class="btn secondary" id="checkBtn">检查更新</button>
+        <span class="badge warn" id="updBadge">3 个可用更新</span>
+        <span class="grow"></span>
+        <span style="font-size:11px;color:var(--text-muted)" id="checkMsg">上次检查：5 分钟前</span>
+      </div>
+      <div class="upd-list" id="updList"></div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-t">四个入口 · 位置不同、命令相同</div>
+      <div class="entry-chips">
+        <div class="entry"><span class="en">首页 · 热门下载</span>
+          <span class="ec">编辑精选旁 <span class="badge warn">3</span> 检查更新</span></div>
+        <div class="entry"><span class="en">分类页 · 工具行</span>
+          <span class="ec">排序旁 <span class="badge warn">3</span> 更新</span></div>
+        <div class="entry"><span class="en">来源页 · 仓库行</span>
+          <span class="ec">刷新旁 <span class="badge ok">已是最新</span></span></div>
+        <div class="entry"><span class="en">侧栏 · 已安装</span>
+          <span class="ec">检查更新 <span class="badge warn">3</span></span></div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-t">⚠ 三种「更新」不是一件事（2026-11-19 拍板）</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>层</th><th>变的是什么</th><th>生效方式</th><th>发版？</th></tr></thead>
+          <tbody>
+            <tr><td>内容</td><td>hero 轮播/合集/板块顺序/新上架</td><td>打开商店后台重拉目录 ＋ contentHash 比对</td><td>⛔ 不需要</td></tr>
+            <tr><td>插件版本</td><td>某插件的新版本包</td><td>检查更新 → 下载安装</td><td>需要（该插件）</td></tr>
+            <tr><td>软件本体</td><td>壳</td><td>软件更新</td><td>需要</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin:8px 0 0;font-size:12px;color:var(--text-muted)">
+        内容刷新 ⛔ 复用「检查更新」；浏览中途内容变了 → 弹「首页内容已更新·刷新」，⛔ 静默跳动。</p>
+    </div>
+
+    <div class="spec">
+      <div class="spec-t">刷新触发（⛔ 不需要关软件/关标签）</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>触发</th><th>范围</th><th>节流</th></tr></thead>
+          <tbody>
+            <tr><td>应用启动</td><td>全部已添加源</td><td>一次</td></tr>
+            <tr><td><b>每次打开商店</b></td><td>全部</td><td>60s</td></tr>
+            <tr><td>窗口重新获得焦点</td><td>全部</td><td>15min</td></tr>
+            <tr><td><b>后台定时</b>（长期运行）</td><td>全部</td><td>30min ±5</td></tr>
+            <tr><td>网络恢复</td><td>全部</td><td>合并一次</td></tr>
+            <tr><td>手动「刷新内容」/ 来源页单源刷新</td><td>全部 / 该源</td><td>无视</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-t">提示分层（🔴 3 秒 Toast 不是唯一渠道）</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>用户在哪</th><th>即时</th><th>持久记录</th><th>可执行入口</th></tr></thead>
+          <tbody>
+            <tr><td>正在看该店</td><td>轻 Toast</td><td>铃铛面板一条</td><td>商店头部常驻刷新条</td></tr>
+            <tr><td>在商店别的页</td><td>⛔ 无 Toast</td><td>面板一条</td><td>头部徽标「内容已更新」</td></tr>
+            <tr><td>在别的标签/最小化</td><td>⛔ 不打断</td><td>面板一条＋角标</td><td>下次进商店见刷新条</td></tr>
+            <tr><td>离线</td><td>⛔ 不提示</td><td>面板标「待联网」</td><td>联网自动重试一次</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin:8px 0 0;font-size:12px;color:var(--text-muted)">
+        「忽略」只清待刷新标记，⛔ 不删面板记录；只有**已添加的源**会被检查。</p>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>某个视图自己算一遍可更新列表；只有来源页能更新。</span></div>
+  </section>
+</div>
+
+<!-- ══════════════ 组 C ══════════════ -->
+<div class="group" id="g3">
+  <div class="group-h"><span class="gk">C</span>
+    <div><div class="gt">交互与系统</div>
+      <div class="gs">点击区、hover 稳定、离线、提示、位置——决定「用起来顺不顺」</div></div></div>
+
+  <section class="sec" id="s7">
+    <div class="sec-h"><span class="no">07</span><h2>交互边界：点击区、hover 稳定、字号、间距</h2>
+      <span class="rule-chip">结论：整卡即入口</span></div>
+    <p>四种「看着是细节、用起来是硬伤」的边界。前两种影响手感，后两种决定页面像不像幻灯片。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>A · 整卡＝入口</b>——hover 出现虚线点击区；卡内不再有「查看详情」</p>
+      <div class="click-card card" id="clickCard" tabindex="0" role="button">
+        <span class="ring"></span>
+        <span class="tile" style="background:linear-gradient(135deg,#0E7490,#0E7490C8)">示</span>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13.5px;font-weight:600">示波器面板</div>
+          <div style="font-size:11px;color:var(--text-muted)">硬件 · 极客工坊</div></div>
+        <span class="badge ok">已安装</span>
+      </div>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>B · hover 期间状态变化不丢放大</b>——按住卡片点「安装」，应保持放大不闪</p>
+      <div class="hovercard card" id="hoverCard">
+        <span class="tile" style="background:linear-gradient(135deg,#7C3AED,#7C3AEDC8)">宏</span>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13.5px;font-weight:600">宏面板</div>
+          <div style="font-size:11px;color:var(--text-muted)" id="hvSub">未安装</div></div>
+        <button class="btn" id="hvBtn">安装</button>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-t">C · 强调色跳转字</div>
+      <div class="vs">
+        <div class="link-row"><span class="tag-old">旧</span>
+          <span class="more-link old">全部主题 ›</span></div>
+        <div class="link-row"><span class="tag-new">新</span>
+          <span class="more-link new">全部主题 ›</span></div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-t">D · 标题与左右边界</div>
+      <div class="vs">
+        <div class="headpad"><div class="lg"><span class="tag-old">旧</span> 居中留白</div>
+          <div class="h" style="text-align:center;margin:6px 0">主题专区</div>
+          <div class="lg" style="text-align:center">← 大片空白 →</div></div>
+        <div class="headpad"><div class="lg"><span class="tag-new">新</span> 贴内容边</div>
+          <div class="h" style="margin:5px 0">主题专区
+            <span class="more-link new" style="font-size:12px">全部主题 ›</span></div>
+          <div class="lg">与卡片左缘同一基线</div></div>
+      </div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>卡内保留「查看详情」按钮；整页重绘导致 hover 丢失；标题居中留白（PPT 感）。</span></div>
+  </section>
+
+  <section class="sec" id="s8">
+    <div class="sec-h"><span class="no">08</span><h2>系统边界：离线、Toast、位置记忆</h2>
+      <span class="rule-chip">结论：离线≠错误；提示不叠加；位置要记住</span></div>
+    <p>三件与页面内容无关、但决定信任感的事。</p>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>A · 离线</b>——用页顶模拟器切「离线」：缓存照常可浏览，动作置灰并给原因</p>
+      <div class="banner" id="offBanner" style="display:none">
+        <span>⚠</span><span>当前离线——显示缓存目录；安装与更新不可用，联网后重试</span></div>
+      <div id="offCards" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>B · Toast 队列</b>——同一任务只占一条，后续更新文案而非叠加；<b>进度条属铃铛面板，不进 Toast</b></p>
+      <button class="btn secondary" id="toastA">弹一条普通提示</button>
+      <button class="btn secondary" id="toastB" style="margin-left:6px">同一任务连发 ×3</button>
+      <p class="stage-cap" style="margin-top:10px">⚠ 本能力尚未落地：E6#72 已删除右下 Toast——已独立立项于「待抉择池/底部Toast轻提示」</p>
+    </div>
+
+    <div class="stage">
+      <p class="stage-cap"><span class="st-chip">现场</span><b>C · 位置记忆</b>——三栏各滚一段，再点另一栏，回来时滚动位保留</p>
+      <div class="mem">
+        <div class="mem-pane" id="memA"><div class="it">娱乐 · 1 个插件</div></div>
+        <div class="mem-pane" id="memB"><div class="it">来源 · 极客工坊</div></div>
+        <div class="mem-pane" id="memC"><div class="it">首页 · 装机必备</div></div>
+      </div>
+      <div class="mem-view" id="memView">当前视图：A（娱乐）· scrollTop 0</div>
+    </div>
+
+    <div class="ban"><b>不允许</b><span>离线时把整店变成错误页；同任务 Toast 叠加；导航重绘清空滚动位。</span></div>
+  </section>
+
+  <section class="sec" id="s9">
+    <div class="sec-h"><span class="no">09</span><h2>归一化：R4 落码照此表</h2>
+      <span class="rule-chip">结论：每件事实只有一个来源</span></div>
+    <p>上面所有边界能成立，靠的是这张表。</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>能力</th><th>唯一真相源</th><th>消费面</th><th>不变量</th></tr></thead>
+        <tbody>
+          <tr><td>安装/更新状态</td><td><code>installJobs[id]</code></td>
+              <td>卡片 / 详情 / 侧栏行 / Toast / 更新角标</td>
+              <td>任何两面读到的 state+progress 必须完全相等</td></tr>
+          <tr><td>可用更新数</td><td><code>updates</code></td>
+              <td>顶栏角标 / 来源页 / 各视图入口 / 侧栏</td>
+              <td>只有 <code>checkUpdates()</code> 能写</td></tr>
+          <tr><td>来源与作者</td><td><code>marketplaceSources</code></td>
+              <td>商店全部视图 / 设置插件</td>
+              <td>两侧同键，任一写入另一侧即时可见</td></tr>
+          <tr><td>导航位置</td><td><code>viewMemory</code></td>
+              <td>rail / 返回 / 状态刷新</td>
+              <td>重绘不得清空；切视图回来原位</td></tr>
+          <tr><td>Toast</td><td><code>toastQueue(taskId)</code></td>
+              <td>全局右下角</td>
+              <td>同 taskId 合并，不叠加</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><b>落码要求</b>：纯函数状态机 ＋ 只读渲染器；AI 友好＝每个字段谁写谁读一眼可见；
+      ⛔ 任何组件内部私存状态；⛔ 任何视图自带一份业务计算。定稿后把整卡级修正移植回 03。</p>
+  </section>
+</div>
+
+</main>
+</div>
+
+<div class="toast-dock" id="toastDock"></div>
+
+<script>
+/* ══════════ 全局模拟器 ══════════ */
+const SIM={online:true};
+document.getElementById("netBtn").addEventListener("click",e=>{
+  SIM.online=!SIM.online;
+  e.currentTarget.classList.toggle("on",SIM.online);
+  e.currentTarget.textContent=SIM.online?"联网":"离线";
+  renderOffline();
+});
+document.getElementById("updBtn").addEventListener("click",()=>{
+  document.querySelectorAll("h2")[5].scrollIntoView({behavior:"smooth"});
+});
+
+/* ══════════ ② 动作状态矩阵 ══════════ */
+const STATES=[
+  {k:"none",       label:"未安装",       act:"安装",        kind:"primary"},
+  {k:"downloading",label:"下载中 42%",    act:"取消",        kind:"secondary", progress:42},
+  {k:"installed",  label:"已安装",        act:"已安装",      kind:"secondary", disabled:true},
+  {k:"update",     label:"有更新 v0.2.0", act:"更新",        kind:"primary"},
+  {k:"updating",   label:"更新中 68%",    act:"取消",        kind:"secondary", progress:68},
+  {k:"failed",     label:"安装失败",      act:"重试",        kind:"primary", error:"网络超时"},
+  {k:"offline",    label:"离线",          act:"安装（置灰）", kind:"secondary", disabled:true},
+  {k:"core",       label:"内置（不可卸载）",act:"已安装",      kind:"secondary", disabled:true},
+  {k:"disabled",   label:"已禁用",        act:"启用",        kind:"secondary", muted:true},
+  {k:"uninstalling",label:"卸载中 55%",   act:"取消",        kind:"secondary", progress:55}
+];
+const demoItems=[
+  {n:"编辑器",c:"开发",t:"编",h:"#2563A8"},
+  {n:"串口监视器",c:"硬件",t:"串",h:"#0E7490"},
+  {n:"Python 环境",c:"开发",t:"Py",h:"#B45309"}
+];
+let stateIdx={};
+function stateCard(it,i){
+  const s=STATES[(stateIdx[i]||0)%STATES.length];
+  const act=s.disabled
+    ? `<button class="btn ${s.kind}" disabled>${s.act}</button>`
+    : `<button class="btn ${s.kind}" data-next="${i}">${s.act}</button>`;
+  const prog=(s.progress!=null)
+    ? `<div class="pbar ${s.k==="downloading"?"indet":""}"><i style="width:${s.progress}%"></i></div>
+       <div class="phase">${s.label}</div>`:"";
+  return `<div class="card state-card ${s.muted?"muted":""}">
+    <div class="top">
+      <span class="tile" style="background:linear-gradient(135deg,${it.h},${it.h}C8)">${it.t}</span>
+      <div style="min-width:0"><div class="nm">${it.n}</div><div class="ct">${it.c}</div></div>
+      <span class="st">${s.k}</span>
+    </div>
+    ${prog}
+    <div class="acts">${act}
+      ${s.error?`<span class="badge err" title="网络超时">${s.error}</span>`:""}</div>
+  </div>`;
+}
+function renderStates(){
+  document.getElementById("stateGrid").innerHTML=demoItems.map((it,i)=>stateCard(it,i)).join("");
+  document.querySelectorAll("[data-next]").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const i=+b.dataset.next;stateIdx[i]=((stateIdx[i]||0)+1)%STATES.length;renderStates();
+    });
+  });
+}
+renderStates();
+
+/* ══════════ ③ 收费 ══════════ */
+const PRICE=[
+  {n:"极光玻璃 Pro",price:"免费",st:"none",badge:"免费",act:"安装",sub:"个人使用免费"},
+  {n:"专业图标包",price:"¥18",priceSub:"一次性",st:"locked",badge:"付费",act:"购买",sub:"终身授权 · 2 台设备"},
+  {n:"高级编辑器",price:"¥48",priceSub:"一次性",st:"owned",badge:"已购",act:"安装",sub:"已购买 · 可随时重装"},
+  {n:"团队协作套件",price:"¥30/月",priceSub:"订阅",st:"trial",badge:"试用中",act:"继续试用",sub:"剩余 7 天"},
+  {n:"数据看板",price:"¥30/月",priceSub:"订阅",st:"expired",badge:"已到期",act:"续费",sub:"到期后只读"},
+  {n:"旧版工具",price:"¥12",priceSub:"一次性",st:"invalid",badge:"授权失效",act:"重新验证",sub:"设备变更需重验"}
+];
+document.getElementById("priceGrid").innerHTML=PRICE.map(p=>`
+  <div class="card price-card">
+    <div class="top">
+      <span class="tile" style="background:linear-gradient(135deg,#0E639C,#0E639CC8)">${p.n.slice(0,1)}</span>
+      <div style="min-width:0;flex:1"><div class="nm">${p.n}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${p.sub}</div></div>
+      <span class="badge ${p.st==="locked"?"paid":p.st==="expired"||p.st==="invalid"?"err":"ok"}">${p.badge}</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:6px">
+      <span class="price">${p.price}</span><small style="font-size:10.5px;color:var(--text-muted)">${p.priceSub||""}</small></div>
+    <div class="acts">
+      <button class="btn ${p.st==="locked"||p.st==="expired"?"":"secondary"}" ${p.st==="invalid"?'data-reverify':""}>${p.act}</button>
+    </div>
+  </div>`).join("");
+document.querySelectorAll("[data-reverify]").forEach(b=>b.addEventListener("click",()=>{
+  toast("t-verify","重新验证授权","正在校验设备指纹…");
+  setTimeout(()=>toast("t-verify","授权已恢复","可以继续安装"),1400);
+}));
+
+/* ══════════ ④ 同源同步 ══════════ */
+const SYNC={state:"none",progress:0};
+let syncTimer=null;
+function syncBtn(){
+  const s=SYNC.state;
+  if(s==="downloading")return `<button class="btn secondary js-sync-cancel">取消</button>`;
+  if(s==="installed")return `<button class="btn secondary" disabled>已安装</button>`;
+  return `<button class="btn js-sync-go">安装</button>`;
+}
+function renderSync(){
+  const html=syncBtn();
+  document.getElementById("syncCardAct").innerHTML=html;
+  document.getElementById("syncDetailAct").innerHTML=html;
+  document.getElementById("syncState").textContent=
+    `state: ${SYNC.state} · progress: ${Math.round(SYNC.progress)}%`;
+  document.querySelectorAll(".js-sync-go").forEach(b=>b.addEventListener("click",startSync));
+  document.querySelectorAll(".js-sync-cancel").forEach(b=>b.addEventListener("click",()=>{
+    clearInterval(syncTimer);SYNC.state="none";SYNC.progress=0;renderSync();}));
+}
+function startSync(){
+  if(SYNC.state==="downloading")return;
+  SYNC.state="downloading";SYNC.progress=0;renderSync();
+  toast("t-sync","正在安装 宏面板","准备下载…");
+  syncTimer=setInterval(()=>{
+    SYNC.progress=Math.min(100,SYNC.progress+7);
+    renderSync();
+    if(SYNC.progress>=100){
+      clearInterval(syncTimer);SYNC.state="installed";
+      renderSync();toast("t-sync","安装完成","宏面板已安装");
+    }else{
+      toast("t-sync","正在安装 宏面板",`${Math.round(SYNC.progress)}%`,Math.round(SYNC.progress));
+    }
+  },260);
+}
+document.getElementById("syncStart").addEventListener("click",startSync);
+document.getElementById("syncReset").addEventListener("click",()=>{
+  clearInterval(syncTimer);SYNC.state="none";SYNC.progress=0;renderSync();closeToast("t-sync");});
+renderSync();
+
+/* ══════════ ⑤ 更新流程 ══════════ */
+const UPD=[
+  {id:"editor",n:"编辑器",from:"1.0.24",to:"1.0.25",p:0},
+  {id:"serial",n:"串口监视器",from:"1.0.36",to:"1.0.37",p:0},
+  {id:"python",n:"Python 环境",from:"0.9.4",to:"0.9.5",p:0}
+];
+let updating=false;
+function renderUpd(){
+  document.getElementById("updList").innerHTML=UPD.map(u=>`
+    <div class="upd-row">
+      <span class="tile" style="background:#3C3C3C;width:32px;height:32px;font-size:12px">${u.n.slice(0,1)}</span>
+      <div class="grow"><div class="un">${u.n}</div>
+        <div class="us">${u.from} → ${u.to}${u.p>0?` · ${Math.round(u.p)}%`:""}</div></div>
+      ${u.p>=100?`<span class="badge ok">已更新</span>`
+        :u.p>0?`<div class="pbar" style="width:120px"><i style="width:${u.p}%"></i></div>`
+        :`<button class="btn secondary" data-uu="${u.id}">更新</button>`}
+    </div>`).join("");
+  document.querySelectorAll("[data-uu]").forEach(b=>b.addEventListener("click",()=>updateOne(b.dataset.uu)));
+  const left=UPD.filter(u=>u.p<100).length;
+  document.getElementById("updN").textContent=left;
+  document.getElementById("updBadge").textContent=left?`${left} 个可用更新`:"已是最新";
+  document.getElementById("updBadge").className="badge "+(left?"warn":"ok");
+}
+function updateOne(id){
+  if(updating)return;
+  const u=UPD.find(x=>x.id===id);if(!u)return;
+  updating=true;toast("t-upd-"+id,`正在更新 ${u.n}`,"0%",0);
+  const t=setInterval(()=>{
+    u.p=Math.min(100,u.p+10);renderUpd();
+    toast("t-upd-"+id,`正在更新 ${u.n}`,`${Math.round(u.p)}%`,Math.round(u.p));
+    if(u.p>=100){
+      clearInterval(t);updating=false;renderUpd();
+      toast("t-upd-"+id,`${u.n} 已更新`,`新版本 ${u.to}`);
+      setTimeout(()=>closeToast("t-upd-"+id),2200);
+    }
+  },220);
+}
+document.getElementById("checkBtn").addEventListener("click",()=>{
+  const m=document.getElementById("checkMsg");
+  m.textContent="正在检查…";
+  setTimeout(()=>{
+    const left=UPD.filter(u=>u.p<100).length;
+    m.textContent="刚刚检查";
+    toast("t-check","检查完成",left?`发现 ${left} 个可用更新`:"所有插件已是最新");
+  },900);
+});
+renderUpd();
+
+/* ══════════ ⑦ 系统 ══════════ */
+function renderOffline(){
+  const on=SIM.online;
+  document.getElementById("offBanner").style.display=on?"none":"flex";
+  document.getElementById("offCards").innerHTML=["编辑器","串口监视器"].map(n=>`
+    <div class="card" style="padding:10px 12px;display:flex;gap:10px;align-items:center;width:240px">
+      <span class="tile" style="background:#3C3C3C;width:32px;height:32px;font-size:12px">${n.slice(0,1)}</span>
+      <div style="min-width:0;flex:1"><div style="font-size:12.5px;font-weight:600">${n}</div>
+        <div style="font-size:10.5px;color:var(--text-muted)">${on?"可安装":"来自缓存"}</div></div>
+      <button class="btn secondary" ${on?"":"disabled"} title="${on?"":"联网后重试"}">安装</button>
+    </div>`).join("");
+}
+renderOffline();
+
+const toastMap={};
+function toast(taskId,title,body,pct){
+  let el=toastMap[taskId];
+  if(!el){
+    el=document.createElement("div");el.className="toast";
+    el.innerHTML=`<div class="tt"><span class="t"></span>
+      <span class="x" style="margin-left:auto;cursor:pointer;color:var(--text-secondary)">✕</span></div>
+      <div class="b" style="margin-top:3px"></div><div class="tp"></div>`;
+    el.querySelector(".x").addEventListener("click",()=>closeToast(taskId));
+    document.getElementById("toastDock").appendChild(el);
+    toastMap[taskId]=el;
+  }
+  el.querySelector(".t").textContent=title;
+  el.querySelector(".b").textContent=body||"";
+  el.querySelector(".tp").innerHTML=pct!=null?`<div class="pbar"><i style="width:${pct}%"></i></div>`:"";
+}
+function closeToast(id){
+  const el=toastMap[id];if(!el)return;
+  el.remove();delete toastMap[id];
+}
+document.getElementById("toastA").addEventListener("click",()=>{
+  toast("t-a","已复制链接","plugin://linkdesk/marketplace");
+  setTimeout(()=>closeToast("t-a"),2400);
+});
+document.getElementById("toastB").addEventListener("click",()=>{
+  let n=1;
+  const t=setInterval(()=>{ // 同 key 合并：只更新文案，不新增节点
+    toast("t-merge","正在检查更新",`第 ${n} 批…`);
+    if(++n>3){clearInterval(t);toast("t-merge","检查完成","发现 3 个可用更新");
+      setTimeout(()=>closeToast("t-merge"),2400);}
+  },700);
+});
+
+const MEM={a:document.getElementById("memA"),b:document.getElementById("memB"),c:document.getElementById("memC")};
+const saved={a:0,b:0,c:0};
+let cur="a";
+const label={a:"娱乐",b:"来源",c:"首页"};
+function showMem(v){
+  saved[cur]=MEM[cur].scrollTop;cur=v;
+  MEM[v].scrollTop=saved[v];
+  document.getElementById("memView").textContent=
+    `当前视图：${v.toUpperCase()}（${label[v]}）· scrollTop ${Math.round(MEM[v].scrollTop)}`;
+}
+["a","b","c"].forEach(k=>{
+  const pane=MEM[k];
+  for(let i=2;i<=10;i++){const d=document.createElement("div");d.className="it";
+    d.textContent={a:`娱乐 · 第 ${i} 行`,b:`来源 · 第 ${i} 行`,c:`首页 · 第 ${i} 行`}[k];pane.appendChild(d);}
+  pane.addEventListener("scroll",()=>{
+    if(k===cur)document.getElementById("memView").textContent=
+      `当前视图：${cur.toUpperCase()}（${label[cur]}）· scrollTop ${Math.round(MEM[cur].scrollTop)}`;
+  });
+  pane.addEventListener("click",()=>showMem(k));
+});
+
+/* ══════════ ⑥ hover 稳定演示 ══════════ */
+document.getElementById("hvBtn").addEventListener("click",()=>{
+  const btn=document.getElementById("hvBtn");
+  const sub=document.getElementById("hvSub");
+  if(btn.dataset.busy)return;
+  btn.dataset.busy="1";btn.disabled=true;sub.textContent="安装中 0%";
+  let p=0;
+  const t=setInterval(()=>{
+    p=Math.min(100,p+10);sub.textContent=`安装中 ${p}%`;
+    if(p>=100){clearInterval(t);sub.textContent="已安装";btn.textContent="已安装";
+      btn.disabled=true;delete btn.dataset.busy;}
+  },180);
+});
+/* ══════════ 04 卡片「更多」菜单 ══════════ */
+document.querySelectorAll(".js-more").forEach(b=>{
+  b.addEventListener("click",e=>{
+    e.stopPropagation();
+    const menu=b.parentElement.querySelector(".more-menu");
+    menu.hidden=!menu.hidden;
+  });
+});
+
+/* ══════════ 目录高亮：当前阅读的节自动点亮 ══════════ */
+(()=>{
+  const links=[...document.querySelectorAll(".toc a.sub")];
+  const map=new Map(links.map(a=>[a.getAttribute("href").slice(1),a]));
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{if(e.isIntersecting){
+      links.forEach(a=>a.classList.remove("on"));
+      map.get(e.target.id)?.classList.add("on");
+    }});
+  },{rootMargin:"-20% 0px -70% 0px"});
+  document.querySelectorAll(".sec[id]").forEach(s=>io.observe(s));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>插件详情页设计 v1 — 基于现有实现</title>
+<style>
+/* ═══ 令牌（与 03 主区蓝图同一套·深色配方实值） ═══ */
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C; --bg-page:#181818;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:rgba(14,99,156,.28); --accent-hover:#1177BB; --accent-solid:#0E639C;
+  --text-on-accent:#FFFFFF; --border:#3C3C3C; --separator:#474747;
+  --danger:#E06C75; --danger-quiet:#F48771; --warn:#E5C07B; --note:#CCA700;
+  --ok:#4EC9B0; --badge-alert:#C24E4E;
+  --bg-side-panel:#1E1E22; --bg-toolbar:#1E1E22; --hover-overlay:rgba(255,255,255,.06);
+  --mono:"Cascadia Code",Consolas,monospace;
+  --shadow-1:0 1px 2px rgba(0,0,0,.25),0 2px 6px rgba(0,0,0,.2);
+  --shadow-2:0 8px 28px rgba(0,0,0,.42);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg-page);color:var(--text-primary);
+  font:14px/1.65 "Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+a{color:var(--accent-hover);text-decoration:none}
+code{font-family:var(--mono);font-size:12.5px;background:var(--bg-input);
+  padding:1px 6px;border-radius:4px;color:#C9D1D9}
+/* ═══ 文档骨架 ═══ */
+.doc{display:grid;grid-template-columns:268px minmax(0,1fr);max-width:1440px;margin:0 auto}
+.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 18px 40px;
+  border-right:1px solid var(--border);background:#141414}
+.toc h1{font-size:15px;margin:0 0 4px}
+.toc .toc-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:18px;line-height:1.5}
+.toc a.item{display:flex;gap:10px;padding:7px 9px;border-radius:7px;font-size:12.5px;
+  color:var(--text-secondary)}
+.toc a.item:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.toc a.item b{color:var(--text-muted);font-weight:600;font-variant-numeric:tabular-nums}
+.body{padding:38px 46px 120px;min-width:0}
+/* ═══ 章节 ═══ */
+.sec{margin:0 0 54px;scroll-margin-top:20px}
+.sec-h{display:flex;align-items:baseline;gap:12px;padding-bottom:10px;
+  border-bottom:1px solid var(--separator);margin-bottom:18px}
+.sec-h .n{font-family:var(--mono);font-size:12px;color:var(--accent-hover);letter-spacing:.12em}
+.sec-h h2{font-size:19px;margin:0;letter-spacing:.01em}
+.sec-h .verdict{margin-left:auto;font-size:11.5px;color:var(--text-muted);
+  border:1px solid var(--border);border-radius:99px;padding:2px 10px;white-space:nowrap}
+.lede{color:var(--text-secondary);font-size:13px;margin:0 0 16px;max-width:78ch}
+.lede b{color:var(--text-primary)}
+/* ═══ 现场舞台 ═══ */
+.stage{position:relative;border:1px dashed var(--separator);border-radius:12px;
+  background:#141414;padding:34px 26px 26px;margin:18px 0 10px}
+.stage::before{content:"现场";position:absolute;top:-9px;left:16px;font-size:10.5px;
+  letter-spacing:.1em;color:var(--text-muted);background:#141414;padding:0 6px}
+.caption{font-size:11.5px;color:var(--text-muted);margin:8px 2px 0}
+/* ═══ 结论/禁止块 ═══ */
+.rule{border-left:2px solid var(--accent-solid);background:rgba(14,99,156,.08);
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:12.5px;color:var(--text-secondary);margin:12px 0}
+.rule b{color:var(--text-primary)}
+.no{border:1px solid color-mix(in srgb,var(--danger) 42%,transparent);background:rgba(224,108,117,.06);
+  padding:11px 14px;border-radius:9px;font-size:12.5px;color:#E8B4B8;margin:12px 0}
+.no b{color:var(--danger)}
+/* ═══ 表格 ═══ */
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--separator);vertical-align:top}
+th{color:var(--text-muted);font-weight:600;font-size:11.5px;letter-spacing:.04em}
+td code{font-size:11.5px}
+/* ═══ 详情页预览（与真机同构：头/动作条/页签/正文/侧栏） ═══ */
+.pv{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-window);
+  box-shadow:var(--shadow-1)}
+.pv-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--bg-toolbar);
+  border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)}
+.pv-bar .dot{width:8px;height:8px;border-radius:50%;background:var(--separator)}
+.pv-wrap{display:flex;min-height:420px}
+.pv-main{flex:1;min-width:0;padding:22px 26px 30px}
+.pv-side{width:236px;flex:none;border-left:1px solid var(--separator);padding:18px 16px;
+  background:#1B1B1B;font-size:12px}
+/* 头部 */
+.d-head{display:flex;gap:16px;align-items:flex-start}
+.d-ico{width:72px;height:72px;border-radius:16px;flex:none;display:flex;align-items:center;
+  justify-content:center;color:#fff;box-shadow:var(--shadow-1)}
+.d-ico svg{width:36px;height:36px}
+.d-name{font-size:21px;font-weight:650;margin:2px 0 6px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.d-name>span:first-child{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.d-sub{display:flex;align-items:center;gap:4px 9px;flex-wrap:wrap;color:var(--text-secondary);font-size:12px}
+.d-sub>*{white-space:nowrap;flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.d-sub .sep{color:var(--text-muted);opacity:.6}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;
+  padding:2px 8px;border-radius:99px;border:1px solid transparent;white-space:nowrap}
+.badge svg{width:11px;height:11px}
+.badge.official{color:#79C0FF;background:rgba(56,139,253,.14);border-color:rgba(56,139,253,.34)}
+.badge.third{color:#E5C07B;background:rgba(229,192,123,.13);border-color:rgba(229,192,123,.3)}
+.badge.local{color:#C6CDD5;background:rgba(74,85,104,.3);border-color:rgba(120,132,153,.4)}
+.badge.core{color:#D2A8FF;background:rgba(188,140,255,.13);border-color:rgba(188,140,255,.3)}
+.badge.update{color:#79C0FF;background:rgba(56,139,253,.14);border-color:rgba(56,139,253,.34)}
+/* 动作条 */
+.d-acts{display:flex;gap:9px;margin:16px 0 4px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;height:31px;padding:0 15px;border-radius:6px;
+  border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);
+  font-size:12.5px;font-family:inherit;cursor:pointer;
+  white-space:nowrap;flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.btn.primary{background:var(--accent-solid);border-color:var(--accent-solid);color:var(--text-on-accent);font-weight:600}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.danger{color:var(--danger-quiet);border-color:color-mix(in srgb,var(--danger) 40%,var(--border))}
+.btn.danger:hover{border-color:var(--danger)}
+.d-acts .note{margin-left:auto;font-size:11px;color:var(--text-muted)}
+/* 页签 */
+.d-tabs{display:flex;gap:2px;border-bottom:1px solid var(--separator);margin:18px 0 0}
+.d-tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  color:var(--text-secondary);font:inherit;font-size:12.5px;padding:9px 14px;cursor:pointer}
+.d-tab:hover{color:var(--text-primary)}
+.d-tab.on{color:var(--text-primary);border-bottom-color:var(--accent-hover);font-weight:600}
+.pane{display:none;padding-top:18px}
+.pane.on{display:block}
+/* 截图 */
+.gallery{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px}
+.shot{width:210px;height:132px;flex:none;border-radius:8px;border:1px solid var(--border);
+  background:linear-gradient(135deg,#22303C,#2A2A2E);position:relative;overflow:hidden}
+.shot::after{content:"";position:absolute;inset:10px;border-radius:5px;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.09) 0 2px,transparent 2px 12px)}
+.shot .lbl{position:absolute;left:8px;bottom:6px;font-size:10px;color:var(--text-muted)}
+/* 正文 */
+.readme h3{font-size:14px;margin:18px 0 8px}
+.readme p{color:var(--text-secondary);font-size:12.5px;margin:0 0 10px;max-width:70ch}
+.readme ul{margin:0 0 10px;padding-left:18px;color:var(--text-secondary);font-size:12.5px}
+.readme li{margin:4px 0}
+/* 功能清单 */
+.feat-g{margin:0 0 16px}
+.feat-g h4{font-size:11.5px;color:var(--text-muted);letter-spacing:.08em;margin:0 0 8px;
+  text-transform:uppercase}
+.feat-row{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.05)}
+.feat-row .k{font-family:var(--mono);font-size:11.5px;color:#C9D1D9;min-width:150px}
+.feat-row .v{font-size:12px;color:var(--text-secondary)}
+/* 更改日志 */
+.ver{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--separator)}
+.ver .vh{min-width:118px;display:flex;flex-direction:column;gap:3px}
+.ver .vh b{font-family:var(--mono);font-size:12px}
+.ver .vh time{font-size:10.5px;color:var(--text-muted)}
+.ver ul{margin:0;padding-left:17px;color:var(--text-secondary);font-size:12px}
+.ver.cur .vh b{color:var(--ok)}
+/* 侧栏 */
+.side-title{font-size:10.5px;letter-spacing:.1em;color:var(--text-muted);margin:0 0 10px}
+.meta-row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);font-size:11.5px}
+.meta-row .k{color:var(--text-muted);flex:none}
+.meta-row .v{text-align:right;color:var(--text-primary);word-break:break-all;font-size:11.5px}
+.meta-row .v.mono{font-family:var(--mono)}
+.meta-row .v.warn{color:var(--warn)}
+.side-g{margin-top:16px}
+/* 控制条 */
+.ctrl{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:14px;
+  padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:#101010;font-size:12px}
+.ctrl label{color:var(--text-muted);font-size:11.5px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.seg button{appearance:none;border:0;background:var(--bg-input);color:var(--text-secondary);
+  font:inherit;font-size:11.5px;padding:5px 11px;cursor:pointer;border-right:1px solid var(--border)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent-solid);color:var(--text-on-accent);font-weight:600}
+/* 事实卡 */
+.fact{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;padding:11px 0;
+  border-bottom:1px solid var(--separator)}
+.fact .i{color:var(--ok);font-family:var(--mono);font-size:12px}
+.fact .t{font-size:13px;margin-bottom:3px}
+.fact .d{font-size:12px;color:var(--text-muted)}
+.pill{display:inline-block;font-size:10.5px;padding:1px 8px;border-radius:99px;
+  border:1px solid var(--border);color:var(--text-muted);margin-left:6px}
+.pill.dont{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+@media(max-width:1080px){
+  .doc{grid-template-columns:1fr}
+  .toc{position:static;height:auto;border-right:0;border-bottom:1px solid var(--border)}
+  .body{padding:24px 20px 80px}
+  .pv-wrap{flex-direction:column}
+  .pv-side{width:auto;border-left:0;border-top:1px solid var(--separator)}
+}
+/* 视频播放器（README 内 <video> 的形态示意） */
+.vplayer{position:relative;width:420px;max-width:100%;aspect-ratio:16/9;border-radius:10px;
+  border:1px solid var(--border);overflow:hidden;background:linear-gradient(135deg,#1A2630,#111)}
+.vplayer .play{position:absolute;inset:0;margin:auto;width:54px;height:54px;border-radius:50%;
+  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center}
+.vplayer .play::after{content:"";margin-left:4px;border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent}
+.vplayer .bar{position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;gap:8px;
+  padding:0 10px;background:linear-gradient(transparent,rgba(0,0,0,.72));font-size:10.5px;color:#C9D1D9}
+.vplayer .bar .track{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.22);position:relative}
+.vplayer .bar .track::after{content:"";position:absolute;left:0;top:0;bottom:0;width:34%;border-radius:2px;background:var(--accent-hover)}
+.vplayer .tag{position:absolute;top:8px;left:10px;font-size:10.5px;color:#C9D1D9;background:rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,.16);border-radius:99px;padding:1px 8px}
+.demo-label{font-size:10.5px;letter-spacing:.1em;color:var(--text-muted);margin:0 0 8px}
+.demo-label b{color:var(--text-secondary);font-weight:600}
+/* 行数上限（v1.2·与 03 同规）：标题 2 行、说明 3 行、按钮/元数据单行 */
+.clamp2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.clamp3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.ellip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* 画廊里的视频项（v1.1）：与图片同尺寸，右下角标时长、中心出播放钮 */
+.shot.vid{background:linear-gradient(135deg,#1A2630,#141418)}
+.shot.vid::after{content:"";position:absolute;inset:0;margin:auto;width:38px;height:38px;border-radius:50%;
+  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3)}
+.shot.vid .pl{position:absolute;inset:0;margin:auto;width:0;height:0;z-index:1;
+  border-left:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:4px}
+.shot .dur{position:absolute;right:8px;bottom:6px;font-size:10px;color:#C9D1D9;background:rgba(0,0,0,.55);
+  border-radius:4px;padding:0 5px;z-index:2}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></symbol>
+  <symbol id="i-verified" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><path d="M12 2 15 5h4v4l3 3-3 3v4h-4l-3 3-3-3H5v-4L2 12l3-3V5h4z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></symbol>
+</svg>
+
+<div class="doc">
+  <nav class="toc">
+    <h1>插件详情页设计</h1>
+    <div class="toc-sub">v1 · 2026-11-19<br>基于 <b>真机已实现</b> 的 DetailView，不推翻、不重复造。</div>
+    <a class="item" href="#s0"><b>00</b>事实底座（勿动清单）</a>
+    <a class="item" href="#s1"><b>01</b>身份徽标：来源派生</a>
+    <a class="item" href="#s2"><b>02</b>右侧信息栏：有才显</a>
+    <a class="item" href="#s3"><b>03</b>三页签的真实分工</a>
+    <a class="item" href="#s4"><b>04</b>截图画廊与 README 视频</a>
+    <a class="item" href="#s5"><b>05</b>动作条与状态机</a>
+    <a class="item" href="#s6"><b>06</b>与主区商店的接线</a>
+    <a class="item" href="#s7"><b>07</b>待定项（要你拍板）</a>
+  </nav>
+
+  <main class="body">
+    <div class="sec" id="s0">
+      <div class="sec-h"><span class="n">00</span><h2>事实底座——这些已经做了，本次不许动</h2>
+        <span class="verdict">实读 E:\linkdesk-plugins\official\marketplace</span></div>
+      <p class="lede">在画任何新东西之前先把「已有」钉住。<b>下面的能力全部来自现网代码</b>，新设计只能在它们之上加壳、加版式，⛔ 不许重写、不许替换实现。</p>
+      <div class="fact"><span class="i">✓</span><div><div class="t">头/动作列/侧栏三段式<span class="pill">DetailHeader · DetailActionBar · DetailInfoSidebar</span></div>
+        <div class="d">图标 52–72 位、名称＋副题、动作列在头部右侧、信息侧栏分组横排——版式已定，本次只改「数据来源」。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">截图画廊<span class="pill">DetailOverviewTab · screenshots[]</span></div>
+        <div class="d">作者自制图 <code>img</code> 直载；已装读包内图、未装读远端图；横向滚动，零业务判断只有版式。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">README 渲染<span class="pill">MarkdownView</span></div>
+        <div class="d">已装读包内 README → 未装读 <code>readmeUrl</code> → 再降级 <code>description</code>；<code>assetBase</code> 支持相对图。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">README 内视频<span class="pill">主仓 MarkdownView · E6#70d</span></div>
+        <div class="d">支持 <code>&lt;video&gt;</code>／<code>&lt;video&gt;&lt;source&gt;</code>；强制 controls、preload=metadata、剥 autoplay、poster 与相对 src 走 assetBase 并随包。⛔ 移植时不得换掉共享渲染器。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">功能页＝contributes 四组<span class="pill">FeaturesTab · features-groups</span></div>
+        <div class="d">命令 / 配置项 / 菜单 / 贡献点等声明项直接来自 manifest，无需作者另写文案。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">更改日志双源<span class="pill">ChangelogTab</span></div>
+        <div class="d">已装读包内 <code>CHANGELOG.md</code>；未装读目录 <code>versions[].changelog</code>（SDK publish 自动写）。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">动作与状态<span class="pill">useDetailActions · useInstallAction</span></div>
+        <div class="d">安装/更新/启用/停用/卸载、core 置灰、卸载二次确认、安装进度——全部已实现。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">来源徽标已派生<span class="pill">DetailHeader:51-54 · entry.official</span></div>
+        <div class="d">「官方发布」只在目录条目 <code>official</code> 为真时出现；第三方源不伪造——<b>这一点比蓝图 03 更正确</b>。</div></div></div>
+      <div class="fact"><span class="i">✓</span><div><div class="t">侧栏「有才显」<span class="pill">info-groups.tsx</span></div>
+        <div class="d">仓库/问题/许可证/需 LinkDesk 逐行条件渲染，空组整组消失——不是写死占位。</div></div></div>
+      <div class="no"><b>⛔ 本次不改</b>：截图与 README 的读取链、contributes 的解析、动作命令、CHANGELOG 双源逻辑。新文件只做「版式 + 数据接线 + 缺省表达」。</div>
+      <div class="rule"><b>结论</b>：蓝图 03 里 <code>官方发布</code>／<code>来源=官方目录</code>／<code>最低壳版本=0.2.13</code>／<code>许可=MIT</code> 四处硬编码是<b>蓝图的缺陷</b>，不是真机的缺陷。本页负责给出正确形态，03 随后回改。</div>
+    </div>
+
+    <div class="sec" id="s1">
+      <div class="sec-h"><span class="n">01</span><h2>身份徽标：由来源派生，作者说了不算</h2>
+        <span class="verdict">拍板：派生</span></div>
+      <p class="lede">你的担心是对的——<b>如果做成「作者自己声明显示什么」，第三方就能写「官方目录」</b>。所以这个字段<b>不从作者声明里读</b>，只从「这条目录来自哪个源」派生。</p>
+      <table>
+        <tr><th>判定</th><th>显示</th><th>数据来源</th></tr>
+        <tr><td>条目来自官方默认源</td><td><span class="badge official"><svg><use href="#i-verified"/></svg>官方发布</span></td><td><code>entry.official</code>（合并注入，作者不可写）</td></tr>
+        <tr><td>条目来自第三方作者源</td><td><span class="badge third"><svg><use href="#i-user"/></svg>第三方作者</span></td><td>源记录的 <code>authorId</code>，非缺省源</td></tr>
+        <tr><td>本机文件夹加载</td><td><span class="badge local"><svg><use href="#i-folder"/></svg>本地</span></td><td>本地源记录（无作者身份）</td></tr>
+        <tr><td><code>core: true</code>（叠加，不替代）</td><td><span class="badge core"><svg><use href="#i-star"/></svg>内置</span></td><td>manifest 的 <code>core</code></td></tr>
+      </table>
+      <div class="no"><b>⛔ 不允许</b>：在 marketplace.json / plugin.json 里加 <code>badge: "官方发布"</code> 这类自由文本声明——这是可伪造字段，一旦开放，第三方写「官方」就无解。⛔ 也不允许按 <code>author.name === "官方"</code> 判官方（名字可重名）。</div>
+      <div class="stage">
+        <div class="ctrl">
+          <label>来源</label>
+          <div class="seg" id="segSrc">
+            <button data-src="official" class="on">官方</button><button data-src="third">第三方作者</button><button data-src="local">本地</button>
+          </div>
+          <label>内置 core</label>
+          <div class="seg" id="segCore"><button data-core="0" class="on">否</button><button data-core="1">是</button></div>
+        </div>
+        <div class="d-head">
+          <div class="d-ico" style="background:linear-gradient(135deg,#0E639C,#0E639CC8)"><svg><use href="#i-plug"/></svg></div>
+          <div>
+            <div class="d-name">串口监视器 <span id="badgeSlot"></span></div>
+            <div class="d-sub"><span id="byline">作者 极客工坊</span><span class="sep">·</span><span>硬件</span><span class="sep">·</span><span>▾ 8,412 下载</span></div>
+          </div>
+        </div>
+        <div class="caption">徽标随来源变化；「内置」是叠加徽标，不替代来源徽标。</div>
+      </div>
+    </div>
+
+    <div class="sec" id="s2">
+      <div class="sec-h"><span class="n">02</span><h2>右侧信息栏：抓取型「必有」，声明型「有才显」</h2>
+        <span class="verdict">分类而治</span></div>
+      <p class="lede">你指出的关键点：<b>来源、作者、首次发布、更新时间、下载、仓库、问题，这些不是作者声明的，而是从目录／源记录／GitHub 抓来的</b>——所以只要是从网络源装的，这些理论上都在。真正会缺的只有两类：<b>本地插件</b>（没有源、没有作者、没有仓库）和<b>作者声明型字段</b>（许可、截图、README）。所以规则不是「统统有才显」，而是<b>按字段性质分开</b>。</p>
+      <table>
+        <tr><th>类别</th><th>字段</th><th>缺了怎么办</th></tr>
+        <tr><td><b>抓取／派生</b></td><td>来源、作者（＋GitHub 链）、首次发布、更新时间、下载、仓库、问题</td><td>网络源必有；缺＝<b>目录缺字段</b>（异常）→ 不渲染该行，并在来源页记「声明提示」，⛔ 不显示「未提供」</td></tr>
+        <tr><td><b>作者声明</b></td><td>许可证、截图、README、分类</td><td>有才显；整组空 → 整组消失</td></tr>
+        <tr><td><b>本机事实</b></td><td>标识符、版本、大小、安装位置</td><td>本地插件也有，恒可显示</td></tr>
+        <tr><td><b>宿主状态</b></td><td>兼容性（当前壳能不能装/跑）</td><td>恒一行；读不到显示「—」（这一行是<b>唯一</b>允许占位的）</td></tr>
+      </table>
+      <div class="stage">
+        <div class="ctrl">
+          <label>场景</label>
+          <div class="seg" id="segData">
+            <button data-data="full" class="on">网络源·完整</button><button data-data="noLicense">缺许可证</button><button data-data="local">本地插件</button><button data-data="broken">目录缺字段</button>
+          </div>
+        </div>
+        <div class="pv">
+          <div class="pv-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>插件详情</span></div>
+          <div class="pv-wrap">
+            <div class="pv-main">
+              <div class="d-head">
+                <div class="d-ico" style="width:56px;height:56px;border-radius:13px;background:linear-gradient(135deg,#0E7490,#0E7490C8)"><svg style="width:28px;height:28px"><use href="#i-plug"/></svg></div>
+                <div><div class="d-name" style="font-size:18px"><span id="sideName">串口监视器</span> <span id="sideBadge"><span class="badge third"><svg><use href="#i-user"/></svg>第三方作者</span></span></div>
+                  <div class="d-sub" id="sideSub">极客工坊 · 硬件</div></div>
+              </div>
+            </div>
+            <aside class="pv-side" id="sideSlot"></aside>
+          </div>
+        </div>
+        <div class="caption" id="sideNote"></div>
+      </div>
+      <div class="rule"><b>区别于「不够」</b>：字段<b>没有</b> → 不画行；字段<b>有但不满足</b>（如需 LinkDesk 高于当前壳）→ 行保留并标黄。这两件事不能都藏，否则用户装完才发现跑不起来。</div>
+      <div class="no"><b>⛔ 不允许</b>：用 <code>—</code>／「未提供」把空行撑满（兼容性那一行除外）；也⛔ 不允许把来源写成固定文案——来源名取源记录，抓不到就是目录的问题，要在来源页暴露，不是在这页掩盖。</div>
+    </div>
+
+    <div class="sec" id="s3">
+      <div class="sec-h"><span class="n">03</span><h2>三页签：已有分工，不重新定义</h2>
+        <span class="verdict">维持现状</span></div>
+      <p class="lede">你说得对——<b>概览＝README＋截图，功能＝contributes</b>，这已经是现在实现的分工，不存在「两边写一样」的问题（功能页的内容作者根本不用写，是从 manifest 里读出来的）。我之前的说法是多余的，此处只把分工写成明文，防止后人再改回去。</p>
+      <table>
+        <tr><th>页签</th><th>内容来源</th><th>作者要不要写</th></tr>
+        <tr><td>概览</td><td>README（包内/远端）＋ <code>screenshots[]</code></td><td>要（README 与截图是他的表达）</td></tr>
+        <tr><td>功能</td><td><code>contributes</code>：命令 / 配置项 / 菜单 / 贡献点 / 状态栏等</td><td>不用——声明即生成</td></tr>
+        <tr><td>更改日志</td><td>包内 <code>CHANGELOG.md</code> 或目录 <code>versions[].changelog</code>；<b>只带最近 5 版</b>（SDK 打包时裁）</td><td>要（发布时随包/随目录）</td></tr>
+      </table>
+      <div class="stage">
+        <div class="pv">
+          <div class="pv-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>插件详情</span></div>
+          <div class="pv-main" style="padding-top:16px">
+            <div class="d-tabs" id="tabsRow">
+              <button class="d-tab on" data-pane="ov">概览</button>
+              <button class="d-tab" data-pane="ft">功能</button>
+              <button class="d-tab" data-pane="lg">更改日志</button>
+            </div>
+            <div class="pane on" id="p-ov">
+              <div class="gallery">
+                <div class="shot"><span class="lbl">截图 1</span></div>
+                <div class="shot"><span class="lbl">截图 2</span></div>
+                <div class="shot"><span class="lbl">截图 3</span></div>
+              </div>
+              <div class="readme">
+                <h3>串口收发监视</h3>
+                <p>逐行带时间戳、HEX／文本双视图、会话日志导出；断线自动重连并保留最后 200 行缓冲。</p>
+                <ul><li>多端口并存，按标签切换</li><li>快捷发送预设，支持变量替换</li></ul>
+              </div>
+            </div>
+            <div class="pane" id="p-ft">
+              <div class="feat-g"><h4>命令</h4>
+                <div class="feat-row"><span class="k">serial.open</span><span class="v">打开串口</span></div>
+                <div class="feat-row"><span class="k">serial.export</span><span class="v">导出会话日志</span></div>
+              </div>
+              <div class="feat-g"><h4>配置项</h4>
+                <div class="feat-row"><span class="k">serial.baudRate</span><span class="v">默认波特率</span></div>
+                <div class="feat-row"><span class="k">serial.hexView</span><span class="v">HEX 视图开关</span></div>
+              </div>
+              <div class="feat-g"><h4>菜单</h4>
+                <div class="feat-row"><span class="k">工具 → 串口监视器</span><span class="v">打开视图</span></div>
+              </div>
+            </div>
+            <div class="pane" id="p-lg">
+              <div class="ver cur"><div class="vh"><b>v1.4.2</b><time>2026-11-12</time></div>
+                <ul><li>断线重连保留缓冲</li><li>HEX 视图支持按列宽折行</li></ul></div>
+              <div class="ver"><div class="vh"><b>v1.4.0</b><time>2026-10-28</time></div>
+                <ul><li>新增会话日志导出</li></ul></div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">点页签切换；内容全部来自真机同款数据源。演示只列 2 条，真机最多 <b>5 条</b>（口径＝「更新记录（最近 5 版）」，打包时就裁好，UI 不再二次截断）。当前安装的那一版用绿色版本号标出。</div>
+      </div>
+      <div class="rule"><b>更改日志的小标签</b>：只标<b>「你装的是这一版」</b>（<code>.ver.cur</code> 的版本号转绿）。⛔ 不标「可更新」——页面上方动作条已有「更新」按钮，同一事实不在两处各说一遍。</div>
+    </div>
+
+    <div class="sec" id="s4">
+      <div class="sec-h"><span class="n">04</span><h2>截图画廊与 README 内视频</h2>
+        <span class="verdict">两者都已存在</span></div>
+      <p class="lede"><b>修正先前的误判：视频功能是有的，但它住在 README 里，不在截图画廊里。</b>共享渲染器 <code>MarkdownView</code>（主仓 <code>src/components/shared/markdown-view/</code>，E6#70d）已支持 <code>&lt;video&gt;</code> 与 <code>&lt;video&gt;&lt;source&gt;</code>：<b>强制 controls</b>、<code>preload=metadata</code>（打开说明不整片预下）、<b>剥掉 autoplay</b>（消毒层＋运行时双保险）、<code>poster</code> 与相对 <code>src</code> 同图解析并按 <code>assetBase</code> 落包内。</p>
+      <div class="stage">
+        <div class="demo-label">① <b>截图画廊</b> —— 概览页正文最上面那一排；数据＝<code>screenshots[]</code>，<b>图与视频混排</b>（视频最多 1 段、必须第一项）</div>
+        <div class="gallery" style="overflow:visible;flex-wrap:wrap">
+          <div class="shot vid" style="width:240px;height:150px"><span class="pl"></span><span class="dur">00:38</span><span class="lbl">封面视频</span></div>
+          <div class="shot" style="width:240px;height:150px"><span class="lbl">截图 1</span></div>
+          <div class="shot" style="width:240px;height:150px"><span class="lbl">截图 2</span></div>
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:20px">
+          <div style="min-width:0">
+            <div class="demo-label">② <b>README 正文内的视频</b> —— 在画廊下面；作者写 <code>&lt;video&gt;</code>，不是画廊字段</div>
+            <div class="vplayer">
+            <span class="tag">README &lt;video&gt;</span>
+            <span class="play"></span>
+              <div class="bar"><span>▶</span><span class="track"></span><span>00:12 / 00:38</span><span>⛶</span></div>
+            </div>
+          </div>
+          <div style="max-width:330px;font-size:12px;color:var(--text-muted);line-height:1.7">
+            <div style="color:var(--text-primary);font-size:12.5px;margin-bottom:6px">作者写法（README 里直接写）</div>
+            <code style="display:block;white-space:pre-wrap;line-height:1.6">&lt;video poster="cover.png"&gt;
+  &lt;source src="demo.webm" type="video/webm"&gt;
+&lt;/video&gt;</code>
+            <div style="margin-top:8px">controls / 海报 / 相对路径解析由共享渲染器负责，作者不用写播放器。</div>
+          </div>
+        </div>
+        <div class="caption">截图画廊＝横向滚动、一屏放不下才出箭头（与主区横排同规）；视频＝README 正文里的媒体块，与图片同一套装配链。</div>
+      </div>
+      <div class="rule"><b>语义（v1.1 拍板：画廊也收视频）</b>：<code>screenshots[]</code> 接受 <code>string</code>（图片 URL）或 <code>{type:"video", url, poster?}</code>；<b>视频最多 1 段且必须是第一项</b>（封面视频），其余仍是图。仍然 ⛔ 不自动播放、⛔ 不托管——只播作者给的直链。<b>README 里的 <code>&lt;video&gt;</code> 照旧可用</b>，两条路都开着：想嵌在说明正文里就写 README，想当首屏封面就放画廊第一项。</div>
+      <div class="no"><b>⛔ 不允许</b>：无图时画「暂无截图」灰框（空块会把首屏推低）；也⛔ 不允许给 <code>&lt;video&gt;</code> 透传 autoplay（打开详情即自动播放＝流量与惊吓双输）。</div>
+      <div class="rule"><b>实读发现（待修）</b>：SDK 打包器 <code>packages/plugin-sdk/src/vite-config.ts</code> 的 <code>readmeMediaRefs</code> 只收集 <code>&lt;img&gt;/&lt;video&gt;</code> 的 <code>src</code>/<code>poster</code>，<b>没有收集 <code>&lt;source src&gt;</code></b>（注释写着「随 70d 一并扩」，实际未扩）——相对路径的多格式视频可能没随包，装完播放器空壳。见 [12](12-待讨论清单.md) I11。</div>
+    </div>
+
+    <div class="sec" id="s5">
+      <div class="sec-h"><span class="n">05</span><h2>动作条：四态矩阵（已实现，照此对账）</h2>
+        <span class="verdict">与 03 §动作一致</span></div>
+      <div class="stage">
+        <div class="ctrl">
+          <label>状态</label>
+          <div class="seg" id="segState">
+            <button data-st="none" class="on">未安装</button><button data-st="installed">已安装</button>
+            <button data-st="update">可更新</button><button data-st="disabled">已停用</button>
+          </div>
+        </div>
+        <div class="d-acts" id="actsSlot"></div>
+        <div class="caption" id="actsNote"></div>
+      </div>
+      <table>
+        <tr><th>状态</th><th>主行动</th><th>次行动</th><th>破坏行动</th></tr>
+        <tr><td>未安装</td><td>安装</td><td>—</td><td>—</td></tr>
+        <tr><td>已安装</td><td>已是最新（禁用）</td><td>停用</td><td>卸载</td></tr>
+        <tr><td>可更新</td><td>更新</td><td>停用</td><td>卸载</td></tr>
+        <tr><td>已停用</td><td>已是最新（禁用）</td><td>启用</td><td>卸载</td></tr>
+        <tr><td>core 任意态</td><td>同上</td><td>同上</td><td>卸载置灰＋不可卸载</td></tr>
+      </table>
+      <div class="rule"><b>卸载</b>：详情页是「不随手一点」的第三处入口之一（另两处＝卡片「更多」、已安装列表），必须二次确认并写清删什么留什么。</div>
+    </div>
+
+    <div class="sec" id="s6">
+      <div class="sec-h"><span class="n">06</span><h2>与主区商店的接线：同一份数据，另一种渲染</h2>
+        <span class="verdict">归一化要求</span></div>
+      <p class="lede">详情页<b>不是新页面</b>，它是现有 <code>plugin-detail</code> 标签页在「主区商店」的数据下再渲染一次。所以：</p>
+      <table>
+        <tr><th>事实</th><th>唯一入口</th><th>详情页做什么</th></tr>
+        <tr><td>已装/禁用/更新状态</td><td><code>marketplaceShared</code></td><td>订阅，不自己算</td></tr>
+        <tr><td>目录条目</td><td><code>marketCatalog</code></td><td>读，不重解析</td></tr>
+        <tr><td>安装/更新动作</td><td><code>installJobs</code> · <code>installGate</code></td><td>发命令，不看进度实现</td></tr>
+        <tr><td>README/CHANGELOG</td><td><code>packageFiles</code></td><td>直接渲染结果</td></tr>
+      </table>
+      <div class="no"><b>⛔ 不允许</b>：为详情页另建一份「当前插件」模块级状态（重蹈 E6#158：检查更新后详情页不刷新）。标签身份 = <code>detailPluginId</code>，数据来自共享 store。</div>
+    </div>
+
+    <div class="sec" id="s7">
+      <div class="sec-h"><span class="n">07</span><h2>待定项：要你拍板的三件事</h2>
+        <span class="verdict">未定</span></div>
+      <table>
+        <tr><th>#</th><th>问题</th><th>我的建议</th></tr>
+        <tr><td>D1</td><td><b>画廊收视频</b>（已定：收）</td><td>规则见 04 节：<code>screenshots[]</code> 支持 <code>{type:"video",url,poster?}</code>；最多 1 段、必须第一项；⛔ 不自动播放、⛔ 不托管。R4 需同步：目录类型、SDK schema、渲染器、打包白名单（见 12 I12）。</td></tr>
+        <tr><td>D4</td><td><b>SDK 打包漏了 <code>&lt;source src&gt;</code></b></td><td>已确认是缺口（<code>readmeMediaRefs</code> 未收 source）。建议 R4 同笔补：把 <code>&lt;source&gt;</code> 的 <code>src</code> 纳入收集，并加一条「多格式视频装完后可播」的测试。已记 12 I11。</td></tr>
+        <tr><td>D2</td><td><b>许可缺失</b>时侧栏怎么办</td><td>不显示（现状）。许可证不是用户决策依据，缺了不补占位。</td></tr>
+        <tr><td>D3</td><td><b>需 LinkDesk 高于当前壳</b>时</td><td>行保留并标黄＋动作条「安装」置灰并给出原因（现状已这么做，别退化）。</td></tr>
+      </table>
+      <div class="rule"><b>下一步</b>：你确认 01/02/03 的规则后，我把这三条回写进蓝图 03（把四处硬编码改掉），并在 08 登记；视频先挂「不做」进 12。</div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ── 01 徽标 ── */
+let src="official",core=0;
+const badgeHTML=(s,c)=>
+  (s==="official"?`<span class="badge official"><svg><use href="#i-verified"/></svg>官方发布</span>`
+   :s==="third"?`<span class="badge third"><svg><use href="#i-user"/></svg>第三方作者</span>`
+   :`<span class="badge local"><svg><use href="#i-folder"/></svg>本地</span>`)
+  +(c?`<span class="badge core"><svg><use href="#i-star"/></svg>内置</span>`:"");
+function drawBadge(){
+  document.getElementById("badgeSlot").innerHTML=badgeHTML(src,core);
+  document.getElementById("byline").textContent=src==="local"?"本机文件夹":"作者 极客工坊";
+  document.querySelectorAll("#segSrc button").forEach(b=>b.classList.toggle("on",b.dataset.src===src));
+  document.querySelectorAll("#segCore button").forEach(b=>b.classList.toggle("on",+b.dataset.core===core));
+}
+document.querySelectorAll("#segSrc button").forEach(b=>b.onclick=()=>{src=b.dataset.src;drawBadge();});
+document.querySelectorAll("#segCore button").forEach(b=>b.onclick=()=>{core=+b.dataset.core;drawBadge();});
+
+/* ── 02 侧栏（有才显） ── */
+const SIDE={
+  /* 网络源·完整：来源/作者/发布时间/下载/仓库/许可全在（都是抓来的） */
+  full:{rows:[["标识符","serial-monitor",1],["作者","极客工坊"],["版本","v1.4.2"],["大小","3.8 MB"],
+        ["分类","硬件"],["来源","极客工坊 / hardware-repo",1],["首次发布","2025-03-18"],["更新时间","2026-11-12"],
+        ["下载","8,412"],["仓库","github.com/geek/serial"],["问题","github.com/geek/serial/issues"],["许可证","MIT"]],
+        badge:"third",sub:"极客工坊 · 硬件",note:"网络源：抓取型字段全部有值，右栏是满的。"},
+  /* 缺许可证：唯一的变化＝声明的许可证没有 */
+  noLicense:{rows:[["标识符","serial-monitor",1],["作者","极客工坊"],["版本","v1.4.2"],["大小","3.8 MB"],
+        ["分类","硬件"],["来源","极客工坊 / hardware-repo",1],["首次发布","2025-03-18"],["更新时间","2026-11-12"],
+        ["下载","8,412"],["仓库","github.com/geek/serial"],["问题","github.com/geek/serial/issues"]],
+        badge:"third",sub:"极客工坊 · 硬件",note:"只少「许可证」一行——声明型字段有才显，不补占位。"},
+  /* 本地插件：没有源/作者/仓库/问题/发布时间/下载 */
+  local:{rows:[["标识符","my-local-tool",1],["版本","v0.3.1"],["大小","1.2 MB"],["安装位置","…\plugins\my-local-tool",1]],
+        badge:"local",sub:"本机文件夹加载",note:"本地插件：来源/作者/仓库/问题/发布时间/下载 整组缺席——不是缺字段，是本来就没有。"},
+  /* 目录缺字段：网络源但目录没写 publishedAt/download，异常态 */
+  broken:{rows:[["标识符","serial-monitor",1],["作者","极客工坊"],["版本","v1.4.2"],["大小","3.8 MB"],
+        ["分类","硬件"],["来源","极客工坊 / hardware-repo",1],["仓库","github.com/geek/serial"]],
+        badge:"third",sub:"极客工坊 · 硬件",note:"目录缺 publishedAt / 下载统计 → 对应行不画；来源页应出现「声明提示」，这页不显示「未提供」。"}
+};
+let dataMode="full";
+function drawSide(){
+  const m=SIDE[dataMode];
+  const rows=m.rows.map(([k,v,mono])=>
+    `<div class="meta-row"><span class="k">${k}</span><span class="v${mono?" mono":""}">${v}</span></div>`).join("");
+  document.getElementById("sideSlot").innerHTML=`<div class="side-title">其他信息</div>${rows}
+    <div class="side-g"><div class="meta-row"><span class="k">兼容性</span><span class="v">可安装 · 当前壳满足</span></div></div>`;
+  document.getElementById("sideBadge").innerHTML=m.badge==="local"
+    ?`<span class="badge local"><svg><use href="#i-folder"/></svg>本地</span>`
+    :`<span class="badge third"><svg><use href="#i-user"/></svg>第三方作者</span>`;
+  document.getElementById("sideSub").textContent=m.sub;
+  document.getElementById("sideNote").textContent=m.note;
+  document.querySelectorAll("#segData button").forEach(b=>b.classList.toggle("on",b.dataset.data===dataMode));
+}
+document.querySelectorAll("#segData button").forEach(b=>b.onclick=()=>{dataMode=b.dataset.data;drawSide();});
+
+drawBadge();drawSide();drawActs();
+</script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>侧栏定稿参照（v2 剩余部分） — LinkDesk 插件市场</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  侧栏定稿参照（2026-11-19，v2 裁剪版）
+  ═══════════════════════════════════════════════════════════════════════
+  · 🔴 本稿只保留**已定稿的侧栏部分**（含壳骨架：标题栏/图标栏/状态栏）——
+    原主区商店内容已全部删除（用户 2026-11-19 拍板：防止旧主区稿干扰后续 AI）。
+  · **主区（商店/详情）的一切 UI 讨论 → [03-主区专注蓝图-v3.html](03-主区专注蓝图-v3.html)**（唯一批注对象）。
+  · 侧栏定稿内容：搜索框／检查更新／⚙／「进入 Plugin Store」常驻钮（方案 A，03§一·A）／
+    已安装（更新徽标）／探索插件／已禁用／内置 五段折叠容器。行点击交互的演示在 03。
+  · 色板 = 官方主题「深色」配方实值；深色单主题。
+  · 修改纪律：本稿已定稿冻结——推翻定稿才可改；改则同笔登记 07 批注记录。
+-->
+<style>
+:root{
+  --bg-window:#1E1E1E; --bg-card:#2D2D2D; --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#8A8A8A;
+  --accent:#0E639C; --accent-hover:#1177BB; --text-on-accent:#FFFFFF;
+  --border:#3C3C3C; --separator:#474747; --icon-inactive:#858585;
+  --bg-icon-bar:#18181B; --bg-side-panel:#1E1E22; --bg-toolbar:#1E1E22;
+  --bg-titlebar:#252526; --tab-hover-bg:#353535; --hover-overlay:rgba(255,255,255,.06);
+  --scrollbar-thumb:rgba(255,255,255,.15); --scrollbar-thumb-hover:rgba(255,255,255,.25);
+  --bg-status:#007ACC;
+  --radius:6px;
+  --font:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);font-size:13px;color:var(--text-primary);
+  background:var(--bg-window);overflow:hidden}
+::selection{background:var(--accent);color:var(--text-on-accent)}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
+::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--accent-hover);outline-offset:1px;border-radius:3px}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input{font-family:inherit;font-size:inherit;color:inherit}
+svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ═══ 壳骨架（参照） ═══ */
+.app{display:flex;flex-direction:column;height:100vh}
+.titlebar{height:34px;background:var(--bg-titlebar);display:flex;align-items:center;
+  padding-left:12px;gap:8px;flex:none}
+.titlebar .tb-icon{width:16px;height:16px;border-radius:4px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;color:#fff}
+.titlebar .tb-icon svg{width:10px;height:10px}
+.titlebar .tb-title{font-size:12px;color:var(--text-secondary)}
+.titlebar .tb-actions{margin-left:auto;display:flex;height:100%}
+.titlebar .tb-actions button{width:46px;height:100%;display:flex;align-items:center;
+  justify-content:center;color:var(--text-secondary)}
+.titlebar .tb-actions button svg{width:12px;height:12px}
+.titlebar .tb-actions button:hover{background:var(--hover-overlay)}
+.titlebar .tb-actions button.close:hover{background:#C42B1C;color:#fff}
+.workbench{display:flex;flex:1;min-height:0}
+.iconbar{width:48px;background:var(--bg-icon-bar);display:flex;flex-direction:column;
+  align-items:center;padding:6px 0;gap:2px;flex:none;border-right:1px solid var(--border)}
+.iconbar .ib-btn{width:36px;height:36px;border-radius:var(--radius);display:flex;
+  align-items:center;justify-content:center;color:var(--icon-inactive);position:relative}
+.iconbar .ib-btn:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.iconbar .ib-btn.active{color:var(--text-primary)}
+.iconbar .ib-btn.active::before{content:"";position:absolute;left:-6px;top:6px;bottom:6px;
+  width:2px;background:var(--text-primary);border-radius:1px}
+.statusbar{height:22px;background:var(--bg-status);color:#fff;display:flex;align-items:center;
+  padding:0 12px;gap:16px;font-size:11px;flex:none}
+.statusbar .sb-right{margin-left:auto;opacity:.9}
+
+/* ═══ 侧栏（定稿本体） ═══ */
+.sidepanel{width:300px;background:var(--bg-side-panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex:none;min-height:0;overflow-y:auto}
+.sp-section{border-bottom:1px solid var(--separator)}
+.sp-toolbar{padding:8px}
+.sp-search{display:flex;align-items:center;gap:6px;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius);padding:5px 8px;color:var(--text-muted)}
+.sp-search svg{width:14px;height:14px}
+.sp-search input{flex:1;background:none;border:none;outline:none;color:var(--text-primary)}
+.sp-search input::placeholder{color:var(--text-muted)}
+.sp-toolbar-row{display:flex;gap:6px;margin-top:6px}
+.sp-ghostbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;
+  color:var(--text-secondary);font-size:12px;transition:background .15s,color .15s}
+.sp-ghostbtn svg{width:14px;height:14px}
+.sp-ghostbtn:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.sp-storebtn{width:100%;margin-top:6px;display:flex;align-items:center;justify-content:center;
+  gap:7px;padding:7px 8px;border-radius:var(--radius);border:1px solid var(--accent);
+  color:var(--text-primary);background:color-mix(in srgb,var(--accent) 18%,transparent);
+  font-size:12.5px;font-weight:600;transition:background .15s,border-color .15s}
+.sp-storebtn svg{width:15px;height:15px}
+.sp-storebtn:hover{background:color-mix(in srgb,var(--accent) 32%,transparent);
+  border-color:var(--accent-hover)}
+.sp-storebtn .kbd{margin-left:auto;font-size:10px;color:var(--text-muted);
+  border:1px solid var(--separator);border-radius:3px;padding:1px 5px}
+.sp-listhead{display:flex;align-items:center;gap:6px;width:100%;padding:7px 10px;
+  color:var(--text-secondary);font-size:12px;font-weight:600}
+.sp-listhead svg{width:14px;height:14px}
+.sp-listhead:hover{background:var(--hover-overlay)}
+.sp-listhead .chev{transition:transform .15s}
+.sp-listhead.open .chev{transform:rotate(90deg)}
+.sp-listhead .count{margin-left:auto;font-size:11px;color:var(--text-muted);
+  font-variant-numeric:tabular-nums}
+.sp-listhead .badge-update{background:var(--accent);color:#fff;font-size:10px;
+  border-radius:8px;padding:0 6px;line-height:16px}
+.sp-rows{padding:0 6px 6px;display:none}
+.sp-rows.open{display:block}
+.sp-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--radius)}
+.sp-row:hover{background:var(--hover-overlay)}
+.sp-row .tile{width:22px;height:22px;border-radius:5px;flex:none}
+.sp-row .tile svg{width:12px;height:12px}
+.sp-row .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.sp-row .ver{font-size:11px;color:var(--text-muted);font-family:var(--mono)}
+
+/* ═══ 小件 ═══ */
+.tile{width:40px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;
+  justify-content:center;color:#fff}
+.tile svg{width:20px;height:20px;stroke-width:1.6}
+.badge{font-size:10.5px;border-radius:8px;padding:1px 7px;line-height:15px;flex:none}
+.badge.update{background:var(--accent);color:#fff}
+.badge.core{border:1px solid var(--separator);color:var(--text-muted)}
+
+/* ═══ 主区占位（非定稿内容——主区一切 UI → 03 主区专注稿） ═══ */
+.mainzone{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg-window)}
+.tabbar{height:35px;background:var(--bg-toolbar);display:flex;align-items:stretch;flex:none;
+  border-bottom:1px solid var(--border)}
+.tab{display:flex;align-items:center;gap:7px;padding:0 12px;font-size:12.5px;
+  color:var(--text-secondary);border-right:1px solid var(--separator);position:relative}
+.tab svg{width:15px;height:15px}
+.tab.active{background:var(--bg-window);color:var(--text-primary)}
+.tab.active::before{content:"";position:absolute;top:0;left:0;right:0;height:1.5px;
+  background:var(--accent)}
+.mz-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;color:var(--text-muted)}
+.mz-placeholder .t1{font-size:14px}
+.mz-placeholder .t2{font-size:11.5px}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+  <symbol id="i-filetext" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-blocks" viewBox="0 0 24 24"><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="titlebar">
+    <span class="tb-icon"><svg class="ic"><use href="#i-blocks"/></svg></span>
+    <span class="tb-title">插件市场 - LinkDesk</span>
+    <div class="tb-actions">
+      <button aria-label="最小化"><svg class="ic"><use href="#i-minus"/></svg></button>
+      <button aria-label="最大化"><svg class="ic"><use href="#i-max"/></svg></button>
+      <button class="close" aria-label="关闭"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+  </div>
+
+  <div class="workbench">
+    <nav class="iconbar" aria-label="插件图标栏">
+      <button class="ib-btn" title="文件树"><svg class="ic"><use href="#i-folder"/></svg></button>
+      <button class="ib-btn" title="串口监视器"><svg class="ic"><use href="#i-plug"/></svg></button>
+      <button class="ib-btn active" title="插件市场"><svg class="ic"><use href="#i-blocks"/></svg></button>
+      <div style="flex:1"></div>
+      <button class="ib-btn" title="设置"><svg class="ic"><use href="#i-gear"/></svg></button>
+    </nav>
+
+    <!-- ═══ 定稿本体：市场侧栏（五段容器＋方案 A 入口） ═══ -->
+    <aside class="sidepanel" aria-label="插件市场侧栏">
+      <div class="sp-section sp-toolbar" data-spec="03§一·A">
+        <div class="sp-search"><svg class="ic"><use href="#i-search"/></svg>
+          <input placeholder="搜索插件…" aria-label="搜索插件"></div>
+        <div class="sp-toolbar-row">
+          <button class="sp-ghostbtn"><svg class="ic"><use href="#i-refresh"/></svg>检查更新</button>
+          <button class="sp-ghostbtn"><svg class="ic"><use href="#i-gear"/></svg></button>
+        </div>
+        <button class="sp-storebtn">
+          <svg class="ic"><use href="#i-bag"/></svg>进入 Plugin Store
+          <span class="kbd">主区</span>
+        </button>
+      </div>
+      <div class="sp-section">
+        <button class="sp-listhead open" data-sec="installed">
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>已安装
+          <span class="badge-update" id="sb-upd">2</span><span class="count" id="sb-cnt">6</span></button>
+        <div class="sp-rows open" id="sec-installed"></div>
+      </div>
+      <div class="sp-section">
+        <button class="sp-listhead" data-sec="explore">
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>探索插件<span class="count" id="sb-exp"></span></button>
+        <div class="sp-rows" id="sec-explore"></div>
+      </div>
+      <div class="sp-section">
+        <button class="sp-listhead" data-sec="disabled">
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>已禁用<span class="count">0</span></button>
+        <div class="sp-rows" id="sec-disabled"></div>
+      </div>
+      <div class="sp-section">
+        <button class="sp-listhead" data-sec="builtin">
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>内置<span class="count" id="sb-bi"></span></button>
+        <div class="sp-rows" id="sec-builtin"></div>
+      </div>
+    </aside>
+
+    <!-- 主区占位：定稿内容只有侧栏——主区一切 UI → 03 主区专注稿 -->
+    <main class="mainzone">
+      <div class="tabbar">
+        <button class="tab active"><svg class="ic"><use href="#i-bag"/></svg>Plugin Store</button>
+      </div>
+      <div class="mz-placeholder">
+        <span class="t1">主区（商店 / 详情）不在此稿</span>
+        <span class="t2">一切主区 UI 见 03-主区专注蓝图-v3.html——本稿只承载侧栏定稿</span>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span>就绪</span><span id="sb-installed"></span>
+    <span class="sb-right">LinkDesk v0.2.54</span>
+  </footer>
+</div>
+
+<script>
+/* 目录数据（与 03 同源；此处只服务侧栏行渲染） */
+const CATALOG=[
+ {id:"editor",name:"编辑器",ver:"1.0.25",state:"installed",update:true,icon:"i-code",hue:"#2563A8"},
+ {id:"pdf-reader",name:"PDF 阅读器",ver:"1.1.8",state:"installed",icon:"i-filetext",hue:"#B25B1F"},
+ {id:"file-tree",name:"文件树",ver:"1.0.9",state:"installed",icon:"i-folder",hue:"#2F855A"},
+ {id:"serial-monitor",name:"串口监视器",ver:"1.0.37",state:"installed",update:true,icon:"i-plug",hue:"#6B46C1"},
+ {id:"settings",name:"设置",ver:"1.0.41",state:"installed",core:true,icon:"i-gear",hue:"#4A5568"},
+ {id:"marketplace",name:"插件市场",ver:"1.2.0",state:"installed",core:true,icon:"i-bag",hue:"#0E639C"},
+ {id:"python",name:"Python 环境",ver:"0.9.2",state:"none",icon:"i-terminal",hue:"#2F855A"},
+ {id:"lang-defaults",name:"语言包",ver:"1.0.4",state:"none",icon:"i-globe",hue:"#3182CE"},
+ {id:"theme-aurora-glass",name:"极光玻璃",ver:"1.0.2",state:"none",icon:"i-palette",hue:"#00B5D8"},
+ {id:"theme-mint-soda",name:"薄荷苏打",ver:"1.0.3",state:"none",icon:"i-palette",hue:"#38B2AC"},
+ {id:"theme-terminal",name:"终端复古",ver:"1.0.1",state:"none",icon:"i-terminal",hue:"#DD6B20"},
+ {id:"theme-panorama",name:"全景",ver:"1.0.1",state:"none",icon:"i-palette",hue:"#6B8F71"},
+ {id:"theme-pill",name:"胶囊",ver:"1.0.1",state:"none",icon:"i-palette",hue:"#9B59D0"},
+ {id:"theme-songti",name:"宋体雅致",ver:"1.0.1",state:"none",icon:"i-book",hue:"#8A3B3B"},
+ {id:"theme-twilight-forest",name:"暮光森林",ver:"1.0.1",state:"none",icon:"i-palette",hue:"#3D6B4F"},
+ {id:"theme-iconset-pastel",name:"柔和图标包",ver:"1.0.0",state:"none",icon:"i-palette",hue:"#D08770"},
+];
+const tile=e=>`<span class="tile" style="background:linear-gradient(135deg,${e.hue},${e.hue}C8)"><svg class="ic"><use href="#${e.icon}"/></svg></span>`;
+function renderSidebar(){
+  const row=e=>`<div class="sp-row">${tile(e)}<span class="nm">${e.name}</span>
+    ${e.update?`<span class="badge update">更</span>`:""}
+    <span class="ver">v${e.ver}</span></div>`;
+  const inst=CATALOG.filter(e=>e.state==="installed");
+  const upd=inst.filter(e=>e.update).length;
+  document.getElementById("sec-installed").innerHTML=inst.map(row).join("");
+  document.getElementById("sb-cnt").textContent=inst.length;
+  document.getElementById("sb-upd").textContent=upd;
+  document.getElementById("sb-upd").style.display=upd?"":"none";
+  const un=CATALOG.filter(e=>e.state==="none");
+  document.getElementById("sb-exp").textContent=un.length;
+  document.getElementById("sec-explore").innerHTML=un.slice(0,4).map(row).join("")
+    +(un.length>4?`<div class="sp-row" style="color:var(--text-muted);font-size:11.5px">
+      …其余 ${un.length-4} 个见主区商店</div>`:"");
+  document.getElementById("sec-disabled").innerHTML=
+    `<div class="sp-row" style="color:var(--text-muted);font-size:12px">空（演示态）</div>`;
+  const bi=CATALOG.filter(e=>e.core);
+  document.getElementById("sb-bi").textContent=bi.length;
+  document.getElementById("sec-builtin").innerHTML=bi.map(row).join("");
+  document.getElementById("sb-installed").textContent=`已安装 ${inst.length} 个插件`;
+}
+document.querySelectorAll(".sp-listhead").forEach(h=>h.addEventListener("click",()=>{
+  h.classList.toggle("open");
+  document.getElementById("sec-"+h.dataset.sec)?.classList.toggle("open");
+}));
+renderSidebar();
+</script>
+</body>
+</html>
