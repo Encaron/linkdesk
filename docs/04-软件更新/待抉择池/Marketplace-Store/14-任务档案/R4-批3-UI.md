@@ -19,7 +19,7 @@
 | 格 | 动作 | 落点 |
 |:--|:--|:--|
 | R4-3.4 | 主区商店骨架：rail 三段式（首页品牌块/分类·排行榜/库·作者·来源固定底）＋ tabbar 交互（每插件一标签 pinned:true＋label） | 新 `src/views/store/`（feature-folder：`StoreView.tsx`/`Rail.tsx`）——**声明新壳视图**进市场 plugin.json `views.main`（照 plugin-detail 模式，tabBehavior 见 08 v3.51） |
-| R4-3.5 | 首页：hero 轮播/作者卡区（authorCard 仓卡扇出）/装机必备/主题专区/编辑精选/付费板块/榜单 top8/分类网格/**目录三态**（06 §六） | `src/views/store/home/` |
+| R4-3.5 | 首页：hero 轮播/作者卡区（authorCard 仓卡扇出）/装机必备/主题专区/编辑精选/付费板块/榜单 top8/分类网格/**目录三态**（06 §六）——九板块**按类合文件**（⛔ 一板块一文件铺满 home/；超 6 文件预算即同棒分两个会话续做＋交接留痕） | `src/views/store/home/` |
 | R4-3.6 | 分类页＋搜索页＋完整榜单：统一池/chips（≥3）/筛选下拉/排序/视图切换（用 ViewSeg/SortChips）· 搜索焦点保持/清空回原视图 | `src/views/store/browse/` |
 | R4-3.7 | 内容热更新 UI 壳：`content-bar` 常驻条＋分层提示接点（Toast 段留桩，棒 15 接 #11） | `src/views/store/HomeBar.tsx` |
 
@@ -52,11 +52,11 @@
 | 格 | 动作 | 落点 |
 |:--|:--|:--|
 | R4-3.16 | 详情标签：`tabs.create("plugin-detail",{pluginId,pinned:true,label})` 全调用点统一（⛔ 未装必传 label——08 v3.51） | 各视图打开处＋`DetailView.tsx` |
-| R4-3.17 | 三页签：概览（截图画廊+README MarkdownView 复用）/功能（contributes 四组照现状）/日志（5 版裁口） | 现有 `DetailView/` 六 hook 上扩展（⛔ 重写） |
+| R4-3.17 | 三页签：概览（截图画廊+README MarkdownView 复用）/功能（contributes 四组照现状）/日志（5 版裁口） | 现有 `DetailView/` 全部 use* hooks（2026-11-20 实测 10 个）上扩展（⛔ 重写） |
 | R4-3.18 | 右栏四类字段（抓取型必有/声明型有才显/本机事实/兼容性唯一占位）＋「没有」不画行 vs「不够」标黄 | `useInfoGroups.tsx` 分组逻辑按 05 §二改 |
 | R4-3.19 | I13 文字溢出：DetailHeader 副标题 clamp2/按钮 nowrap＋全站自查（08 v3.56 表） | `DetailHeader.tsx`/`detail-header.css` |
 
-**判据**：05 §00「勿动清单」逐条确认未破坏；05 §01–03 规则实现。
+**判据**：05 §00「勿动清单」逐条确认未破坏；05 §01–03 规则实现；**§8.1 #11 动作委托在本棒落地**（动作按钮所在每一个容器都接同一条入口，验收逐按钮点）。
 
 ## 棒 10（R4-3.20–3.22，付费流）
 

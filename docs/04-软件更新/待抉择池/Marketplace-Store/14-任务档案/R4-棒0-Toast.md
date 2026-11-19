@@ -5,7 +5,7 @@
 
 ## 干什么（判据全在隔壁档，此处只立骨架）
 
-- 按 `底部Toast轻提示/04-任务清单.md` 的 T 系列逐格执行（T1–T17 中**本棒取前 3–5 格**＝API＋单存储双形态＋降级规则＋底中位；其余 T 格若轻，同棒可续，超出 6 格纪律即留下一棒）。
+- 按 `底部Toast轻提示/04-任务清单.md` 的 T 系列逐格执行：**T1–T7（API 全链）＋T8–T12（TransientToast 组件＋挂载）**——判据「`ui.toasts.show` → 底中出现轻提示＋降级」要达标必须含组件与挂载，故本棒**豁免 2–6 格纪律**（判据优先）；T13–T17 若轻同棒可续，否则留 Toast 任务后续。
 - **API 面**：`ui.toasts.show`（照 01-契约：`presentation:"panel"|"toast"`·`TransientToast` 命名·底中位·⛔ 第二通知面·⛔ 右下角）。
 - **落点方向标**：主仓 `src/core/services/ui/`（Toast 姊妹件——`toast.ts` 头注 2026-11-19 已写授权约束，grep `TransientToast`）＋ `src/App/bridges.ts`（Toast 哑桥 E6#72 已删，照 QuickPick/Dialog 桥模式重建）＋ 池侧暴露 `src/core/api/linkdesk-api/ui.ts`。
 
