@@ -90,12 +90,12 @@
     },
     "category": {
       "type": "string",
-      "description": "Primary marketplace category slug — the single value that decides which category drawer the plugin files under in the Plugin Store (Marketplace-Store v2). Category is data, not code: the display name lives in the marketplace's i18n value table, so the declared value is a lowercase slug only. The schema checks SHAPE, never a whitelist — an unregistered slug is legal and the store files it under its fallback bucket instead of erroring. Omitted → the store's fallback (Other) bucket. Mirrors the catalog entry `category` (copied into marketplace.json by publish).",
+      "description": "Primary marketplace category slug — the single value that decides which category drawer the plugin files under in the Plugin Store (Marketplace-Store v2). Closed whitelist (2026-11-20: declaring outside it is a declaration warning, not an error; the store files such an entry under its Other bucket): development · documents · hardware · network · productivity · themes · entertainment. Category is data, not code: the display name lives in the marketplace's i18n value table, so declare a lowercase slug only. Omitted → the store's Other bucket. Mirrors the catalog entry `category` (copied into marketplace.json by publish).",
       "pattern": "^[a-z][a-z0-9-]*$"
     },
     "categories": {
       "type": "array",
-      "description": "Secondary category slugs (tags) — feed search and sub-category chips; the primary drawer is decided by `category` alone so an entry never appears twice in the grid. Same shape-only rule as `category` (no whitelist, unknown slugs legal). Omitted → no chips; the plugin stays in the All list.",
+      "description": "Secondary category slugs (sub-category chips/tags) — feed search and sub-category chips; the primary drawer is decided by `category` alone so an entry never appears twice in the grid. Closed whitelist per primary category (2026-11-20; unknown slugs are declaration warnings, not errors): development: code-editing · terminal · vcs · runtime · i18n · debug · snippets; documents: viewer · convert · markdown · files · office-doc · notebook; hardware: serial · flash · probe · smart-control · home-automation · sensor · iot · can-bus; network: browser · chat · cloud · download · packet-capture · proxy · remote; productivity: clipboard · notes · ai · color · todo · timer · launcher · calculator; themes: color-scheme · icon-pack · font-pack · wallpaper · cursor-set · sound-pack; entertainment: player · game · music · comic · novel · stream. Omitted → no chips; the plugin stays in the All list.",
       "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
     },
     "entry": {
