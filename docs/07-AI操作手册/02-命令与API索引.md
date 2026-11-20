@@ -195,7 +195,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**16 个域接口 → 48 个命名空间 / 261 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**17 个域接口 → 49 个命名空间 / 265 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -222,13 +222,14 @@
 | `keybindings` | KeybindingsAPI | 13 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `clearKeybindingForCommand` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
 | `langDef` | EditorAPI | 1 | `get` | langDef — language definition registry (answered directly by the main process). Returns only serializable fields (monar… |
 | `language` | AppearanceAPI | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
+| `licenses` | LicensesAPI | 3 | `verify` `list` `remove` | —— |
 | `lsp` | EditorAPI | 4 | `spawn` `write` `dispose` `onData` | LSP bridge — autocompletion/F12/diagnostics/rename |
 | `menu` | UiAPI | 2 | `registerItems` `getItems` | Menus — declarative read/write for plugins |
 | `notifications` | UiAPI | 3 | `show` `list` `subscribe` | Notifications — plugins raise notifications ( the only notification surface is the bell-wide notification panel; the bo… |
 | `p2p` | DataAPI | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.broadcast (fire-and-forget) |
 | `panel` | PanelAPI | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
 | `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | Path utilities — injected on both shell/pool ends (in-pool plugins such as editor/file-tree consume normalize/join etc.… |
-| `pluginManager` | PluginsAPI | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), … |
+| `pluginManager` | PluginsAPI | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), … |
 | `pluginState` | DataAPI | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persistence |
 | `plugins` | PluginsAPI | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
 | `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + se… |

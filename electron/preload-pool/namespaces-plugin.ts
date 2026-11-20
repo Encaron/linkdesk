@@ -27,6 +27,8 @@ export function buildPluginManager() {
     install: (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'install', path, opts),
     // E6#13（1.2-5）：显式包安装流名——url/.linkdesk-plugin → 下载解压装；marketplace 安装按钮消费（进度 plugin:installProgress）
     installWithProgress: (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path, opts),
+    // R4-1.2（I16·正典 09 §三·补2）：本地安装——文件夹/.linkdesk-plugin → {userData}/plugins/<id>（五类回执；来源页「添加本地插件」消费）
+    installFromDirectory: (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'installFromDirectory', path, opts),
     reinstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
     // E6#11c/#13b（段 B）：安全更新 + 只读查更新——池经 plugins:call 代理到壳 loader（对称契约）
     // E6#33c（锚①）：opts.allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=
@@ -37,6 +39,19 @@ export function buildPluginManager() {
     isDisabled: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'isDisabled', id),
   };
   /* jscpd:ignore-end */
+}
+
+/**
+ * licenses 命名空间——许可验签/权益（R4-1.3（I21·正典 09 §三·补3））。
+ * 池侧经 plugins:call 代理到壳（theme.* 同款）→ 壳 IpcBridgeHandler/licenses 域 → 壳 preload →
+ * 主进程 IPC（真验签/权益存储都在主进程——裁决层住壳最深处）。市场付费流是唯一预期消费方。
+ */
+export function buildLicenses() {
+  return {
+    verify: (key: string, publicKey: string) => ipcRenderer.invoke(IPC.plugins.call, 'licenses.verify', key, publicKey),
+    list: () => ipcRenderer.invoke(IPC.plugins.call, 'licenses.list'),
+    remove: (pluginId: string) => ipcRenderer.invoke(IPC.plugins.call, 'licenses.remove', pluginId),
+  };
 }
 
 /**

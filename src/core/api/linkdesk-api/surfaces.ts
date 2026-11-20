@@ -23,7 +23,7 @@ import type { ProductInfo } from "../../types/ipc/product";
 import type { AiManualPayload } from "../../types/ipc/aiManual";
 import type { AiBridgeInfo, AiBridgeInfoRequest } from "../../types/ipc/aiBridge";
 
-/** The pool preload's required exposure surface (46 = 45 unique + the config alias; the only omission is bridge; E6#72 removed the toast host bridge surface) — E5.8#34.5 added panel (the pool-side channel for plugins calling reveal); E5.8#37 added floatingPanelHost (the dumb-render bridge of the in-shell floating panel); E5.8#41.12 added settings (settings suite enum/switching, the settings UI renders inside the pool); E5.8#41.14 added factorySlots (candidate enum/switching for any role, the data source of the settings UI's general section); E5.8#50.11 added appearance (appearance assets — selected images copied into the store); E6#57.2a added app (read-only product identity — consumed by the marketplace's minAppVersion E6#30.8c); 2026-11-20 added toasts (light-toast show — the TransientToast channel restored by the 2026-11-19 改判) */
+/** The pool preload's required exposure surface (47 = 46 unique + the config alias; the only omission is bridge; E6#72 removed the toast host bridge surface) — E5.8#34.5 added panel (the pool-side channel for plugins calling reveal); E5.8#37 added floatingPanelHost (the dumb-render bridge of the in-shell floating panel); E5.8#41.12 added settings (settings suite enum/switching, the settings UI renders inside the pool); E5.8#41.14 added factorySlots (candidate enum/switching for any role, the data source of the settings UI's general section); E5.8#50.11 added appearance (appearance assets — selected images copied into the store); E6#57.2a added app (read-only product identity — consumed by the marketplace's minAppVersion E6#30.8c); 2026-11-20 added toasts (light-toast show — the TransientToast channel restored by the 2026-11-19 改判) and licenses (R4-1.3 verify/list/remove — the marketplace's paid-flow caller) */
 export type PoolExposed = Pick<LinkDeskAPI,
   | "commands" | "configuration" | "config" | "theme" | "language" | "app" | "appearance"
   | "tabs" | "keybindings" | "notifications" | "toasts" | "menu" | "contextKey"
@@ -31,7 +31,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "serial" | "clipboard" | "p2p" | "events" | "pluginState"
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
-  | "viewContainer" | "plugins" | "pluginManager" | "window"
+  | "viewContainer" | "plugins" | "pluginManager" | "licenses" | "window"
   | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots" | "update"> & {
   /** pool namespace — split-surface method-level subset: pool side = receive layout + send actions + the beforeClose channel (the shell-side pushLayout/onReady/… 12 methods are the shell→pool push surface and do not exist in the pool).
    *  pool in the contract is required (after E5.8#22 review, N1 correction) — direct Pick, no NonNullable needed
@@ -62,7 +62,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
  *    changing it for "we could skip the detour now" would be pointless churn); the pool-side buildApp() exposes only the contract surface getVersion */
 export type ShellExposed = Pick<LinkDeskAPI,
   | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
-  | "fileAssociation" | "pluginManager" | "dialog" | "pluginState" | "menu"
+  | "fileAssociation" | "pluginManager" | "licenses" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
   | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update" | "storage"> & {
   /**

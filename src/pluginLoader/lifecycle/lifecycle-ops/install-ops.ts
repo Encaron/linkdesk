@@ -18,13 +18,17 @@ import {
   // E6#73j（G6）：住所判据唯一源——市场「可更新」徽标/更新钮据此遮蔽死钮
   setPluginResidence,
 } from "../../resolution/state";
-import { validateInstallManifest, resolveVersionConflict } from "../../discovery/manifest";
+import { validateInstallManifest, resolveVersionConflict, classifyInstallManifest } from "../../discovery/manifest";
+// R4-1.2（I16）：解压段错误判据串单源——五类回执分类按 includes 匹配，⛔ 不重抄字面量
+import { EXTRACT_ERR_INVALID_PACKAGE, EXTRACT_ERR_UNSAFE_PLUGIN_ID, EXTRACT_ERR_TARGET_EXISTS, EXTRACT_ERR_ZIP_SLIP } from "../../../core/utils/plugin/installExtractErrors";
+// R4-1.3（I21/#24 壳侧）：安装门——声明进数据层、裁决进壳（05 §三·4）
+import { checkInstallLicenseGate } from "../../../core/services/licenses/install-license-gate";
 import { loadPlugin, getKnownManifest } from "../../resolution/runtime";
 import { parseManifestJson } from "../../jsonc"; // E6#55：作者 plugin.json JSONC——唯一解析入口
 // E6#13b/c（段 B）：packageOps 签名引用 PluginUpdateCheckResult——types.ts 契约面
 // E6#73q：PluginInstallRequestOpts——安装请求侧身份（pluginId/displayName/origin）
 // E6#73c：PluginInstallJobRef——主进程 fs/net 段的进度事件回填 job 身份（jobId 只在壳侧生成）
-import type { PluginInstallRequestOpts, PluginInstallResult, PluginInstallJobRef, PluginUpdateCheckResult } from "../../../core/api/linkdesk-api/types";
+import type { PluginInstallRequestOpts, PluginInstallResult, PluginInstallJobRef, PluginLocalInstallResult, PluginLocalInstallReason, PluginUpdateCheckResult } from "../../../core/api/linkdesk-api/types";
 // E6#73q（18 档 §五 I.2）：壳侧 job 表 + N 槽限流 + FIFO——槽锁下沉到 installPlugin（两条腿共用）
 import {
   openInstallJob,
@@ -83,6 +87,12 @@ export async function installPlugin(
   sourcePath: string,
   opts?: PluginInstallRequestOpts,
 ): Promise<PluginInstallResult> {
+  // R4-1.3（I21/#24 壳侧）：安装门——09 §三·补3「与 minAppVersionGate 同位模式」：声明（opts.pricing）
+  // 进数据层、裁决在壳。拦 = 回执 licenseRequired（不是失败——消费方据此开许可弹窗，⛔ 不走失败红字）。
+  // 门在开工（建 job）之前：未获许可的请求不占槽、不出 job 行。
+  if (!(await checkInstallLicenseGate(opts))) {
+    return { success: false, licenseRequired: true, error: i18n.t("此插件需要许可——请先在详情页输入许可密钥") };
+  }
   // 开场四步（建 job / 去重等待 / 挂取消钩子 / 抢槽）与更新腿同款——收在 `openInstallJob` 一处，
   // 免得两份拷贝各自漂移。E6#73d 的真中止钩子（面板「取消安装」→ 主进程 AbortController）由本处提供：
   // **只有下载段能被真中止**，其余段（解压/落盘/加载）已是本地不可中断的原子动作——取消它们只是
@@ -274,16 +284,8 @@ async function installPackageFromSource(
     }
 
     // 3) 账本 add（#12b 欠账还清——安装流消费 add；磁盘事实在 user/ 子目录 → 源默认 user；
-    //    market UI 未来可传 marketplace）
-    try {
-      const { add: addLedger } = await import("../../../core/services/PluginInstallService");
-      await addLedger(pluginId, version, opts?.ledgerSource ?? "user");
-    } catch (e) {
-      log.appendLine(`⚠️ 账本写入失败（非致命）: ${errMsg(e)}`);
-    }
-
-    // 4) E5.7#48：文件已落盘——通知主进程重扫三表（无论 loadPlugin 是否成功）
-    window.linkdesk?.pluginManager?.notifyManifestChanged?.();
+    //    market UI 未来可传 marketplace）＋ 4) E5.7#48 通知重扫三表——收在 commitLedgerAndNotify 一处（R4-1.2 起与本地安装流共用）
+    await commitLedgerAndNotify(pluginId, version, opts?.ledgerSource ?? "user");
 
     // 5) loadPlugin（安装 reason——onDidInstall 消费端 toast + 图标顺序 + plugin:installed 广播）——收尾块与目录源共用 loadInstalledPlugin
     return loadInstalledPlugin(pluginId, version, i18n.t("已安装：{{name}} v{{version}}。视图刷新后生效。", {
@@ -439,4 +441,157 @@ async function installPluginFromDirectory(sourcePath: string, jobId: string): Pr
     jobProgress(jobId, "error", undefined, msg);
     return { success: false, error: msg };
   }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   R4-1.2（I16·正典 09 §三·补2）：本地安装流——installFromDirectory
+   文件夹 / .linkdesk-plugin 离线包 → {userData}/plugins/<id>（用户安装家），账本 → 注册 → lifecycle
+   与网络安装同一路（commitLedgerAndNotify + loadInstalledPlugin 复用，⛔ 不旁路）。五类结构化回执。
+   ⚠️ 与 installPlugin 的分工：本 API 是「本地安装」显式面（09 表——市场来源页/I17 消费），回执是
+   五类封闭集合；installPlugin 维持既有 PluginInstallResult 面零变更。同一条队列同一把槽锁。
+   ⚠️ 安装门不适用于本 API（v1）：本地路径无目录条目即无 pricing 声明——manifest 层 pricing 不存在
+   （plugin.schema 无此字段），深度强制留 B3（09「边界与代价」自认）。
+   ═══════════════════════════════════════════════════════════ */
+
+/** 落账后收尾——账本 add（非致命）＋ 通知主进程重扫三表（E5.7#48）。包安装流与本地安装流共用。 */
+async function commitLedgerAndNotify(pluginId: string, version: string, source: "user" | "marketplace"): Promise<void> {
+  try {
+    const { add: addLedger } = await import("../../../core/services/PluginInstallService");
+    await addLedger(pluginId, version, source);
+  } catch (e) {
+    log.appendLine(`⚠️ 账本写入失败（非致命）: ${errMsg(e)}`);
+  }
+  window.linkdesk?.pluginManager?.notifyManifestChanged?.();
+}
+
+/** 解压段 throw 文案 → 五类回执 reason——判据串单源（installExtractErrors），⛔ 不在消费方重抄字面量 */
+function reasonFromExtractError(msg: string): PluginLocalInstallReason {
+  if (msg.includes(EXTRACT_ERR_TARGET_EXISTS)) return "exists";
+  if (msg.includes(EXTRACT_ERR_INVALID_PACKAGE)) return "bad-manifest";
+  if (msg.includes(EXTRACT_ERR_UNSAFE_PLUGIN_ID)) return "unsafe-id";
+  if (msg.includes(EXTRACT_ERR_ZIP_SLIP)) return "io";
+  return "io";
+}
+
+/** 本地安装流成功面到回执的映射（loadInstalledPlugin 的 PluginInstallResult → 五类面的 ok 形状） */
+function toLocalOk(r: PluginInstallResult): PluginLocalInstallResult {
+  return { ok: true, pluginId: r.pluginId, version: r.version, parked: r.parked, needRestart: r.needRestart };
+}
+
+/**
+ * 本地安装（R4-1.2）——路由入口：`.linkdesk-plugin` 离线包 → 解压腿（主进程 packageExtract 同段）；
+ * 含 plugin.json 的单插件文件夹 → 复制腿。
+ * ⚠️ 不进安装 job 队列（E6#73q「全队列唯一入口」保持唯一）：job 表 outcome 契约钉死 PluginInstallResult
+ * 形状（success/error），五类回执塞进去 = 第二语义；本流是低频单发用户动作（来源页选文件夹/选包），
+ * 无网络下载段无取消面，进度走裸 emitInstallProgress（unload/reinstall 收尾腿同款）。磁盘互斥由
+ * 解压段「目标已存在拒绝」＋复制腿 exists 预检承担。复用的是**流水线后半**（账本→注册→lifecycle）。
+ * ⛔ 不做多插件目录（09 v2 再议）；拒 core:true（本地不得自封内置）。
+ */
+export async function installFromDirectory(
+  sourcePath: string,
+  opts?: PluginInstallRequestOpts,
+): Promise<PluginLocalInstallResult> {
+  const isZip = /\.linkdesk-plugin$/i.test(sourcePath.trim());
+  return isZip
+    ? installLocalPackage(sourcePath, opts)
+    : installLocalFolder(sourcePath, opts);
+}
+
+/** 解压腿：本地 .linkdesk-plugin 离线包 → 主进程 packageExtract（同网络安装段：zip-slip/双源互验/已存在拒绝）→
+ *  core:true 拒并清理（本地不得自封内置）→ 依赖链（可选 catalogUrl）→ 账本 → loadPlugin。 */
+async function installLocalPackage(sourcePath: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult> {
+  emitInstallProgress("validating", opts?.pluginId, "校验插件包");
+  try {
+    if (!(await linkdesk().filesystem.exists(sourcePath))) {
+      return { ok: false, reason: "io" };
+    }
+    emitInstallProgress("extracting", opts?.pluginId, "解压插件包");
+    let extracted: { pluginId: string; version: string; targetDir: string };
+    try {
+      // jobRef 不带：本流无 job 行（见 installFromDirectory 头注）——主进程进度事件不带身份（池侧归活跃会话，pre-73q 形状）
+      extracted = await packageOps().packageExtract(sourcePath, undefined, undefined);
+    } catch (e) {
+      return { ok: false, reason: reasonFromExtractError(errMsg(e)) };
+    }
+    const { pluginId, version, targetDir } = extracted;
+    const manifest = await readInstallManifest(targetDir);
+    // 本地不得自封内置（09）——core:true 拒并清理解压产物（防半装目录残留挡住下次安装）
+    // 与「读不出 manifest」同清理（包合法但内容坏 = 半装残留）。
+    if (manifest === null || manifest.core === true) {
+      try { await linkdesk().filesystem.remove(targetDir); } catch { /* 清理失败非致命——exists 拒绝仍在 */ }
+      return { ok: false, reason: manifest === null ? "bad-manifest" : "core-forbidden" };
+    }
+    const displayName = typeof manifest.name === "string" && manifest.name.trim() !== "" ? manifest.name : pluginId;
+    // E6#73j（G6）：落在 {userData}/plugins/<id> = 用户安装家 ⇒ 可被新包更新（与包安装流同判据）
+    setPluginResidence(pluginId, "userData");
+    if (opts?.catalogUrl) {
+      // 依赖链自动装（E6#73o 同款）——失败回滚父插件解压产物（未入账本无法卸载的死端防护）
+      try {
+        await installMissingDependenciesInline({
+          jobId: "",
+          manifest,
+          catalogUrl: opts.catalogUrl,
+          ancestors: [pluginId],
+          chainInstalled: new Set(),
+        });
+      } catch {
+        try { await linkdesk().filesystem.remove(targetDir); } catch { /* 回滚失败非致命 */ }
+        return { ok: false, reason: "io" };
+      }
+    }
+    await commitLedgerAndNotify(pluginId, version, opts?.ledgerSource ?? "user");
+    return await loadLocalInstalled(pluginId, version, displayName);
+  } catch (e) {
+    emitInstallProgress("error", undefined, errMsg(e));
+    return { ok: false, reason: "io" };
+  }
+}
+
+/** 复制腿：含 plugin.json 的单插件文件夹 → {userData}/plugins/<pluginId>（installPluginFromDirectory 的
+ *  dev 树版本复制进 appPluginsDir，本腿复制进用户安装家且拒 core 不消毒——09 正典差异两处）。 */
+async function installLocalFolder(sourcePath: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult> {
+  emitInstallProgress("validating", opts?.pluginId, "校验插件");
+  try {
+    const manifestPath = `${sourcePath}/plugin.json`;
+    if (!(await linkdesk().filesystem.exists(manifestPath))) {
+      return { ok: false, reason: "bad-manifest" };
+    }
+    let parsedManifest: unknown;
+    try {
+      parsedManifest = parseManifestJson(await linkdesk().filesystem.readTextFile(manifestPath));
+    } catch {
+      return { ok: false, reason: "bad-manifest" };
+    }
+    const sourceDirName = sourcePath.split(/[\\/]/).pop() || sourcePath;
+    // 判定单点 = classifyInstallManifest（rejectCore:true——本地不得自封内置；dev 树流维持消毒旧语义）
+    const classified = classifyInstallManifest(parsedManifest, sourceDirName, { rejectCore: true });
+    if (!classified.ok) return { ok: false, reason: classified.reason };
+    const { pluginId, version, name } = classified;
+
+    const env = await linkdesk().env.get();
+    const destDir = `${env.userPluginsDir}/${pluginId}`;
+    // 09：同 id 已装 → reason:"exists" 由调用方确认覆盖（不静默覆盖、不比版本——先卸载再装是调用方的事）
+    if (await linkdesk().filesystem.exists(destDir)) {
+      return { ok: false, reason: "exists" };
+    }
+
+    emitInstallProgress("copying", pluginId, "复制插件文件");
+    await linkdesk().filesystem.copy(sourcePath, destDir);
+    // E6#73j（G6）：用户安装家 ⇒ 可被新包更新
+    setPluginResidence(pluginId, "userData");
+    await commitLedgerAndNotify(pluginId, version, opts?.ledgerSource ?? "user");
+    return await loadLocalInstalled(pluginId, version, name);
+  } catch (e) {
+    emitInstallProgress("error", undefined, errMsg(e));
+    return { ok: false, reason: "io" };
+  }
+}
+
+/** 本地安装流加载收尾——与网络安装流共用 loadInstalledPlugin（lifecycle 同路），裸进度收尾。 */
+async function loadLocalInstalled(pluginId: string, version: string, displayName: string): Promise<PluginLocalInstallResult> {
+  const r = await loadInstalledPlugin(pluginId, version, i18n.t("已安装：{{name}} v{{version}}。视图刷新后生效。", {
+    name: displayName,
+    version,
+  }), "");
+  return toLocalOk(r);
 }

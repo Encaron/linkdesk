@@ -289,6 +289,7 @@ export const linkdeskMock: Record<string, unknown> = {
     disable: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.disable", ..._args); },
     uninstall: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.uninstall", ..._args); },
     install: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.install", ..._args); },
+    installFromDirectory: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.installFromDirectory", ..._args); },
     installWithProgress: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.installWithProgress", ..._args); },
     reinstall: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.reinstall", ..._args); },
     getDisabled: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.getDisabled", ..._args); return []; },
@@ -297,6 +298,11 @@ export const linkdeskMock: Record<string, unknown> = {
     update: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.update", ..._args); },
     checkUpdates: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.checkUpdates", ..._args); },
     notifyManifestChanged: (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.notifyManifestChanged", ..._args); },
+  },
+  licenses: {
+    verify: async (..._args: unknown[]) => { console.info("[linkdesk-mock] licenses.verify", ..._args); },
+    list: async (..._args: unknown[]) => { console.info("[linkdesk-mock] licenses.list", ..._args); return []; },
+    remove: async (..._args: unknown[]) => { console.info("[linkdesk-mock] licenses.remove", ..._args); },
   },
   bridge: {
     onRequest: (..._args: unknown[]) => { console.info("[linkdesk-mock] bridge.onRequest", ..._args); return () => {}; },

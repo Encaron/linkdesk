@@ -57,10 +57,9 @@
         // 安装界面自绘·件 2a（2026-10-01）：单文件安装包拼合器——命令行直跑
         //   （`node scripts/build-installer.mjs --exe <壳.exe> --payload <app-*.7z> --out <安装包.exe>`，
         //   另有 `--check <安装包.exe>` 独立自检），壳内零消费方——非死代码。
-        //   ⚠️ 插进 `npm run electron:build` 是**件 3b 出包链整合**的活（那时 knip 由 npm script 自动看见，
-        //   本行即可摘除）；本件刻意不先切 electron-builder.yml 的 target——单切会让顶层没有 .exe / latest.yml，
-        //   把 check-packaging-files 与 assert-installer-name 两道门禁弄红。理由见 06-任务清单 件 2a 首子项。
-        "scripts/build-installer.mjs",
+        //   🔴 2026-11-20：本行 entry 已摘除——件 3b 出包链整合已发生（electron:build 直呼本件，
+        //   knip 经 npm script 自动看见），本行按当年预告的摘除条件退场。electron-builder.yml 的
+        //   target 决策史与两道门禁的理由见 06-任务清单 件 2a 首子项。
         // 「文件打开方式与贡献点」归档（AI-6，2026-10-06 建）：**归档搬件器**——命令行直跑
         //   （`node scripts/archive-case.mjs <案名>` 干跑 / `--apply` 落笔），壳内零消费方——非死代码。
         //   链接判据 import 门禁那把尺子（check-doc-links 的 `linkTargetsInLine`），故它不是孤岛。
@@ -99,12 +98,12 @@
         // E6#30c：同上——StringListEditor（E6#54b 零件集新成员）唯一消费方 = @linkdesk/ui lib 构建
         //   （settings renderControl uiHint "stringList" 经 barrel 消费）+ 插件 dist——壳 scope 断边误报。
         // 🔴 E6#99：该条目已摘除——插件搬走后 knip 的图变化使其豁免不再必要（knip 报 configuration hint）。
-        // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys/
-        //   useDebouncedInput）的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
+        // E6#15h：同上——src/components/shared/hooks/ 交互 hook（useClickPreview/useClipboardKeys）
+        //   的唯一消费方 = @linkdesk/ui lib 构建（packages/ 域）+ 插件 dist 消费——knip
         //   壳 scope 断边误报 unused。仍活：@linkdesk/ui dist 即由它们构建。详见 08-共享hook归位.md。
+        //   🔴 2026-11-20：useDebouncedInput 条目已摘除——knip 图内已见其消费方（豁免冗余，knip 自己报）。
         "src/components/shared/hooks/useClickPreview.ts",
         "src/components/shared/hooks/useClipboardKeys.ts",
-        "src/components/shared/hooks/useDebouncedInput.ts",
         // E6#120 同型（04「悬停提示系统」件 1，2026-09-27）：HintTip 的壳内消费方 = 属性式（插件/壳侧写
         //   `data-hint` 属性，零 import）＋ `@linkdesk/ui` lib 构建（packages/ 域，knip 不覆盖）＋ 单测——
         //   ⇒ 组件默认导出与 `HintTipProps` 在根 scope 里都断边（实测报「导出类型未用」）。
@@ -112,10 +111,10 @@
         //   ⛔ 不给 KeybindingHint 加同类豁免——它有壳内真消费者（ContextMenu / HintTipRenderer），
         //   故那边把 Props 改回模块内私有（真断边就该修，不是压）。
         "src/components/shared/hint-tip/HintTip.tsx",
-        // M4 AI#38.12（2026-09-28）：ReadOnlyText / SectionSubtitle——只读文本展示件与分节副标题件，
-        //   壳内零消费方（消费方 = settings 插件经 @linkdesk/ui barrel + 插件 dist）——E6#54c 同型
-        //   断边误报豁免（@linkdesk/ui dist 即由它们构建而来；壳仓 src/ 内零 import 是**设计**）。
-        "src/components/shared/readonly-text/ReadOnlyText.tsx",
+        // M4 AI#38.12（2026-09-28）：SectionSubtitle——分节副标题件，壳内零消费方（消费方 = settings
+        //   插件经 @linkdesk/ui barrel + 插件 dist）——E6#54c 同型断边误报豁免（@linkdesk/ui dist 即由
+        //   它们构建而来；壳仓 src/ 内零 import 是**设计**）。
+        //   🔴 2026-11-20：ReadOnlyText 条目已摘除——knip 图内已见其消费方（豁免冗余，knip 自己报）。
         "src/components/shared/section-subtitle/SectionSubtitle.tsx",
         // 设置控件-词表正典与共享化（AI-5，2026-10-03 阶段 3.2）同型断边豁免——四件新共享件的**唯一消费方**
         //   = settings 插件（`@linkdesk/ui` barrel ＋ 插件自己的 dist：双轨期的 SharedSourceBadge／
@@ -126,11 +125,8 @@
         "src/components/shared/source-badge/SourceBadge.tsx",
         "src/components/shared/image-picker/BackgroundImagePicker.tsx",
         "src/components/shared/segment-preview/SegmentPreview.tsx",
-        // 2026-10-05「文件打开方式与贡献点」纠正案 4.5：OpenWithPicker 类型面（types.ts）的两条 re-export
-        //   （`OpenWithHandler` / `OpenWithRequest`）壳内零消费方——唯一消费方 = `@linkdesk/ui` barrel
-        //   第 61 行转给插件消费者（packages/ 域，knip 不覆盖）＋ 池侧宿主按 wire 契约手抄同形。
-        //   ⇒ 壳 scope 断边误报「导出类型未用」。⛔ 不是死代码：它们就是共享件对外承诺的 props 面。
-        "src/components/shared/open-with-picker/types.ts",
+        // 🔴 2026-11-20：open-with-picker/types.ts 条目已摘除——knip 图内已见其消费方（豁免冗余，
+        //   knip 自己报；当年 E6 纠正案 4.5 的断边前提已不成立）。
         // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
         //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
         //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
@@ -145,6 +141,9 @@
         //   而 contracts/ 不在 knip project 域（src/electron/scripts）⇒ 静态图断边误报「导出类型未用」。
         //   语义同上面两条桶导出（面向插件/契约域，不是死代码）；缺了它 `contracts:gen` 产物即少一个具名类型。
         "src/core/api/linkdesk-api/tabs.ts",
+        // R4-1.2（2026-11-20）：NotifJobRow 同 tabs.ts 同型——名字只为**生成的公共契约**存在
+        //   （contracts/linkdesk.d.ts:986 逐字照抄；contracts/ 不在 knip project 域 ⇒ 断边误报）。
+        "src/core/types/pool/notifJobLayout.ts",
         "src/core/api/types.ts",
         "src/core/commands/shell/coreCommands.ts",
         "src/core/commands/input-bindings/shellKeybindings.ts",
@@ -156,7 +155,6 @@
         "src/core/registry/commands/CommandRegistry.ts",
         "src/core/registry/commands/KeybindingRegistry.ts",
         "src/core/registry/commands/KeybindingRegistry/*.ts",
-        "src/core/registry/commands/MenuRegistry.ts",
         "src/core/registry/languages/LangDefRegistry.ts",
         "src/core/registry/ProtocolRegistry.ts",
         "src/core/services/configuration/ConfigurationApplier.ts",
@@ -166,7 +164,6 @@
         "src/core/services/configuration/ConfigurationService/*.ts",
         // E5.8#12：FileAssociationService/StatusBarService 移出 ignore——#12 删了其 unreachable 的
         //   unregisterFileAssociations/unregisterStatusBarPlugin，剩余 exports 全部可达，knip 不再需要豁免。
-        "src/core/services/files/FileService.ts",
         "src/core/services/layout/LayoutService.ts",
         "src/core/services/plugins/IpcBridgeHandler.ts",
         "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
@@ -203,18 +200,16 @@
         // 🔴 E6#99（L7 7.2）：18 只发货插件源码外移后，**monaco-editor / @codemirror×3 四条 ignoreDependencies
         //   已摘除**——它们当年是为「插件源码折 root scope」而压制的，插件搬走后 root 里再无任何引用边，
         //   留着就是一份没有作用的陈旧豁免（knip 自己会报 configuration hint）。
-        //   `@linkdesk/ui` **保留**：壳侧 src/ 仍无 import 消费方（消费走 @linkdesk/ui 包自身的 dist），
-        //   但 root 必须持这个 file: 链接供 `scripts/build-pool-vendor.mjs` 的 esbuild 入口解析
-        //   （`@linkdesk/ui` 是池 vendor 单实例，E6#123）——壳内插件位已空，此依赖不再为夹具而留。
+        //   🔴 2026-11-20：`@linkdesk/ui` 两条 ignoreDependencies 已摘除——knip 图内已见其消费边
+        //   （build-pool-vendor esbuild 入口在 scripts/ project 域内，豁免冗余 knip 自己报）。
+        //   root 的 file: 依赖本体不动（vendor 单实例 E6#123 的解析前提仍在）。
         // E6#16（实机实证）：buffer 是壳 renderer iconv-lite（EncodingService，声明 root dep）的
         //   require('buffer') 浏览器 Buffer 垫片——vite dev optimize 与 prod rollup 把裸 'buffer'
         //   解析到本包（#16 npm 重装前它由 tar-stream→bl 链作为无关传递依赖静默满足，净壳后暴露
         //   → 谁消费谁声明显式落 root deps）。纯解析期依赖（源码零 import，壳源码 import 'buffer'
         //   不存在）→ knip 静态 import 图断边误报 unused → root 压制；dev 实机 boot + EncodingService
         //   加载即活证。删它 = 复现 iconv-lite/safer-buffer 'prototype of undefined' dev 崩。
-        "@linkdesk/ui",
-        "buffer",
-        "@linkdesk/ui"  // ⚠️ E6#99：原并列的 monaco-editor/@codemirror×3 已摘除（见上注释末段）
+        "buffer"
       ],
       "ignoreBinaries": [
         // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）

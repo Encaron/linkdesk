@@ -2,6 +2,12 @@
 
 > 📦 **0.1.x 版本线的完整说明已归档**：[`docs/04-软件更新/CHANGELOG-归档-v0.1.md`](docs/04-软件更新/CHANGELOG-归档-v0.1.md)（54 段；2026-10-01 首次执行「主文件 > 50 版 或 > 300 KB 即归档」的体积纪律）。**本文件只留当前版本线**（0.2.x）。归档只治仓库体积——`CHANGELOG.md` 不进安装包 / npm 包 / 插件 zip，三个分发面本来就不带它。
 
+## v0.2.56（2026-11-20）
+
+### feat
+
+- 🧩 **插件市场基建·壳三刀（Marketplace-Store 批1）**：① **本地安装** `pluginManager.installFromDirectory(path)`——单插件文件夹或 .linkdesk-plugin 离线包复制进用户安装家（与网络安装同路：账本→注册→lifecycle），五类结构化回执（bad-manifest/unsafe-id/core-forbidden/exists/io），拒 core:true 自封内置；② **付费裁决层住壳**：新增 `licenses` 命名空间（verify/list/remove，Ed25519 离线验签走主进程，权益存 {userData}/licenses.json）＋安装门扩付费（条目声明 pricing.model 而权益缺失 → licenseRequired 拦下，与 minAppVersionGate 同位）＋ `env.machineFingerprint`（MachineGuid＋主板序列 sha256 前 16 位，重启/换端口稳定）；③ **图标点击直开标签可选开**：侧栏插件声明 `{pluginId}.openTabOnIcon`（布尔，默认关＝现状零差异）时点图标侧栏＋标签同起。配套：契约包/SDK dev-host mock 同笔重生成，api-surface 快照追平。
+
 ## v0.2.55（2026-11-20）
 
 ### feat

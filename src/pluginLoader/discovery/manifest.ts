@@ -66,8 +66,63 @@ export function hasSidebarContainers(manifest: PluginManifest): boolean {
 const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /**
+ * 安装源校验的结构化分类结果——R4-1.2（I16·正典 09 §三·补2）五类回执的判定单点。
+ * reason 封闭集合与 PluginLocalInstallReason 的前三类同形（io/exists 归磁盘段，不在 manifest 层）。
+ * detail = 同 reason 的子 case（文案皮用——validateInstallManifest 按 detail 挑既有文案，⛔ 判定规则不在此重建）。
+ */
+export type InstallManifestRejection = "bad-manifest" | "unsafe-id" | "core-forbidden";
+export type InstallManifestRejectionDetail = "shape" | "pluginId-type" | "version" | "id-shape" | "host-pseudo" | "core";
+
+/** installFromDirectory（本地安装）专属：manifest 层校验不拒 core:true 的缺省行为——本地安装流拒（本地不得自封内置）。 */
+export interface ClassifyInstallManifestOpts {
+  /** true = manifest.core === true 判 core-forbidden（默认 false——dev 树安装流维持「消毒 core→false」旧语义） */
+  rejectCore?: boolean;
+}
+
+/**
+ * E5.7#81 校验规则的**结构化分类器**（R4-1.2 拆出）——校验规则的唯一事实源，
+ * validateInstallManifest 是它的抛错皮。返回 reason 而非抛错（五类回执需要分类）。纯函数（测试覆盖）。
+ * 校验顺序即 reject 优先级：形状 → pluginId 形状 → 宿主伪身份 → version → core（仅 rejectCore）。
+ */
+export function classifyInstallManifest(
+  manifest: unknown,
+  sourceDirName: string,
+  opts?: ClassifyInstallManifestOpts,
+):
+  | { ok: true; pluginId: string; version: string; name: string }
+  | { ok: false; reason: InstallManifestRejection; detail: InstallManifestRejectionDetail } {
+  if (typeof manifest !== "object" || manifest === null) {
+    return { ok: false, reason: "bad-manifest", detail: "shape" };
+  }
+  const m = manifest as Record<string, unknown>;
+  const rawId = m.pluginId;
+  if (rawId !== undefined && rawId !== null && typeof rawId !== "string") {
+    return { ok: false, reason: "bad-manifest", detail: "pluginId-type" };
+  }
+  const pluginId = rawId === undefined || rawId === null ? sourceDirName : (rawId as string);
+  if (!SAFE_PLUGIN_ID.test(pluginId)) {
+    return { ok: false, reason: "unsafe-id", detail: "id-shape" };
+  }
+  // E6#111d（1.34）判据 4：宿主伪身份面——形状判据管不了它（"app" 是完全合法的形状），归 unsafe-id
+  if (HOST_PSEUDO_PLUGIN_IDS.includes(pluginId)) {
+    return { ok: false, reason: "unsafe-id", detail: "host-pseudo" };
+  }
+  const version = m.version;
+  if (typeof version !== "string" || version.trim() === "") {
+    return { ok: false, reason: "bad-manifest", detail: "version" };
+  }
+  // R4-1.2：本地安装拒 core:true（本地不得自封内置）——dev 树安装流不走此分支（继续走消毒 core→false）
+  if (opts?.rejectCore && m.core === true) {
+    return { ok: false, reason: "core-forbidden", detail: "core" };
+  }
+  const name = typeof m.name === "string" && m.name.trim() !== "" ? m.name : pluginId;
+  return { ok: true, pluginId, version, name };
+}
+
+/**
  * E5.7#81：安装源 manifest 校验——纯函数（测试覆盖）。
  * 返回规范化三元组（pluginId/version/name），不合法即抛错。
+ * R4-1.2 起内部 = classifyInstallManifest 的抛错皮（规则单源＝分类器；本函数只保 E5.7#81/E6#111d 文案契约）。
  *
  * 校验规则：
  *   - pluginId 裁决：manifest.pluginId 优先（支持目录名 ≠ pluginId 的正确安装）；
@@ -77,39 +132,29 @@ const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  *   - name 缺省回退 pluginId
  */
 export function validateInstallManifest(manifest: unknown, sourceDirName: string): { pluginId: string; version: string; name: string } {
-  if (typeof manifest !== "object" || manifest === null) {
-    throw new Error(`plugin.json 内容不是对象`);
+  const result = classifyInstallManifest(manifest, sourceDirName);
+  if (result.ok) return { pluginId: result.pluginId, version: result.version, name: result.name };
+  const { reason, detail } = result;
+  if (reason === "bad-manifest") {
+    if (detail === "shape") throw new Error(`plugin.json 内容不是对象`);
+    if (detail === "pluginId-type") throw new Error(`plugin.json 的 pluginId 必须是字符串`);
+    const id = (manifest as Record<string, unknown>).pluginId;
+    throw new Error(`插件 "${typeof id === "string" && id ? id : sourceDirName}" 缺少 version 字段`);
   }
-  const m = manifest as Record<string, unknown>;
-  const rawId = m.pluginId;
-  let pluginId: string;
-  if (rawId === undefined || rawId === null) {
-    pluginId = sourceDirName;
-  } else if (typeof rawId !== "string") {
-    throw new Error(`plugin.json 的 pluginId 必须是字符串`);
-  } else {
-    pluginId = rawId;
-  }
-  if (!SAFE_PLUGIN_ID.test(pluginId)) {
+  // unsafe-id——两个子 case 各保既有文案
+  const id = (manifest as Record<string, unknown>).pluginId;
+  const pluginId = typeof id === "string" && id ? id : sourceDirName;
+  if (detail === "id-shape") {
     throw new Error(
       `pluginId "${pluginId}" 不合法（只允许字母/数字/._-，开头须为字母或数字）` +
       `——manifest 未声明 pluginId 时以源目录名兜底，请改名目录或在 plugin.json 声明 pluginId`,
     );
   }
-  // E6#111d（1.34）判据 4：pluginId 不得落在宿主伪身份面（形状判据管不了它——"app" 是个完全合法的形状）
-  if (HOST_PSEUDO_PLUGIN_IDS.includes(pluginId)) {
-    throw new Error(
-      `pluginId "${pluginId}" 是宿主自己的身份："app" / "appearance" / "update" 是宿主自己的身份` +
-      `（宿主用它注册配置/外观/更新），插件用它 ⇒ 冲突检测永不响、注销会摘掉宿主条目。` +
-      `改用别的 id（例如 "${pluginId}-你的插件名"）——源目录名兜底这条路径同样受限，故也必须改目录名。`,
-    );
-  }
-  const version = m.version;
-  if (typeof version !== "string" || version.trim() === "") {
-    throw new Error(`插件 "${pluginId}" 缺少 version 字段`);
-  }
-  const name = typeof m.name === "string" && m.name.trim() !== "" ? m.name : pluginId;
-  return { pluginId, version, name };
+  throw new Error(
+    `pluginId "${pluginId}" 是宿主自己的身份："app" / "appearance" / "update" 是宿主自己的身份` +
+    `（宿主用它注册配置/外观/更新），插件用它 ⇒ 冲突检测永不响、注销会摘掉宿主条目。` +
+    `改用别的 id（例如 "${pluginId}-你的插件名"）——源目录名兜底这条路径同样受限，故也必须改目录名。`,
+  );
 }
 
 /**

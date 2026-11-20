@@ -71,6 +71,7 @@ export class IpcBridge {
   private static LONG_RUNNING_PLUGIN_CALLS = new Set<string>([
     "install",
     "installWithProgress",
+    "installFromDirectory", // R4-1.2（I16）：本地安装——zip 解压/文件夹复制同属长任务（10s 墙钟与它无关）
     "reinstall",
     "update",
   ]);

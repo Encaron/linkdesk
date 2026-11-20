@@ -685,7 +685,7 @@ interface NotifGroup {
  */
 
 export type { ToastStackItem, ToastStackLayout } from "./toastStackLayout"; // 拆分件 re-export——notif.ts/组件层 import 路径不变
-export type { NotifJobRow, NotifSection } from "./notifJobLayout"; // 同批拆分件（体积门禁）
+export type { NotifSection } from "./notifJobLayout"; // 同批拆分件（体积门禁）——NotifJobRow 不在此转口（契约源 = notifJobLayout.ts 本体，knip 判本行转口未用属实）
 import type { NotifSection } from "./notifJobLayout"; // PoolLayout 安装段字段本地消费
 
 

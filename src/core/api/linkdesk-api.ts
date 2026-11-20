@@ -22,10 +22,11 @@
  * into LinkDeskAPI + re-exports of standalone interfaces + DialogOpenOptions keeps its path + getLinkDesk/linkdesk runtime exports.
  * E5.8#41.12: settings domain added (12th, settings suite enumeration/switching); E5.8#41.14: factorySlots domain (13th,
  * slot-agnostic generic enumeration surface); E6#57.2a: app domain (14th, read-only main-software product identity); E6#57.8: update domain
- * (15th, read-only main-software update state — write commands stay out of the contract, see linkdesk-api/update.ts) — the header comment and
+ * (15th, read-only main-software update state — write commands stay out of the contract, see linkdesk-api/update.ts); R4-1.3 (2026-11-20):
+ * licenses domain (16th, license verify/entitlements — the adjudication layer lives in the shell, see linkdesk-api/licenses.ts) — the header comment and
  * generate-contract.mjs share the same source; never change one alone.
- * Layered dependencies: types (standalone interface base) → 15 domain interfaces (Commands/Appearance/Tabs/Keybindings/Ui/Data/
- * Workspace/Editor/Plugins/Shell/Panel/Settings/FactorySlots/App/Update) → this aggregator cross-composes them; zero mutual dependencies among domain interfaces, unidirectional and acyclic.
+ * Layered dependencies: types (standalone interface base) → 16 domain interfaces (Commands/Appearance/Tabs/Keybindings/Ui/Data/
+ * Workspace/Editor/Plugins/Licenses/Shell/Panel/Settings/FactorySlots/App/Update) → this aggregator cross-composes them; zero mutual dependencies among domain interfaces, unidirectional and acyclic.
  * External consumers' import paths are unchanged ("./linkdesk-api" hits this file, "./linkdesk-api/types" hits the submodule).
  */
 
@@ -39,6 +40,7 @@ import type { DataAPI } from "./linkdesk-api/data";
 import type { WorkspaceAPI } from "./linkdesk-api/workspace";
 import type { EditorAPI } from "./linkdesk-api/editor";
 import type { PluginsAPI } from "./linkdesk-api/plugins";
+import type { LicensesAPI } from "./linkdesk-api/licenses"; // R4-1.3（I21/#24 壳侧）：许可验签与权益命名空间（第 17 域）
 import type { ShellAPI } from "./linkdesk-api/shell";
 import type { PanelAPI } from "./linkdesk-api/panel"; // E5.8#34.5: bottom panel namespace
 import type { SettingsAPI } from "./linkdesk-api/settings"; // E5.8#41.12: settings suite namespace (enumeration/switching)
@@ -55,7 +57,7 @@ import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8: update domai
  * E5.8#0d.10-9e: cross-composed from 15 namespace domain interfaces (interface→type intersection;
  * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 
 // ── Standalone type interface re-exports (types.ts base) ──
 
@@ -70,9 +72,15 @@ export type {
   SettingsRenderHint,
   PluginListEntry,
   PluginInstallResult,
+  PluginLocalInstallResult,
+  PluginLocalInstallReason,
   PluginInfoEntry,
   PluginListSubset,
   EnvInfo,
+  LicenseKeyPayload,
+  LicenseVerifyResult,
+  LicenseVerifyFailureReason,
+  LicenseEntitlement,
   FileDecoration,
   FileDecorationProvider,
   MenuItemDescriptor,

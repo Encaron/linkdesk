@@ -18,6 +18,7 @@ import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins
 import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/handlers/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
+import { registerLicenseHandlers } from './ipc/handlers/license-handlers.js'; // R4-1.3（I21）：许可验签/权益 main 直答
 import { registerProductHandlers } from './ipc/handlers/product-handlers.js'; // E6#57.3b：产品身份（app:getVersion/getProductInfo）
 import { registerManualHandlers } from './ipc/handlers/manual-handlers.js'; // M3 AI#16：AI 操作手册（app:getAiManual）
 import { registerAiBridgeHandlers } from './ipc/handlers/ai-bridge-handlers.js'; // M4 AI#38.4：AI 接入状态（app:getAiBridge）
@@ -138,6 +139,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
   registerEnvHandlers();
+  registerLicenseHandlers(); // R4-1.3（I21）：licenses.* 三方法 main 直答（验签 node:crypto ＋ 权益存储 owner）
   registerProductHandlers(); // E6#57.3b：产品身份 main 直答（app:getVersion / app:getProductInfo）
   registerManualHandlers();  // M3 AI#16：AI 操作手册 main 直答（app:getAiManual，壳内私有）
   registerAiBridgeHandlers();  // M4 AI#38.4：AI 接入状态 main 直答（app:getAiBridge，壳内私有）

@@ -1687,7 +1687,7 @@ export interface UiAPI {
      * 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store、不同名、不同角落）。
      * 分工判据（00 §二）：**Toast 是「路过」，面板是「留存」**——短、轻、无动作/1 动作的一句话走这里；
      * 错误/需决策/进度/长文本仍走 `notifications`（自动降级路由，调用方不预判）。
-     * 🔴 ⛔ 不用已删的 `ui.toast` 旧名（死面，名字带历史包袱）；⛔ 第二个 store（与 notifications 同一后端队列）。
+     * 🔴 ⛔ 不用已删的顶层单数 `toast` 旧名（死面，名字带历史包袱）；⛔ 第二个 store（与 notifications 同一后端队列）。
      */
     toasts: {
         /** Raises a light toast — returns a handle (update/dismiss/presentation). Degradation rules are pure-function
@@ -1918,6 +1918,12 @@ export interface EnvInfo {
     pluginDataDir?: string;
     pluginCacheDir?: string;
     pluginExportsDir?: string;
+    /**
+     * R4-1.3（I21·正典 09 §三·补3）：机器指纹——MachineGuid＋主板序列 sha256 前 16 位（主进程组装）。
+     * 稳定性：两输入均为装机/出厂即定值（OS 安装时生成的 MachineGuid ＋ 主板烧录序列），重启/换端口不变。
+     * 消费方 = 许可验签的机器绑定比对（作者 kit `sign-license --machine` 决定绑不绑）。
+     */
+    machineFingerprint?: string;
 }
 /** IPC search:searchFiles payload—the wire subset of FileSearcher.SearchOptions (no signal) */
 export interface SearchWireOptions {
@@ -2375,6 +2381,16 @@ export interface PluginInstallRequestOpts {
     /** Job origin — row = one user action (user, default); dependencies dragged in by a plugin (dependency) hide inside that row */
     origin?: "user" | "dependency";
     /**
+     * R4-1.3（I21/壳侧·正典 09 §三·补3）：目录条目的 pricing 声明随行——**声明进数据层、裁决进壳**。
+     * 调用方（市场插件）把它读到的条目 pricing 原样带上；壳安装门见 model 存在即查壳侧权益（licenses），
+     * 无有效许可 ⇒ licenseRequired 拦下。缺省/不带 = 免费（现状行为零变更）。
+     * ⚠️ v1 边界（09「边界与代价」自认）：无服务器 ⇒ 调用方可不带 ⇒ 深度对抗强制留 B3——本门保证的是
+     * 官方面不漏门 + 权益与门都在壳（市场被整体替换也绕不过门的存在）。
+     */
+    pricing?: {
+        model?: string;
+    };
+    /**
      * dependency resolution catalog — when passed, **missing** dependencies in this plugin's `requires` are
      * auto-installed first by the shell **within the same install job** (inline recursion, no second slot — dependency resolution reuses updateCheck against this catalog for the latest direct link).
      * Omit = behavior identical to today (parked on missing dependency). Resolution radius = this catalog (the shell has no built-in catalog URL).
@@ -2394,14 +2410,37 @@ export interface PluginInstallResult {
     version?: string;
     needRestart?: boolean;
     error?: string;
+    /** R4-1.3（I21/壳侧·正典 09 §三·补3）：安装门拦下——**不是失败是缺许可**。true = 该条目声明了
+     *  pricing.model 而壳侧权益存储无有效许可（消费方据此开许可弹窗，⛔ 不走失败红字分支）。 */
+    licenseRequired?: boolean;
     /** (archive 18 §V I.6-7): the third terminal state — **installed but missing dependencies** (it is installed, shows in the list, but is unusable).
-     *  When true, success is also true (the files really did land on disk), but consumers **must not render it as "✓ installed"** — that would be lying.
+     *  When true, success is also true (the files really did land on disk), but consumers **must not** render it as "✓ installed" — that would be lying.
      *  The job row shows "installed but missing dependencies: {name}". */
     parked?: boolean;
     /** the user clicked "Cancel install" on the panel — **not a failure** (`success` being false just means "the install did not happen").
      *  Consumers **must not** take the failure branch off this (no error toast, no [Retry] push, no red row) — the user actively stopped it, intent already expressed;
      *  reporting the error again would weaponize the user's own decision against them. The job row is **removed entirely** by the queue side (no ✗ rendered). */
     cancelled?: boolean;
+}
+/** R4-1.2（I16·正典 09 §三·补2）：本地安装失败回执 reason——五类封闭集合 */
+export type PluginLocalInstallReason = "bad-manifest" | "unsafe-id" | "core-forbidden" | "exists" | "io";
+/**
+ * R4-1.2（I16·正典 09 §三·补2）：`pluginManager.installFromDirectory(path)` 回执。
+ * 输入 = 含 plugin.json 的单插件文件夹，或 .linkdesk-plugin 离线包（解压走包安装流同一路）；
+ * 落盘 = {userData}/plugins/<pluginId>（用户安装家，与网络安装同路：账本 → 注册 → lifecycle，⛔ 不旁路）。
+ * `reason` 封闭五类（09 正典）：bad-manifest＝plugin.json 缺失/不可解析/缺 version；unsafe-id＝pluginId
+ * 形状不合法（SAFE_PLUGIN_ID）或撞宿主伪身份；core-forbidden＝本地不得自封内置；exists＝同 id 已装
+ * （调用方确认覆盖——先卸载再装）；io＝复制/解压/磁盘失败。成功面附带 version/parked/needRestart 透传。
+ */
+export interface PluginLocalInstallResult {
+    ok: boolean;
+    pluginId?: string;
+    version?: string;
+    reason?: PluginLocalInstallReason;
+    /** loadInstalledPlugin needRestart 透传（同会话曾加载过 ⇒ 池缓存旧 bundle） */
+    needRestart?: boolean;
+    /** 已落盘但缺依赖（loadPlugin park）透传——文件在、不可用 */
+    parked?: boolean;
 }
 /** Disabled/uninstalled list entry — the serialized shape of loader getDisabledPluginInfo/getUninstalledPluginInfo (a further subset of PluginListSubset)
  * the core flag passes through — list() EXCLUDES disabled plugins; the disabled-state detail page's uninstall button honors  "no uninstall button on the detail page for core:true"
@@ -2499,8 +2538,16 @@ export interface PluginsAPI {
         enable(id: string): Promise<unknown>;
         disable(id: string): Promise<unknown>;
         uninstall(id: string): Promise<unknown>;
-        /** opts carries the requester-side identity (pluginId/displayName/origin) — job table dedup + job row display name */
+        /** opts carries the requester-side identity (pluginId/displayName/origin) — job table dedup + job row display name.
+         *  R4-1.3: opts.pricing 随行（目录条目声明）——壳安装门见 model 存在即查权益，无 ⇒ licenseRequired 拦下。 */
         install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
+        /**
+         * R4-1.2（I16·正典 09 §三·补2）：本地安装——含 plugin.json 的单插件文件夹或 .linkdesk-plugin 离线包，
+         * 复制进 {userData}/plugins/<pluginId> → 账本 → 注册 → lifecycle（与网络安装同一路，⛔ 不旁路）。
+         * 五类回执见 PluginLocalInstallReason；同 id 已装回 `reason:"exists"`（覆盖 = 调用方先卸载再装）。
+         * 拒 core:true（本地不得自封内置）。⛔ 不做多插件目录（09 v2 再议）。
+         */
+        installFromDirectory?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult>;
         /** (1.2-5): the explicit name for the url/.linkdesk-plugin package install flow (installPlugin routing alias; identical on both the shell and pool preloads — the pool proxies via plugins:call). Progress goes through the plugin:installProgress channel */
         installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
         reinstall(id: string): Promise<unknown>;
@@ -2518,6 +2565,51 @@ export interface PluginsAPI {
         checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
         /** install/uninstall/reinstall success → notify the main process to fully rescan the three tables */
         notifyManifestChanged?(): void;
+    };
+}
+/** 验签失败原因——封闭集合（消费方照原因出文案；⛔ reason 存在时 valid 恒 false） */
+export type LicenseVerifyFailureReason = "bad-key-format" // 密钥串不是 v1.<payload>.<sig> 形状 / payload 非 JSON / 缺 pluginId
+ | "bad-public-key" // publicKey 解不出 Ed25519 公钥（作者块字段缺失或损坏）
+ | "bad-signature" // 签名对不上（密钥被改/公钥不是签发者）
+ | "expired" // 载荷 exp 已过
+ | "machine-mismatch"; // 载荷绑机器 ≠ 本机指纹
+
+/**
+ * licenses.verify 回执——valid=true 时壳已把权益写入壳侧存储（licenses.json）；
+ * valid=false 时 failureReason 必带、pluginId/exp 尽力回带（解出多少带多少）。
+ */
+export interface LicenseVerifyResult {
+    valid: boolean;
+    pluginId?: string;
+    exp?: number;
+    /** 载荷带 machine = 签发者绑了机器（记录留痕用） */
+    machineBound?: boolean;
+    failureReason?: LicenseVerifyFailureReason;
+}
+/** 权益记录——壳侧 licenses.json 一条（09 §三·补3：权益记录住壳，市场被整体替换仍在） */
+export interface LicenseEntitlement {
+    pluginId: string;
+    /** 载荷 exp 透传（undefined = 永久）——临期/过期徽标与安装门失效判定都读它 */
+    exp?: number;
+    /** 验签时载荷是否绑机器（留痕；本机指纹不落盘明文存——记录只记「绑没绑」） */
+    machineBound?: boolean;
+    /** 验签通过时刻 ISO */
+    verifiedAt: string;
+}
+/** Licenses namespace surfaces — 壳 preload 直答主进程；池插件经 plugins:call 代理同面 */
+export interface LicensesAPI {
+    licenses: {
+        /**
+         * 验签并入库——key = 作者 kit 签发的许可密钥；publicKey = 目录作者块 `authors/<id>.json` 的
+         * `publicKey` 字段（市场插件已拉取作者块——壳无目录上下文，公钥经调用随行；这是 09 `verify(key)`
+         * 一参速记的实现展开，理由：壳不拉目录，公钥只能由唯一读者——市场——喂入）。
+         * valid=true 时壳侧已写权益（幂等：重复验同密钥 = 刷新 verifiedAt）。
+         */
+        verify(key: string, publicKey: string): Promise<LicenseVerifyResult>;
+        /** 全量权益——市场「已购未安装」分区与临期/过期徽标的数据源（⛔ v1 不做集中管理列表 UI——用户拍板） */
+        list(): Promise<LicenseEntitlement[]>;
+        /** 移除某插件的权益记录（用户主动清除；安装门随即重新拦） */
+        remove(pluginId: string): Promise<void>;
     };
 }
 /**
@@ -3171,7 +3263,7 @@ export interface UpdateAPI {
  * cross-composed from 15 namespace domain interfaces (interface→type intersection;
  * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
 /**
  * 🔥 Canonical vocabulary for settings control hints (`uiHint`) — the single vocabulary between host declarations and the rendering layer (criterion B).
  *
@@ -3197,6 +3289,15 @@ export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider
  * `statusCommand`/`actionCommand` can coexist with **any** primary control (rendering `[primary control][companion button][companion read-only]`).
  */
 export type SettingsRenderHint = "readonly" | "action" | "color";
+/** 许可密钥签名载荷——kit `sign-license`（棒 11）签什么、壳就验什么（09 正典三字段，⛔ 不私加必填项） */
+export interface LicenseKeyPayload {
+    /** 授权目标插件——payload 自描述（verify 只吃 key 也能知道为谁授权） */
+    pluginId: string;
+    /** 机器指纹（`env.machineFingerprint`，sha256 前 16 位）——可选：不带 = 不绑机器 */
+    machine?: string;
+    /** 过期时刻（unix 秒）——可选：不带 = 永久 */
+    exp?: number;
+}
 /**
  * "Open with" request — the sole input shape of the shell command `SHELL_COMMANDS.openWith`.
  * Give at least one of `uri` and `ext`: the context-menu/editor entry provides `uri` (the shell computes `ext`); the settings page's "open by type" entry provides only `ext`.

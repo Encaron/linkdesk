@@ -109,6 +109,7 @@ import { buildWorkspace, buildNotifications, buildToasts, buildTabs, buildP2p, b
 import {
   buildPluginManager,
   buildPlugins,
+  buildLicenses, // R4-1.3：许可验签/权益（池侧 plugins:call 代理）
   buildTheme,
   buildAppearance, // E5.8#50.11：外观资产（选择图片拷贝入库）
   buildKeybindings,
@@ -153,6 +154,7 @@ try {
     // ── 插件服务域（4d）──
     pluginManager: buildPluginManager(),
     plugins: buildPlugins(),
+    licenses: buildLicenses(), // R4-1.3（I21）：许可验签/权益——市场付费流消费（plugins:call 代理）
     theme: buildTheme(),
     appearance: buildAppearance(), // E5.8#50.11：外观资产（选择图片拷贝入库）
     keybindings: buildKeybindings(events),

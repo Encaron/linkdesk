@@ -374,6 +374,8 @@ try {
       // E6#73q：opts = 请求侧身份（pluginId/displayName/origin）——壳侧 job 表按 pluginId 去重 + job 行显示名
       install:        (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'install', path, opts),
       installWithProgress: (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'installWithProgress', path, opts),
+      // R4-1.2（I16·正典 09 §三·补2）：本地安装——文件夹/.linkdesk-plugin → {userData}/plugins/<id>（五类回执）
+      installFromDirectory: (path: string, opts?: PluginInstallRequestOpts) => ipcRenderer.invoke(IPC.plugins.call, 'installFromDirectory', path, opts),
       reinstall:      (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
       // E6#11c/#13b（段 B）：安全更新 + 只读查更新（pluginManager 路由 → 壳 loader updatePlugin/checkPluginUpdates）
       // E6#33c（锚①）：opts.allowOlder——降级放行（版本下拉选旧版 + F2 确认后传），默认拒 <=
@@ -560,6 +562,12 @@ try {
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke(IPC.env.get, pluginId),
+    },
+    // ── 许可验签/权益（R4-1.3（I21）——main 直答：验签 node:crypto、权益 owner 在主进程）──
+    licenses: {
+      verify: (key: string, publicKey: string) => ipcRenderer.invoke(IPC.licenses.verify, key, publicKey),
+      list: () => ipcRenderer.invoke(IPC.licenses.list),
+      remove: (pluginId: string) => ipcRenderer.invoke(IPC.licenses.remove, pluginId),
     },
     // ── 产品身份（E6#57.2b——壳侧读宿主版本号/产品信息；关于页 E6#57.14 数据源）──
     app: buildShellApp(),

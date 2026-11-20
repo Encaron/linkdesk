@@ -28,6 +28,7 @@ import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings }
 import { handleDataChannel, subscribeData, unsubscribeData } from "./IpcBridgeHandler/data"; // E5.8#0d.10-10g：数据域（pluginState/search/encoding/生命周期广播）
 import { handlePanelChannel } from "./IpcBridgeHandler/panel"; // E5.8#34.5：底部面板域（panel.reveal）
 import { handleThemeMethod } from "./IpcBridgeHandler/theme"; // E5.8#50.18：主题配方/配色域（theme.* 六方法）
+import { handleLicensesMethod } from "./IpcBridgeHandler/licenses"; // R4-1.3：许可域（licenses.* 三方法——薄转发主进程验签/权益）
 import type { BridgeRequestPayload } from "../../types/ipc/bridge"; // E5.8#46.12：信封契约（含来源窗盖章）
 import { handleFactorySlotMethod } from "./IpcBridgeHandler/factory-slots"; // E5.8#41.14：系统插槽域（factorySlots 通用面 + settings 角色别名）
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
@@ -208,6 +209,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "uninstall":
     case "install":
     case "installWithProgress": // E6#13（1.2-5）：显式包安装流名（同 installPlugin 路由——url/zip 自适应）
+    case "installFromDirectory": // R4-1.2（I16）：本地安装显式面（五类回执——IpcBridgeHandler/pluginManager 域）
     case "reinstall":
     case "update": // E6#11c（段 B）：安全更新（#11c 原子 + unloadPlugin 机械路径）
     case "checkUpdates": // E6#13b（段 B）：只读查更新
@@ -285,6 +287,11 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "theme.resetMix":
     case "theme.getBaselineSeeds":
       return handleThemeMethod(method, args);
+    // ── R4-1.3（I21/#24 壳侧）：许可验签/权益——licenses.* 三方法（IpcBridgeHandler/licenses 域委派）──
+    case "licenses.verify":
+    case "licenses.list":
+    case "licenses.remove":
+      return handleLicensesMethod(method, args);
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }

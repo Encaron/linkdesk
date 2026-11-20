@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**16 domain interfaces → 48 namespaces / 261 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**17 domain interfaces → 49 namespaces / 265 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -58,7 +58,8 @@ npm install -D @linkdesk/plugin-sdk
 | `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main… |
 | `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side … |
 | `plugins` | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | Plugin discovery — injected on both ends: resolvePath exist… |
-| `pluginManager` | 13 | `list` `enable` `disable` `uninstall` `install` `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader funct… |
+| `pluginManager` | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader funct… |
+| `licenses` | 3 | `verify` `list` `remove` | —— |
 | `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | Shell↔plugin communication relay — shell preload only |
 | `pool` | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers poo… |
 | `window` | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | Window control — TitleBar button mapping, injected on both … |

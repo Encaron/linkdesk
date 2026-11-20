@@ -5,7 +5,7 @@
  *   **本文件 = 纯 re-export 聚合门面（零逻辑）**，实现按域落 `lifecycle-ops/` 同名夹：
  *     `progress.ts`          进度广播（jobProgress + 裸进度）
  *     `revert.ts`            主题/语言回退三件套（⚠️ 与 unloadPlugin 的时序见该文件头注）
- *     `install-ops.ts`       安装域（installPlugin / installWithProgress / packageOps / 两条腿）
+ *     `install-ops.ts`       安装域（installPlugin / installWithProgress / packageOps / 两条腿＋R4-1.2 本地安装流）
  *     `state-toggles.ts`     禁用 / 启用 / 卸载
  *     `query-projections.ts` 四条 get* 投影 + isPluginDisabled + reinstallPlugin
  *   **外部 import 路径零变更**（loader.ts / update.ts / 测试全走 `./lifecycle-ops`）——门面把住出口。
@@ -21,6 +21,7 @@ export {
   packageOps,
   installPlugin,
   installWithProgress,
+  installFromDirectory, // R4-1.2（I16）：本地安装显式面（五类回执——loader.ts setPluginAPI 注册）
 } from "./lifecycle-ops/install-ops";
 
 export {

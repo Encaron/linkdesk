@@ -11,6 +11,8 @@
 import { useEffect } from "react";
 import { getViewPlugin } from "../pluginLoader/contributions/viewRegistry";
 import { shellEvents } from "../core/react/events/ShellEvents";
+import { getConfigurationValue } from "../core/services/configuration/ConfigurationService";
+import { resolveIconTabOpen } from "./iconTabOpen";
 import { getTabLayout, getPanelLayout, getSidebarLayout } from "../core/services/layout/LayoutService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { syncCountersAfterRestore, type LayoutData } from "../hooks/useTabManager";
@@ -41,11 +43,13 @@ export function useTabActions({
   restoreLayout,
   setPanelActiveViewId,
 }: TabActionsDeps): void {
-  // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）
+  // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）。
+  // R4-1.1（I14）：非 tabOnly 插件声明 `{pluginId}.openTabOnIcon` 为 true 时也直开（默认关＝只切侧栏，零行为差异）。
   useEffect(() => {
     const unsub = shellEvents.on("icon:selected", (pluginId) => {
       const plugin = getViewPlugin(pluginId);
-      if (plugin?.manifest.appearsIn?.tabBar && !plugin?.manifest.appearsIn?.sidePanel) {
+      const openOnIcon = getConfigurationValue<boolean>(`${pluginId}.openTabOnIcon`);
+      if (resolveIconTabOpen(plugin?.manifest, openOnIcon)) {
         const tabId = createTab(pluginId);
         // E5.6 fix：icon:selected 直开标签页也不会触发 tab:focused → activeEditor 不更新
         if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });

@@ -17,7 +17,7 @@ export const TOAST_TTL_DEFAULT = 3000;
 export const TOAST_TTL_MIN = 1500;
 export const TOAST_TTL_MAX = 10000;
 /** 「用户想看一会儿」的降级线（B14）——显式 ttl 达到即走面板。 */
-export const TOAST_TTL_PANEL_THRESHOLD = 8000;
+const TOAST_TTL_PANEL_THRESHOLD = 8000; // 仅本文件内消费（knip 复活后判「导出未用」——降模块私有，非删值）
 
 /**
  * 宽字符判定——CJK 表意区（设计稿 05 的同一正则）＋ emoji/符号区（02 表 B6：

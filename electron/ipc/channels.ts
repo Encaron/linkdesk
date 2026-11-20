@@ -81,6 +81,14 @@ export const IPC = {
     isBinary: 'encoding:isBinary',
   },
   env: { get: 'env:get' },
+  // R4-1.3（I21/#24 壳侧·正典 09 §三·补3）：许可验签/权益——main 直答（env 先例：验签要 node:crypto、
+  // 权益存储 owner 在主进程。⛔ 不进 IpcBridge.PROXY_CHANNELS——PROXY 会给通道再挂一层 ipcMain.handle
+  // ＝「second handler」启动即炸；池侧经 plugins:call → 壳 IpcBridgeHandler/licenses 域转发到本组通道）
+  licenses: {
+    verify: 'licenses:verify',
+    list: 'licenses:list',
+    remove: 'licenses:remove',
+  },
   fileAssociation: {
     getPluginFor: 'fileAssociation:getPluginFor',
     // T2 只读面：列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器数据源，01 §T2.1）

@@ -9,6 +9,7 @@ import type {
   PluginInstallResult,
   PluginInstallRequestOpts,
   PluginInstallJobRef,
+  PluginLocalInstallResult,
   PluginUpdateResult,
   PluginUpdateCheckResult,
   PluginInfoEntry,
@@ -68,8 +69,16 @@ export interface PluginsAPI {
     enable(id: string): Promise<unknown>;
     disable(id: string): Promise<unknown>;
     uninstall(id: string): Promise<unknown>;
-    /** E6#73q: opts carries the requester-side identity (pluginId/displayName/origin) — job table dedup + job row display name */
+    /** E6#73q: opts carries the requester-side identity (pluginId/displayName/origin) — job table dedup + job row display name.
+     *  R4-1.3: opts.pricing 随行（目录条目声明）——壳安装门见 model 存在即查权益，无 ⇒ licenseRequired 拦下。 */
     install(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
+    /**
+     * R4-1.2（I16·正典 09 §三·补2）：本地安装——含 plugin.json 的单插件文件夹或 .linkdesk-plugin 离线包，
+     * 复制进 {userData}/plugins/<pluginId> → 账本 → 注册 → lifecycle（与网络安装同一路，⛔ 不旁路）。
+     * 五类回执见 PluginLocalInstallReason；同 id 已装回 `reason:"exists"`（覆盖 = 调用方先卸载再装）。
+     * 拒 core:true（本地不得自封内置）。⛔ 不做多插件目录（09 v2 再议）。
+     */
+    installFromDirectory?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult>;
     /** E6#13 (1.2-5): the explicit name for the url/.linkdesk-plugin package install flow (installPlugin routing alias; identical on both the shell and pool preloads — the pool proxies via plugins:call). Progress goes through the plugin:installProgress channel */
     installWithProgress?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginInstallResult>;
     reinstall(id: string): Promise<unknown>;

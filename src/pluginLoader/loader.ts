@@ -48,6 +48,7 @@ import {
   enablePlugin,
   installPlugin,
   installWithProgress, // E6#13（1.2-5）：显式包安装流名（installPlugin 路由别名——#13e 壳面注册）
+  installFromDirectory, // R4-1.2（I16）：本地安装显式面（五类回执——桥 'installFromDirectory' case 路由到这里）
   uninstallPlugin,
   reinstallPlugin,
   getDisabledPluginInfo,
@@ -225,6 +226,7 @@ setPluginAPI({
   disablePlugin,
   installPlugin,
   installWithProgress, // E6#13（1.2-5）：显式包安装流名——桥 'installWithProgress' case 路由到这里
+  installFromDirectory, // R4-1.2（I16）：本地安装——桥 'installFromDirectory' case 路由到这里
   uninstallPlugin,
   reinstallPlugin,
   updatePlugin, // E6#11c（段 B）：安全更新——桥 'update' case 路由到这里

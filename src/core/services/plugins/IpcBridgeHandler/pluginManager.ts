@@ -7,6 +7,7 @@
 import { getCommands, resolveCommandOwnership } from "../../../registry/commands/CommandRegistry";
 import type {
   PluginInstallRequestOpts,
+  PluginLocalInstallResult,
   PluginUpdateResult,
   PluginUpdateCheckResult,
 } from "../../../api/linkdesk-api/types";
@@ -20,6 +21,8 @@ export interface PluginManagementAPI {
   installPlugin(id: string, opts?: PluginInstallRequestOpts): Promise<{ success: boolean; error?: string }>;
   // E6#13（1.2-5）：url/.linkdesk-plugin 包安装流显式名（installPlugin 路由别名——同一流水线同一进度广播）
   installWithProgress(sourcePath: string, opts?: PluginInstallRequestOpts): Promise<{ success: boolean; error?: string }>;
+  // R4-1.2（I16·正典 09 §三·补2）：本地安装显式面——五类结构化回执（installFromDirectory 本体在 install-ops）
+  installFromDirectory(sourcePath: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult>;
   uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
   // E6#11c（段 B）：安全更新（#11c 原子 + unloadPlugin 机械路径）——opts: { catalogUrl? | url? }
@@ -88,6 +91,9 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
       // E6#13（1.2-5）：显式包安装流名——同 installPlugin 路由（目录源/包源自适应）；选调用方喂 url/zip
       // E6#73q：args[1] = 请求侧身份（pluginId/displayName/origin）
       return _pluginAPI!.installWithProgress(args[0] as string, args[1] as PluginInstallRequestOpts | undefined);
+    case "installFromDirectory":
+      // R4-1.2（I16）：本地安装——文件夹/.linkdesk-plugin → {userData}/plugins/<id>，五类回执
+      return _pluginAPI!.installFromDirectory(args[0] as string, args[1] as PluginInstallRequestOpts | undefined);
     case "reinstall":
       return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "update":
