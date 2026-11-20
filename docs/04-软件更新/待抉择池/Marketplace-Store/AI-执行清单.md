@@ -81,10 +81,10 @@
 
 ## 棒 11 · 批4a kit（详案 = R4-批4-作者侧.md）
 
-- R4-4.1 ⬜ K1 包骨架
-- R4-4.2 ⬜ K2/K3 对账＋错误码
-- R4-4.3 ⬜ K4 init 三形态
-- R4-4.4 ⬜ K12 keygen/sign-license
+- R4-4.1 ✅ 2026-11-21 K1 包骨架 `packages/marketplace-kit/`（四命令 CLI；第六根作者轴进 check-npm-release＋root check typecheck 腿）——**接棒 8 交办：SDK collectionDecl 补 glow/more → SDK 0.1.95 随本棒 publish**
+- R4-4.2 ✅ 2026-11-21 K2/K3 对账＋错误码——schema 字节同源＋类型 key-diff＋市场警告码六套同码＋可用清单进报错；⚠️ 市场仓第三腿挂棒 12（红线「市场插件仓本棒不碰」报备，见交接）
+- R4-4.3 ✅ 2026-11-21 K4 init 三形态（L0 零配置不写 marketplace.json／L1+config／L2+authors）——产物零改动过 validate（空集合法）；L0 陷阱腿钉死
+- R4-4.4 ✅ 2026-11-21 K12 keygen/sign-license——Ed25519 照壳 license-verify-service 契约；与壳 verifyLicenseKey 真实联测 5 例
 
 ## 棒 12 · 批4b 发布轴（详案 = R4-批4-作者侧.md）
 
@@ -130,5 +130,5 @@
 | 段 | 格数 | 已交 |
 |---|---|---|
 | 棒 0 Toast | （Toast 档计数） | 0 |
-| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 39 / 62 |
-| **总计** | — | **39 / 62 ＋ Toast** |
+| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 43 / 62 |
+| **总计** | — | **43 / 62 ＋ Toast** |
