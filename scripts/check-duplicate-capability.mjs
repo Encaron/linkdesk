@@ -34,7 +34,7 @@
  *   负控：① 单仓同名 ⇒ 不报；② 单仓浮层 CSS ⇒ 不报；③ 一条声明单仓读 ⇒ 不报；
  *        ④ 复核过的通用名 ⇒ 不进裸名单；⑤ 注释里的宿主数据 ⇒ 不算（剥注释在先）；
  *        ⑥ 动作调用（install/uninstall）⇒ 不算读声明。
- *   真树回归：今日跨仓同名 3 组全在复核表里 ＋ 今日宿主数据黄灯 0 处（复核表覆盖得住现状）。
+ *   真树回归：今日跨仓同名各组全在复核表里 ＋ 今日宿主数据黄灯 0 处（复核表覆盖得住现状；2026-11-20 读数 5 组）。
  *
  * 用法：node scripts/check-duplicate-capability.mjs [容器目录] / `--self-test`
  */
@@ -60,6 +60,12 @@ export const REVIEWED_BENIGN = new Map([
     "serial-monitor 与 pdf-reader 各自的搜索条——前者搜**串口输出流**（props 驱动，带大小写开关，Ctrl+F 开条），"
       + "后者是阅读区上的**查找浮条**（绝对定位浮层、走阅读器自己的 store，不认识 pdf.js）。props 契约与数据模型无交集，"
       + "改一处不影响另一处，零共享语义（2026-10-08 复核——pdf-reader 转官方后本闸门才扫到它）。",
+  ],
+  [
+    "icons.tsx",
+    "marketplace 的 Store UI 图标名表（`src/ui/icons.tsx`：手绘 SVG 路径 + 名字取用，只服务本仓商店面）"
+      + "与 pdf-reader 的组件内图标集（`src/components/icons.tsx`：阅读器自有小图标）——两侧各服务自仓视觉、"
+      + "无导出/契约交集，零共享语义（2026-11-20 复核——棒 6 新建 store 原语时本闸门才扫到它）。",
   ],
 ]);
 
