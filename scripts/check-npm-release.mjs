@@ -166,6 +166,20 @@ const PACKAGES = [
     dir: "packages/plugin-docs",
     surface: ["packages/plugin-docs/docs/**", "packages/plugin-docs/README.md"],
   },
+  {
+    // 🔴 R4-4.1/K7（2026-11-20 棒 11）：**第六根作者轴**——市场数据作者工具包（marketplace-kit）。
+    // 表面 = src + schemas + templates + examples + README（package.json files 白名单全在面；
+    // dist = tsc 派生物不入面）。🔴 动 schema 必发（K7 正典）——schema 漂移从此有灯盯，不靠人记。
+    name: "@linkdesk/marketplace-kit",
+    dir: "packages/marketplace-kit",
+    surface: [
+      "packages/marketplace-kit/src/**",
+      "packages/marketplace-kit/schemas/**",
+      "packages/marketplace-kit/templates/**",
+      "packages/marketplace-kit/examples/**",
+      "packages/marketplace-kit/README.md",
+    ],
+  },
 ];
 
 // expandSurface / contentHash / 逐文件漂移判据 → scripts/lib/npm-author-surface.mjs（E6#166 抽出，与发布判据⑤共用）。

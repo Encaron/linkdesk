@@ -1,0 +1,65 @@
+{
+  "$schema": "https://unpkg.com/@linkdesk/marketplace-kit/schemas/marketplace.schema.json",
+  "version": "2",
+  "updatedAt": "2026-11-20T00:00:00.000Z",
+  "plugins": [
+    {
+      "id": "demo-plugin",
+      "name": "Demo Plugin",
+      "version": "1.2.0",
+      "description": "A demo plugin with the full v2 field set",
+      "author": { "name": "Demo Author", "url": "https://github.com/demo-author" },
+      "authorId": "demo-author",
+      "icon": "https://raw.githubusercontent.com/demo-author/demo-plugin/v1.2.0/resources/icon.svg",
+      "iconSource": "manifest",
+      "marketIcon": "https://raw.githubusercontent.com/demo-author/demo-plugin/v1.2.0/resources/marketIcon.svg",
+      "marketIconSource": "manifest",
+      "category": "development",
+      "categories": ["code-editing", "snippets"],
+      "screenshots": [
+        { "type": "video", "url": "https://github.com/demo-author/demo-plugin/releases/download/v1.2.0/clip.mp4", "poster": "https://raw.githubusercontent.com/demo-author/demo-plugin/v1.2.0/docs/poster.png" },
+        "https://raw.githubusercontent.com/demo-author/demo-plugin/v1.2.0/docs/shot-1.png"
+      ],
+      "license": "MIT",
+      "repository": "https://github.com/demo-author/demo-plugin",
+      "pricing": { "model": "paid", "price": 9.9, "currency": "USD", "licenseUrl": "https://example.invalid/buy", "refundUrl": "https://example.invalid/refund", "trialDays": 14, "channel": "self" },
+      "downloadUrl": "https://github.com/demo-author/demo-plugin/releases/download/v1.2.0/demo-plugin.linkdesk-plugin",
+      "size": 123456,
+      "publishedAt": "2026-09-20T00:00:00.000Z",
+      "minAppVersion": "0.2.13",
+      "readmeUrl": "https://raw.githubusercontent.com/demo-author/demo-plugin/v1.2.0/README.md",
+      "versions": [
+        {
+          "version": "1.2.0",
+          "downloadUrl": "https://github.com/demo-author/demo-plugin/releases/download/v1.2.0/demo-plugin.linkdesk-plugin",
+          "publishedAt": "2026-11-01T00:00:00.000Z",
+          "changelog": "- paid licensing support"
+        },
+        {
+          "version": "1.1.0",
+          "downloadUrl": "https://github.com/demo-author/demo-plugin/releases/download/v1.1.0/demo-plugin.linkdesk-plugin",
+          "publishedAt": "2026-10-01T00:00:00.000Z",
+          "changelog": "- gallery video"
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": "must-have",
+      "title": "Must have",
+      "subtitle": "Curated by the catalog operator",
+      "hint": "Hand-picked, updated monthly",
+      "cover": "https://raw.githubusercontent.com/demo-author/demo-market/main/docs/collection-cover.png",
+      "layout": "strip",
+      "glow": false,
+      "more": { "label": "See all", "target": "category:development" },
+      "items": ["demo-plugin"],
+      "order": 1
+    }
+  ],
+  "categoryRail": {
+    "order": ["development", "documents", "hardware", "network", "productivity", "themes", "entertainment"],
+    "icons": { "development": "lucide:code" }
+  }
+}

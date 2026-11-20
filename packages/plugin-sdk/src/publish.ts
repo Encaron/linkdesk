@@ -104,6 +104,8 @@ export interface CatalogPluginEntry {
 }
 
 export interface MarketplaceCatalog {
+  /** $schema 引用——kit init 写入（编辑器补全）；publish 根级保全原样带过，不拥有它 */
+  $schema?: string;
   version?: string;
   updatedAt?: string;
   plugins: CatalogPluginEntry[];
@@ -156,6 +158,10 @@ export interface CollectionDecl {
   layout?: "banner" | "strip" | "duo" | "grid";
   /** 成员 pluginId 引用——缺失条目静默跳过（照目录 merge 防御语义） */
   items: string[];
+  /** 环境光晕开关——市场侧板块级/合集级「两处都认」（08 §三·v3.57 U4；缺省开） */
+  glow?: boolean;
+  /** 合集标题跳转字——封闭 target 集合（与板块 more 同规） */
+  more?: SectionMore;
   order?: number;
 }
 

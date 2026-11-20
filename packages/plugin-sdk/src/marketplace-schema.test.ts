@@ -128,16 +128,35 @@ describe("marketplace.schema.json——正例", () => {
     expect(ok(v1Catalog)).toBe(true);
   });
 
-  it("v2 根级三件（sources/collections/categoryRail）合法样例过", () => {
+  it("$schema 键合法（kit init 写这一行接编辑器补全——文件要能对它自己引用的 schema 校验通过）", () => {
+    const withSchema = {
+      $schema: "https://unpkg.com/@linkdesk/marketplace-kit/schemas/marketplace.schema.json",
+      plugins: [],
+    };
+    expect(ok(withSchema)).toBe(true);
+    expect(
+      validateAuthorBlock({
+        $schema: "https://unpkg.com/@linkdesk/marketplace-kit/schemas/authors.schema.json",
+        authorId: "demo-author",
+        name: "Demo Author",
+        repos: [{ id: "main", name: "主仓", sourceUrl: "https://example.invalid/r/demo/marketplace.json" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("v2 根级三件（sources/collections/categoryRail）合法样例过（含 collectionDecl glow/more——R4-4.1 交办）", () => {
     const v2Root = {
       plugins: [],
       sources: [{ url: "https://github.com/example-author/catalog", authorId: "example-author", addedAt: "2026-11-20" }],
       collections: [
         { id: "editor-picks", title: "编辑推荐", subtitle: "装机必备", hint: "由目录维护者挑选", layout: "strip", items: ["demo-plugin"], order: 1 },
+        // 08 §三·v3.57 U4「两处都认」：合集级 glow:false ＋ more 跳转字（与板块级同规）
+        { id: "quiet-corners", title: "小众精选", glow: false, more: { label: "全部小众", target: "category:entertainment" }, items: ["demo-plugin"] },
       ],
       categoryRail: { order: ["development", "documents"], icons: { development: "lucide:code" } },
     };
     expect(ok(v2Root)).toBe(true);
+    expect(validate.errors).toBeNull();
   });
 
   it("作者块（$defs.authorBlock）最小合法文件过——sections 缺省＝默认门面", () => {
@@ -253,6 +272,16 @@ describe("marketplace.schema.json——负例", () => {
     expect(ok(c)).toBe(false);
   });
 
+  it("R4-4.1 交办负例：collectionDecl 的 more.target 自造页 / glow 非布尔 → 红（与板块级 more 同一封闭集合）", () => {
+    const c = {
+      plugins: [],
+      collections: [{ id: "x", title: "X", items: ["demo"], more: { label: "更多", target: "https://example.invalid" } }],
+    };
+    expect(ok(c)).toBe(false);
+    const g = { plugins: [], collections: [{ id: "x", title: "X", items: ["demo"], glow: "off" }] };
+    expect(ok(g)).toBe(false);
+  });
+
   it("作者块负例：缺 authorId / repos 空 / 板块 type 词汇表外 / more.target 自造页 → 红", () => {
     expect(validateAuthorBlock({ name: "Demo Author", repos: [{ id: "main", name: "主仓", sourceUrl: "https://example.invalid/x" }] })).toBe(false);
     expect(
@@ -305,6 +334,7 @@ const TS_ENTRY_KEYS: Record<keyof CatalogPluginEntry, true> = {
 };
 
 const TS_ROOT_KEYS: Record<keyof MarketplaceCatalog, true> = {
+  "$schema": true,
   version: true,
   updatedAt: true,
   plugins: true,

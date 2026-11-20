@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/@linkdesk/marketplace-kit/schemas/authors.schema.json",
+  "authorId": "__AUTHOR_ID__",
+  "name": "__AUTHOR_ID__",
+  "repos": [
+    {
+      "id": "main",
+      "name": "__AUTHOR_ID__'s marketplace",
+      "sourceUrl": "https://github.com/__AUTHOR_ID__/your-marketplace-repo"
+    }
+  ]
+}

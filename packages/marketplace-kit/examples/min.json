@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@linkdesk/marketplace-kit/schemas/marketplace.schema.json",
+  "plugins": [
+    {
+      "id": "demo-plugin",
+      "name": "Demo Plugin",
+      "version": "1.0.0",
+      "downloadUrl": "https://github.com/demo-author/demo-plugin/releases/download/v1.0.0/demo-plugin.linkdesk-plugin",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "author": { "name": "demo-author" },
+      "repository": "https://github.com/demo-author/demo-plugin",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "downloadUrl": "https://github.com/demo-author/demo-plugin/releases/download/v1.0.0/demo-plugin.linkdesk-plugin",
+          "publishedAt": "2026-11-20T00:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}

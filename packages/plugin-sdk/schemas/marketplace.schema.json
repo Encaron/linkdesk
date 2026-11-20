@@ -7,6 +7,10 @@
   "required": ["plugins"],
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema $schema reference (e.g. the marketplace-kit schema URL). Legal here so the file validates against the schema it names — `marketplace-kit init` writes this line and VS Code uses it for completion/red squiggles; the store parse ignores it."
+    },
     "version": {
       "type": "string",
       "description": "Catalog format version. Written by the publisher; keep whatever is already there."
@@ -231,6 +235,14 @@
           "items": { "type": "string" },
           "description": "Member pluginIds in display order; missing ids are skipped silently."
         },
+        "glow": {
+          "type": "boolean",
+          "description": "Ambient glow switch for this collection wherever it renders — the store honors it at both levels (section-level and collection-level; R4-3.9/08 §三·v3.57 U4). Default on (glow color follows the cover art — part of the design language, not authorable); false → neutral shadow fallback."
+        },
+        "more": {
+          "$ref": "#/$defs/moreLink",
+          "description": "Optional jump link on the collection heading — declared ⇒ rendered, undeclared ⇒ no link (renderers never auto-add \"More\"). Same closed target set as homepage sections."
+        },
         "order": { "type": "integer", "description": "Sort weight among collections." }
       }
     },
@@ -258,6 +270,10 @@
       "required": ["authorId", "name", "repos"],
       "additionalProperties": false,
       "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "JSON Schema $schema reference (authors.schema.json URL) — legal so the file validates against the schema it names (`marketplace-kit init` writes it; VS Code completion)."
+        },
         "authorId": {
           "type": "string",
           "minLength": 1,

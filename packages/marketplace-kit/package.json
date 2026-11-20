@@ -1,0 +1,53 @@
+{
+  "name": "@linkdesk/marketplace-kit",
+  "version": "0.1.0",
+  "description": "@linkdesk/marketplace-kit——LinkDesk 市场数据作者工具包（正典 11-作者模板与marketplace-kit.md）：marketplace.json / authors/<id>.json 的 schema、校验（validate，错误码与市场侧 warnings 同一套）、init 三形态骨架（L0/L1/L2）、作者 Ed25519 密钥对生成（keygen）与许可密钥签发（sign-license）。运行在作者机器 / CI，devDependency——⛔ 不并入 contracts（那是运行时面）。",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "templates",
+    "examples",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "bin": {
+    "marketplace-kit": "./dist/cli.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "prepublishOnly": "node ../../scripts/prepublish-auth-preflight.mjs --npm",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "keywords": [
+    "linkdesk",
+    "marketplace",
+    "plugin-store",
+    "schema",
+    "validation"
+  ],
+  "license": "MIT"
+}

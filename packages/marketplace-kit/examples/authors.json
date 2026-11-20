@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@linkdesk/marketplace-kit/schemas/authors.schema.json",
+  "authorId": "demo-author",
+  "name": "Demo Author",
+  "avatar": "https://github.com/demo-author.png",
+  "introImage": "https://raw.githubusercontent.com/demo-author/demo-market/main/docs/intro.png",
+  "intro": "Demo author intro (non-GitHub fallback; GitHub canon takes precedence when resolvable)",
+  "storeTitle": "Demo Author's Plugin Store",
+  "publicKey": "ZGVtb3B1YmxpY2tleQ==",
+  "repos": [
+    { "id": "main", "name": "Main repo", "intro": "The everything repo", "image": "https://raw.githubusercontent.com/demo-author/demo-market/main/docs/repo-banner.png", "sourceUrl": "https://raw.githubusercontent.com/demo-author/demo-market/main/marketplace.json" },
+    { "id": "themes", "name": "Themes repo", "sourceUrl": "https://raw.githubusercontent.com/demo-author/demo-themes/main/marketplace.json" }
+  ],
+  "homepage": {
+    "sections": [
+      { "type": "hero", "title": "Featured", "hint": "Author picked", "slides": [ { "plugin": "demo-plugin", "tag": "Editor's pick" } ] },
+      { "type": "collection", "collection": "must-have", "layout": "duo", "glow": false, "more": { "label": "All picks", "target": "category:development" } },
+      { "type": "rank", "top": 6, "scope": "self", "more": { "label": "Full rank", "target": "rank" } },
+      { "type": "grid", "title": "Everything", "more": { "label": "Themes repo", "target": "repo:themes" } }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    // SDK 的 "types": [] 依赖它自己的包内 node_modules（@types/node 就地解析）；kit 是 workspace 成员、
+    // 依赖根提升 ⇒ 必须显式收 @types/node（console/process/node:* 与 ajv 类型解析都靠它）。
+    "types": ["node"],
+    "esModuleInterop": true,
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src"],
+  // license.shellRoundtrip.test.ts 有意 import 壳侧 electron/services（K12 与棒 2 联测——真实 verifyLicenseKey），
+  // 在本包 rootDir 域外；typecheck 由根 vitest 编译兜住。⛔ 别为凑 rootDir 把壳验签逻辑复刻进 kit。
+  "exclude": ["src/license.shellRoundtrip.test.ts"]
+}
