@@ -82,6 +82,8 @@
 
 **判据**：05 §05 四态矩阵/§03 规则/08 v3.64 全套（十步流程真机走一遍）；⛔ 市场内判付费。
 
+> 🟢 **棒 10 收口注记（2026-11-20）**：R4-3.20–3.22 已落——`DetailActionBar` 付费六态分支（订阅→「即将支持」禁钮写原因；过期→输入新密钥＋续费；未购→获取许可（licenseUrl 未声明不渲染）＋我有密钥；有权益→落回安装语义）＋试用/付费形态说明行（`.marketplace-mpd-paid-note`，05 §05 d-trial）＋许可徽标上详情标题行（`licenseBadges` 同源）· 新 `services/licenseActions.ts`（verify 转递＋失败文案封闭映射＋keyShapeOk 预检＋openBuyPage=hostApi.openExternal 别名）· 新 `views/store/LicenseModal.tsx`（OverlayPortal 进浮层；粘贴即时验签：v1.<payload>.<sig> 形状齐即发、WRONG 红/VALID 绿、valid→onVerified→自动收起；作者块无公钥如实告知）· `authors.ts` AuthorDomain 透出 `publicKey`（先到者字段优先）· `useStoreActions` 增 `onRequestLicense`（卡片 have-key→弹窗；StoreView 持态）· `useStoreData.refreshLicenses`（验签入库后卡/库/详情同源收敛；库「已购未安装」分区由棒 8 骨架自动变实）· 画廊视频（`useDetailPackage` 透传 CatalogScreenshot；`DetailOverviewTab` video 分支：controls 强制/preload=metadata/无 autoplay/poster 优先；`.marketplace-mpd-gallery-video` CSS）。**读数**：插件仓 vitest **59 文件/652 例**（+2 文件 licenseActions 5＋licenseModalSmoke 5；detailViewSmoke +6 付费/视频例；authors +1 publicKey 例）· verify 九段全过（字典 627 keys，黄灯清零）· build 9 表面（142.9 KB）。另单独一笔 fix 两处存量类型错（useCompatReading 路径/installFlow catalogUrl 收窄）。插件 **d031316**（未 bump、未推送）。
+
 ## 附：二次扫漏对照表（2026-11-20 用户要求「文档/HTML/小地方提到的任务点必须都在任务清单」）——本表同为**辅助**：显式归格防丢，通读 HTML 仍是主步骤（同附二规矩）
 
 | 易漏项 | 出处 | 归格 |
