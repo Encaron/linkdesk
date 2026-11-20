@@ -34,10 +34,10 @@
 
 ## 棒 4 · 批2b 服务面（详案 = R4-批2-服务层.md）
 
-- R4-2.4 ⬜ I9 偏好持久化
-- R4-2.5 ⬜ I15 命令面 15 条（#19）
-- R4-2.6 ⬜ I7 探索双击固定
-- R4-2.7 ⬜ I8 删死声明
+- R4-2.4 ✅ 2026-11-20 I9 偏好持久化——`marketplaceShared/uiPrefs.ts`：pluginState `ui.prefs` 六键＋坏值逐键回落＋合并写幂等；⛔ 不进 contributes.configuration
+- R4-2.5 ✅ 2026-11-20 I15 命令面 13 条（#19）——照 09 §三·补（既有 addSource 共 14 行）；storeNav 跨进程意图信箱＋openPlugin pinned/label＋回执边界如实（见交接）
+- R4-2.6 ✅ 2026-11-20 I7 探索双击固定——ExploreView/CatalogRow（照已装列表同款；catalogRowSmoke 补双击断言）
+- R4-2.7 ✅ 2026-11-20 I8 删死声明——plugin.json `tabBehavior:{singleton:true}` 整块删（grep 0 命中）
 
 ## 棒 5 · 批3a UI 原语件（详案 = R4-批3-UI.md）
 
@@ -130,5 +130,5 @@
 | 段 | 格数 | 已交 |
 |---|---|---|
 | 棒 0 Toast | （Toast 档计数） | 0 |
-| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 11 / 62 |
-| **总计** | — | **11 / 62 ＋ Toast** |
+| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 15 / 62 |
+| **总计** | — | **15 / 62 ＋ Toast** |
