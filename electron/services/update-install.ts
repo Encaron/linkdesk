@@ -102,7 +102,8 @@ export interface PendingInstallRecord {
 export interface UpdateInstallDeps {
   /** 更新目录（缺省 `{userData}/update`） */
   getUpdateDir?: () => string;
-  /** 拉起安装器——缺省 `app.relaunch({ execPath, args: ['/S', '--force-run'] })`（① 退出后才启动） */
+  /** 拉起安装器——缺省 `app.relaunch({ execPath, args: ['/S', '--force-run', '--dir=<当前安装目录>'] })`
+   *  （① 退出后才启动；`--dir` 为什么必须有见 `defaultLaunch` 的注释） */
   launchInstaller?: (installerPath: string) => void;
   /** 退出——缺省 `app.quit()`（优雅退出：先让 `before-quit` 收尾、布局落盘） */
   quit?: () => void;
@@ -190,9 +191,23 @@ export function createUpdateInstaller(deps: UpdateInstallDeps = {}): InstallLeg 
   };
 }
 
-/** 缺省拉起方式——`relaunch`：本进程退出后才启动安装器（①）；`args` 显式给全，不继承我们自己的命令行 */
+/**
+ * 缺省拉起方式——`relaunch`：本进程退出后才启动安装器（①）；`args` 显式给全，不继承我们自己的命令行。
+ *
+ * 🔴 **`--dir` 不是可选项**（2026-11-20 用户实机立案）：引导器的静默路径**不认已装目录**
+ * （`RunSilentInstall` 无 `--dir` 时直接落 `DefaultInstallDir()` = `%LOCALAPPDATA%\Programs\linkdesk`），
+ * 只有界面态才会从 ARP 反推。不传 `--dir` ⇒ 装在 D 盘的实例点更新，新版本被**另装一份到 C 盘**，
+ * D 盘旧版原封不动（用户看到「两个版本」，PATH 还停在旧目录）。
+ * 传的就是**当前正在运行的 exe 所在目录**——把「我装在哪」原样告诉安装器，静默升级才落回原处。
+ * ⚠️ 安装目录可能含空格：`args` 是数组，交给 relaunch 拼命令行时由它负责加引号；
+ * 引导器用 `CommandLineToArgvW` 解析，引号会被剥掉，`--dir=` 前缀判据不受影响。
+ */
 function defaultLaunch(installerPath: string): void {
-  app.relaunch({ execPath: installerPath, args: [SILENT_SWITCH, FORCE_RUN_SWITCH] });
+  const installDir = path.dirname(app.getPath('exe'));
+  app.relaunch({
+    execPath: installerPath,
+    args: [SILENT_SWITCH, FORCE_RUN_SWITCH, `--dir=${installDir}`],
+  });
 }
 
 // ───────────────────────────── 落盘 / 读盘 / 销账 ─────────────────────────────

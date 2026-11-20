@@ -46,9 +46,12 @@ bool WriteAssociations(const std::wstring& installDir);
 bool WriteContextMenus(const std::wstring& installDir, bool fileMenu, bool dirMenu);
 
 /** PATH 追加（`HKCU\Environment`）——**标记 ＋ 备份**法：首次追加前把原 PATH 存进
- *  `Software\LinkDesk\PathBackup`，并写 `PathAdded` 作标记；已在则幂等跳过。
+ *  `Software\LinkDesk\PathBackup`，并写 `PathAdded` 作标记；**标记与本次目录相同**才幂等跳过
+ *  （2026-11-20：标记原先只看"非空" ⇒ 换目录安装整段跳过，PATH 永远停在旧目录）。
+ *  `prevInstallDir` = ARP 里的旧安装目录：换目录安装时把它和旧标记段从 PATH 上摘掉再追加，
+ *  备份同步改成摘干净之后的原值（卸载 RestorePath 不会把旧目录复活）。
  *  写后广播 `WM_SETTINGCHANGE("Environment")`（新开终端生效）。 */
-bool AddToPath(const std::wstring& installDir);
+bool AddToPath(const std::wstring& installDir, const std::wstring& prevInstallDir = L"");
 
 /** ARP 卸载项（键名见文件头）。EstimatedSize 由 `EstimatedSizeKb()` 算。 */
 bool WriteArpEntry(const std::wstring& installDir, const std::wstring& version);

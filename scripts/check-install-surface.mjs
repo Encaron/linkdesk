@@ -81,8 +81,9 @@ export const SURFACE_ALLOW = [
   },
 ];
 
-/** R3 的登记表：今天只用了 `userData`。多一个键 = 多一处落点 ⇒ 先登记（铁律 4）。 */
-export const APP_GETPATH_KEYS = ["userData"];
+/** R3 的登记表：`userData`（读写落点）＋ `exe`（**只读**：取当前安装目录传给安装器，见
+ *  更新链安装目录分叉案）。多一个键 = 多一处落点 ⇒ 先登记（铁律 4）。 */
+export const APP_GETPATH_KEYS = ["userData", "exe"];
 
 /**
  * R1 的豁免账本——**已复核过的「绝对值字面量，但它不是落点」**。

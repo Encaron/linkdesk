@@ -33,14 +33,18 @@ const electronMock = vi.hoisted(() => {
   const app = {
     appPath: "",
     userData: "",
+    /** 当前运行 exe 的路径——更新腿要用它的目录名当 `--dir`（2026-11-20 更新链安装目录分叉）。
+     *  ⚠️ 虚构值（硬约束 21）且**不写盘符**——R1 会把「出厂件里的开发机绝对路径」判红。 */
+    exePath: "/opt/linkdesk/LinkDesk.exe",
     version: "0.1.49",
     getAppPath: () => app.appPath,
     // 版本唯一运行时来源（product.ts 头注：product.json 的 version 只是产物自证，被它覆盖）
     getVersion: () => app.version,
     getPath: (name: string) => {
-      // 只认 userData——别处要路径就该显式加进桩，不能悄悄返回错目录（那正是「测替身不测真值」）
-      if (name !== "userData") throw new Error(`用例未预期的 app.getPath(${name})`);
-      return app.userData;
+      // 只认 userData / exe——别处要路径就该显式加进桩，不能悄悄返回错目录（那正是「测替身不测真值」）
+      if (name === "userData") return app.userData;
+      if (name === "exe") return app.exePath;
+      throw new Error(`用例未预期的 app.getPath(${name})`);
     },
     relaunch: (opts?: { execPath?: string; args?: string[] }) => {
       relaunchCalls.push(opts ?? {});

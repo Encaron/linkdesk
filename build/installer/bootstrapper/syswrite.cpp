@@ -223,21 +223,85 @@ static DWORD PathValueType(const std::wstring& v, DWORD fallback)
     return fallback == REG_EXPAND_SZ ? REG_EXPAND_SZ : REG_SZ;
 }
 
-bool AddToPath(const std::wstring& installDir)
+/** 两段 PATH 是否同一目录——忽略大小写与结尾分隔符。安装目录是绝对路径，直接拿它比即可。 */
+static bool SamePathSegment(const std::wstring& a, const std::wstring& b)
 {
-    // 幂等：标记在 ⇒ 不重复追加、不覆盖备份（同 installer.nsh）
-    if (!GetStr(HKEY_CURRENT_USER, kVendor, L"PathAdded").empty()) return true;
+    std::wstring x = a, y = b;
+    while (!x.empty() && (x.back() == L'\\' || x.back() == L'/')) x.pop_back();
+    while (!y.empty() && (y.back() == L'\\' || y.back() == L'/')) y.pop_back();
+    if (x.empty() || y.empty()) return false;
+    return _wcsicmp(x.c_str(), y.c_str()) == 0;
+}
+
+/** PATH 里有没有这一段（分号切分）。 */
+static bool HasPathSegment(const std::wstring& path, const std::wstring& seg)
+{
+    size_t start = 0;
+    while (start <= path.size()) {
+        size_t end = path.find(L';', start);
+        const std::wstring item =
+            path.substr(start, end == std::wstring::npos ? std::wstring::npos : end - start);
+        if (SamePathSegment(item, seg)) return true;
+        if (end == std::wstring::npos) break;
+        start = end + 1;
+    }
+    return false;
+}
+
+/** 从 PATH 里摘掉指定的一段——其它段（含空段）**原样保留**，顺序与用户自己的写法都不动。 */
+static std::wstring RemovePathSegment(const std::wstring& path, const std::wstring& seg)
+{
+    if (path.empty() || seg.empty()) return path;
+    std::vector<std::wstring> items;
+    size_t start = 0;
+    while (start <= path.size()) {
+        size_t end = path.find(L';', start);
+        items.push_back(path.substr(start, end == std::wstring::npos ? std::wstring::npos : end - start));
+        if (end == std::wstring::npos) break;
+        start = end + 1;
+    }
+    std::wstring out;
+    bool first = true;
+    for (const std::wstring& item : items) {
+        if (SamePathSegment(item, seg)) continue;
+        if (!first) out += L';';
+        out += item;
+        first = false;
+    }
+    return out;
+}
+
+bool AddToPath(const std::wstring& installDir, const std::wstring& prevInstallDir)
+{
+    const std::wstring added = GetStr(HKEY_CURRENT_USER, kVendor, L"PathAdded");
+    // 幂等：标记与本次安装目录**一致** ⇒ 不重复追加、不覆盖备份（同 installer.nsh）。
+    // 🔴 必须比路径，不能只看「标记非空」（2026-11-20 用户实机立案）：换目录安装时整段跳过，
+    //    PATH 就永远停在旧目录——C 盘新版在跑、PATH 还指着 D 盘旧版，外部 AI 调 `linkdesk`
+    //    命中的是 0.2.40，用户看到「点更新没生效、机器上两个版本」。
+    if (!added.empty() && SamePathSegment(added, installDir)) return true;
 
     DWORD oldType = REG_SZ;
     const std::wstring oldPath = GetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", &oldType);
+
+    // 换目录安装：把「上一次自己加的那段」（PathAdded）与「ARP 里的旧安装目录」先摘掉再写，
+    // 避免 PATH 上同时挂两份（旧的那份还会变成死路径）。备份同步改成**摘干净之后**的原值——
+    // 卸载 RestorePath 还原时就不会把旧目录又复活回来。
+    std::wstring base = oldPath;
+    if (!added.empty()) base = RemovePathSegment(base, added);
+    if (!prevInstallDir.empty() && !SamePathSegment(prevInstallDir, installDir))
+        base = RemovePathSegment(base, prevInstallDir);
+
     // ⚠️ **原值是什么类型就写回什么类型**：`REG_EXPAND_SZ` 里存的是没展开的 `%USERPROFILE%…`，
     //    降级成 `REG_SZ` 会让这些变量**永远不再展开**。实机 PATH 就含
     //    `%USERPROFILE%\AppData\Local\Microsoft\WindowsApps` 这类项（2026-10-01 读数）。
     //    判据统一在 PathValueType（含 `%` 必 EXPAND；否则保原类型）——安装/卸载两侧同一把尺子。
-    const DWORD newType = oldPath.empty() ? REG_SZ : PathValueType(oldPath, oldType);
-    bool ok = SetStr(HKEY_CURRENT_USER, kVendor, L"PathBackup", oldPath);
-    ok &= SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path",
-                      oldPath.empty() ? installDir : oldPath + L";" + installDir, newType);
+    const DWORD newType = base.empty() ? REG_SZ : PathValueType(base, oldType);
+    // 已经在 PATH 里就不重复追加（修复机重装到同一目录时不留重复段）
+    const std::wstring newPath = HasPathSegment(base, installDir)
+                                     ? base
+                                     : (base.empty() ? installDir : base + L";" + installDir);
+    bool ok = SetStr(HKEY_CURRENT_USER, kVendor, L"PathBackup", base);
+    ok &= SetStrTyped(HKEY_CURRENT_USER, L"Environment", L"Path", newPath, newType);
     ok &= SetStr(HKEY_CURRENT_USER, kVendor, L"PathAdded", installDir);
 
     // 通知资源管理器环境变量已变（新开终端生效；**已开**的终端仍需重启）

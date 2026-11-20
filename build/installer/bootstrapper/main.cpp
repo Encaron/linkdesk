@@ -1010,7 +1010,16 @@ static void TraceLine(const std::wstring& line)
 static int RunSilentInstall()
 {
     if (!g_hasPayload) return 4;                       // 拿开发壳当安装包跑：如实失败
-    if (g_installDir.empty()) g_installDir = DefaultInstallDir();
+    // 🔴 没带 `--dir` 时**先认已装目录**，都没有才落默认（2026-11-20 用户实机立案：
+    //    「D 盘装的，点更新覆盖到 C 盘、D 盘还是旧版」）。
+    //    为什么不能只落默认：0.2.53 及以前的**更新器不带 `--dir`**（`update-install.ts` 只发
+    //    `/S --force-run`），它们拉起本安装器时走的正是这条路；静默安装直接落
+    //    `DefaultInstallDir()` 就会「另装一份」，旧目录原封不动。
+    //    反推口径与界面态（同文件 `:1270-1273`）同一把尺子：ARP `UninstallString`→目录、`DisplayIcon`→exe。
+    if (g_installDir.empty()) {
+        std::wstring existing = FindInstalledDir();
+        g_installDir = existing.empty() ? DefaultInstallDir() : existing;
+    }
 
     // 件 2c · 版本守卫（静默）：**不弹窗**（没有人点会挂死）⇒ 按「用户取消了」办，退 1602
     // （= ERROR_INSTALL_USEREXIT）。自动更新的方向永远是升级 ⇒ 不受影响；真要人工降级
@@ -1030,7 +1039,8 @@ static int RunSilentInstall()
     g_opts = DefaultTaskOptions();
     if (g_opts.assoc) WriteAssociations(g_installDir);
     WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
-    if (g_opts.path) AddToPath(g_installDir);
+    // 同界面态：把 ARP 里的旧安装目录交给 PATH 写入（换目录时摘掉旧段，不留死路径）
+    if (g_opts.path) AddToPath(g_installDir, FindInstalledDir());
     CreateShortcuts(g_installDir);
     PurgeLegacyUninstallArtifacts(g_installDir);   // 台账 §三 #4：清旧命残影（覆盖装时；≤8MB 才动）
     bool unCopyOk = InstallUninstallerCopy(g_selfPath, g_installDir, g_markerAt);   // 件 2d：ARP 指的卸载器
@@ -1230,7 +1240,9 @@ static void InstallWorker()
 
     // 段 3（80–92）：写系统项（右键菜单 · 快捷方式 · PATH · ARP）
     sysOk &= WriteContextMenus(g_installDir, g_opts.fileMenu, g_opts.dirMenu);
-    if (g_opts.path) sysOk &= AddToPath(g_installDir);
+    // 写 PATH 前把「ARP 里的旧安装目录」一并交出去：换目录安装时把它从 PATH 上摘掉
+    // （此时 ARP 还没被本函数覆盖，读到的正是上一次的安装位置）。
+    if (g_opts.path) sysOk &= AddToPath(g_installDir, FindInstalledDir());
     sysOk &= CreateShortcuts(g_installDir);
     // 台账 §三 #4：清 0.2.34/0.2.35 留下的旧命残影（`linkdesk-setup.exe` 副本 ＋ 旧开始菜单卸载项）
     sysOk &= PurgeLegacyUninstallArtifacts(g_installDir);

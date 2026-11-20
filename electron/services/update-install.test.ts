@@ -239,16 +239,24 @@ describe("安装腿：落盘 → 拉起安装器 → 退出", () => {
     await vi.waitFor(() => expect(forceExit).toHaveBeenCalledTimes(1), { timeout: 2000 });
   });
 
-  // 逐字断言两条开关（#57.8f 判据 ①）：assisted 安装器的重启分支要 `${isForceRun}` **且** `${Silent}`
+  // 逐字断言（#57.8f 判据 ①）：assisted 安装器的重启分支要 `${isForceRun}` **且** `${Silent}`
   // 同时成立（installSection.nsh:104-110），少任何一条都不会把 App 拉回来 / 都会弹窗等人点。
   // ⚠️ `--updated` **必须不在**这条命令里——那是安装器→App 的方向，由安装器自己加。
-  it("缺省拉起方式 = app.relaunch({ execPath: 安装器, args: ['/S', '--force-run'] })——静默 + 装完拉回 App", async () => {
+  // 🔴 **`--dir` 必须在**（2026-11-20 用户实机立案「更新装到 C 盘、D 盘还是旧版」）：
+  //    引导器静默路径不认已装目录，不告诉它装在哪就落 `%LOCALAPPDATA%\Programs\linkdesk`
+  //    ⇒ 旧版本原地不动、另起一份。传的值 = 当前运行 exe 所在目录。
+  it("缺省拉起方式 = relaunch([/S, --force-run, --dir=<exe 目录>])——静默 + 装回原目录 + 装完拉回 App", async () => {
     const leg = createUpdateInstaller({ getUpdateDir: () => dir, quit: () => electronMock.app.quit() });
 
     void leg(makeInfo(), installer);
     await vi.waitFor(() => expect(electronMock.lifecycleCalls).toContain("quit"));
 
-    expect(electronMock.relaunchCalls).toEqual([{ execPath: installer, args: ["/S", "--force-run"] }]);
+    expect(electronMock.relaunchCalls).toEqual([{
+      execPath: installer,
+      args: ["/S", "--force-run", "--dir=/opt/linkdesk"],
+    }]);
+    // 反面：`--updated` 是安装器→App 的方向，更新器自己绝不能发
+    expect(electronMock.relaunchCalls[0].args).not.toContain("--updated");
   });
 });
 
