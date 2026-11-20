@@ -77,6 +77,7 @@ g_installDir = existing.empty() ? DefaultInstallDir() : existing;
    - 旧版（自定义目录）→ 点更新 → 新版本**落在原目录**，不产生第二份；
    - 换目录安装 → PATH 只剩一份且指向新目录；卸载 → 旧目录段不复活；
    - 无 ARP + 无 --dir 的静默安装（手工 `/S`）→ 落默认目录（旧行为保留）。
+   - ⚠️ **静默安装验收必须用 `cmd /c`（或批处理）拉起**：PowerShell `Start-Process -Wait` 在没有控制台时会传入无效 stdin 句柄，引导器的 7zr 子进程 `CreateProcess` 失败 ⇒ **退出码 5**（实测 2026-11-20，两次复现；同一安装包用 `cmd /c` 拉起即 `EXIT=0`）。产品链路不受影响——更新器走 `app.relaunch`，不经过 `Start-Process`。
 
 ## 五、发版去向
 
@@ -88,4 +89,4 @@ g_installDir = existing.empty() ? DefaultInstallDir() : existing;
 
 - **与 Marketplace-Store 任务系列无代码冲突**：本档只碰 `electron/services/update-install.*` 与 `build/installer/bootstrapper/*`；市场系列碰 `src/`、插件仓、SDK 文档。
 - **唯一交点** = `package.json` / `CHANGELOG.md` 的版本登记。本笔按 PATCH 规则 bump 到 **0.2.57**；若市场系列同一时间要 bump，以**后提交者重新读当前值再 +1**为准，⛔ 不要并行改同一行。
-- **本机基线现状（2026-11-20）**：`D:\01link\linkdesk` 已删；`C:\Users\fengy\AppData\Local\Programs\linkdesk` 为 0.2.53 **半截装**（文件在、ARP/快捷方式/PATH 三项系统登记全缺）；用户 PATH 仍指已删除的 D 目录。修机建议：用修好的安装包**界面态**装到目标目录（一次性补齐 ARP/快捷方式/PATH），再跑上面的真机判据。
+- **本机基线（2026-11-20 已修好）**：`D:\01link\linkdesk` = **0.2.57**（本地构建的安装包静默装入，`--dir=D:\01link\linkdesk`）；ARP `DisplayName=LinkDesk 0.2.57`／UninstallString 指 D；开始菜单与桌面（重定向到 `D:\360MoveData\Users\fengy\Desktop`）快捷方式均指 D；用户 PATH 里 `linkdesk` 段只剩 D 一条；C 盘半截装与 C 盘残留已清；`where linkdesk` → `D:\01link\linkdesk\LinkDesk.exe`。⚠️ 这份是 **dev 树构建的待发版**（含 Marketplace 系列已提交的 SDK 0.1.94），将来点更新会从 GitHub 正常拉取下一个**高于 0.2.57** 的正式版并原地装回 D（P1/P0 的端到端验收留到那次发版做——同版本静默重装会被版本守卫 1602 拦下，今天无法在此机复测）。
