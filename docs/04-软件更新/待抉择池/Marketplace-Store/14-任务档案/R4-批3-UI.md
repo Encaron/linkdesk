@@ -44,6 +44,8 @@
 
 **判据**：U4 十项验收（13-接力方案引 08 v3.57 三 bug 修复行为）逐条真机复验；**作者项发现型已读点**（08 §三·95：作者项右上 6px 点、进店即清——与棒 6 分类项同体系）。
 
+> 🟢 **棒 7 收口注记（2026-11-20）**：R4-3.8–3.11 已落——`services/authors.ts`（白名单解析＋authorId 聚合＋懒加载缓存＋warnings）· `authors/AuthorCard`（三边界仓卡扇出）· `authors/AuthorStoreView`（hero 置顶/inlineHero/sections/scope:self/glow:false/门店卡/按分类浏览硬保留）· `authors/AuthorsView` · `authors/authorWarnings.ts`（来源页计数文案）· 分类页 authorId 预过滤＋「显示全部」· `StoreHeader` 作者店名。**数据边界**：作者块无索引 ⇒ 按 authorId 懒加载（候选源＝官方＋authorId 命中的启用 remote 源；owner≠authorId 时以条目声明 authorId 为准）；v1 源不产生作者域（照 09「插件进池、作者域缺席」）；发现型点仍等 contentHash（棒 15），本棒只接「进店即已读」写入与渲染路径。**读数**：插件仓 vitest 616/616（+29）· verify 九段 · build 9 表面；插件 **643bd01**（未 bump、未推送）。
+
 ## 棒 8（R4-3.12–3.15，库＋来源）
 
 | 格 | 动作 | 落点 |
@@ -54,6 +56,8 @@
 | R4-3.15 | I17 加源弹窗（网络/本地两页）＋本地安装流程调壳 `installFromDirectory`＋`localInstalls` 记录（06 §九） | `AddSourceModal.tsx` |
 
 **判据**：B2 拍板边界（拒 core/同 id exists 确认/原路径只溯源）；U 类已闭环行为照 08 复验；**库头部「全部已读」钮**（08 §三·95——仅清发现型小点，⛔ 碰任务型更新数字；调棒 4 `markAllRead` 命令）。
+
+> 🟢 **棒 8 收口注记（2026-11-20）**：R4-3.12–3.15 已落——`library/`（buildLibraryRows 单一组装＋筛选/排序分组/统计；编辑模式批量；已购未安装预留区）· `sources/`（作者分组折叠/同作者调序/单源刷新/源级停用/移除确认/本地组）· `AddSourceModal`（OverlayPortal 两页签；网络先拉后入＋K5 模板链接；本地 plugin.json 预览→`installFromDirectory`＋`localInstalls`）· `services/sourceAdmin.ts`（配置原始数组写路径单点）· `services/libraryActions.ts`（批量动作单点）· `marketplaceSources` 结果新增逐源 `sourceStatus`。**读数**：K5 真机（真实网络）——`linkdesk-plugin-editor@v1.0.10` 无 marketplace.json ⇒ plugin.json 合成 1 条（version 1.0.10）；`octocat/Hello-World` 两者皆无 ⇒ `missing-manifest`（UI 给模板链接）。插件 **643bd01**（未 bump、未推送）。
 
 ## 棒 9（R4-3.16–3.19，详情页）
 
