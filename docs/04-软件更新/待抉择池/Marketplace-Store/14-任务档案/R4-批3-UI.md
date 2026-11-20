@@ -16,6 +16,8 @@
 
 ## 棒 6（R4-3.4–3.7，浏览面）
 
+> 🔴 **接棒 3b 交办（2026-11-20）**：**R4-2.9 真机读数在本棒收口**——18 件 rail 归位／小类 chip 有货即显（≥1）／「其他」桶为空。数据面已就绪：`CatalogLoadResult.railOrder`（声明序消费）＋ `groupByPrimaryCategory(entries, railOrder)`（空桶不产出、other 末位）＋ 条目 `category/categories`（官方目录 18/18 已带）——⛔ 在 UI 里重算分类；读数写进交接。
+
 | 格 | 动作 | 落点 |
 |:--|:--|:--|
 | R4-3.4 | 主区商店骨架：rail 三段式（首页品牌块/分类·排行榜/库·作者·来源固定底）＋ tabbar 交互（每插件一标签 pinned:true＋label） | 新 `src/views/store/`（feature-folder：`StoreView.tsx`/`Rail.tsx`）——**声明新壳视图**进市场 plugin.json `views.main`（照 plugin-detail 模式，tabBehavior 见 08 v3.51） |
