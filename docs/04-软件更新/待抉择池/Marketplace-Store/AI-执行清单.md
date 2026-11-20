@@ -29,8 +29,8 @@
 - R4-2.3 ✅ 2026-11-20 I5 对账测试扩 v2——解析/归桶/厂商/K5/合并回执/源记录/旧目录回落（新增 27 例）
 ## 棒 3b · 批2b 官方插件全量分类适配（详案 = R4-批2b-官方适配.md）
 
-- R4-2.8 ⬜ 18 仓 plugin.json 补 category＋categories 小类（04 §5.1/§5.2 照抄）＋schema description 名单
-- R4-2.9 ⬜ 18 仓逐仓发版＋种子追新＋真机分类 chip 读数对照
+- R4-2.8 ✅ 2026-11-20 18 仓 plugin.json 补 category＋categories（04 §5.2 照抄；theme-terminal 表未列按桶语义补 themes/color-scheme）＋ schema description 写全名单（四份拷贝同笔）＋ marketplace 1.2.1 补 productivity
+- R4-2.9 🟡 2026-11-20 18 仓逐仓 PATCH 发版＋官方目录收录（8cf434d）＋种子追新 6/6 新鲜——**真机 chip 读数待棒 6**（分类 rail/chips UI 尚未建；目录数据面已验 18/18 带 category，零件落「其他」）
 
 ## 棒 4 · 批2b 服务面（详案 = R4-批2-服务层.md）
 
@@ -130,5 +130,5 @@
 | 段 | 格数 | 已交 |
 |---|---|---|
 | 棒 0 Toast | （Toast 档计数） | 0 |
-| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 15 / 62 |
-| **总计** | — | **15 / 62 ＋ Toast** |
+| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 17 / 62 |
+| **总计** | — | **17 / 62 ＋ Toast** |
