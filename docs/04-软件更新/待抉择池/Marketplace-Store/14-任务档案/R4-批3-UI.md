@@ -70,6 +70,8 @@
 
 **判据**：05 §00「勿动清单」逐条确认未破坏；05 §01–03 规则实现；**§8.1 #11 动作委托在本棒落地**（动作按钮所在每一个容器都接同一条入口，验收逐按钮点）。
 
+> 🟢 **棒 9 收口注记（2026-11-20）**：R4-3.16–3.19 已落——`services/openDetailTab`（`tabs.create("plugin-detail",{pinned:true,label})` 唯一入口；商店卡/详情依赖跳转/命令面共用）· 三页签改名「概览/功能/更改日志」＋日志未装分支按 **5 版**裁口与「更新记录（最近 5 版）」口径行＋已装版本号转绿（`.marketplace-mpd-chg-cur-ver`）· 右栏四类字段：本机事实（标识符/版本/大小/**安装位置**/数据位置）、抓取型（作者/来源/首次发布/更新时间/下载；缺 ⇒ 不画行＋来源页声明提示）、声明型（类别/许可证/仓库/问题；有才显）、兼容性唯一占位「—」；依赖/被依赖空行退役（⛔ Dash 撑行）· parse 新增 `missing-entry-field` 警告（publishedAt/author/repo）→ 来源页「N 条声明提示」展示（`views/store/sources/catalogWarnings.ts`）· 「不够」= minApp 不足：值标黄（`--warning-text`）＋安装/重试钮置灰并写原因 · I13：标题/副标题 clamp2、说明 clamp3、动作钮 nowrap+max-width+ellipsis+flex:none · 详情徽标收编 `ui/Badge`＋`sourceBadge` 同源（含本地徽标）。**读数**：插件仓 vitest **57 文件/636 例**（+3 文件/+20 例）· verify 九段 · build 9 表面（138.7 KB）。插件 **75e8de1**（未 bump、未推送）。
+
 ## 棒 10（R4-3.20–3.22，付费流）
 
 | 格 | 动作 | 落点 |
