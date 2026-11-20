@@ -65,6 +65,7 @@ export const FILENAME_MAP = {
   "20-我的插件加一条配置项.md": "20-adding-a-setting.md",
   "21-插件命令化规范.md": "21-command-ification-spec.md",
   "22-菜单贡献点.md": "22-menu-contribution-points.md",
+  "23-市场目录与作者主页.md": "23-marketplace-catalog-and-author-store.md",
   "主题/01-做一个主题插件.md": "themes/01-build-a-theme-plugin.md",
   "主题/02-主题字段速查.md": "themes/02-theme-field-index.md",
 };

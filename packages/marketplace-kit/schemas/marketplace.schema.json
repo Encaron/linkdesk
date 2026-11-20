@@ -31,8 +31,17 @@
     },
     "collections": {
       "type": "array",
-      "items": { "$ref": "#/$defs/collectionDecl" },
-      "description": "Curated collection declarations — stable-id lists of pluginIds rendered as a collection slot (banner/strip/duo/grid map to card variants). May be declared here (any repo's marketplace.json) — the recommended home. Members reference entries by id; missing ids are skipped silently (defensive, same as catalog merge). Titles are author data shown as-is (no t() pipeline)."
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/collectionDecl" },
+          {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Folder reference: the full declaration lives at collections/<id>.json next to this file (split form, R4-4.5). The store fetches the referenced file only for ids listed here — plain v1 catalogs declare zero references and trigger zero extra fetches."
+          }
+        ]
+      },
+      "description": "Curated collection declarations — stable-id lists of pluginIds rendered as a collection slot (banner/strip/duo/grid map to card variants). May be declared here (any repo's marketplace.json) — the recommended home. Two read forms: inline objects (declared here) or string ids referencing collections/<id>.json (split form — `marketplace-kit` publish maintains both). Members reference entries by id; missing ids are skipped silently (defensive, same as catalog merge). Titles are author data shown as-is (no t() pipeline)."
     },
     "categoryRail": {
       "$ref": "#/$defs/categoryRailDecl",

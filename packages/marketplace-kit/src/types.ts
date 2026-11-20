@@ -148,6 +148,7 @@ export interface MarketplaceFile {
   updatedAt?: string;
   plugins: CatalogEntry[];
   sources?: SourceDecl[];
-  collections?: CollectionDecl[];
+  /** R4-4.5 两读：对象 = inline 声明；字符串 = `collections/<id>.json` 文件夹引用（拆分写法的读取入口） */
+  collections?: Array<CollectionDecl | string>;
   categoryRail?: CategoryRailDecl;
 }

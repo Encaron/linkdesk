@@ -98,6 +98,7 @@ const FACTS = {
       "🔴 目录条目的 `icon` / `marketIcon` 一律是**绝对 URL**（未装态要能解析）；列表行图标裁决序 = **已装 → 目录 → 默认块**，别改成只看目录（会破「已装不读远程图」，断网就裂图）。",
       "两个 `viewsContainers` 是它独有的，**全仓只有它用 `location: \"main\"`**。",
       "`i18n/` 有 en + zh 两份（官方插件里只有它这样）。",
+      "🤖 **市场目录 v2 / 作者域 AI 面**（改目录解析前必读）：目录 = 源根的 `marketplace.json`（条目＋根级 sources/collections/categoryRail）＋ 作者块 `authors/<authorId>.json`（同 authorId 跨仓聚合，作者域数据入口 = `services/authors.ts`，⛔ 视图自己 fetch）＋ 合集两读（根 `collections[]` **对象 = inline 声明；字符串 = `collections/<id>.json` 引用**——有引用才拉文件，v1 目录零探针；同 id inline 主文件正典胜＋`duplicate-collection` 警告）。**声明清单/聚合规则的权威 = 本仓 parse 白名单 ↔ `@linkdesk/marketplace-kit`（schema 字节同源＋分类白名单对账测试钉死）**——改白名单三处同笔（types → parse → 对账测试），kit schema 变了要同步发版。声明警告与 kit validate 错误码同一套（作者在来源页看到的词 = validate 打印的词）。官方收录/认证审查规程住在官方目录仓（`linkdesk-marketplace` 的 AGENTS.md），本仓只消费其 `sources[]`。",
     ],
   },
   python: {

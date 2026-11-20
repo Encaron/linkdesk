@@ -30,13 +30,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
+  buildAuthorBlockFromConfig,
   buildCatalogEntry,
+  buildCollectionFiles,
   collectManifestView,
   upsertCatalogEntry,
   type AuthorBlock,
   type CatalogPluginEntry,
   type ManifestView,
   type MarketplaceCatalog,
+  type MarketplacePublishConfig,
 } from "./publish.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -359,6 +362,32 @@ describe("R4-0.4 三方对账腿①——TS 契约 ↔ schema 逐字段集合相
 });
 
 describe("代码契约 ↔ schema 同源（E6#135 防漂移核心）", () => {
+  it("R4-4.5 publish v2 产物过 schema（authors/<id>.json 走 $defs.authorBlock、collections/<id>.json 走 $defs.collectionDecl）", () => {
+    const config: MarketplacePublishConfig = {
+      authorId: "demo-author",
+      name: "Demo Author",
+      storeTitle: "Demo Store",
+      publicKey: "ZGVtbw==",
+      homepage: { sections: [{ type: "collection", collection: "picks", more: { label: "All", target: "category:hardware" }, glow: false }] },
+      collections: [{ id: "picks", title: "Picks", layout: "strip", glow: false, more: { label: "More", target: "rank" }, items: ["demo-plugin"] }],
+    };
+    const remote = { owner: "demo-author", repo: "demo-plugins" };
+    // 作者块真实产出过作者块子模式（写什么 schema 收什么）
+    expect(validateAuthorBlock(buildAuthorBlockFromConfig(config, remote))).toBe(true);
+    // 合集文件真实产出过 collectionDecl 子模式（含 R4-4.1 的 glow/more 字段）
+    const v = new Ajv2020({ allErrors: true, strict: false }).compile({
+      ...(SCHEMA_DEFS.collectionDecl as object),
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $defs: SCHEMA_DEFS,
+    });
+    for (const w of buildCollectionFiles(config)) {
+      expect(v(JSON.parse(w.content)), `${w.path}`).toBe(true);
+    }
+    // 根级字符串引用形态过 schema（拆分写法读取入口）；坏 slug 引用红
+    expect(ok({ plugins: [], collections: ["picks", "themes"] })).toBe(true);
+    expect(ok({ plugins: [], collections: ["../escape"] })).toBe(false);
+  });
+
   it("buildCatalogEntry + upsertCatalogEntry 的真实产出过 schema（publish 写什么，schema 收什么）", () => {
     // 样本纪律：虚构值（硬约束 21）
     const view: ManifestView = {

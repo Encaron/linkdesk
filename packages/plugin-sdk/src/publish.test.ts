@@ -25,6 +25,10 @@ import {
   readmeRawUrl,
   readAssetManifestVersion,
   sliceChangelogSection,
+  buildAuthorBlockFromConfig,
+  buildCollectionFiles,
+  collectionsRootRefs,
+  readPublishConfig,
   upsertCatalogEntry,
   windowCatalogChangelog,
   windowChangelogText,
@@ -658,5 +662,84 @@ describe("AI#51 资产版本源头断言——assertAssetCurrent", () => {
 
   it("newestSourceMtime：无候选（连 plugin.json 都没有）⇒ null（不构成断言输入）", async () => {
     expect(newestSourceMtime(dir)).toBeNull();
+  });
+});
+
+/* ── R4-4.5 publish v2（批4b）────────────────────────────────────────── */
+
+describe("R4-4.5 readPublishConfig——marketplace.config.json", () => {
+  const dir = (): string => mkdtempSync(join(tmpdir(), "pubcfg-"));
+  let cleanup: string[] = [];
+  beforeEach(() => {
+    cleanup = [];
+  });
+  afterEach(() => {
+    for (const d of cleanup) rmSync(d, { recursive: true, force: true });
+  });
+  const make = (body: string | null): string => {
+    const d = dir();
+    cleanup.push(d);
+    if (body !== null) writeFileSync(join(d, "marketplace.config.json"), body, "utf8");
+    return d;
+  };
+
+  it("无 config → null（纯 v1 作者行为零变化）", () => {
+    expect(readPublishConfig(make(null))).toBeNull();
+  });
+
+  it("正常 config → 透传 + unknownKeys 空", () => {
+    const r = readPublishConfig(
+      make(JSON.stringify({ authorId: "demo-author", storeTitle: "Demo Store", homepage: { sections: [] }, collections: [{ id: "picks", title: "Picks", items: ["demo-plugin"] }] })),
+    );
+    expect(r).not.toBeNull();
+    expect(r!.config.authorId).toBe("demo-author");
+    expect(r!.config.collections).toHaveLength(1);
+    expect(r!.unknownKeys).toEqual([]);
+  });
+
+  it("未知键不拦但点名（拼错键 = 意图静默丢失，预览必须可见）", () => {
+    const r = readPublishConfig(make(JSON.stringify({ authorId: "a", storeTitel: "typo" })));
+    expect(r!.unknownKeys).toEqual(["storeTitel"]);
+  });
+
+  it("已知键类型错 → throw（⛔ 不写垃圾）", () => {
+    expect(() => readPublishConfig(make(JSON.stringify({ authorId: 42 })))).toThrow(/authorId/);
+    expect(() => readPublishConfig(make(JSON.stringify({ homepage: "oops" })))).toThrow(/homepage/);
+    expect(() => readPublishConfig(make(JSON.stringify({ collections: "nope" })))).toThrow(/collections/);
+  });
+
+  it("合集 id 重复 / 形状非法 / items 空 → throw", () => {
+    expect(() => readPublishConfig(make(JSON.stringify({ collections: [{ id: "a", items: ["x"] }, { id: "a", items: ["y"] }] })))).toThrow(/重复/);
+    expect(() => readPublishConfig(make(JSON.stringify({ collections: [{ id: "Bad_Slug", items: ["x"] }] })))).toThrow(/非法/);
+    expect(() => readPublishConfig(make(JSON.stringify({ collections: [{ id: "ok", items: [] }] })))).toThrow(/items/);
+  });
+});
+
+describe("R4-4.5 buildAuthorBlockFromConfig / buildCollectionsWrites", () => {
+  const remote = { owner: "demo-author", repo: "demo-plugins" };
+
+  it("作者块：身份透传 + repos=本仓段（sourceUrl=HEAD 直链）+ 缺省键不写", () => {
+    const block = buildAuthorBlockFromConfig(
+      { authorId: "demo-author", storeTitle: "Demo Store", publicKey: "ZGVtbw==", homepage: { sections: [] } },
+      remote,
+    );
+    expect(block.authorId).toBe("demo-author");
+    expect(block.name).toBe("demo-author"); // name 缺省 = authorId
+    expect(block.repos).toEqual([{ id: "main", name: "demo-plugins", sourceUrl: "https://raw.githubusercontent.com/demo-author/demo-plugins/HEAD/marketplace.json" }]);
+    expect(block.storeTitle).toBe("Demo Store");
+    expect(block.publicKey).toBe("ZGVtbw==");
+    expect("avatar" in block).toBe(false); // 未声明不写键（诚实缺省）
+    expect("intro" in block).toBe(false);
+  });
+
+  it("collections 文件清单：逐合集文件（读取入口 = 根级字符串引用，无 index 文件）；空 → []", () => {
+    const writes = buildCollectionFiles({ collections: [{ id: "picks", title: "Picks", items: ["demo-plugin"] }, { id: "themes", title: "Themes", items: ["demo-theme"] }] });
+    expect(writes.map((w) => w.path)).toEqual(["collections/picks.json", "collections/themes.json"]);
+    expect(buildCollectionFiles({})).toEqual([]);
+  });
+
+  it("collectionsRootRefs：有合集 → 根级 id 引用（市场见字符串才拉文件）；无 → null（inline 原样带过）", () => {
+    expect(collectionsRootRefs({ collections: [{ id: "picks", title: "Picks", items: ["demo-plugin"] }] })).toEqual(["picks"]);
+    expect(collectionsRootRefs({})).toBeNull();
   });
 });

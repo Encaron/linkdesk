@@ -22,6 +22,14 @@
  *           唯一数据源，而包内路径只有已装才可达。
  *   4. 发前预览确认（#26b「发布前预览+确认」）：打印 id/name/version/author/文件大小/目标仓库/tag
  *      → [y/N]；`--yes` 跳过（CI）；`--dry-run` 只打印将做动作不碰网络。
+ *   5. publish v2（R4-4.5，Marketplace-Store 批4b）：工程根有 `marketplace.config.json` 时，
+ *      除 v1 条目外**同笔写入 v2 文件夹**（09 §九·9.2）：
+ *        · `authors/<authorId>.json` —— 作者块（身份/storeTitle/publicKey/homepage 板块声明
+ *          以 config 为准；repos = 本仓段）。config 缺 authorId ⇒ 跳过（纯 v1 作者零打扰）。
+ *        · `collections/<id>.json` —— 合集拆分写法；市场侧**读取入口 = 根 marketplace.json
+ *          `collections[]` 里的字符串 id 引用**（config 声明合集时 publish 把根级 collections
+ *          写成 id 数组；市场见字符串才拉对应文件——v1 目录零探针，⛔ 不调目录列举 API）。
+ *      同版本重跑拦截 = 既有 Release-tag 断言（步骤 3b），它先于一切写入抛出 ⇒ v2 文件天然同罩。
  *
  * PAT（#26c 链路的 CLI 半侧）：env `LINKDESK_GITHUB_TOKEN` > 用户配置档
  * `{configDir}/linkdesk-sdk/config.json`（首跑掩码提示输入存一次，0600）。
@@ -111,8 +119,10 @@ export interface MarketplaceCatalog {
   plugins: CatalogPluginEntry[];
   /** v2：官方目录的已审核第三方源清单（只有官方运营者可写；收录 = 背书不复制条目） */
   sources?: SourceLink[];
-  /** v2：合集声明（可声明于任意仓的 marketplace.json——推荐落点；成员按 id 引用，缺失静默跳过） */
-  collections?: CollectionDecl[];
+  /** v2：合集声明（可声明于任意仓的 marketplace.json——推荐落点；成员按 id 引用，缺失静默跳过）。
+   *  R4-4.5 两读：对象 = inline 声明；字符串 = `collections/<id>.json` 文件夹引用（拆分写法的
+   *  读取入口——市场见字符串才拉对应文件，v1 目录零探针）。 */
+  collections?: Array<CollectionDecl | string>;
   /** v2：分类 rail 展示顺序（未注册 slug 落「其他」桶，不报错） */
   categoryRail?: CategoryRailDecl;
 }
@@ -1046,9 +1056,36 @@ async function apiReadCatalog(token: string, remote: GitHubRemote): Promise<{ sh
 
 /** Contents 写：PUT base64 内容（带 sha 覆盖 / 无 sha 新建）。走仓库默认分支。 */
 async function apiWriteCatalog(token: string, remote: GitHubRemote, id: string, sha: string | null, catalog: MarketplaceCatalog): Promise<void> {
-  const content = `${JSON.stringify(catalog, null, 2)}\n`;
+  await apiWriteContents(token, remote, "marketplace.json", `${JSON.stringify(catalog, null, 2)}\n`, sha, `publish ${id} (marketplace.json)`, "marketplace.json");
+}
+
+/** Contents 读 sha（v2 侧车文件覆盖写用）——404 → null（首次写）；非 404 失败抛错 */
+async function apiReadContentsSha(token: string, remote: GitHubRemote, path: string): Promise<string | null> {
+  const res = await ghHttp({
+    token,
+    api: "api",
+    path: `/repos/${remote.owner}/${remote.repo}/contents/${path}`,
+    headers: { Accept: "application/vnd.github+json" },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`读取 ${path} 失败（${res.status}）：${ghErrorDetail(res)}`);
+  const sha = (res.json as { sha?: unknown } | null)?.sha;
+  if (typeof sha !== "string") throw new Error(`${path} 响应异常（缺 sha）：${res.text.slice(0, 200)}`);
+  return sha;
+}
+
+/** Contents 写通用形（v2 authors/collections 与 marketplace.json 共用一份实现——⛔ 不开第二份 PUT） */
+async function apiWriteContents(
+  token: string,
+  remote: GitHubRemote,
+  path: string,
+  content: string,
+  sha: string | null,
+  message: string,
+  label: string,
+): Promise<void> {
   const body: Record<string, unknown> = {
-    message: `publish ${id} (marketplace.json)`,
+    message,
     content: Buffer.from(content, "utf8").toString("base64"),
   };
   if (sha) body.sha = sha;
@@ -1056,13 +1093,127 @@ async function apiWriteCatalog(token: string, remote: GitHubRemote, id: string, 
     token,
     api: "api",
     method: "PUT",
-    path: `/repos/${remote.owner}/${remote.repo}/contents/marketplace.json`,
+    path: `/repos/${remote.owner}/${remote.repo}/contents/${path}`,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    if (res.status === 409) throw new Error("marketplace.json 写冲突（409）——远端刚被改动，重跑一次 publish 即可");
-    throw new Error(`更新 marketplace.json 失败（${res.status}）：${ghErrorDetail(res)}`);
+    if (res.status === 409) throw new Error(`${label} 写冲突（409）——远端刚被改动，重跑一次 publish 即可`);
+    throw new Error(`更新 ${label} 失败（${res.status}）：${ghErrorDetail(res)}`);
   }
+}
+
+/* ── publish v2（R4-4.5）：marketplace.config.json → authors/ ＋ collections/ ────────── */
+
+/**
+ * 发布侧作者声明（`marketplace.config.json`，init 生成骨架；正典 09 §九·9.1/9.2）。
+ * 已知键 = 作者块白名单透传（publicKey 由付费作者指南 K10b 写法灌入——keygen 产出）；
+ * 未知键**警告不拦**（config 是作者私产，但拼错键等于意图静默丢失——预览里必须可见）。
+ */
+export interface MarketplacePublishConfig {
+  authorId?: string;
+  name?: string;
+  avatar?: string;
+  introImage?: string;
+  intro?: string;
+  storeTitle?: string;
+  publicKey?: string;
+  homepage?: AuthorBlock["homepage"];
+  collections?: CollectionDecl[];
+}
+
+const PUBLISH_CONFIG_KEYS = new Set<string>(["authorId", "name", "avatar", "introImage", "intro", "storeTitle", "publicKey", "homepage", "collections"]);
+const PUBLISH_CONFIG_STRINGS = ["authorId", "name", "avatar", "introImage", "intro", "storeTitle", "publicKey"] as const;
+
+export interface ReadPublishConfigResult {
+  config: MarketplacePublishConfig;
+  /** 拼错/不认识的顶层键——预览里点名（⛔ 静默丢配置键 = 作者意图丢失） */
+  unknownKeys: string[];
+}
+
+/** 读工程根 marketplace.config.json——不存在 → null（纯 v1 作者，行为零变化） */
+export function readPublishConfig(root: string): ReadPublishConfigResult | null {
+  const path = join(root, "marketplace.config.json");
+  if (!existsSync(path)) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    throw new Error(`marketplace.config.json 不是合法 JSON（修好再发）：${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("marketplace.config.json 必须是 JSON 对象");
+  }
+  const obj = raw as Record<string, unknown>;
+  const unknownKeys = Object.keys(obj).filter((k) => !PUBLISH_CONFIG_KEYS.has(k));
+  for (const key of PUBLISH_CONFIG_STRINGS) {
+    if (obj[key] !== undefined && typeof obj[key] !== "string") {
+      throw new Error(`marketplace.config.json 的 "${key}" 必须是字符串`);
+    }
+  }
+  if (obj.homepage !== undefined && (typeof obj.homepage !== "object" || obj.homepage === null)) {
+    throw new Error('marketplace.config.json 的 "homepage" 必须是对象（{ sections: [...] }）');
+  }
+  if (obj.collections !== undefined && !Array.isArray(obj.collections)) {
+    throw new Error('marketplace.config.json 的 "collections" 必须是数组');
+  }
+  const config = obj as unknown as MarketplacePublishConfig;
+  // 合集 id 形状与唯一性——publish 不写垃圾（市场靠 id 引用，重复 id = 谁覆盖谁说不清）
+  const seen = new Set<string>();
+  for (const c of config.collections ?? []) {
+    if (!c || typeof c.id !== "string" || !/^[a-z][a-z0-9-]*$/.test(c.id)) {
+      throw new Error(`marketplace.config.json 的合集 id 非法（须 [a-z][a-z0-9-]*）：${JSON.stringify((c as { id?: unknown })?.id)}`);
+    }
+    if (seen.has(c.id)) throw new Error(`marketplace.config.json 合集 id 重复：${c.id}`);
+    seen.add(c.id);
+    if (!Array.isArray(c.items) || c.items.length === 0) {
+      throw new Error(`合集 "${c.id}" 缺 items（成员 pluginId 数组，至少 1 项）`);
+    }
+  }
+  return { config, unknownKeys };
+}
+
+/** 本仓 marketplace.json 的 raw 直链（作者块 repos 段的 sourceUrl——市场仓切换的拉取目标） */
+export function catalogRawUrl(remote: GitHubRemote): string {
+  return `https://raw.githubusercontent.com/${remote.owner}/${remote.repo}/HEAD/marketplace.json`;
+}
+
+/** config → 作者块（09 §9.2「以作者 config 为准」；repos = 本仓段——每仓一份块、同 authorId 聚合） */
+export function buildAuthorBlockFromConfig(config: MarketplacePublishConfig, remote: GitHubRemote): AuthorBlock {
+  if (!config.authorId) throw new Error("buildAuthorBlockFromConfig 需要 config.authorId（调用方先判空）");
+  return {
+    authorId: config.authorId,
+    name: config.name ?? config.authorId,
+    ...(config.avatar ? { avatar: config.avatar } : {}),
+    ...(config.introImage ? { introImage: config.introImage } : {}),
+    ...(config.intro ? { intro: config.intro } : {}),
+    ...(config.storeTitle ? { storeTitle: config.storeTitle } : {}),
+    ...(config.publicKey ? { publicKey: config.publicKey } : {}),
+    repos: [{ id: "main", name: remote.repo, sourceUrl: catalogRawUrl(remote) }],
+    ...(config.homepage ? { homepage: config.homepage } : {}),
+  };
+}
+
+export interface PublishFileWrite {
+  path: string;
+  content: string;
+}
+
+/** config.collections → 逐合集文件写入清单（`collections/<id>.json`）。
+ *  🔴 拆分写法的市场侧**读取入口 = 根 marketplace.json `collections[]` 里的字符串 id 引用**
+ *  （R4-4.5 同笔拍板——本函数不产 index.json：市场按「根里有字符串引用才去拉对应文件」工作，
+ *  v1 目录零探针、零新增请求；字符串形态与 inline 对象形态在**同一字段**两读，06 §二·3b）。 */
+export function buildCollectionFiles(config: MarketplacePublishConfig): PublishFileWrite[] {
+  return (config.collections ?? []).map((c) => ({
+    path: `collections/${c.id}.json`,
+    content: `${JSON.stringify(c, null, 2)}\n`,
+  }));
+}
+
+/** config.collections 非空 ⇒ 根 `collections[]` 写成**字符串 id 引用**（市场侧据此拉文件夹文件）。
+ *  config 没声明合集 ⇒ 原样带过（作者手写的 inline 合集不受 publish 打扰）。 */
+export function collectionsRootRefs(config: MarketplacePublishConfig): string[] | null {
+  const collections = config.collections ?? [];
+  return collections.length > 0 ? collections.map((c) => c.id) : null;
 }
 
 /* ── 编排 ─────────────────────────────────────────────────────────────── */
@@ -1084,6 +1235,10 @@ export interface PublishPreview {
   readmeUrl?: string;
   /** 当前版本正文——`CHANGELOG.md` 切段所得；无文件 / 切不到该版本 → 缺省（诚实留空，不猜） */
   changelog?: string;
+  /** publish v2：工程根 marketplace.config.json（缺 → null = 纯 v1 发布，行为零变化） */
+  publishConfig: MarketplacePublishConfig | null;
+  /** config 里拼错/不认识的顶层键——预览点名（拼错键 = 作者意图静默丢失） */
+  unknownConfigKeys: string[];
 }
 
 async function collectPreview(root: string): Promise<PublishPreview> {
@@ -1112,6 +1267,7 @@ async function collectPreview(root: string): Promise<PublishPreview> {
   // `readmeUrl` = 未装详情页 README 远端源；`changelog` = 未装「更改日志」页签的逐版正文。
   // 两者都**缺省即不写**——不写是本函数要表达的诚实（写了 404 / 写空串都是骗人）。
   const changelogPath = join(root, "CHANGELOG.md");
+  const v2 = readPublishConfig(root);
   return {
     id: view.id,
     name: view.name,
@@ -1126,6 +1282,8 @@ async function collectPreview(root: string): Promise<PublishPreview> {
     prerelease: view.version.includes("-"),
     ...(existsSync(join(root, "README.md")) ? { readmeUrl: readmeRawUrl(remote, tag) } : {}),
     ...(existsSync(changelogPath) ? { changelog: sliceChangelogSection(readFileSync(changelogPath, "utf8"), view.version) } : {}),
+    publishConfig: v2?.config ?? null,
+    unknownConfigKeys: v2?.unknownKeys ?? [],
   };
 }
 
@@ -1151,7 +1309,15 @@ function renderPreview(p: PublishPreview): string {
     `  │             日志 ${p.changelog ? `✓ 已切出 v${p.version} 正文（${p.changelog.split("\n").length} 行）` : `✗ 工程根 CHANGELOG.md 无 v${p.version} 段 → 不写 changelog`}`,
     // E6#106：把「市场行会显哪张图」在发布前摊开——身份图缺失是可发布但会显默认彩块的状态，作者有权先知道
     `  │             图标 ${identityOf(p.view, p.remote, p.tag)}`,
-    "  │ 将做      : 创建 GitHub Release → 上传 asset → 更新该仓库根 marketplace.json",
+    ...(p.publishConfig
+      ? [
+          `  │ v2 作者面 : ${p.publishConfig.authorId ? `authors/${p.publishConfig.authorId}.json（作者块以 config 为准）` : "config 缺 authorId → 不写作者块"}` +
+            `；合集 ${p.publishConfig.collections?.length ?? 0} 件（collections/<id>.json＋根级字符串引用）`,
+          ...(p.publishConfig.publicKey ? [] : ["  │             （config 无 publicKey——付费插件先跑 `marketplace-kit keygen` 再填进 config，见付费作者指南）"]),
+          ...(p.unknownConfigKeys.length > 0 ? [`  │ ⚠️ config 未知键（拼错？）: ${p.unknownConfigKeys.join(", ")}——这些键会被忽略`] : []),
+        ]
+      : ["  │ v2 作者面 : 工程根无 marketplace.config.json → 仅 v1 条目（想要作者主页/合集：marketplace-kit init）"]),
+    "  │ 将做      : 创建 GitHub Release → 上传 asset → 更新该仓库根 marketplace.json（＋v2 作者面文件，如有）",
     "  └─────────────────────────────────────────",
   ];
   return lines.join("\n");
@@ -1222,7 +1388,32 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
     },
   );
   const merged = upsertCatalogEntry(existing, entry);
-  await apiWriteCatalog(token, remote, id, read?.sha ?? null, merged);
+  // publish v2：config 声明了合集 ⇒ 根 collections 写成字符串 id 引用（拆分写法读取入口）；
+  // 根级原本的 inline 对象被 config 接管（config 是 publish 的真相源——作者文档 23 章写明）
+  const rootRefs = preview.publishConfig ? collectionsRootRefs(preview.publishConfig) : null;
+  const mergedFinal = rootRefs ? { ...merged, collections: rootRefs } : merged;
+  await apiWriteCatalog(token, remote, id, read?.sha ?? null, mergedFinal);
+
+  // 5. publish v2（R4-4.5）：工程根有 marketplace.config.json → 同笔写 authors/<id>.json ＋ collections/
+  //    （同版本重跑在步骤 2 已被 Release-tag 断言拦下——它先于一切写入 ⇒ v2 文件天然同罩）
+  if (preview.publishConfig) {
+    const cfg = preview.publishConfig;
+    if (cfg.authorId) {
+      const authorPath = `authors/${cfg.authorId}.json`;
+      const authorSha = await apiReadContentsSha(token, remote, authorPath);
+      const block = buildAuthorBlockFromConfig(cfg, remote);
+      await apiWriteContents(token, remote, authorPath, `${JSON.stringify(block, null, 2)}\n`, authorSha, `publish ${id} (authors/${cfg.authorId}.json)`, authorPath);
+      console.log(`  ✓ ${authorPath} 已写入（作者块以 config 为准）`);
+    } else {
+      console.log("  · config 缺 authorId → 跳过作者块（v1 条目照常）");
+    }
+    const collectionWrites = buildCollectionFiles(cfg);
+    for (const w of collectionWrites) {
+      const sha = await apiReadContentsSha(token, remote, w.path);
+      await apiWriteContents(token, remote, w.path, w.content, sha, `publish ${id} (${w.path})`, w.path);
+    }
+    if (collectionWrites.length > 0) console.log(`  ✓ collections/ 已写入（${collectionWrites.length} 个合集；根 marketplace.json collections[] 写为字符串引用＝市场侧读取入口）`);
+  }
 
   console.log("");
   console.log(`  🚀 发布成功：${id} v${version}`);

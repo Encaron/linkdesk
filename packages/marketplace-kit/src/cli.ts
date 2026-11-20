@@ -4,7 +4,7 @@
  *
  * 子命令（详案 R4-4.1 bin: `marketplace-kit`；11 §二 CLI 草图里的 `linkdesk-market` 旧名以详案为准）：
  *   validate <路径>       校验 marketplace.json / authors/*.json / 整个目录（目录模式做跨文件合集引用检查）
- *   init [--author <id>]  生成三形态骨架（L0 零配置 / L1+config / L2+authors）；⛔ 不覆盖已有文件
+ *   init [--author <id>]  生成三形态骨架（单插件仓零配置 / 多插件仓+config / 独立市场仓+authors）；⛔ 不覆盖已有文件
  *   keygen [--author <id>] [--out <文件>]
  *                         Ed25519 密钥对——公钥（裸 32B base64）打印出来粘进 authors/<id>.json 的 publicKey；
  *                         私钥落盘 0600，⛔ 不进仓不外传
@@ -109,7 +109,8 @@ function main(argv: string[]): number {
       return cmdValidate(rest[0] ?? ".");
     case "init": {
       const result = initMarketplace({ dir: rest.includes("--dir") ? (argValue(rest, "--dir") ?? process.cwd()) : process.cwd(), author: argValue(rest, "--author") });
-      console.log(`形态 ${result.form}` + (result.written.length ? `，已生成：\n  ${result.written.join("\n  ")}` : "，零配置——未写任何文件"));
+      const formLabel = result.form === "L0" ? "单插件仓（零配置）" : result.form === "L1" ? "多插件仓" : "独立市场仓";
+      console.log(`形态：${formLabel}` + (result.written.length ? `，已生成：\n  ${result.written.join("\n  ")}` : "——零配置，未写任何文件"));
       for (const g of result.guidance) console.log(`· ${g}`);
       return 0;
     }

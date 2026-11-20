@@ -68,9 +68,9 @@ export function initMarketplace(opts: InitOptions): InitResult {
       form: "L0",
       written: [],
       guidance: [
-        "L0 单插件仓：什么都不用加——把仓库地址（或 raw marketplace.json 直链的仓库主页形态）粘进商店「添加源」即得 1 个插件（市场读根 plugin.json 合成目录）。",
+        "单插件仓（零配置）：什么都不用加——把仓库地址（或 raw marketplace.json 直链的仓库主页形态）粘进商店「添加源」即得 1 个插件（市场读根 plugin.json 合成目录）。",
         "若想要作者主页/合集，用 `marketplace-kit init --author <你的GitHub用户名>` 补作者块（authors/<id>.json）。",
-        "若仓库要放多个插件，用 `marketplace-kit init` 生成 L1 骨架（根 marketplace.json ＋ marketplace.config.json）。",
+        "若仓库要放多个插件，用 `marketplace-kit init` 生成多插件仓骨架（根 marketplace.json ＋ marketplace.config.json）。",
       ],
     };
   }
@@ -88,7 +88,7 @@ export function initMarketplace(opts: InitOptions): InitResult {
       written,
       guidance: [
         "已补 authors/<id>.json（作者块）——同 authorId 跨仓声明即自动聚合；正文 sourceUrl 填你各仓的 marketplace.json 直链。",
-        "本仓仍是 L0：市场继续读根 plugin.json 合成那 1 条，⛔ 不要手写根 marketplace.json（空集会顶掉它）。",
+        "本仓仍是单插件仓：市场继续读根 plugin.json 合成那 1 条，⛔ 不要手写根 marketplace.json（空集会顶掉它）。",
       ],
     };
   }
@@ -101,7 +101,7 @@ export function initMarketplace(opts: InitOptions): InitResult {
     const authorsTpl = render(readFileSync(join(TEMPLATES_DIR, "authors.json"), "utf8"), authorId);
     written.push(writeNew(dir, join("authors", `${authorId}.json`), authorsTpl));
     guidance.push(
-      "L2 独立市场仓骨架：marketplace.json（plugins[] 填条目或留空）＋ authors/<id>.json（作者身份/仓库/主页板块）。",
+      "独立市场仓骨架：marketplace.json（plugins[] 填条目或留空）＋ authors/<id>.json（作者身份/仓库/主页板块）。",
       "作者块 homepage.sections 可声明大屏/合集/网格/榜单四类板块（schema 有 $schema 补全）；「按分类浏览」渲染器硬保留，不用声明。",
       "发布：npm 包走 `linkdesk-plugin-sdk publish`（棒 12 publish v2 起读 marketplace.config.json）；纯目录仓直接 git 托管本目录即可。",
     );
@@ -112,7 +112,7 @@ export function initMarketplace(opts: InitOptions): InitResult {
   const configTpl = render(readFileSync(join(TEMPLATES_DIR, "marketplace.config.json"), "utf8"), authorId);
   written.push(writeNew(dir, "marketplace.config.json", configTpl));
   guidance.push(
-    "L1 多插件仓骨架：根 marketplace.json（plugins[] 空集合法——publish 会按条目 upsert；手填也可）＋ marketplace.config.json（发布侧声明，SDK publish 读取）。",
+    "多插件仓骨架：根 marketplace.json（plugins[] 空集合法——publish 会按条目 upsert；手填也可）＋ marketplace.config.json（发布侧声明，SDK publish 读取）。",
     "每个插件仍需自己的 plugin.json；本仓作为源被添加时，市场读根 marketplace.json（⛔ 多插件仓没有根级 plugin.json 合成兜底）。",
   );
   return { form: "L1", written, guidance };
