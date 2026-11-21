@@ -92,6 +92,7 @@ p.style.width="";return JSON.stringify({n:bad.length,list:bad.slice(0,12)})})()
 5. 不改 `TEMP\linkdesk-fixture` 以外的用户资产；⛔ 不碰 `E:\_testfiles`；
 6. 每笔提交：市场仓 `verify`＋`vitest` 全绿；主仓动 `src/` 走 `npm run check`；类别前缀；
 7. 与另一条外来轴（错误态与降级脸 UI 化）**别交叉**：它动 `src/pool/shared/fallback/`＋ErrorBoundary，动前需与调度台握手。
+8. 🔴 **UI 共享边界（2026-11-21 用户拍板，全阶段有效）**：**语义与行为共享，编排与长相私有**——① 安装/卸载/许可/下载、菜单/下拉/对话框/Toast、主题与玻璃 = 壳共享件/能力，必须消费、⛔ 自造第二套；② 卡片形态/尺寸/悬停展开/分区与分类呈现 = **本插件私有**，⛔ 抽成 `@linkdesk/ui` 公共件（市场只是可替换 UI 面，换一个市场允许完全不同）。判据全文 = memory `ui-sharing-boundary-three-layers` ＋ CLAUDE.md 硬约束 28「共享边界」段。
 
 ### 已明确「不做/不做主」
 - 棒 17 发版（三轴走到端）→ 调度台排；
