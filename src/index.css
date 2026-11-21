@@ -341,6 +341,12 @@ html, body, #root, #pool-root {
 [role="alert"] em {
   min-inline-size: min(100%, 8em);
 }
+/* 图标/装饰不继承文本地板（2026-11-22 用户实机：Toast 成功 ✓ 被 8em 拉成 80×14 椭圆）。
+   状态条内 aria-hidden＝图标/装饰，保持自身宽高；文本槽的 8em 地板只服务可读文本。 */
+[role="status"] [aria-hidden="true"],
+[role="alert"] [aria-hidden="true"] {
+  min-inline-size: 0;
+}
 
 /* 分屏内容层：按缝法则内缩（--surface-inset：圆角 0 → 0px，否则 2px）＋ 吃同一个 --surface-radius
    与环同值同形（T3 内缩 ／ T5 · D4-乙）——「环有角、内容方角」的斜切（S4／E6）就此消除。
