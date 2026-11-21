@@ -436,8 +436,12 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
   background:color-mix(in srgb,var(--accent) 10%,var(--bg-card))}
 
 /* duo 编辑精选 */
-.card-duo{display:grid;grid-template-columns:1.05fr .95fr;min-height:192px;cursor:pointer}
-.card-duo .cd-copy{padding:20px 6px 20px 24px;display:flex;flex-direction:column;
+/* duo 分栏大卡（2026-11-22 用户拍板）：
+   ① 两枚一排（真实实现同规）；② 媒体**内嵌**成带圆角的画面，⛔ 不再贴边冒充满幅 hero；
+   ③ 图占比加大、文字列收窄（用户口径：图大一点、文字小一点）。 */
+.card-duo{display:grid;grid-template-columns:.9fr 1.1fr;gap:10px;min-height:192px;
+  padding:10px;cursor:pointer}
+.card-duo .cd-copy{padding:10px 4px 10px 14px;display:flex;flex-direction:column;
   justify-content:center}
 .card-duo .cd-tag{align-self:flex-start;font-size:10.5px;font-weight:600;
   border:1px solid var(--separator);color:var(--text-secondary);border-radius:4px;
@@ -446,7 +450,8 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
 .card-duo .cd-desc{font-size:12px;color:var(--text-secondary);line-height:1.55;margin-bottom:14px;
   max-width:42ch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .card-duo .cd-acts{display:flex;gap:8px;align-items:center}
-.card-duo .cd-art{position:relative;overflow:hidden}
+.card-duo .cd-art{position:relative;overflow:hidden;border-radius:8px;min-height:172px;
+  border:1px solid var(--separator)}
 
 /* rank 名次行（hover = 原位替换，几何不动） */
 .rank-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--radius-lg);
@@ -2076,7 +2081,7 @@ function renderHome(){
     </div>
 
     <div class="sec" data-spec="04§六">
-      ${secH("编辑精选")}
+      ${secH("编辑精选","分栏大卡 duo——两枚一排，媒体内嵌成圆角画面；与首屏满幅 hero 明确分开")}
       <div class="strip"><div class="strip-row duo-row">
         ${cardDuo(CATALOG.find(x=>x.id==="editor"),"效率首选")}
         ${cardDuo(CATALOG.find(x=>x.id==="serial-monitor"),"硬件必备")}
