@@ -31,18 +31,21 @@
 ### 3. 环境（⚠️ 与旧 §四 不同）
 
 - **隔离实例**：`electron . --remote-debugging-port=9391 --user-data-dir=%TEMP%\linkdesk-accept --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`）；Vite `1420` 带 `LINKDESK_USER_PLUGINS_HOME=%TEMP%\linkdesk-accept\plugins`。
-- **夹具已被系统临时清理过一次**：旧的 500 条/四源/intercept/shot.sh **都没了**；已重建**最小夹具**：
-  - `%TEMP%\linkdesk-fixture\marketplace.json`（10 条：编辑器/订阅件/付费件/主题 A–E/需新版/装包失败；4 合集：banner/strip/duo/grid）；
-  - `%TEMP%\linkdesk-fixture\intercept.mjs`（CDP 拦截假源 `linkdesk-fixture/src-v2`，出 marketplace.json＋生成的图标/截图 SVG）；
-  - 加源命令：`window.linkdesk.commands.executeCommand('marketplace.addSource',{url:'https://github.com/linkdesk-fixture/src-v2'})`。
-  - 🔴 **应用一重启，拦截器必须重启**（它绑 pool target）；Vite 改动走三连（重启 Vite→清浏览器缓存→reload）。
+- **综合夹具（2026-11-22 按用户要求重建）**：根 = `%TEMP%\linkdesk-fixture\`
+  - `sources/<repo>/marketplace.json` ×10 源（Alice 3 仓/7 件、Bob 3 仓/7 件、Carol 4 仓/11 件＝25 件；含空仓 `carol-empty`）；`authors/<authorId>.json` ×3——**作者卡/作者店的必需件**，旧最小夹具缺它 ⇒ 首页作者栏不出现。
+  - `intercept.mjs` v2：按 URL 里的 repo 名路由 marketplace.json，按 `/authors/<id>.json` 路由作者块，动态出 icons/avatars/shots SVG（`intercept.legacy.mjs` = 旧单源版备份）。
+  - `licenses-seed.json` → 复制到 `%TEMP%\linkdesk-accept\licenses.json`（永久已购 / 订阅剩 20 天 / 剩 7 天 / 已过期四态）；`FIXTURE.md` 有覆盖清单与加源数组。
+  - 加源：直接 `window.linkdesk.configuration.set("marketplace.marketplaceSources", [...10 URLs])` → `marketplace.refreshCatalog`。**改 JSON 不用重启拦截器**（按请求读文件），应用重启才要重启。
+  - 覆盖：免费 / 买断 / 订阅（月·年·季，¥/$/€）/ 试用 / 退款 / self·managed；空分类「网络 0」；裸件（无作者/分类/图标/截图）；超长标题；未知分类；minApp 9.9.9；banner/strip/duo/grid 合集；作者店 hero/collection/grid/rank/空仓。
+  - 截图：`shots/r12-authors-home.png`（3 作者）、`r12-carol-license.png`（已购/订阅价）、`r12-other-category.png`（裸件/未知分类）。
+  - ⚠️ **已知观察（待用户裁决，未修）**：作者卡在 3+ 仓时仓库小卡叠字；库页「已购未安装」把过期权益也标「已购 ✓」。
 - **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
 
 ### 4. 接班第一小时
 
 1. 读本单 §〇 → 16 号档 §二/§六 → `调度台.md`（当前调度台/设计轴 ID/信道注记）。
-2. 起/验环境：`status` → 重启拦截器（若应用重启过）→ 打开商店，确认 **9 张小卡**在「靶场横滚」。
+2. 起/验环境：`status` → 重启拦截器（若应用重启过）→ 打开商店，确认首页 **3 张作者卡（Alice/Bob/Carol）**、rail「网络 0」、库页 4 条「已购未安装」。
 3. **先问用户**：这轮 F47 两行价格是否满意（尤其实底蓝块）；玻璃主题要不要恢复；然后按他指的下一处继续。
 4. 每轮：改 → build → 部署 → 重启 Vite → 清缓存 → reload → **四页 300px 普查**（脚本 §三）→ 截图 → 市场仓 `verify`＋`vitest` → 主仓动 `src/` 走 `npm run check` → **单独一笔提交** → 16 号档 §六。
 
@@ -113,7 +116,7 @@ p.style.width="";return JSON.stringify({n:bad.length,list:bad.slice(0,12)})})()
 | 隔离实例 | `electron . --remote-debugging-port=9391 --user-data-dir="C:\Users\fengy\AppData\Local\Temp\linkdesk-accept" --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`） |
 | Vite | `LINKDESK_USER_PLUGINS_HOME="C:/Users/fengy/AppData/Local/Temp/linkdesk-accept/plugins" npm run dev` |
 | 目录供数 | `node "$LOCALAPPDATA/Temp/linkdesk-fixture/intercept.mjs"`（CDP Fetch 拦截，自动发现 pool target） |
-| fixture | `%LOCALAPPDATA%\Temp\linkdesk-fixture`（4 源＋作者块＋500 条目＋坏源） |
+| fixture | `%LOCALAPPDATA%\Temp\linkdesk-fixture`（10 源＋3 作者块＋25 条目＋空仓/裸件；覆盖清单见 §〇.3 与夹内 `FIXTURE.md`） |
 | 🔴 拦截器重启纪律 | `intercept.mjs` 绑的是**启动时**的 pool target——**应用一重启（或崩溃重开）必须重启拦截器**，再在商店点「刷新内容」，否则只剩官方/已装目录（表现为「数据全没了」）。主题若被重置为 light：`window.linkdesk.theme.setRecipe("theme-aurora-glass.aurora-glass")` |
 | 截图 | `bash "$LOCALAPPDATA/Temp/linkdesk-fixture/shot.sh" <名>` → `shots/` |
 | 测试密钥对 | `%LOCALAPPDATA%\Temp\linkdesk-keys`（⛔ 不进仓） |
