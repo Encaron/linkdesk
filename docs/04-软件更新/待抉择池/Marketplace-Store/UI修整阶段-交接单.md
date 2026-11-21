@@ -20,6 +20,7 @@
 - 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）＋ **R14 合集渲染归一**（`CollectionRenderer`/`collectionLayoutOf`，市场仓 `f0ffee8`）＋ **R15 作者 rail 计数/未读点＋窄窗分类栏滚轮**（`28c37a3`）＋ **R16 Toast 图标 8em 地板**（主仓 `3bc981a6e`）＋ **R17 作者卡顶层磨砂＋切仓位置记忆**（`bf43683`）＋ **R18 页主范围归一**（官方首页策展只吃 official＋所有 `more.category` 按页主预过滤：官方=official 源、作者=authorId，`0c798b5`/`7ffa007`）。
 
 - **第 6 轮收口（2026-11-22）**：本轮修 R12–R18（AI 命令/读取面 `getState`、Hero/合集渲染归一、作者 rail 计数/未读点、窄窗分类栏滚轮、Toast 图标 8em 地板、作者卡顶层磨砂、切仓位置记忆、官方策展隔离＋页主范围）。**用户还有几个小 bug 未列**——接班第一件事问用户具体是哪几处，⛔ 自行排批次。
+- 🟢 **第 6 轮派单（2026-11-22）**：本会话向总调度台 `sess_f471a6eb-f1c5-4627-abd1-997d502dbbf8` 发 `SendToSession`，返回 **`admission:"accepted"` / `delivery:"start_now"`**——本次**送达**；调度台据此建第 7 轮会话。新 AI 仍以本单 §〇 为准，无需等消息。
 
 ### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
