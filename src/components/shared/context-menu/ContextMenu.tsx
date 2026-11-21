@@ -171,8 +171,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
     for (const item of rawItems) {
       const rawChildren = item.children;
-      // 有 children 的父项放行（即使 command 为空）
-      if (!item.command && !rawChildren) continue;
+      // 有 children 的父项 / 带池侧回调（onSelect）的注入项都放行（即使 command 为空）——
+      // F21b（2026-11-21 真机）：此前只放行 children，注入项 command 为空时被静默丢弃 ⇒ 菜单"一条空缝"。
+      if (!item.command && !rawChildren && !item.onSelect) continue;
 
       const group = item.group ?? "__default";
       if (!grouped.has(group)) { grouped.set(group, []); groupOrder.push(group); }
