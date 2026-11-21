@@ -15,12 +15,13 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `7ffa007`** · 主仓最新（代码 `0240f8655`／`3bc981a6e` Toast；文档 `715fa43ea`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `6e46a01`**（第 7 轮 R19）· 主仓最新（代码 `0240f8655`／`3bc981a6e` Toast；文档 `715fa43ea`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
 - 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）＋ **R14 合集渲染归一**（`CollectionRenderer`/`collectionLayoutOf`，市场仓 `f0ffee8`）＋ **R15 作者 rail 计数/未读点＋窄窗分类栏滚轮**（`28c37a3`）＋ **R16 Toast 图标 8em 地板**（主仓 `3bc981a6e`）＋ **R17 作者卡顶层磨砂＋切仓位置记忆**（`bf43683`）＋ **R18 页主范围归一**（官方首页策展只吃 official＋所有 `more.category` 按页主预过滤：官方=official 源、作者=authorId，`0c798b5`/`7ffa007`）。
 
 - **第 6 轮收口（2026-11-22）**：本轮修 R12–R18（AI 命令/读取面 `getState`、Hero/合集渲染归一、作者 rail 计数/未读点、窄窗分类栏滚轮、Toast 图标 8em 地板、作者卡顶层磨砂、切仓位置记忆、官方策展隔离＋页主范围）。**用户还有几个小 bug 未列**——接班第一件事问用户具体是哪几处，⛔ 自行排批次。
 - 🟢 **第 6 轮派单（2026-11-22）**：本会话向总调度台 `sess_f471a6eb-f1c5-4627-abd1-997d502dbbf8` 发 `SendToSession`，返回 **`admission:"accepted"` / `delivery:"start_now"`**——本次**送达**；调度台据此建第 7 轮会话。新 AI 仍以本单 §〇 为准，无需等消息。
+- **第 7 轮（2026-11-22 · R19 侧栏跟位＋回顶双入口）**：用户报「点首页『全部主题／完整榜单』跳转后，rail 没跟过去（排行榜在下面被盖住）」。已修：① 路由落定后 rail **自动把当前项滚入可视区**（竖排滚 `.rail-scroll`、≤900 窄窗滚 rail 本体；只动侧栏）；② **已定位项二次点击 = 平滑回顶**（`sameRoute` 精确比对，带 `authorId/official` 的分类页点 rail 仍回全量分类）；③ 内容区右下角**悬浮回顶钮**（滚过 280px 淡入，reduced-motion 直落）。截图 `r19-backtop.png` / `r19-rail-focus.png`（`%TEMP%\linkdesk-fixture\shots\`）。市场仓 **`6e46a01`**；`verify` 全绿 · vitest **68 文件 / 721 例**。**待用户复验**；用户还有小 bug 继续报，仍按「一处一处」来。
 
 ### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
