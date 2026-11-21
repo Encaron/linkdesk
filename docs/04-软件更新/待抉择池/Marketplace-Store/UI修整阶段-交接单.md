@@ -53,7 +53,7 @@
   - ⚠️ **观察（未修）**：分类页 300px 容器下 `.cr-desc` 被压到 6px（nowrap＝省略号，非竖排）；作者店 300px 容器下页头 H1「Alice 的小店」49×99（`ws:normal` 多行）——两处待用户判。库「已购未安装」过期徽标已在第十一轮修复（`bf0f98c`）。
 - **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
-- 🔴 **夹具临时目录会被系统清理（2026-11-22 再次发生）**：`%TEMP%\linkdesk-fixture` 一旦被清空，数据全没（表现为来源 0/作者 0）。**一键恢复**：`node scratch/refixture.mjs`（重建夹具 → 重启 intercept → 写回 11 源 → 刷新目录）。intercept 源码已保存在 `scratch/intercept-fixture.mjs`，⛔ 只依赖 temp 里那份会被清理的副本。页面 reload 不用重启 intercept；**应用重启才要**。
+- 🔴 **夹具临时目录会被系统清理（2026-11-22 再次发生）**：`%TEMP%\linkdesk-fixture` 一旦被清空，数据全没（表现为来源 0/作者 0）。**一键恢复**：`node scratch/refixture.mjs`（重建夹具 → 重启 intercept → 写回 11 源 → 刷新目录）。intercept 源码已保存在 `scratch/intercept-fixture.mjs`，⛔ 只依赖 temp 里那份会被清理的副本。页面 reload 不用重启 intercept；**应用重启才要**。；⚠️ intercept **只接管 `linkdesk-fixture-*` 仓库**，官方/真实 GitHub 资产一律放行（2026-11-22 曾因全量接管把官方主题图标换成「IC」）；占位截图固定 1280×720、图标 256/128，⛔ 用巨大字母（会在窄栏/概览里显示成巨图）
 - 🔴 **同一场 temp 清理也会删掉隔离实例的内置插件**（`%TEMP%\linkdesk-accept/plugins/` 里 settings/lang-defaults/editor/file-tree 消失 ⇒ 实例只剩 marketplace）。恢复：把 `bundled-plugins/<id>.linkdesk-plugin`（zip）解压到 `%TEMP%\linkdesk-accept/plugins/<id>/`，**重启实例**；marketplace 用 dev 构建，⛔ 不要用 bundled 那份覆盖。
 
 ### 4. 接班第一小时
