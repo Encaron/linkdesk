@@ -30,7 +30,7 @@
 ## 棒 3b · 批2b 官方插件全量分类适配（详案 = R4-批2b-官方适配.md）
 
 - R4-2.8 ✅ 2026-11-20 18 仓 plugin.json 补 category＋categories（04 §5.2 照抄；theme-terminal 表未列按桶语义补 themes/color-scheme）＋ schema description 写全名单（四份拷贝同笔）＋ marketplace 1.2.1 补 productivity
-- R4-2.9 🟡 2026-11-20 18 仓逐仓 PATCH 发版＋官方目录收录（8cf434d）＋种子追新 6/6 新鲜——**真机 chip 读数待棒 6**（分类 rail/chips UI 尚未建；目录数据面已验 18/18 带 category，零件落「其他」）
+- R4-2.9 ✅ 2026-11-21 18 仓逐仓 PATCH 发版＋官方目录收录（8cf434d）＋种子追新 6/6 新鲜；**真机分类读数已由棒 6 收口**（开发 3/文档 2/硬件 1/网络 0/效率 2/主题 9/阅读 0/娱乐 1/其他 1——其他桶 1 条为第三方 `my-cool-plugin` 未声明 category，机制 4 诚实落位；18 官方全归位、warnings 0）。棒 3b 自有格，由棒 3b 执行者补勾（2026-11-21 调度台核对）。
 
 ## 棒 4 · 批2b 服务面（详案 = R4-批2-服务层.md）
 
