@@ -65,6 +65,7 @@ import {
   validatePluginJson,
 } from "./validate.js";
 import { pinDirectoryEntryDates, zipTree } from "./pack.js";
+import { copyFileInto, copyReadmeReferencedAssets } from "./readme-media.js";
 import { findDuplicatedEntryModules, missingEntries, type EmittedChunk } from "./surface-chunk-guard.js";
 
 /** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空）。
@@ -194,16 +195,6 @@ function copyTree(srcDir: string, destDir: string): void {
   }
 }
 
-/** 单个文件安全拷贝：断言 src 在 root 内，落 pkgDir 同相对路径，缺省忽略 */
-function copyFileInto(root: string, pkgDir: string, rel: string): boolean {
-  const src = resolve(root, rel);
-  if (!isWithinRoot(root, src) || !existsSync(src)) return false;
-  const dest = join(pkgDir, rel);
-  mkdirSync(dirname(dest), { recursive: true });
-  copyFileSync(src, dest);
-  return true;
-}
-
 /** E6#164：包内 `CHANGELOG.md` **按窗口写出**（读源码根原文 → 只留最近 N 版 → 落 pkgDir）。
  *  ⛔ 不能再用 `copyFileInto` 原样拷贝——那是「整部历史随每一次安装/更新下载」：marketplace 包实测
  *  该文件占 zip 的 24.3%（未压 41,078 B，包内最大单文件）。窗口大小与目录侧同一常量；
@@ -217,37 +208,6 @@ function writeChangelogWindow(root: string, pkgDir: string): boolean {
   return true;
 }
 
-/** E6#70a（15 档案 §四 70a/§五.3）：README 媒体引用收集——从说明文本抽相对引用（去 query/hash + 实体解码），
- *  返回源码根相对路径集。只认作者两态写法：markdown `![alt](path)` + HTML `<img>/<video>` 内 `src=`/`poster=`
- *  属性（tag 级 [^>] 含 \n，跨行标签可过）。绝对 scheme（https/data:/mailto…）、协议相对 //、锚点 # 不入集；
- *  `<source>`（70d 页内视频子元素）届时随 70d 一并扩。 */
-function readmeMediaRefs(md: string): string[] {
-  const out: string[] = [];
-  const add = (raw: string) => {
-    const clean = raw
-      .trim()
-      .split(/[?#]/, 1)[0]
-      .replace(/&amp;/gi, "&")
-      .replace(/&quot;/gi, '"');
-    if (!clean || /^[a-z][a-z0-9+.-]*:/i.test(clean) || clean.startsWith("//") || clean.startsWith("#")) return;
-    out.push(clean);
-  };
-  // markdown 图片 ![alt](path)
-  for (const m of md.matchAll(/!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) add(m[1]);
-  // HTML <img>/<video> 内 src=/poster= 属性（值带单/双引号或裸值）
-  for (const m of md.matchAll(/<(?:img|video)\b[^>]*>/gi)) {
-    const attrs = m[0].matchAll(/(?:src|poster)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi);
-    for (const a of attrs) add(a[1] ?? a[2] ?? a[3] ?? "");
-  }
-  return out;
-}
-
-/** E6#70a：README 引用的相对媒体资产随包——扫 README 文本逐一 copyFileInto（与 README 同根相对路径）。
- *  逃逸/缺省由 copyFileInto 内 isWithinRoot + existsSync 守卫兜底（出 root 或不存在 → 跳过，作者错不红）。
- *  作者零声明清单——detail 说明区渲染以 assetBase=linkdesk://{id}/ 解析这些相对路径 → 资产必须真在包内。 */
-function copyReadmeReferencedAssets(root: string, pkgDir: string, readmeText: string): void {
-  for (const rel of readmeMediaRefs(readmeText)) copyFileInto(root, pkgDir, rel);
-}
 
 /** Node 标准向上 node_modules 链（E6#16）——workspaces 化后插件依赖可被 hoist 提升到仓库根 node_modules，
  * 仍须能随包。逐级收集存在的 node_modules 目录（插件根本地 → 父级 → … → fs 根），最近层在数组前（先查 = 本地优先）。 */
