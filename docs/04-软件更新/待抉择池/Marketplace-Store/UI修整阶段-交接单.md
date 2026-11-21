@@ -9,6 +9,51 @@
 
 ---
 
+## 〇、最新交接状态（2026-11-22 · 第 5 轮接班结束，上下文将满）
+
+> 本节是**接班第一入口**；下面 §一–§六 是阶段早期的范式与环境，仍然有效，但**以本节为准**。
+
+### 1. 现状（实读）
+
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `778cffe`** · 主仓最新（代码 `0240f8655` / 文档 `dc7860e4e`）。**全部未推送、未发版。**
+- 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
+- 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）。
+
+### 2. F47 价格角标（最新一轮，用户待验收）
+
+- **规则（用户拍板）**：价格是主信息，**⛔ 永不省略号**；只有分类/作者可省略；标题独占一行，不被价格挤。
+- 实现：`statusTag` 付费态新增 `modelKey/amount`；`CornerTag` 支持 `stacked`（模型词/金额两行）；**小卡 stacked、网格单行**（宽度够）；hover 徽标行**过滤状态族**（角标是唯一状态出口，不再两份价格）；`rows2` 轨道上下余量 36→48、网格占位 96→108。
+- 实测：常态标题 139px 完整、角标 57×32 在卡内；英文模拟 78×32 右距 18 不溢出；展开面 142px、轨道余量 19、徽标仅「社区」。
+- 截图：`%TEMP%\linkdesk-fixture\shots\r10-rest.png`、`r10-open2.png`。
+- ⏳ 用户可能觉得两行价格块（实底蓝）像按钮；若要更轻，改成「模型词浅色＋金额强调、去实底」即可，别动别的。
+
+### 3. 环境（⚠️ 与旧 §四 不同）
+
+- **隔离实例**：`electron . --remote-debugging-port=9391 --user-data-dir=%TEMP%\linkdesk-accept --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`）；Vite `1420` 带 `LINKDESK_USER_PLUGINS_HOME=%TEMP%\linkdesk-accept\plugins`。
+- **夹具已被系统临时清理过一次**：旧的 500 条/四源/intercept/shot.sh **都没了**；已重建**最小夹具**：
+  - `%TEMP%\linkdesk-fixture\marketplace.json`（10 条：编辑器/订阅件/付费件/主题 A–E/需新版/装包失败；4 合集：banner/strip/duo/grid）；
+  - `%TEMP%\linkdesk-fixture\intercept.mjs`（CDP 拦截假源 `linkdesk-fixture/src-v2`，出 marketplace.json＋生成的图标/截图 SVG）；
+  - 加源命令：`window.linkdesk.commands.executeCommand('marketplace.addSource',{url:'https://github.com/linkdesk-fixture/src-v2'})`。
+  - 🔴 **应用一重启，拦截器必须重启**（它绑 pool target）；Vite 改动走三连（重启 Vite→清浏览器缓存→reload）。
+- **主题族插件也被清掉了**（accept/plugins 只剩 marketplace/settings）⇒ 现在**浅色主题**。要恢复玻璃主题：用 SDK 构建 `official/theme-aurora-glass` 后只读复制进 accept/plugins（或从备份恢复）；**这轮未做，等用户决定**。
+- 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
+
+### 4. 接班第一小时
+
+1. 读本单 §〇 → 16 号档 §二/§六 → `调度台.md`（当前调度台/设计轴 ID/信道注记）。
+2. 起/验环境：`status` → 重启拦截器（若应用重启过）→ 打开商店，确认 **9 张小卡**在「靶场横滚」。
+3. **先问用户**：这轮 F47 两行价格是否满意（尤其实底蓝块）；玻璃主题要不要恢复；然后按他指的下一处继续。
+4. 每轮：改 → build → 部署 → 重启 Vite → 清缓存 → reload → **四页 300px 普查**（脚本 §三）→ 截图 → 市场仓 `verify`＋`vitest` → 主仓动 `src/` 走 `npm run check` → **单独一笔提交** → 16 号档 §六。
+
+### 5. 红线（本阶段长期有效）
+
+- ⛔ 不发版/不推送；⛔ 自建会话；发版棒归调度台。
+- ⛔ 与「媒体丰富度设计轴」交叉：它出 `mockups/06-媒体丰富度蓝图.html`＋`17-媒体丰富度设计.md`，**你只修 bug，不碰那两处与设计稿**。
+- 价格永不截；标题不被价格挤；**一面一个 backdrop root**（F39）；响应式一律 `@container`（F46 门禁：市场仓 `responsiveByContainer.test.ts`）。
+- 右键菜单玻璃外观不动；能用共享组件的必须用；卡片长相属市场私有，⛔ 抽 `@linkdesk/ui`（2026-11-21 拍板，见 CLAUDE 硬约束 28）。
+
+---
+
 ## 一、当前状态（2026-11-21 实读）
 
 ### 已完成（按用户反馈轮次）
