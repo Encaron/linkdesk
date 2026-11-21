@@ -502,6 +502,10 @@ export interface MenuItemDescriptor {
    * **the end** is the shared component's context"; ⛔ do not assume `args[0]` is necessarily your data (unless that slot has no shared context).
    */
   commandArgs?: unknown[];
+  /** F14 配套（16 号档 · 2026-11-21）：**进程内注入项**的池侧回调——有值则点击就地在池内执行，
+   *  不走壳命令（ContextMenu 分发先查 onSelect 再 executeCommand）。仅 `items` prop 直注形态可用
+   *  （wire 菜单 getItems 不能携带函数——跨 IPC 只走 command/commandArgs）。 */
+  onSelect?: () => void;
   children?: Array<string | MenuItemDescriptor>;
 }
 

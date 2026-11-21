@@ -84,6 +84,12 @@ export interface ContextMenuProps {
    *  - "embedded"（顶部菜单栏下拉）：无 backdrop + 点外关闭由宿主自管——菜单嵌在按钮行
    *    hover 切换交互里，backdrop 会吞掉按钮行第一击导致切换失效（硬约束 18 已钳制菜单 top≥30）。 */
   variant?: "overlay" | "non-modal" | "embedded";
+  /**
+   * F17（2026-11-21）：**多选菜单**（打勾式筛选/开关列表）——选中后菜单不关，可连续勾选多项目。
+   * 缺省 false（既有消费方行为不变：单选即关）。
+   * ⚠️ 只作用于 `onSelect` 池侧回调项（壳命令项仍按单选语义关菜单——命令通常自带反馈/导航）。
+   */
+  keepOpenOnSelect?: boolean;
 }
 
 // E5.7#97：原 EnrichedItem 本地类型整删——menu.getItems() 已按 LinkDeskAPI 契约定型
@@ -131,7 +137,7 @@ function mapChildren(nodes: (string | MenuItemDescriptor)[], group: string): Res
 
 /* ── 组件 ── */
 
-export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren, items, variant }: ContextMenuProps) {
+export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren, items, variant, keepOpenOnSelect }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   // E5.8#148：多级子面板 ref 注册表（键 = 链索引）——mousedown contains 守卫全级覆盖
   const panelRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -195,6 +201,10 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         shortcut: item.shortcut,
         checked: item.checked,
         commandArgs: item.commandArgs,
+        // F14 配套（16 号档 F21）：**顶层注入项**的 onSelect 透传（进程内 items prop 专用；分发
+        // 先查 onSelect 再 executeCommand）——此前只透传到动态子项，顶层注入项拿不到池侧回调
+        // ⇒ 市场等消费方被迫自绘菜单。
+        onSelect: item.onSelect,
         children,
       });
     }
@@ -307,13 +317,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         if (item) {
           if (item.onSelect) item.onSelect();
           else lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context);
-          onClose();
+          if (!(keepOpenOnSelect && item.onSelect)) onClose();
         }
       }
     };
     window.addEventListener("keydown", onKeyNav);
     return () => window.removeEventListener("keydown", onKeyNav);
-  }, [clickableItems, focusIdx, context, onClose, visible, subPanels, openSub]);
+  }, [clickableItems, focusIdx, context, onClose, visible, subPanels, openSub, keepOpenOnSelect]);
 
   useEffect(() => {
     if (focusIdx >= 0) itemRefs.current.get(focusIdx)?.scrollIntoView({ block: "nearest" });
@@ -323,11 +333,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   // E5.8#37.7.1：整项传入（非 commandId）——载荷 commandArgs 随执行透传（context 共享，
   // per-item 身份走命令载荷：executeCommand(id, undefined, ...commandArgs, context)）。
   const handleItemClick = useCallback(async (item: ResolvedItem) => {
-    onClose();
+    // F17：多选菜单（keepOpenOnSelect）的池侧回调项——勾完不关，连续勾选；其余一律关。
+    const stayOpen = !!keepOpenOnSelect && !!item.onSelect;
+    if (!stayOpen) onClose();
     // 04：动态项带池侧回调 → 就地执行（池→壳回调通道，如侧栏 section 折叠）；否则照旧走壳命令。
     if (item.onSelect) { item.onSelect(); return; }
     await lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context);
-  }, [context, onClose]);
+  }, [context, onClose, keepOpenOnSelect]);
 
   /* ── 视口自适应（E5#94a：两阶段渲染——先隐藏量测真实 DOM 尺寸再修正位置）── */
   useLayoutEffect(() => {

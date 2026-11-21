@@ -23,8 +23,7 @@ export {
 // E5.8 Phase 11.15 3b：getThemeVariables/getBaseRadius/synthesizeGlassSurfaces 仅内部消费
 // （apply.ts/migration.ts 直引 ./tokens）——从门面撤出不暴露；测试直引 ./tokens
 // E5.8#117：gateMirrorVisibility 已删除（panorama 镜像机制整体废除，cp114 证据）
-// F14 浮起面配方（16 号档平台案）：POP_SURFACE_MIN_ALPHA 对外（门禁/文档引同一真相源）
-export { getEffectiveTokens, applyRadiusAbsolute, applyOverrides, POP_SURFACE_MIN_ALPHA } from "./ThemeEngine/tokens";
+export { getEffectiveTokens, applyRadiusAbsolute, applyOverrides } from "./ThemeEngine/tokens";
 
 export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
 

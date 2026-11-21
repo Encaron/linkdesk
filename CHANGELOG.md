@@ -6,15 +6,13 @@
 
 ### feat
 
-- 🎛️ **浮起面配方 token（`--ldk-pop-*`）——玻璃主题下自绘浮起面开箱玻璃正确**（16 号档 F14 平台案，2026-11-21 用户拍板「把坑做进 token」）：ThemeEngine 新增 `synthesizePopSurfaces` 派生四 token（surface/blur/border/shadow）——玻璃态 = `--bg-card-solid` 按不透明度下限 0.75 合成＋磨砂，非玻璃态 = card 原样；随 `theme:changed` 推到池，插件消费 `var(--ldk-pop-surface)` 即零配置玻璃正确。ContextMenu／下拉卡／标签 ＋ 菜单三处壳浮起面同笔换装（此前玻璃下半透＝用户实测「透底/双层叠影/下层颜色糊透」）。
-- 🛡️ **新门禁腿 `check-pop-surface`**：浮起面类（menu/modal/dropdown/popover/popup/-over/float-panel）`background` 裸用 `--bg-card/--bg-input` 判红——以后自绘浮起面忘接配方，check 直接红；`--path` 可扫任意 css 目录。硬规定同步升级：11-20「⛔ 浮层外自绘 blur」→「浮层外自绘浮起面必须消费 `--ldk-pop-*`」（自绘依然合法，给了正确姿势）。
-- 📖 **作者规约 §14「自绘浮起面」**（中英＋plugin-docs 0.1.79 重生成）：配方四行＋单层呈现纪律＋门禁说明。
+- 🧩 **共享 `<ContextMenu>` 两个消费能力补齐**（第一方插件市场换装前置，2026-11-21）：① `MenuItemDescriptor.onSelect` 顶层注入项透传（此前只有动态子项能带池侧回调，顶层注入项拿不到，消费方被迫自绘菜单）；② 新 prop `keepOpenOnSelect`（打勾式多选菜单：选中不关、连续勾选；缺省 false，既有消费方行为不变）。外观零变化——菜单仍走原磨砂玻璃（`--bg-card` ＋ 浮层地板）。
 
-### fix
+### docs
 
-- 玻璃主题下 ContextMenu／下拉卡／标签 ＋ 菜单透底（同上——随配方 token 换装一并修复）。
+- 契约类型面同步（`@linkdesk/contracts` 0.1.48）＋ ui 0.2.64 重发。
 
-## v0.2.57（2026-11-20）
+## v0.2.57（2026-11-20）## v0.2.57（2026-11-20）
 
 ### fix
 

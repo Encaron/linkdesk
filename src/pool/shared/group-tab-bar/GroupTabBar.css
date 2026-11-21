@@ -265,9 +265,7 @@
 
 /* ── E5.6#16.7k-3：PlusMenu [+] 下拉菜单 ── */
 .ldk-group-tab-plus-menu {
-  /* F14 浮起面配方（16 号档平台案）：玻璃态不透明基底＋磨砂——E5.8#128.3 的下拉表面语义由配方 token 承接 */
-  background: var(--ldk-pop-surface);
-  backdrop-filter: var(--ldk-pop-blur);
+  background: var(--bg-card); /* E5.8#128.3：幽灵 --bg-dropdown → --bg-card（下拉表面，同 quick-pick） */
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 4px 0;

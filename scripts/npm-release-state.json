@@ -3,11 +3,11 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.46",
-      "contentHash": "dabb01ec47dc8c4b36452c2f389709417881c3210f146334be3b04b03fd5f6d8",
+      "version": "0.1.48",
+      "contentHash": "2ee16fd3f4fe33997765b912fdb3eed1688c7e430f4cbbbe90ee012b9f3cd515",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "e55eaf03785049e1"
+        "contracts/linkdesk.d.ts": "81475d81b28cd96f"
       }
     },
     {
@@ -133,8 +133,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.61",
-      "contentHash": "33f41e3578b03bf8c53e0b276bd6bcbe5515e14313d9c86e27964a0be05192ea",
+      "version": "0.2.65",
+      "contentHash": "6fd609f30863b9569cf030152cde94354b3a92819aacb5019841c6d6527c4e6e",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "77a34ee8f99e01af",
@@ -153,9 +153,9 @@
         "src/components/shared/combobox/Combobox.css": "ddec9e7dadda7ccd",
         "src/components/shared/combobox/Combobox.test.tsx": "4d6dde5146e68ca2",
         "src/components/shared/combobox/Combobox.tsx": "474f9165af793325",
-        "src/components/shared/context-menu/ContextMenu.css": "9042a0ff502c5f70",
+        "src/components/shared/context-menu/ContextMenu.css": "876c232f5b0bb110",
         "src/components/shared/context-menu/ContextMenu.test.tsx": "903a2f026b1e3944",
-        "src/components/shared/context-menu/ContextMenu.tsx": "b10cbdb74690635b",
+        "src/components/shared/context-menu/ContextMenu.tsx": "f9283d0a9ab8bead",
         "src/components/shared/effective-badge/EffectiveBadge.css": "9011e77040443bef",
         "src/components/shared/effective-badge/EffectiveBadge.tsx": "d18c7b3f100cfa5d",
         "src/components/shared/effective-badge/formatEffectiveValue.test.ts": "969c2c088254725b",
@@ -264,8 +264,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.79",
-      "contentHash": "efd3a8dddf50da510db3ff69b9e1620e4e12c0d94d3aa186c49bf85e303113b8",
+      "version": "0.1.81",
+      "contentHash": "fad1c518cad4857d764cc4c3286914d5c1db901b706796acf5edf1dfda3925dc",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8a114a274be827f7",
@@ -273,7 +273,7 @@
         "packages/plugin-docs/docs/02-plugin-lifecycle.md": "aeda91886c7d874b",
         "packages/plugin-docs/docs/03-contributes-spec.md": "5c22f642c1ee06c9",
         "packages/plugin-docs/docs/04-distribution-format.md": "cb8776b7a804294a",
-        "packages/plugin-docs/docs/05-ui-conventions.md": "a5534efef7e6e430",
+        "packages/plugin-docs/docs/05-ui-conventions.md": "3b9b0988e74ef6c9",
         "packages/plugin-docs/docs/06-plugin-json-spec.md": "459b82228b7c0054",
         "packages/plugin-docs/docs/07-plugin-to-plugin-communication.md": "ef34c052c31e7d38",
         "packages/plugin-docs/docs/08-view-container-api.md": "66c393600bde53fa",
@@ -299,7 +299,7 @@
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
         "packages/plugin-docs/docs/zh/03-插件contributes规范.md": "290ce94b03a618f7",
         "packages/plugin-docs/docs/zh/04-插件分发格式.md": "a091ce0d0ee1b5f2",
-        "packages/plugin-docs/docs/zh/05-插件UI写法规约.md": "f4ceeb3fbb05bb35",
+        "packages/plugin-docs/docs/zh/05-插件UI写法规约.md": "a43619be7b037e72",
         "packages/plugin-docs/docs/zh/06-plugin.json规范.md": "98296ec2de45e7d8",
         "packages/plugin-docs/docs/zh/07-插件间通信.md": "bc972f0655240fa8",
         "packages/plugin-docs/docs/zh/08-ViewContainer-视图容器API.md": "273d38a40c21414d",
