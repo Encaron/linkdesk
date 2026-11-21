@@ -39,7 +39,7 @@
 
 ### 3. 环境（⚠️ 与旧 §四 不同）
 
-- **隔离实例**：`electron . --remote-debugging-port=9391 --user-data-dir=%TEMP%\linkdesk-accept --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`）；Vite `1420` 带 `LINKDESK_USER_PLUGINS_HOME=%TEMP%\linkdesk-accept\plugins`。
+- **隔离实例**（⚠️ 2026-11-22 交班时已关闭、Vite 1420 仍在；接班先按本命令重启实例，再重启拦截器）：`electron . --remote-debugging-port=9391 --user-data-dir=%TEMP%\linkdesk-accept --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`）；Vite `1420` 带 `LINKDESK_USER_PLUGINS_HOME=%TEMP%\linkdesk-accept\plugins`。
 - **综合夹具（2026-11-22 按用户要求重建）**：根 = `%TEMP%\linkdesk-fixture\`
   - `sources/<repo>/marketplace.json` ×**11 源**（Alice 3 仓/17 件、Bob 3 仓/16 件、Carol 5 仓/23 件＝**56 件**，加官方 19＝目录 75 件；含空仓 `carol-empty` 与扩展仓 `carol-extras`）；`authors/<authorId>.json` ×3——**作者卡/作者店的必需件**，旧最小夹具缺它 ⇒ 首页作者栏不出现。
   - `intercept.mjs` v2：按 URL 里的 repo 名路由 marketplace.json，按 `/authors/<id>.json` 路由作者块，动态出 icons/avatars/shots SVG（`intercept.legacy.mjs` = 旧单源版备份）。
