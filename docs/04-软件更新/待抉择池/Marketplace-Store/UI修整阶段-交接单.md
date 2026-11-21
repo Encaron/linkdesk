@@ -15,17 +15,18 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `778cffe`** · 主仓最新（代码 `0240f8655` / 文档 `dc7860e4e`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `d5131a7`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
 - 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）。
 
-### 2. F47 价格角标（最新一轮，用户待验收）
+### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
 - **规则（用户拍板）**：价格是主信息，**⛔ 永不省略号**；只有分类/作者可省略；标题独占一行，不被价格挤。
-- 实现：`statusTag` 付费态新增 `modelKey/amount`；`CornerTag` 支持 `stacked`（模型词/金额两行）；**小卡 stacked、网格单行**（宽度够）；hover 徽标行**过滤状态族**（角标是唯一状态出口，不再两份价格）；`rows2` 轨道上下余量 36→48、网格占位 96→108。
-- 实测：常态标题 139px 完整、角标 57×32 在卡内；英文模拟 78×32 右距 18 不溢出；展开面 142px、轨道余量 19、徽标仅「社区」。
-- 截图：`%TEMP%\linkdesk-fixture\shots\r10-rest.png`、`r10-open2.png`。
-- ⏳ 用户可能觉得两行价格块（实底蓝）像按钮；若要更轻，改成「模型词浅色＋金额强调、去实底」即可，别动别的。
+- 结构：`statusTag` 付费态新增 `modelKey/amount`；`CornerTag` 支持 `stacked`（模型词/金额两行）；**小卡 stacked、网格单行**（宽度够）；hover 徽标行**过滤状态族**（角标是唯一状态出口，不再两份价格）；`rows2` 轨道上下余量 36→48、网格占位 96→108。
+- **第九轮（R9）用户口径**：两行结构保留，但**实底强调色胶囊像按钮** ⇒ 只改这一处、不碰布局。已改：`.is-stacked.is-paid` 去底去框；模型词 `--text-secondary`/500，金额 `--accent`/700；仅 `stacked+paid`，单行角标不动（市场仓 `d5131a7`）。
+- 实测：R8 常态标题 139px 完整、角标 57×32 在卡内；R9 真机角标 57px、背景 `rgba(0,0,0,0)`、模型词 `rgba(255,255,255,0.8)`/500、金额 `rgb(255,184,92)`/700；hover 展开面仅「社区」一枚徽标。
+- 截图：R8 `r10-rest.png`/`r10-open2.png`；**R9 `r11-price-rest.png`/`r11-price-hover.png`**（均在 `%TEMP%\linkdesk-fixture\shots\`）。
+- ✅ 用户 2026-11-22 拍板：**玻璃主题不恢复**，后续验收保持 `theme-panorama.panorama`。
 
 ### 3. 环境（⚠️ 与旧 §四 不同）
 
@@ -35,7 +36,7 @@
   - `%TEMP%\linkdesk-fixture\intercept.mjs`（CDP 拦截假源 `linkdesk-fixture/src-v2`，出 marketplace.json＋生成的图标/截图 SVG）；
   - 加源命令：`window.linkdesk.commands.executeCommand('marketplace.addSource',{url:'https://github.com/linkdesk-fixture/src-v2'})`。
   - 🔴 **应用一重启，拦截器必须重启**（它绑 pool target）；Vite 改动走三连（重启 Vite→清浏览器缓存→reload）。
-- **主题族插件也被清掉了**（accept/plugins 只剩 marketplace/settings）⇒ 现在**浅色主题**。要恢复玻璃主题：用 SDK 构建 `official/theme-aurora-glass` 后只读复制进 accept/plugins（或从备份恢复）；**这轮未做，等用户决定**。
+- **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
 
 ### 4. 接班第一小时
