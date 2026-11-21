@@ -15,7 +15,7 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `9759eb5`**（第 7 轮 R19–R22）· 主仓最新（代码 `0240f8655`／`3bc981a6e` Toast；文档 `715fa43ea`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `b487640`**（第 7 轮 R19–R23）· 主仓最新（代码 `0240f8655`／`3bc981a6e` Toast；文档 `715fa43ea`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
 - 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）＋ **R14 合集渲染归一**（`CollectionRenderer`/`collectionLayoutOf`，市场仓 `f0ffee8`）＋ **R15 作者 rail 计数/未读点＋窄窗分类栏滚轮**（`28c37a3`）＋ **R16 Toast 图标 8em 地板**（主仓 `3bc981a6e`）＋ **R17 作者卡顶层磨砂＋切仓位置记忆**（`bf43683`）＋ **R18 页主范围归一**（官方首页策展只吃 official＋所有 `more.category` 按页主预过滤：官方=official 源、作者=authorId，`0c798b5`/`7ffa007`）。
 
@@ -25,6 +25,7 @@
 - **第 7 轮（2026-11-22 · R20 顶部操作区吸顶）**：用户要求搜索/排序/筛选/小类 chips/库搜索/作者排序/来源添加入口吸顶，且**机制只能一份**——新加分类或新页面 ⛔ 再实现一遍。新增 **`StickyBar` 唯一实现**（页头自测高度写 `--marketplace-sticky-head`，工具条自动接续；`group` 支持多行），接入页头＋分类/搜索工具行＋库工具栏＋作者工具栏＋来源添加入口；**门禁 `stickyBarOwner.test.ts`** 禁止页面再写 sticky。截图 `r20-sticky-category.png` / `r20-sticky-library.png` / `r20-sticky-sources.png`。市场仓 **`413e2b6`**；`verify` 全绿 · vitest **69 文件 / 724 例**。**R20 补（同日用户复验）**：首行摘要被页头压住 → 来源/作者首行负 margin 归零；玻璃面改 `::before` 外扩 28px（≤700 为 16px）盖住 hover 卡面＋底角 12px 圆角（拼合时只圆最底一组），底色改 `--bg-window-solid` 防透字；提交 **`26eff3d`**，截图 `r21-sources-top.png`／`r21-sticky-bleed.png`。**待用户复验**。
 - **第 7 轮（2026-11-22 · R21 圆角吃主题）**：用户指出「组件圆角」（`app.surfaceRadius`）只对卡片生效，吸顶条/页头按钮/筛选/chips 等仍是写死 px。已把全仓 9 个 CSS 的 59 处 `border-radius` 映射到主题六档 `--radius-xs/sm/md/lg/2xl/pill/full`（吸顶条下角＝`0 0 var(--radius-lg) var(--radius-lg)`），并新增 `radiusTokens.test.ts` 门禁（出现字面 px/% 即红）。真机：当前 `--radius-lg`＝14px，上述控件全部 14px；滑杆改 32 时同步变圆。市场仓 **`4e773c1`**；`verify` 全绿 · vitest **70 文件 / 725 例**；截图 `r22-radius-theme.png`。**待用户复验**。 **R21 补**：吸顶条上沿也圆——单条页头四角全圆；页头＋工具组时页头圆上角、工具组圆下角（中缝直角防缺口）；提交 **`2b434fd`**。
 - **第 7 轮（2026-11-22 · R22 吸顶碰撞反馈）**：工具条贴上页头那一下——**硬快版**：只压工具条自己（`origin top`、3%、110ms），页头完全不动（下沉会张缝漏光），接缝 1px 亮线 base opacity 0 快速熄灭；持续下滑不重触发。首版 `c4ff6ce`（页头下沉＋回弹）有漏光/余震已废弃。提交 **`9759eb5`**。**待用户复验**。
+- **第 7 轮（2026-11-22 · R23 窄窗吸顶压缩＋来源失败提示位）**：搜索定值先缩（360→100）、≤900 最多两行、≤700 按钮 icon-only、≤420 工具行/小类行单行横滚；「部分来源加载失败」整行删除，改页头警告钉（计数＋hint，点击去来源）。300px 下吸顶总高 ~175（改前 ~229）。截图 `r24-header-narrow.png`／`r25-header-300.png`；提交 **`b487640`**。**待用户复验**。
 
 ### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
