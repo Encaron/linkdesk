@@ -67,6 +67,7 @@ p.style.width="";return JSON.stringify({n:bad.length,list:bad.slice(0,12)})})()
 | Vite | `LINKDESK_USER_PLUGINS_HOME="C:/Users/fengy/AppData/Local/Temp/linkdesk-accept/plugins" npm run dev` |
 | 目录供数 | `node "$LOCALAPPDATA/Temp/linkdesk-fixture/intercept.mjs"`（CDP Fetch 拦截，自动发现 pool target） |
 | fixture | `%LOCALAPPDATA%\Temp\linkdesk-fixture`（4 源＋作者块＋500 条目＋坏源） |
+| 🔴 拦截器重启纪律 | `intercept.mjs` 绑的是**启动时**的 pool target——**应用一重启（或崩溃重开）必须重启拦截器**，再在商店点「刷新内容」，否则只剩官方/已装目录（表现为「数据全没了」）。主题若被重置为 light：`window.linkdesk.theme.setRecipe("theme-aurora-glass.aurora-glass")` |
 | 截图 | `bash "$LOCALAPPDATA/Temp/linkdesk-fixture/shot.sh" <名>` → `shots/` |
 | 测试密钥对 | `%LOCALAPPDATA%\Temp\linkdesk-keys`（⛔ 不进仓） |
 
