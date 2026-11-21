@@ -142,7 +142,7 @@
 | 打开插件详情 | `marketplace.openPlugin` | `pluginId: string, pinned?: boolean` | 同上 |
 | 打开来源管理 | `marketplace.openSources` | — | 同上 |
 | 搜索 | `marketplace.search` | `query: string` | 同上 |
-| **读取市场状态（只读）** | `marketplace.getState` | — | `{ ok, route, visibleEntryIds, navCommands, entries, collections, authors, sources, counts }` |
+| **读取市场状态（只读）** | `marketplace.getState` | — | `{ ok, route, visibleEntryIds, visibleAuthorIds, navCommands, entries, collections, authors, sources, counts }` |
 | 添加市场源 | `marketplace.addSource`（已有） | `url: string` | 现三态回执 |
 | 添加本地插件 | `marketplace.addLocalPlugin` | `path: string` | `{ ok, reason? }` |
 | 移除市场源 | `marketplace.removeSource` | `url` 或 `index` | `{ ok, reason? }` |
@@ -152,7 +152,7 @@
 | 记住视图/排序 | `marketplace.setViewPrefs` | `{ page, view?, sort? }` | `{ ok }`（幂等，写 pluginState） |
 | 安装 / 更新 / 停用 / 启用 / 卸载 | **复用壳 `pluginManager` API** | `pluginId` | 壳回执 |
 
-**AI 友好覆盖门禁**：`NAV_COMMANDS: Record<StorePage, string>`（`storeNav.ts`）——新增页面缺命令直接 **tsc 红**；`marketplaceCommands.test.ts` 再对账「命令已注册」＋「plugin.json 已声明」。`marketplace.getState` 是读取面唯一入口：当前实际路由、当前页可见条目 id、目录条目（含价格/分类/作者/来源/本地状态/可执行能力）、合集、作者仓库分组、来源与计数——**⛔ 不靠截图/DOM**。
+**AI 友好覆盖门禁**：`NAV_COMMANDS: Record<StorePage, string>`（`storeNav.ts`）——新增页面缺命令直接 **tsc 红**；`marketplaceCommands.test.ts` 再对账「命令已注册」＋「plugin.json 已声明」。`marketplace.getState` 是读取面唯一入口：当前实际路由、当前页可见条目 id（home/rank/library/authors 各有切片）＋`visibleAuthorIds`、目录条目（含价格/分类/作者/来源/本地状态/可执行能力）、合集、作者仓库分组、来源与计数——**⛔ 不靠截图/DOM**。
 
 **⛔ 不允许**：只做按钮不注册命令；⛔ 为同一个动作新造第二个命令 id；⛔ 把「检查更新」和「刷新目录内容」合成一条（两个事实两个命令）。
 
