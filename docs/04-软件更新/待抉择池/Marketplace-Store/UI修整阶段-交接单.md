@@ -15,7 +15,7 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `6ab2d87`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `bf0f98c`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
 - 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）。
 
@@ -38,7 +38,7 @@
   - 加源：直接 `window.linkdesk.configuration.set("marketplace.marketplaceSources", [...10 URLs])` → `marketplace.refreshCatalog`。**改 JSON 不用重启拦截器**（按请求读文件），应用重启才要重启。
   - 覆盖：免费 / 买断 / 订阅（月·年·季，¥/$/€）/ 试用 / 退款 / self·managed；空分类「网络 0」；裸件（无作者/分类/图标/截图）；超长标题；未知分类；minApp 9.9.9；banner/strip/duo/grid 合集；作者店 hero/collection/grid/rank/空仓。
   - 截图：`shots/r12-authors-home.png`（3 作者）、`r12-carol-license.png`（已购/订阅价）、`r12-other-category.png`（裸件/未知分类）。
-  - ⚠️ **已知观察（待用户裁决，未修）**：库页「已购未安装」把过期权益也标「已购 ✓」。作者卡多仓叠字已在第十轮修复（`6ab2d87`）。
+  - ⚠️ **观察（未修）**：分类页 300px 容器下 `.cr-desc` 被压到 6px（nowrap＝省略号，非竖排），是否值得修待用户判。库「已购未安装」过期徽标已在第十一轮修复（`bf0f98c`）。
 - **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
 
