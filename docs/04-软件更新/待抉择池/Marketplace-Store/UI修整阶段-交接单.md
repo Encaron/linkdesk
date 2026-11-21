@@ -15,7 +15,7 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `b11b8b0`**（第 7 轮 R19–R24）· 主仓最新（代码 `0240f8655`／`3bc981a6e` Toast；文档 `715fa43ea`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `6e4e935`**（第 7 轮 R19–R25）· 主仓最新（代码 `0240f8655`／`3bc981a6e` Toast；文档 `715fa43ea`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
 - 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）＋ **R14 合集渲染归一**（`CollectionRenderer`/`collectionLayoutOf`，市场仓 `f0ffee8`）＋ **R15 作者 rail 计数/未读点＋窄窗分类栏滚轮**（`28c37a3`）＋ **R16 Toast 图标 8em 地板**（主仓 `3bc981a6e`）＋ **R17 作者卡顶层磨砂＋切仓位置记忆**（`bf43683`）＋ **R18 页主范围归一**（官方首页策展只吃 official＋所有 `more.category` 按页主预过滤：官方=official 源、作者=authorId，`0c798b5`/`7ffa007`）。
 
@@ -27,6 +27,7 @@
 - **第 7 轮（2026-11-22 · R22 吸顶碰撞反馈）**：工具条贴上页头那一下——**硬快版**：只压工具条自己（`origin top`、3%、110ms），页头完全不动（下沉会张缝漏光），接缝 1px 亮线 base opacity 0 快速熄灭；持续下滑不重触发。首版 `c4ff6ce`（页头下沉＋回弹）有漏光/余震已废弃。提交 **`9759eb5`**。**待用户复验**。
 - **第 7 轮（2026-11-22 · R23 窄窗吸顶压缩＋来源失败提示位）**：搜索定值先缩（360→100）、≤900 最多两行、≤700 按钮 icon-only、≤420 工具行/小类行单行横滚；「部分来源加载失败」整行删除，改页头警告钉（计数＋hint，点击去来源）。300px 下吸顶总高 ~175（改前 ~229）。截图 `r24-header-narrow.png`／`r25-header-300.png`；提交 **`b487640`**。**待用户复验**。
 - **第 7 轮（2026-11-22 · R24 空仓文案）**：作者店空态改「作者还没往这个仓库上架插件——过阵子再来看看」，去开发者腔；三处同笔、zh/en 同笔；提交 **`b11b8b0`**。
+- **第 7 轮（2026-11-22 · R25 顶行卡片避让吸顶）**：hover/聚焦时按吸顶底边算 `--x-shift`（8px 呼吸、上限 80px），展开面下移，标题不再被模糊面盖住；仅 small/grid；新增纯函数＋3 例测试。提交 **`6e4e935`**。**待用户复验**。
 
 ### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
@@ -53,6 +54,7 @@
 - **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
 - 🔴 **夹具临时目录会被系统清理（2026-11-22 再次发生）**：`%TEMP%\linkdesk-fixture` 一旦被清空，数据全没（表现为来源 0/作者 0）。**一键恢复**：`node scratch/refixture.mjs`（重建夹具 → 重启 intercept → 写回 11 源 → 刷新目录）。intercept 源码已保存在 `scratch/intercept-fixture.mjs`，⛔ 只依赖 temp 里那份会被清理的副本。页面 reload 不用重启 intercept；**应用重启才要**。
+- 🔴 **同一场 temp 清理也会删掉隔离实例的内置插件**（`%TEMP%\linkdesk-accept/plugins/` 里 settings/lang-defaults/editor/file-tree 消失 ⇒ 实例只剩 marketplace）。恢复：把 `bundled-plugins/<id>.linkdesk-plugin`（zip）解压到 `%TEMP%\linkdesk-accept/plugins/<id>/`，**重启实例**；marketplace 用 dev 构建，⛔ 不要用 bundled 那份覆盖。
 
 ### 4. 接班第一小时
 
