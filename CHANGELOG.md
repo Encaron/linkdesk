@@ -2,6 +2,13 @@
 
 > 📦 **0.1.x 版本线的完整说明已归档**：[`docs/04-软件更新/CHANGELOG-归档-v0.1.md`](docs/04-软件更新/CHANGELOG-归档-v0.1.md)（54 段；2026-10-01 首次执行「主文件 > 50 版 或 > 300 KB 即归档」的体积纪律）。**本文件只留当前版本线**（0.2.x）。归档只治仓库体积——`CHANGELOG.md` 不进安装包 / npm 包 / 插件 zip，三个分发面本来就不带它。
 
+## v0.2.59（2026-11-21）
+
+### fix
+
+- 🖥 **插件视图升为尺寸容器（归一化）**：主区标签内容层加稳定类 `.ldk-tab-content`（`container-type: inline-size`，单面板与分屏同源）——插件布局可按**自己所在面板宽**做响应式，不再被「窗口宽不等于视图宽」坑。宿主新增告示条文本地板：`[role="status"]`/`[role="alert"]` 内 `span/p/b/strong/em` 给 `min-inline-size: min(100%, 8em)` ＋ 条内换行。背景：分屏/窄面板里 `@media (max-width)` 不触发 ⇒ 告示条被挤成「一行一个字」（历史反复十余轮）。生成物同笔：host-css 名册 / host API 面 / 无锚选择器基线（+2 站点）。
+- ⚠️ 插件侧若仍用 `@media (max-width)` 判布局，窄面板下仍会保持桌面布局 —— 需改 `@container`（插件市场已全改并加门禁 `responsiveByContainer.test.ts`）。
+
 ## v0.2.58（2026-11-21）
 
 ### feat

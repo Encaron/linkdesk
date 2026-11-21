@@ -59,7 +59,7 @@ export default function TabContentLayer({ items, creatableViews, onPaneMouseDown
               （按 --surface-inset 内缩 ＋ 吃 --surface-radius 与环同形）——值是主题 token，故落在 CSS 类里
               （⛔ 不写内联值：内联会压住主题层与插件 CSS）；单面板仍贴边 0 ⇒ 逐像素零变化（E15）。 */}
           <div
-            className={split ? "ldk-tab-content-split" : undefined}
+            className={["ldk-tab-content", split && "ldk-tab-content-split"].filter(Boolean).join(" ")}
             onMouseDown={() => onPaneMouseDown(groupId)}
             style={{
               position: "absolute",

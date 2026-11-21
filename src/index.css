@@ -312,6 +312,36 @@ html, body, #root, #pool-root {
   box-shadow: var(--surface-shadow, none);
 }
 
+/* 标签内容层 = **尺寸容器**（2026-11-21 · 归一化）：插件视图的响应式一律按**自己所在的面板宽**
+   （`@container`），⛔ 不再看窗口宽（`@media (max-width)`）——分屏/浮动面板里窗口很宽、面板很窄，
+   窗口媒体查询不触发 ⇒ 内容被挤成一字一行（历史反复 bug）。
+   本类常挂（单面板与分屏都成立）；插件侧门禁 = 禁 `@media (max-width)`。 */
+.ldk-tab-content {
+  container-type: inline-size;
+}
+
+/* 告示/状态条文字地板（宿主级基线 · 2026-11-21）：任何插件用 role=status/alert 的条，
+   文本永不被压成一字一行——窄了就换行，文本槽保留 8em 可读地板（封顶 100% 防溢出）。
+   ⛔ 不作用于 div（骨架条等非文本块）；只保 span/p/b/strong/em 这类文本槽。
+   ⚠️ 显式写选择器（不用 :is/:where）——宿主无锚选择器按条数登记（scripts/css-selector-baseline.json），
+      静态/运行时两把尺子必须逐字相等。 */
+[role="status"],
+[role="alert"] {
+  flex-wrap: wrap;
+}
+[role="status"] span,
+[role="status"] p,
+[role="status"] b,
+[role="status"] strong,
+[role="status"] em,
+[role="alert"] span,
+[role="alert"] p,
+[role="alert"] b,
+[role="alert"] strong,
+[role="alert"] em {
+  min-inline-size: min(100%, 8em);
+}
+
 /* 分屏内容层：按缝法则内缩（--surface-inset：圆角 0 → 0px，否则 2px）＋ 吃同一个 --surface-radius
    与环同值同形（T3 内缩 ／ T5 · D4-乙）——「环有角、内容方角」的斜切（S4／E6）就此消除。
    🔴 内容层是 pane 的**兄弟**（E5.8#141 保活层 TabContentLayer）⇒ 内缩只能落在这里；pane 的 padding
