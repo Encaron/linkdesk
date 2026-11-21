@@ -73,10 +73,11 @@ function prefixSelfTestCases() {
   writeFileSync(cssPath, mutated);
   const bad = check(genDir);
   const hit = bad.violations.find((v) => v.file === cssRel && v.message.includes(`应以 "${PROBE_NAME}-" 开头`));
-  /** 裸定义站点数 = **6**：模板 CSS 的 7 处类名里，`.<名>-starter__hint code` 是 scoped 后代选择器、不占名
-   *  ⇒ 判据只报 6 个站点（详案/详案表说的「N 处」是**类名出现次数**，两把尺子，别混）。
-   *  ⚠️ 模板示例改动了类名数量 ⇒ 同笔更新这个期望值（期望是契约，显式写死）。 */
-  const EXPECTED_SITES = 6;
+  /** 裸定义站点数 = **7**：模板 CSS 的 8 处类名里，`.<名>-starter__hint code` 是 scoped 后代选择器、不占名
+   *  ⇒ 判据只报 7 个站点（详案/详案表说的「N 处」是**类名出现次数**，两把尺子，别混）。
+   *  ⚠️ 模板示例改动了类名数量 ⇒ 同笔更新这个期望值（期望是契约，显式写死）。
+   *  2026-11-21：模板 CSS 补 @container 响应式示例（+1 个 .<名>-starter 站点）⇒ 6 → 7。 */
+  const EXPECTED_SITES = 7;
   push(
     "断言 11 负控（真变异：CSS 改回裸 .starter）",
     didMutate && hit !== undefined && bad.violations.length === EXPECTED_SITES,

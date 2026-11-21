@@ -48,3 +48,13 @@
   margin: 8px 0 0;
   color: var(--text-primary);
 }
+
+/* ── 响应式：按容器，不按窗口（2026-11-21）──
+   宿主把每个标签内容层做成尺寸容器（container-type: inline-size）——用 @container 按
+   **自己所在面板的实际宽度**切布局；⛔ 不用 @media (max-width)（分屏/窄面板里窗口很宽、
+   面板很窄，窗口媒体查询不触发 ⇒ 内容会被挤成「一行一个字」）。 */
+@container (max-width: 480px) {
+  .{{pluginName}}-starter {
+    padding: 16px;
+  }
+}

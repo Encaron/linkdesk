@@ -487,6 +487,22 @@ function MyConfirmContent() {
 
 ---
 
+## 10.5 Responsive Layout → Container Queries (not the window)
+
+The host makes **every tab content layer a size container** (`container-type: inline-size`, class `.ldk-tab-content`) — true for a single pane and for each split pane. Write layout rules against **your own view's panel width**:
+
+```css
+@container (max-width: 480px) {
+  .my-plugin-row { flex-direction: column; }
+}
+```
+
+⛔ **Do not use `@media (max-width: …)` for layout.** In a split or narrow panel the *window* is wide while your *view* is narrow, so window media queries never fire: your view keeps its desktop layout and CJK text collapses to one character per line (this bug recurred for years). `@media` remains fine for width-independent things (e.g. `prefers-reduced-motion`).
+
+Notice/status bars: mark them `role="status"` (or `role="alert"`). The host gives their text slots an 8em floor and lets the bar wrap, so a narrow panel can never squeeze the message into a vertical column.
+
+The scaffold ships a container-query example, and new plugin repos' `verify` prints an advisory when a stylesheet still uses `@media (max-width)` (advisory first; existing plugins are not forced to migrate).
+
 ## 11. The Token Contract—Six-Domain Matrix + Honest Boundaries + Data Discipline (.5)
 
 > **In one line:** before writing UI, check the 11.1 six-domain matrix—forms/controls/surfaces written with `var(--*)` **follow the theme + glass + global scaling automatically**, with zero plugin awareness. Doing it right is driven by recommendations, doing it wrong shows red through the gate but only as a WARN, and bypassing it takes a knowing declaration via a standard eslint-disable (content/brand fixed colors are legitimately exempt—see 11.2).

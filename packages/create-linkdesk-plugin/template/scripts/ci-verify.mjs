@@ -701,6 +701,22 @@ function dictSummary(cov) {
   }
 }
 
+// ═══════════════ ⑩ 响应式建议（黄灯，不拦） ═══════════════
+// 2026-11-21 归一化：宿主把每个标签内容层做成尺寸容器（.ldk-tab-content）；
+// 布局请按**自己所在面板宽**（@container）。分屏/窄面板里窗口宽 ≠ 面板宽，@media(max-width)
+// 不触发 ⇒ 内容会被挤成「一行一个字」（历史反复十余轮）。本腿只报不拦（存量宽容）。
+{
+  const hits = cssFiles.filter((f) => /@media\s*\(\s*max-width/i.test(readFileSync(f, "utf8")));
+  if (hits.length > 0) {
+    line(`⚠️ ⑩ 响应式建议：${hits.length} 个 CSS 文件用 @media (max-width)——建议改用 @container。`);
+    line(`   宿主标签内容层是尺寸容器（container-type: inline-size）；分屏里窗口宽 ≠ 面板宽，`);
+    line(`   窗口媒体查询不会触发 ⇒ 内容被挤成「一行一个字」。涉及：` +
+      `${hits.slice(0, 6).map((f) => relative(ROOT, f)).join("、")}${hits.length > 6 ? " …" : ""}`);
+  } else {
+    line("✅ ⑩ 响应式按容器：CSS 无窗口宽媒体查询。");
+  }
+}
+
 // ═══════════════ 结论 ═══════════════
 line("────────────────────────────────────────────────────────────");
 if (failures.length > 0) {
