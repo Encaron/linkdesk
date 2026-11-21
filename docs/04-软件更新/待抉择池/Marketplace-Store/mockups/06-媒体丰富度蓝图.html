@@ -436,13 +436,20 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
   background:color-mix(in srgb,var(--accent) 10%,var(--bg-card))}
 
 /* duo 编辑精选 */
-/* duo 分栏大卡（2026-11-22 用户拍板）：
-   ① 两枚一排（真实实现同规）；② 媒体**内嵌**成带圆角的画面，⛔ 不再贴边冒充满幅 hero；
-   ③ 图占比加大、文字列收窄（用户口径：图大一点、文字小一点）。 */
+/* duo 双大卡（真实实现同规：两枚一排、50% 宽、min-height 192）
+   ⚠️ 2026-11-22 用户拍板：duo 不再当「大屏」用——整行大屏另开 split 变体（见下） */
 .card-duo{display:grid;grid-template-columns:.9fr 1.1fr;gap:10px;min-height:192px;
   padding:10px;cursor:pointer}
 .card-duo .cd-copy{padding:10px 4px 10px 14px;display:flex;flex-direction:column;
   justify-content:center}
+/* split 分栏大卡（新卡型 · 2026-11-22 用户拍板）：
+   与 hero 同尺寸（整行、min-height 270），但**不满幅**、**无 scrim**——左文右图，图内嵌成画面。
+   ⛔ 不是第二套数据/原语：仍是同一个 Art/媒体 stage，只是版式不同。 */
+.card-duo.is-split{grid-template-columns:1fr 1fr;min-height:270px;padding:12px;gap:12px}
+.card-duo.is-split .cd-copy{padding:12px 10px 12px 18px}
+.card-duo.is-split .cd-art{min-height:246px}
+.card-duo.is-split:hover{transform:scale(1.03)}
+.split-stack{display:flex;flex-direction:column;gap:14px}
 .card-duo .cd-tag{align-self:flex-start;font-size:10.5px;font-weight:600;
   border:1px solid var(--separator);color:var(--text-secondary);border-radius:4px;
   padding:1px 8px;margin-bottom:10px}
@@ -890,6 +897,8 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
 }
 
 @media (max-width:700px){
+  .card-duo.is-split{grid-template-columns:1fr}
+  .card-duo.is-split .cd-art{min-height:180px}
   .grid{grid-template-columns:1fr}
   .store-page{padding:18px 16px 48px}
   .store-head h1{font-size:18px}
@@ -962,6 +971,7 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
   letter-spacing:-.03em;color:rgba(255,255,255,.08);white-space:nowrap;pointer-events:none;
   user-select:none}
 .m-stage.v-hero .m-watermark{font-size:104px}
+.m-stage.v-split .m-watermark{font-size:56px}
 .m-stage.v-mega .m-watermark,.m-stage.v-duo .m-watermark,.m-stage.v-wall .m-watermark,
 .m-stage.v-demo .m-watermark{font-size:34px}
 .m-gen .m-ico svg{width:50%;height:50%;stroke-width:1.2;color:#fff}
@@ -985,12 +995,12 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
 @keyframes mf3a{0%,28%{opacity:1}34%,100%{opacity:0}}
 @keyframes mf3b{0%,28%{opacity:0}33%,62%{opacity:1}68%,100%{opacity:0}}
 @keyframes mf3c{0%,62%{opacity:0}68%,95%{opacity:1}100%{opacity:0}}
-.card:hover .m-stage[data-frames="2"] .m-frame:nth-of-type(1){animation:mf2a var(--media-cycle) linear infinite}
-.card:hover .m-stage[data-frames="2"] .m-frame:nth-of-type(2){animation:mf2b var(--media-cycle) linear infinite}
-.card:hover .m-stage[data-frames="3"] .m-frame:nth-of-type(1){animation:mf3a var(--media-cycle) linear infinite}
-.card:hover .m-stage[data-frames="3"] .m-frame:nth-of-type(2){animation:mf3b var(--media-cycle) linear infinite}
-.card:hover .m-stage[data-frames="3"] .m-frame:nth-of-type(3){animation:mf3c var(--media-cycle) linear infinite}
-.card:hover .m-stage img{transform:scale(1.04)}
+:is(.card,.md-tile):hover .m-stage[data-frames="2"] .m-frame:nth-of-type(1){animation:mf2a var(--media-cycle) linear infinite}
+:is(.card,.md-tile):hover .m-stage[data-frames="2"] .m-frame:nth-of-type(2){animation:mf2b var(--media-cycle) linear infinite}
+:is(.card,.md-tile):hover .m-stage[data-frames="3"] .m-frame:nth-of-type(1){animation:mf3a var(--media-cycle) linear infinite}
+:is(.card,.md-tile):hover .m-stage[data-frames="3"] .m-frame:nth-of-type(2){animation:mf3b var(--media-cycle) linear infinite}
+:is(.card,.md-tile):hover .m-stage[data-frames="3"] .m-frame:nth-of-type(3){animation:mf3c var(--media-cycle) linear infinite}
+:is(.card,.md-tile):hover .m-stage img{transform:scale(1.04)}
 /* 主题图墙（THEMES）：每张卡都有封面，而不是"大卡片＋图标" */
 .wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:16px}
 .card-theme{overflow:hidden;cursor:pointer}
@@ -1008,13 +1018,15 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
 .shot.vid[style*="background-image"]{background-size:cover;background-position:center}
 /* 媒体五态陈列（本稿演示区） */
 .m-demo{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:14px}
-.m-demo .card{overflow:hidden}
+/* 展板瓦片＝纯说明用，⛔ 不是产品卡型：没有 .card 的 hover 放大/动作层 */
+.m-demo .md-tile{position:relative;overflow:hidden;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:var(--radius-lg)}
 .m-demo .md-stage{position:relative;aspect-ratio:var(--media-card);background:#15171B}
 .m-demo .md-foot{padding:10px 12px;border-top:1px solid var(--border)}
 .m-demo .md-t{font-size:12.5px;font-weight:600}
 .m-demo .md-s{font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45}
 .m-demo .m-gen .m-ico{--gen-ico:64px}
-.m-demo .m-gen .m-watermark{font-size:24px;right:7%;bottom:8%}
+.m-demo .m-gen .m-watermark{display:none} /* 展板瓦片太小，水印会截在字中间——只留图标＋分类字 */
 /* 骨架屏：加载中＝占位几何，不假装内容 */
 .m-sk{position:absolute;inset:0;background:linear-gradient(100deg,#212429 18%,#2E3238 38%,#212429 58%);
   background-size:220% 100%;animation:msk 1.5s linear infinite}
@@ -1798,8 +1810,8 @@ function cardMega(e){ // 主题专区：hover＝本体放大＋底部灰条向�
     ${moreMenu(e)}
   </div>`;
 }
-function cardDuo(e,tag){
-  return `<div class="card card-duo" data-entry="${e.id}" tabindex="0" role="button"
+function cardDuo(e,tag,split){
+  return `<div class="card card-duo${split?" is-split":""}" data-entry="${e.id}" tabindex="0" role="button"
     aria-label="${e.name}——查看详情" data-open="${e.id}" style="--glow:${e.hue}">
     <div class="cd-copy">
       <span class="cd-tag">${tag||"编辑精选"}</span>
@@ -1810,7 +1822,7 @@ function cardDuo(e,tag){
         <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button></div>
     ${moreMenu(e)}
     </div>
-    <div class="cd-art">${mediaStage(e,"duo")}</div>
+    <div class="cd-art">${mediaStage(e,split?"split":"duo")}</div>
   </div>`;
 }
 /* 主题图墙卡（THEMES 专用变体）：封面在上、信息在下——与 MS Store 主题页同构。
@@ -2034,34 +2046,31 @@ function renderHome(){
       </div>
     </div>
 
-    <div class="sec" data-spec="17§媒体原语">
-      ${secH("媒体原语 · 状态陈列","一个 stage 吃 screenshots/cover——有图 / 视频 / 无图 / 加载中 / 图挂了，全是同一件")}
+    <div class="sec" data-spec="17§媒体原语·设计说明">
+      ${secH("媒体原语 · 状态陈列","设计说明展板（非产品 UI）：同一个 stage 的五种状态——真机没有这个区块，五态分别长在 hero / 主题专区 / 双大卡 / 图墙 / 详情里")}
       <div class="m-demo">
-        <div class="card" data-entry="${"theme-aurora-glass"}" tabindex="0" role="button"
-          data-open="theme-aurora-glass" aria-label="有图态演示">
+        <div class="md-tile">
           <div class="md-stage">${mediaStage(CATALOG.find(x=>x.id==="theme-aurora-glass"),"wall")}</div>
           <div class="md-foot"><div class="md-t">① 有图 · 3 帧</div>
             <div class="md-s">hover 卡内轮播：cover 打头，静帧顺序播——不按 id 写死图</div></div>
         </div>
-        <div class="card" data-entry="editor" tabindex="0" role="button" data-open="editor"
-          aria-label="封面视频态演示">
+        <div class="md-tile">
           <div class="md-stage">${mediaStage(CATALOG.find(x=>x.id==="editor"),"hero")}</div>
           <div class="md-foot"><div class="md-t">② 封面视频</div>
             <div class="md-s">列表排第一＝{type:"video",url,poster}；卡内只给海报，播放进详情/hero（controls 强制 · 不自动播放）</div></div>
         </div>
-        <div class="card" data-entry="python" tabindex="0" role="button" data-open="python"
-          aria-label="无图生成式封面演示">
+        <div class="md-tile">
           <div class="md-stage">${mediaStage(CATALOG.find(x=>x.id==="python"),"wall")}</div>
           <div class="md-foot"><div class="md-t">③ 无图 · 生成式封面</div>
             <div class="md-s">entryHue 色场＋marketIcon＋分类字——不是空渐变，也不替作者画图</div></div>
         </div>
-        <div class="card" aria-label="加载中态演示">
+        <div class="md-tile">
           <div class="md-stage"><div class="m-sk"></div>
             <span class="m-vbadge">加载中</span></div>
           <div class="md-foot"><div class="md-t">④ 加载中</div>
             <div class="md-s">骨架占位＋底纹兜底；几何先占好，图片到达不跳动</div></div>
         </div>
-        <div class="card" aria-label="加载失败态演示">
+        <div class="md-tile">
           <div class="md-stage"><div class="m-stage v-wall" data-media="broken" data-frames="1"
             style="--hue:#2F855A">
             <div class="m-under m-gen" style="--hue:#2F855A;--gen-ico:64px">
@@ -2073,7 +2082,13 @@ function renderHome(){
             <div class="md-s">onerror 拆帧 → 露出同一张生成式兜底；未装用户包内相对路径必 404，故强制绝对 URL</div></div>
         </div>
       </div>
-      <div class="cat-note" style="margin-top:14px">
+      <div class="cat-note demo-note" style="margin-top:14px">
+        <svg class="ic"><use href="#i-alert"/></svg>
+        <span class="fx1"><b>这不是新卡型。</b>①③⑤ 是同一张 <code>Art</code>／同一个 stage 的三种状态，②④ 是它的视频态与加载态。
+        产品里不会出现这排展板——它只用于一次看全状态；轮播也只有一套机制：hero 手动翻页，mega / duo / wall hover 静帧，
+        共用同一份选帧与同一段 CSS。</span>
+      </div>
+      <div class="cat-note" style="margin-top:10px">
         <svg class="ic"><use href="#i-alert"/></svg>
         <span class="fx1">媒体契约：图片/视频一律<b>绝对 URL</b>（publish 自动 URL 化）；视频只播作者直链、controls 强制、
         <b>不自动播放</b>；卡内轮播只轮静帧——不托管、不转码、不加第二套画廊。</span>
@@ -2081,11 +2096,11 @@ function renderHome(){
     </div>
 
     <div class="sec" data-spec="04§六">
-      ${secH("编辑精选","分栏大卡 duo——两枚一排，媒体内嵌成圆角画面；与首屏满幅 hero 明确分开")}
-      <div class="strip"><div class="strip-row duo-row">
-        ${cardDuo(CATALOG.find(x=>x.id==="editor"),"效率首选")}
-        ${cardDuo(CATALOG.find(x=>x.id==="serial-monitor"),"硬件必备")}
-      </div></div>
+      ${secH("编辑精选","分栏大卡 split——与 hero 同尺寸（整行）、左文右图、无满幅无 scrim；duo 仍用于作者声明的双大卡合集")}
+      <div class="split-stack">
+        ${cardDuo(CATALOG.find(x=>x.id==="editor"),"效率首选",true)}
+        ${cardDuo(CATALOG.find(x=>x.id==="serial-monitor"),"硬件必备",true)}
+      </div>
     </div>
 
     <div class="sec" data-spec="04§二收费（v3.64：04 §02 收费六态在 03 的可点对应）">
