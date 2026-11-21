@@ -32,12 +32,13 @@
 
 - **隔离实例**：`electron . --remote-debugging-port=9391 --user-data-dir=%TEMP%\linkdesk-accept --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`）；Vite `1420` 带 `LINKDESK_USER_PLUGINS_HOME=%TEMP%\linkdesk-accept\plugins`。
 - **综合夹具（2026-11-22 按用户要求重建）**：根 = `%TEMP%\linkdesk-fixture\`
-  - `sources/<repo>/marketplace.json` ×10 源（Alice 3 仓/7 件、Bob 3 仓/7 件、Carol 4 仓/11 件＝25 件；含空仓 `carol-empty`）；`authors/<authorId>.json` ×3——**作者卡/作者店的必需件**，旧最小夹具缺它 ⇒ 首页作者栏不出现。
+  - `sources/<repo>/marketplace.json` ×10 源（Alice 3 仓/12 件（主题 7）、Bob 3 仓/7 件、Carol 4 仓/11 件＝30 件；含空仓 `carol-empty`）；`authors/<authorId>.json` ×3——**作者卡/作者店的必需件**，旧最小夹具缺它 ⇒ 首页作者栏不出现。
   - `intercept.mjs` v2：按 URL 里的 repo 名路由 marketplace.json，按 `/authors/<id>.json` 路由作者块，动态出 icons/avatars/shots SVG（`intercept.legacy.mjs` = 旧单源版备份）。
   - `licenses-seed.json` → 复制到 `%TEMP%\linkdesk-accept\licenses.json`（永久已购 / 订阅剩 20 天 / 剩 7 天 / 已过期四态）；`FIXTURE.md` 有覆盖清单与加源数组。
   - 加源：直接 `window.linkdesk.configuration.set("marketplace.marketplaceSources", [...10 URLs])` → `marketplace.refreshCatalog`。**改 JSON 不用重启拦截器**（按请求读文件），应用重启才要重启。
   - 覆盖：免费 / 买断 / 订阅（月·年·季，¥/$/€）/ 试用 / 退款 / self·managed；空分类「网络 0」；裸件（无作者/分类/图标/截图）；超长标题；未知分类；minApp 9.9.9；banner/strip/duo/grid 合集；作者店 hero/collection/grid/rank/空仓。
   - 截图：`shots/r12-authors-home.png`（3 作者）、`r12-carol-license.png`（已购/订阅价）、`r12-other-category.png`（裸件/未知分类）。
+  - **作者店 more 跳转边界（2026-11-22 补）**：Alice 主题铺 collection `more.target="category:themes"` → 全局主题分类页＋authorId 预过滤（7 件 Alice / 全分类 18；chip「Alice 光栅工坊 · 7」可 ✕ 或「显示全部」）；Alice 工具箱 `category:development`（3 件）；Alice rank `target="rank"`；Bob 双大卡合集 `target="repo:bob-media"` 切仓；Carol 套件 `category:development`。截图：`r15-author-more-themes.png`（入口）、`r15-filtered-themes.png`（过滤页）。
   - ⚠️ **观察（未修）**：分类页 300px 容器下 `.cr-desc` 被压到 6px（nowrap＝省略号，非竖排），是否值得修待用户判。库「已购未安装」过期徽标已在第十一轮修复（`bf0f98c`）。
 - **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
