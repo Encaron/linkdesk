@@ -384,6 +384,35 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
   tokens["glass-surface-alpha"] = String(spec.alpha);
 }
 
+/** 浮起面配方的不透明度下限（用户 2026-11-21 实证：光 blur 会让下层颜色糊透——磨砂只融背景不遮
+ *  下层，surface 自身不透明度必须 ≥ 此值才可读）。 */
+export const POP_SURFACE_MIN_ALPHA = 0.75;
+
+/**
+ * 合成浮起面配方（--ldk-pop-*）——16 号档 F14 平台案（用户 2026-11-21 拍板「把坑做进 token」）：
+ * 自绘浮起面（菜单/弹层/hover 展开层）消费这组 token 即玻璃正确，⛔ 各家自绘再踩透底/双层叠影。
+ * 配方三事实（用户实证 + 16 号档 §二·补2）：
+ *  ① 光 blur 不够——磨砂半透，下层颜色糊透 ⇒ surface 不透明度有下限 POP_SURFACE_MIN_ALPHA；
+ *  ② 单层呈现由**消费方**负责（本体退场），token 只保证自身可读；
+ *  ③ 非玻璃主题 = card-solid 原样（blur `none` 省 GPU）。
+ * 恒写四键（非玻璃也写）——消费方零分支。**调用点：synthesizeGlassSurfaces 之后**
+ * （依赖 bg-card-solid / glass-surface-alpha / glass-blur 已就位），apply 层两处接线。
+ */
+export function synthesizePopSurfaces(tokens: Record<string, string>, spec: GlassSurfaceSpec): void {
+  const solid = tokens["bg-card-solid"] ?? tokens["bg-card"] ?? "";
+  // 玻璃激活：按 clamp(下限, 配置 alpha, 1) 合成——alpha 配置再低浮起面也不低于可读下限；
+  // 公式串引用运行时 var（alpha 配置热改无需重应用）。非玻璃：card-solid 原样（不透明）。
+  tokens["ldk-pop-surface"] =
+    spec.active && solid
+      ? `color-mix(in srgb, ${solid} calc(clamp(${POP_SURFACE_MIN_ALPHA}, var(--glass-surface-alpha), 1) * 100%), transparent)`
+      : solid;
+  const blurPx = parseFloat(tokens["glass-blur"] ?? "");
+  // 玻璃激活但未配 blur 半径 → 用 18px 缺省（浮层地板实测 16px 同档）；缺省带 saturate 提饱和。
+  // ⛔ 不设 border/shadow 键——无消费方即死键（token-audit ③ 会红）；边框阴影消费方自选既有 token。
+  tokens["ldk-pop-blur"] =
+    spec.active && solid ? `blur(${Number.isFinite(blurPx) && blurPx > 0 ? blurPx : 18}px) saturate(1.15)` : "none";
+}
+
 /**
  * 合成图标反向光晕——主题前景可读性 · 第 1 刀（契约 [01 §二] / 任务 [04 D3]）：
  * 生效 `--bg-image` 挂了底图（≠ none / 空）时，按**墨色极性**给图标发一道 `drop-shadow` 滤镜串

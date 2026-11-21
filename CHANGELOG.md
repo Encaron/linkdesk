@@ -2,6 +2,18 @@
 
 > 📦 **0.1.x 版本线的完整说明已归档**：[`docs/04-软件更新/CHANGELOG-归档-v0.1.md`](docs/04-软件更新/CHANGELOG-归档-v0.1.md)（54 段；2026-10-01 首次执行「主文件 > 50 版 或 > 300 KB 即归档」的体积纪律）。**本文件只留当前版本线**（0.2.x）。归档只治仓库体积——`CHANGELOG.md` 不进安装包 / npm 包 / 插件 zip，三个分发面本来就不带它。
 
+## v0.2.58（2026-11-21）
+
+### feat
+
+- 🎛️ **浮起面配方 token（`--ldk-pop-*`）——玻璃主题下自绘浮起面开箱玻璃正确**（16 号档 F14 平台案，2026-11-21 用户拍板「把坑做进 token」）：ThemeEngine 新增 `synthesizePopSurfaces` 派生四 token（surface/blur/border/shadow）——玻璃态 = `--bg-card-solid` 按不透明度下限 0.75 合成＋磨砂，非玻璃态 = card 原样；随 `theme:changed` 推到池，插件消费 `var(--ldk-pop-surface)` 即零配置玻璃正确。ContextMenu／下拉卡／标签 ＋ 菜单三处壳浮起面同笔换装（此前玻璃下半透＝用户实测「透底/双层叠影/下层颜色糊透」）。
+- 🛡️ **新门禁腿 `check-pop-surface`**：浮起面类（menu/modal/dropdown/popover/popup/-over/float-panel）`background` 裸用 `--bg-card/--bg-input` 判红——以后自绘浮起面忘接配方，check 直接红；`--path` 可扫任意 css 目录。硬规定同步升级：11-20「⛔ 浮层外自绘 blur」→「浮层外自绘浮起面必须消费 `--ldk-pop-*`」（自绘依然合法，给了正确姿势）。
+- 📖 **作者规约 §14「自绘浮起面」**（中英＋plugin-docs 0.1.79 重生成）：配方四行＋单层呈现纪律＋门禁说明。
+
+### fix
+
+- 玻璃主题下 ContextMenu／下拉卡／标签 ＋ 菜单透底（同上——随配方 token 换装一并修复）。
+
 ## v0.2.57（2026-11-20）
 
 ### fix

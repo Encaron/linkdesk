@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 // E5.8 Phase 11.15 3b：getThemeVariables 从门面撤出（仅内部消费）——测试直引 tokens 本体
-import { getThemeVariables } from "./tokens";
+import { getThemeVariables, synthesizePopSurfaces, POP_SURFACE_MIN_ALPHA } from "./tokens";
 import { applyTheme } from "../ThemeEngine";
 import { MOCK_THEME, MOCK_THEME2 } from "./testFixtures.mock";
 
@@ -210,5 +210,41 @@ describe("ThemeEngine — surface/background 玻璃机制（E5.8#50.6）", () =>
 
   // E5.8#117：gateMirrorVisibility + --surface-bg-mirror 已整体删除——panorama 镜像机制废除
   // （cp114 证据：::before backdrop-filter 直接采样兄弟 .background-layer，镜像切片多余）
+});
+
+describe("ThemeEngine — 浮起面配方 synthesizePopSurfaces（F14 平台案 · 16 号档）", () => {
+  // 直引本体（同 synthesizeGlassSurfaces——门面仅出 POP_SURFACE_MIN_ALPHA 常量）
+
+  it("玻璃激活 → pop-surface = card-solid 按 clamp(下限, alpha, 1) 合成（公式串引用运行时 var）；blur = glass-blur+1.15；border/shadow 不设（无消费方即死键）", () => {
+    const tokens: Record<string, string> = {
+      "bg-card": "color-mix(in srgb, var(--bg-card-solid) calc(var(--glass-surface-alpha) * 100%), transparent)",
+      "bg-card-solid": "#1B1813",
+      "glass-blur": "16px",
+    };
+    synthesizePopSurfaces(tokens, { active: true, alpha: 0.4 });
+    expect(tokens["ldk-pop-surface"]).toBe(
+      `color-mix(in srgb, #1B1813 calc(clamp(${POP_SURFACE_MIN_ALPHA}, var(--glass-surface-alpha), 1) * 100%), transparent)`,
+    );
+    expect(tokens["ldk-pop-blur"]).toBe("blur(16px) saturate(1.15)");
+    expect("ldk-pop-border" in tokens).toBe(false);
+    expect("ldk-pop-shadow" in tokens).toBe(false);
+  });
+
+  it("玻璃激活未配 blur 半径 → 18px 缺省；alpha 配置再低 clamp 兜到下限", () => {
+    const tokens: Record<string, string> = { "bg-card-solid": "#1B1813" };
+    synthesizePopSurfaces(tokens, { active: true, alpha: 0.2 });
+    expect(tokens["ldk-pop-blur"]).toBe("blur(18px) saturate(1.15)");
+    expect(tokens["ldk-pop-surface"]).toContain(`clamp(${POP_SURFACE_MIN_ALPHA}, var(--glass-surface-alpha), 1)`);
+  });
+
+  it("非玻璃 → pop-surface = card-solid 原样（不透明）＋ blur none；card-solid 缺失回落 bg-card", () => {
+    const tokens: Record<string, string> = { "bg-card": "#FFF0F5", "bg-card-solid": "#FFF0F5" };
+    synthesizePopSurfaces(tokens, { active: false, alpha: 0.5 });
+    expect(tokens["ldk-pop-surface"]).toBe("#FFF0F5");
+    expect(tokens["ldk-pop-blur"]).toBe("none");
+    const noSolid: Record<string, string> = { "bg-card": "#123456" };
+    synthesizePopSurfaces(noSolid, { active: false, alpha: 0.5 });
+    expect(noSolid["ldk-pop-surface"]).toBe("#123456");
+  });
 });
 

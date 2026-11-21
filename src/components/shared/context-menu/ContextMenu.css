@@ -17,7 +17,9 @@
      （§2 根级 opt-in，补丁 2026-08-14）；壳侧 portal 回退 body 无 none 祖先，天然可点。 */
   min-width: 140px;
   max-width: 280px;
-  background: var(--bg-card);
+  /* F14 浮起面配方（16 号档平台案）：消费派生 token——玻璃态自动不透明基底＋磨砂 */
+  background: var(--ldk-pop-surface);
+  backdrop-filter: var(--ldk-pop-blur);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-hairline), var(--context-menu-shadow);

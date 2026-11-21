@@ -874,11 +874,58 @@ Four attributes, all written on your own DOM elements:
 
 ---
 
+## 14. Self-drawn floating surfaces → the `--ldk-pop-*` recipe tokens (glass-correct out of the box)
+
+**Read this section when** you are about to self-draw any surface that **floats above other
+text**—menus, popovers, dropdowns, hover expansion layers. For things that already have a
+shared component (context menus / confirm dialogs), swap to it first (§1/§9/§Quick Reference);
+for what you truly must self-draw, this section guarantees you **never step on the glass
+pitfalls**.
+
+**Where the pit is (measured 2026-11-21, three-in-one)**: under a glass theme `--bg-card` is
+itself translucent—a floating surface using it raw = see-through (you can read the layer
+beneath) / double-layer ghosting (the body and the expansion layer visible at once, the lower
+layer's colors bleeding through) / destroyed text underneath. Image-backed themes are worse.
+Adding blur alone is not enough—blur is translucent, the lower layer's colors still bleed.
+
+**The recipe (derived by the ThemeEngine—zero configuration for authors)**: write these four
+lines and your floating surface is automatically correct under both glass and normal themes:
+
+```css
+.your-pop {
+  background: var(--ldk-pop-surface, var(--bg-card));   /* opaque base—auto-deepened to the readability floor under glass */
+  backdrop-filter: var(--ldk-pop-blur); /* frost (glass: blur+1.15; non-glass: none) */
+  border: 1px solid var(--ldk-pop-border, var(--border));
+  box-shadow: var(--ldk-pop-shadow);
+}
+```
+
+**Single-layer presentation (your responsibility)**: when the floating surface shows, the
+**duplicate body** beneath it must exit (`visibility: hidden`, or make the floating surface's
+base fully opaque and cover it dead)—under glass, without the exit you get two-layer ghosting
+and frost cannot save it. Rule: **one piece of content, one visible copy at a time**.
+
+**Mechanical backstop**: the `check-pop-surface` leg of `npm run check`—floating-surface class
+shapes (`menu/modal/dropdown/popover/popup/-over/float-panel`) using `--bg-card/--bg-input`
+raw in `background` fail the build; `--path <dir>` scans any css directory (for author repos).
+
+> 🔧 **Maintainer note (authors may skip)**: the tokens are derived by the shell ThemeEngine
+> `synthesizePopSurfaces` (glass: `--bg-card-solid` composed at `clamp(0.75, --glass-surface-alpha, 1)`
+> + `--glass-blur`; non-glass: card as-is + blur `none`), pushed to the pool with `theme:changed`—
+> zero wiring for plugins; the opacity-floor constant = `POP_SURFACE_MIN_ALPHA` (0.75, measured
+> readability floor). Hard-rule upgrade record: the 11-20 "⛔ self-drawn blur outside the float
+> layer" became "self-drawn floating surfaces outside the float layer **must consume `--ldk-pop-*`**;
+> ⛔ raw self-drawn blur / raw --bg-card floating surfaces" (self-drawing remains fully legal—
+> there is now a correct way to do it).
+
+---
+
 ## Quick Reference
 
 | What you want to do | Core facility | How to bring it in |
 |---|---|---|
 | Context menu | `<ContextMenu>` (open-string menuId) | `@linkdesk/ui` (ContextMenu) + a `plugin.json contributes.menus` declaration (or `window.linkdesk.menu.registerItems`, see §1) |
+| Self-drawn floating surfaces (menus/popovers/expansion layers) | `--ldk-pop-surface / -blur` | consume the CSS variables directly (see §14; glass-correct out of the box; raw --bg-card fails the build) |
 | Overlay/dialog | `createPortal` | `react-dom` (render into `document.body`, see §2) |
 | Persistence | `window.linkdesk.configuration.get/set/onChange` | plugin communication iron rule—only `window.linkdesk.*` (see §3) |
 | System picker | `window.linkdesk.quickPick.show` | uniform rendering by the in-pool QuickPickHost (see §9) |

@@ -11,7 +11,9 @@
   max-height: 60vh;
   overflow-y: auto;
   padding: 4px 0;
-  background: var(--bg-card);
+  /* F14 浮起面配方：玻璃态不透明基底＋磨砂（消费端零分支） */
+  background: var(--ldk-pop-surface);
+  backdrop-filter: var(--ldk-pop-blur);
   border: 1px solid var(--separator);
   box-shadow: var(--context-menu-shadow);
   border-radius: var(--radius-sm);

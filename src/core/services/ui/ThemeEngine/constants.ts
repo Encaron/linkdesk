@@ -154,6 +154,9 @@ export const MANAGED_TOKEN_KEYS: string[] = [
   // 主题前景可读性 · 第 1 刀：图标反向光晕（filter 串）——synthesizeIconGlow 提交前派生，
   //   消费方在池侧 IconBarZone.css（`filter: var(--icon-glow, none)`）。
   "icon-glow",
+  // F14 浮起面配方（16 号档平台案，2026-11-21 拍板）：synthesizePopSurfaces 提交前派生两键——
+  //   自绘浮起面（菜单/弹层/hover 展开层）消费即玻璃正确；壳三处已换装，插件侧随 theme:changed 推池消费。
+  "ldk-pop-surface", "ldk-pop-blur",
 ];
 
 /* ── E5.8#50.26：混搭域常量（10-混搭设计 §1/§3——按域换来源，引擎按域合并） ── */
