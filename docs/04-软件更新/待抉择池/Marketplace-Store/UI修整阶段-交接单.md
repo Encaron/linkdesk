@@ -15,9 +15,9 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `49373c3`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `75028a3`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
-- 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）。
+- 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）。
 
 ### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
@@ -32,21 +32,22 @@
 
 - **隔离实例**：`electron . --remote-debugging-port=9391 --user-data-dir=%TEMP%\linkdesk-accept --proxy-server=127.0.0.1:7890 --proxy-bypass-list="127.0.0.1;localhost"`（需 `env -u ELECTRON_RUN_AS_NODE`）；Vite `1420` 带 `LINKDESK_USER_PLUGINS_HOME=%TEMP%\linkdesk-accept\plugins`。
 - **综合夹具（2026-11-22 按用户要求重建）**：根 = `%TEMP%\linkdesk-fixture\`
-  - `sources/<repo>/marketplace.json` ×10 源（Alice 3 仓/12 件（主题 7）、Bob 3 仓/7 件、Carol 4 仓/11 件＝30 件；含空仓 `carol-empty`）；`authors/<authorId>.json` ×3——**作者卡/作者店的必需件**，旧最小夹具缺它 ⇒ 首页作者栏不出现。
+  - `sources/<repo>/marketplace.json` ×**11 源**（Alice 3 仓/17 件、Bob 3 仓/16 件、Carol 5 仓/23 件＝**56 件**，加官方 19＝目录 75 件；含空仓 `carol-empty` 与扩展仓 `carol-extras`）；`authors/<authorId>.json` ×3——**作者卡/作者店的必需件**，旧最小夹具缺它 ⇒ 首页作者栏不出现。
   - `intercept.mjs` v2：按 URL 里的 repo 名路由 marketplace.json，按 `/authors/<id>.json` 路由作者块，动态出 icons/avatars/shots SVG（`intercept.legacy.mjs` = 旧单源版备份）。
   - `licenses-seed.json` → 复制到 `%TEMP%\linkdesk-accept\licenses.json`（永久已购 / 订阅剩 20 天 / 剩 7 天 / 已过期四态）；`FIXTURE.md` 有覆盖清单与加源数组。
   - 加源：直接 `window.linkdesk.configuration.set("marketplace.marketplaceSources", [...10 URLs])` → `marketplace.refreshCatalog`。**改 JSON 不用重启拦截器**（按请求读文件），应用重启才要重启。⚠️ **`refreshCatalog` 只强刷目录**；作者域是缓存的 ⇒ 改作者块/作者仓插件列表后要**硬 reload**（或走 UI「刷新内容」路径）才重建，否则作者店仍显示旧件数。
   - 覆盖：免费 / 买断 / 订阅（月·年·季，¥/$/€）/ 试用 / 退款 / self·managed；空分类「网络 0」；裸件（无作者/分类/图标/截图）；超长标题；未知分类；minApp 9.9.9；banner/strip/duo/grid 合集；作者店 hero/collection/grid/rank/空仓。
   - 截图：`shots/r12-authors-home.png`（3 作者）、`r12-carol-license.png`（已购/订阅价）、`r12-other-category.png`（裸件/未知分类）。
   - **作者店 more 跳转边界（2026-11-22 补）**：Alice 主题铺 collection `more.target="category:themes"` → 全局主题分类页＋authorId 预过滤（7 件 Alice / 全分类 18；chip「Alice 光栅工坊 · 7」可 ✕ 或「显示全部」）；Alice 工具箱 `category:development`（3 件）；Alice rank `target="rank"`；Bob 双大卡合集 `target="repo:bob-media"` 切仓；Carol 套件 `category:development`。截图：`r15-author-more-themes.png`（入口）、`r15-filtered-themes.png`（过滤页）。
-  - ⚠️ **观察（未修）**：分类页 300px 容器下 `.cr-desc` 被压到 6px（nowrap＝省略号，非竖排），是否值得修待用户判。库「已购未安装」过期徽标已在第十一轮修复（`bf0f98c`）。
+  - **多 hero / 横滚 / 堆叠（2026-11-22 补）**：各店 hero 3 张；Alice 工具箱 strip 8 件、主题铺 mega 7 件；Bob 效率 strip 6、媒体 strip 5；Carol 套件 strip 8、字库 strip 6；duo 恒 2（设计如此）；Carol 5 仓 → 作者卡 4+ 汇总「3 个仓库/9 个插件」。截图：`r16-bob-hero.png`（箭头完整）、`r16-alice-strip.png`（双行横滚）、`r16-carol-deck-rest.png` / `r16-carol-deck-hover.png`（堆叠/扇开）。
+  - ⚠️ **观察（未修）**：分类页 300px 容器下 `.cr-desc` 被压到 6px（nowrap＝省略号，非竖排）；作者店 300px 容器下页头 H1「Alice 的小店」49×99（`ws:normal` 多行）——两处待用户判。库「已购未安装」过期徽标已在第十一轮修复（`bf0f98c`）。
 - **主题现状（2026-11-22 实读 + 用户拍板）**：`accept/plugins` 现有 marketplace / settings / **theme-panorama**；当前 recipe = `theme-panorama.panorama`（配色 `theme-panorama.moonlight`）。**极光玻璃未装**；用户拍板**保持 panorama、不恢复玻璃**。另：硬 reload 后应用语言曾回落 `en`，已用 `window.linkdesk.language.set('zh')` 恢复——后续 reload 若界面变英文，先查这个。
 - 换产物三连、CSS 空缓存坑、`MSYS_NO_PATHCONV=1` 等仍见 §四/§六。
 
 ### 4. 接班第一小时
 
 1. 读本单 §〇 → 16 号档 §二/§六 → `调度台.md`（当前调度台/设计轴 ID/信道注记）。
-2. 起/验环境：`status` → 重启拦截器（若应用重启过）→ 打开商店，确认首页 **3 张作者卡（Alice/Bob/Carol）**、rail「网络 0」、库页 4 条「已购未安装」。
+2. 起/验环境：`status` → 重启拦截器（若应用重启过）→ 打开商店，确认首页 **3 张作者卡（Alice/Bob/Carol）**、rail「网络 0」、库页 4 条「已购未安装」、各作者店 hero **3 点/2 箭头且右箭头完整、滚轮可换页**。
 3. **先问用户**：这轮 F47 两行价格是否满意（尤其实底蓝块）；玻璃主题要不要恢复；然后按他指的下一处继续。
 4. 每轮：改 → build → 部署 → 重启 Vite → 清缓存 → reload → **四页 300px 普查**（脚本 §三）→ 截图 → 市场仓 `verify`＋`vitest` → 主仓动 `src/` 走 `npm run check` → **单独一笔提交** → 16 号档 §六。
 
