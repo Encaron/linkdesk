@@ -21,7 +21,7 @@
 
 ### 已发布 npm（用户授权「该上传就上传」）
 `contracts 0.1.48` · `ui 0.2.66` · `plugin-sdk 0.1.97` · `plugin-docs 0.1.81` · 全部已 `release:mark` 落账。
-**插件仓**：`plugin.json` 仍 **1.2.1 未 bump**（攒棒 17）；主仓壳 **0.2.58 攒批**、未推。
+**插件仓**：`plugin.json` 仍 **1.2.1 未 bump**（攒棒 17）；主仓壳 **0.2.59 攒批**、未推。
 
 ### 用户仍在验的三处（接班先问结果）
 1. 来源页悬停条长度（现 9 行：8 条＋「…还有 N 条」）
@@ -35,7 +35,7 @@
 写在 `src/styles/store/store-shell.css` 头注，摘要：
 
 1. **分栏网格给地板**：`minmax(240px, Xfr)`，⛔ 裸 `1fr`（CJK 的 min-content＝1 个字，窄了必一字一行）；
-2. **窄容器用容器查询切单列**：`@container (max-width: …)`，按**容器实宽**判定（分屏组/右侧开面板同样生效，⛔ 靠窗口宽）；
+2. **窄容器用容器查询切单列**：`@container (max-width: …)`，按**容器实宽**判定（分屏组/右侧开面板同样生效，⛔ 靠窗口宽）；容器＝壳的 `.ldk-tab-content`（2026-11-21 起常挂 `container-type: inline-size`，单面板/分屏同源）；市场仓门禁 `responsiveByContainer.test.ts`（出现 `@media(max-width` 即红）；告示条另有宿主兜底 `role=status/alert` 文本 8em 地板＋换行；
 3. **文本块 `min-width:0` ＋ 行数上限或单行省略**；按钮文案 `nowrap+ellipsis`、按钮 `max-width:100%`；
 4. **横滚保留拖动**：只用 `::-webkit-scrollbar*` 定制 6px 圆头主题条；⛔ 删条（后面内容点不到）、⛔ 原生条、⛔ 同时设 `scrollbar-width`（Chromium 121+ 会忽略 webkit 样式）。
 
