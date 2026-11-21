@@ -230,7 +230,8 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
   box-shadow:var(--shadow-1);z-index:2;transition:background .15s,color .15s}
 .hero-arrow svg{width:15px;height:15px}
 .hero-arrow:hover{color:var(--text-primary);background:var(--bg-input)}
-.hero-arrow.l{left:10px}.hero-arrow.r{right:10px}
+/* 2026-11-21 拍板（16 号档 F10）：箭头移出画面两侧外——不随 hover 缩放（DOM 在缩放包裹层外） */
+.hero-arrow.l{left:-12px}.hero-arrow.r{right:-12px}
 
 /* ═══ 横排滚动（归一化：所有横排板块同一套左右切换能力）═══
    规矩（拍板）：内容超出可视一屏 → 显示装机必备同款左右圆钮＋原生横滑；
@@ -1780,7 +1781,7 @@ function renderHome(){
       <button class="sbtn" data-bar-dismiss>忽略</button>
     </div>
     <div class="sec" data-spec="04§六">
-      <div class="hero" id="hero" title="鼠标滚轮 / 左右箭头 / 圆点 翻页（共 ${slides.length} 张轮播）">
+      <div class="hero" id="hero">
         <div class="hero-track" id="heroTrack">${slides.map(s=>`
           <div class="hero-slide" data-open="${s.e.id}" role="button" tabindex="0"
             aria-label="${s.e.name}——查看详情" >
@@ -2722,7 +2723,8 @@ function inlineHero(sec,repo){
     .filter(x=>x.f);
   if(!slides.length)return "";
   const au=repo.plugins[0]?repo.plugins[0].author:"";
-  return `<div class="hero" data-n="${slides.length}" data-i="0">
+  /* 2026-11-21 拍板（16 号档 F10）：箭头移出缩放画面——.hero-wrap 包裹，箭头为画面兄弟（两侧外） */
+  return `<div class="hero-wrap"><div class="hero" data-n="${slides.length}" data-i="0">
     <div class="hero-track">${slides.map(sl=>`
       <div class="hero-slide" data-open="${sl.f.id}" role="button" tabindex="0"
         aria-label="${sl.f.name}——查看详情" >
@@ -2733,6 +2735,7 @@ function inlineHero(sec,repo){
           <div class="hero-cta">${actionBtn(sl.f)}</div></div>
         <div class="hero-art" style="${artBG(sl.f)}"><span class="hglyph"><svg><use href="#${sl.f.icon}"/></svg></span></div>
       </div>`).join("")}</div>
+    </div>
     ${slides.length>1?`<button class="hero-arrow l" data-ihero="-1" aria-label="上一张"><svg class="ic"><use href="#i-chev-l"/></svg></button>
     <button class="hero-arrow r" data-ihero="1" aria-label="下一张"><svg class="ic"><use href="#i-chev-r"/></svg></button>`:""}
   </div>`;
