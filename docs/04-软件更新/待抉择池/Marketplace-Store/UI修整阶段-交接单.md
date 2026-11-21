@@ -15,9 +15,9 @@
 
 ### 1. 现状（实读）
 
-- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `75028a3`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
+- **壳 0.2.59 攒批**（未发版；发版归棒 17）· **市场仓 `f0ffee8`** · 主仓最新（代码 `0240f8655` / 文档 `9867c408c`）。**全部未推送、未发版。**
 - 作者轴 npm 已发（用户授权，已 `release:mark`）：`plugin-sdk 0.1.98` · `create-linkdesk-plugin 0.1.26` · `plugin-docs 0.1.82`；`@linkdesk/ui` 仍是 0.2.66（本轮未动）。
-- 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）。
+- 已修轮次（详见 16 号档 §六）：R1–R4（旧）＋ R5 面/轨道/槽位/库/排序/文案 ＋ F39 单面化 ＋ F40 声明式辉光 ＋ F41 榜单常显动作 ＋ F42 删 Strip 滚轮 ＋ F43 下拉排序 ＋ F44 开发者腔清理 ＋ F45 放大态尺寸/裁剪 ＋ F36/F37/F38 基底特异性/作者横排/标题 ＋ **F46 容器响应式**（壳 `.ldk-tab-content` 尺寸容器＋市场 11 处 `@container`＋门禁）＋ **F47 价格角标连环**（下方 3）＋ **R12 AI 友好化**（`openCategory+authorId`/`openRank`/`openAuthors`＋`getState` 读取面（含各页可见切片/`visibleAuthorIds`）＋`NAV_COMMANDS` 门禁，市场仓 `49373c3`）＋ **R13 作者店 hero 归一化**（共享 `HeroCarousel`＋删 `AuthorHero`＋`openStore` 强制回首页，市场仓 `75028a3`）＋ **R14 合集渲染归一**（`CollectionRenderer`/`collectionLayoutOf`，市场仓 `f0ffee8`）。
 
 ### 2. F47 价格角标（结构已定；2026-11-22「去实底」已实施，待用户复验）
 
