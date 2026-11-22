@@ -267,8 +267,9 @@
 
 .ldk-colorpicker-cancel,
 .ldk-colorpicker-ok {
-  min-height: calc(24px * var(--ui-scale));
+  height: calc(24px * var(--ui-scale));
   padding: 4px 12px;
+  box-sizing: border-box;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   cursor: pointer;

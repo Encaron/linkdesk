@@ -133,8 +133,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.70",
-      "contentHash": "1f5cdc01d6d32a19a6f2c6ecf5a5dff77259736c00e34e1500bb7ecfc5a24657",
+      "version": "0.2.71",
+      "contentHash": "2e52241df855db9c7f84a11116fae983de7a9fed1c6630dfceab2dc74efd309c",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "7d1517f1b2c496b4",
@@ -147,7 +147,7 @@
         "src/components/shared/color-field/ColorField.css": "871aed14c6db25a5",
         "src/components/shared/color-field/ColorField.test.tsx": "cb07e8a215859026",
         "src/components/shared/color-field/ColorField.tsx": "49875dc3a1167739",
-        "src/components/shared/color-picker/ColorPicker.css": "6521fbdfe736ecaa",
+        "src/components/shared/color-picker/ColorPicker.css": "d2b490705876bf99",
         "src/components/shared/color-picker/ColorPicker.test.tsx": "581cfbac4ec23f7a",
         "src/components/shared/color-picker/ColorPicker.tsx": "eb1838763c3c6225",
         "src/components/shared/color/colorUtils.test.ts": "6a3e653c517c6005",
