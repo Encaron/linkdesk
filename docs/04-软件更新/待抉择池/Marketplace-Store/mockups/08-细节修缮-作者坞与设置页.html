@@ -144,6 +144,12 @@
     <td>官方目录仓 <code>media/</code> ＋ <code>marketplace.json</code></td>
     <td><b>零发版</b>，刷新目录即生效</td>
   </tr>
+  <tr>
+    <td>⑤ 图标重绘</td>
+    <td>线稿版与彩色版都换成<b>购物袋</b>；彩色版沿用暖橙品牌底</td>
+    <td>marketplace 插件 <code>resources/icon.svg</code> · <code>icon-brand.svg</code></td>
+    <td>随 1.4.1</td>
+  </tr>
 </table>
 
 <h2>一、作者坞：保留放大，把包裹放大</h2>
@@ -328,14 +334,14 @@
 
 <h3>4.2 候选（真实网图，按主题）</h3>
 <div class="grid9">
-  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/44/Wikipedia_editor_Screen_Shot_2016-12-07_at_4.50.52_PM.png/500px-Wikipedia_editor_Screen_Shot_2016-12-07_at_4.50.52_PM.png" alt=""></div><div class="cap"><b>editor</b><span>编辑器界面实拍</span></div></div>
+  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/e/eb/Screenshot_of_BHAML_Code_Editor.png/960px-Screenshot_of_BHAML_Code_Editor.png" alt=""></div><div class="cap"><b>editor</b><span>代码编辑器界面（看得懂的那种）</span></div></div>
   <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/VFU_file_manager_4.06_tree.png/500px-VFU_file_manager_4.06_tree.png" alt=""></div><div class="cap"><b>file-tree</b><span>文件树 / 目录层级</span></div></div>
   <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/Python_Code.png/500px-Python_Code.png" alt=""></div><div class="cap"><b>python</b><span>Python 代码</span></div></div>
   <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Triangular_wave_and_square_wave_on_oscilloscope_screen_%28cropped%29.jpg/500px-Triangular_wave_and_square_wave_on_oscilloscope_screen_%28cropped%29.jpg" alt=""></div><div class="cap"><b>serial-monitor</b><span>示波器波形</span></div></div>
-  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Blender_preferences_2.80.png/500px-Blender_preferences_2.80.png" alt=""></div><div class="cap"><b>settings</b><span>设置/偏好界面</span></div></div>
-  <div class="art"><div class="frame"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4d/Icon_pdf_file.png" alt="" style="object-fit:contain;background:#fff"></div><div class="cap"><b>pdf-reader</b><span>PDF 文档（可换扫描页实拍）</span></div></div>
-  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/78/Dictionary_of_religious_terms.jpg/500px-Dictionary_of_religious_terms.jpg" alt=""></div><div class="cap"><b>lang-defaults</b><span>词典 / 双语</span></div></div>
-  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Opera_Mobile_Store_top_Free_apps_list_interface.png/500px-Opera_Mobile_Store_top_Free_apps_list_interface.png" alt=""></div><div class="cap"><b>marketplace</b><span>应用商店界面</span></div></div>
+  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/Android_settings_screen_year_in_review.png/960px-Android_settings_screen_year_in_review.png" alt=""></div><div class="cap"><b>settings</b><span>设置页（一眼认出是设置）</span></div></div>
+  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Scanned_Documents_057.jpg/960px-Scanned_Documents_057.jpg" alt=""></div><div class="cap"><b>pdf-reader</b><span>扫描文档页（清晰版）</span></div></div>
+  <div class="art"><div class="frame"><img src="https://upload.wikimedia.org/wikipedia/commons/7/72/English_and_Chinese_dictionary_%28part_of%29.png" alt=""></div><div class="cap"><b>lang-defaults</b><span>中英词典（中英对照）</span></div></div>
+  <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/3/34/Storefront_Entrance%2C_Patton_Avenue%2C_Asheville%2C_NC_%2846691742722%29.jpg/960px-Storefront_Entrance%2C_Patton_Avenue%2C_Asheville%2C_NC_%2846691742722%29.jpg" alt=""></div><div class="cap"><b>marketplace</b><span>商店大门口 / 门面</span></div></div>
   <div class="art"><div class="frame"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Vintage_bicycle_illustration_%2846733122262%29.jpg/500px-Vintage_bicycle_illustration_%2846733122262%29.jpg" alt=""></div><div class="cap"><b>geme-tihu-bicycle</b><span>自行车插画</span></div></div>
 </div>
 
@@ -348,7 +354,93 @@
 </table>
 <p class="lead">落地：图下载进 <code>Encaron/linkdesk-marketplace</code> 的 <code>media/&lt;id&gt;/shot-2.jpg</code> 等，JSON 里写 raw 直链。⛔ 不改插件包、⛔ 不发版，用户刷新目录即见。</p>
 
-<h2>五、发布计划</h2>
+<h3>4.4 你自己找图的话，按这个规格给我</h3>
+<table>
+  <tr><th>项</th><th>要求</th></tr>
+  <tr><td>格式</td><td><b>JPG / PNG</b>（⛔ 不要 BMP、GIF；要透明底就 PNG）</td></tr>
+  <tr><td>尺寸</td><td>至少 <b>1200×750</b>（3:2 横图）；有 <b>1600×1000</b> 更好</td></tr>
+  <tr><td>体积</td><td>单张 ≤ <b>800 KB</b></td></tr>
+  <tr><td>命名</td><td><code>&lt;插件id&gt;-shot-2.jpg</code>（第 3 帧用 <code>-shot-3</code>）</td></tr>
+  <tr><td>怎么给我</td><td>直接发图给我，或放进任意文件夹告诉我路径即可</td></tr>
+</table>
+
+<h2>五、插件市场图标重绘：购物袋</h2>
+
+<p>两枚图标都换成「购物袋」：<b>线稿版</b>（图标栏用，跟着主题墨色走）＋<b>彩色版</b>（市场/详情里显示的身份图，暖橙底＋白袋）。下面是新图预览与源码；旧图一并列出对照。</p>
+
+<h3>5.1 旧图标（v1.4.0 现行）</h3>
+<div class="row">
+  <div class="box" style="display:flex;gap:18px;align-items:center">
+    <div style="background:#22232a;border:1px solid var(--line);border-radius:8px;padding:10px 14px">
+      <div class="sub" style="margin:0 0 6px">图标栏（16）</div>
+      <img src="https://raw.githubusercontent.com/Encaron/linkdesk-plugin-marketplace/v1.4.0/resources/icon.svg" width="16" height="16" style="filter:invert(1)" alt="">
+    </div>
+    <div>
+      <div class="sub" style="margin:0 0 6px">彩色身份图（48）</div>
+      <img src="https://raw.githubusercontent.com/Encaron/linkdesk-plugin-marketplace/v1.4.0/resources/icon-brand.svg" width="48" height="48" alt="">
+    </div>
+    <div class="sub" style="max-width:30ch;margin:0">旧图形是一间「店屋」——跟商店有关，但不像「买」。</div>
+  </div>
+</div>
+
+<h3>5.2 新：线稿购物袋（icon.svg · 16×16 · currentColor）</h3>
+<div class="box" style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
+  <div style="background:#22232a;border:1px solid var(--line);border-radius:8px;padding:12px 18px;display:flex;gap:22px;align-items:center;color:#e6e6ea">
+    <div style="text-align:center"><svg width="32" height="32" viewBox="0 0 16 16" fill="none"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg><div class="sub" style="font-size:11px">32</div></div>
+    <div style="text-align:center"><svg width="24" height="24" viewBox="0 0 16 16" fill="none"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg><div class="sub" style="font-size:11px">24</div></div>
+    <div style="text-align:center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg><div class="sub" style="font-size:11px">16</div></div>
+  </div>
+  <div style="flex:1;min-width:260px;color:var(--txt2);font-size:12.5px">描边 1.35、圆角连接；跟在主题墨色后面（`currentColor`），亮暗主题自动翻转。16px 下线条不糊、袋口与提手仍分得清。</div>
+</div>
+<pre>&lt;svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"&gt;
+  &lt;path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"
+        stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/&gt;
+  &lt;path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4"
+        stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/&gt;
+&lt;/svg&gt;</pre>
+
+<h3>5.3 新：彩色购物袋（icon-brand.svg · 48×48）</h3>
+<div class="box" style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
+  <svg width="96" height="96" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="mkBg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient>
+      <linearGradient id="mkGlass2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/></linearGradient>
+    </defs>
+    <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg2)"/>
+    <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkGlass2)"/>
+    <rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#FFEDD5" stroke-opacity="0.30" stroke-width="1"/>
+    <g transform="translate(12 11) scale(1.5)" fill="#FFF7ED">
+      <path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/>
+      <path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+  </svg>
+  <div style="display:flex;gap:14px;align-items:flex-end">
+    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkBg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg3)"/><g transform="translate(12 11) scale(1.5)" fill="#FFF7ED"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/></g></svg>
+    <svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkBg4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg4)"/><g transform="translate(12 11) scale(1.5)" fill="#FFF7ED"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/></g></svg>
+  </div>
+  <div style="flex:1;min-width:260px;color:var(--txt2);font-size:12.5px">沿用现有品牌底：暖橙渐变块（#FB923C→#C2410C）＋玻璃叠层＋1px 浅边，袋体白色实心、提手白线。与原图同一个底，只把「店屋」换成「购物袋」——换图不换品牌色。</div>
+</div>
+<pre>&lt;svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"&gt;
+  &lt;defs&gt;
+    &lt;linearGradient id="mkBg" x1="0" y1="0" x2="1" y2="1"&gt;
+      &lt;stop offset="0" stop-color="#FB923C"/&gt;&lt;stop offset="1" stop-color="#C2410C"/&gt;
+    &lt;/linearGradient&gt;
+    &lt;linearGradient id="mkGlass" x1="0" y1="0" x2="0" y2="1"&gt;
+      &lt;stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/&gt;
+      &lt;stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/&gt;
+    &lt;/linearGradient&gt;
+  &lt;/defs&gt;
+  &lt;rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg)"/&gt;
+  &lt;rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkGlass)"/&gt;
+  &lt;rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#FFEDD5" stroke-opacity="0.30" stroke-width="1"/&gt;
+  &lt;g transform="translate(12 11) scale(1.5)" fill="#FFF7ED"&gt;
+    &lt;path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/&gt;
+    &lt;path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/&gt;
+  &lt;/g&gt;
+&lt;/svg&gt;</pre>
+<p class="lead">落地：两张 SVG 覆盖 <code>resources/icon.svg</code> 与 <code>resources/icon-brand.svg</code>，<code>plugin.json</code> 的 <code>icon</code>/<code>marketIcon</code> 指向不变；随 1.4.1 一起发。</p>
+
+<h2>六、发布计划</h2>
 <table>
   <tr><th>项</th><th>内容</th><th>发版</th></tr>
   <tr><td>插件市场</td><td>作者坞包裹放大（保留放大特效）· 模式记忆 · 设置项分组/小标题/说明</td><td><b>1.4.1</b></td></tr>
@@ -361,6 +453,7 @@
   <li><b>作者坞宽度</b>：412px（卡宽 380，+26）可以吗？还是再大一点（428）？</li>
   <li><b>图片</b>：§4.2 这 9 张候选可以吗？哪只想换，告诉我换什么方向（我去找图）。</li>
   <li><b>设置页小节名</b>：「商店行为 / 市场源」这两个名字和说明文案，顺不顺？</li>
+  <li><b>购物袋图标</b>：§5.2 线稿与 §5.3 彩色两版，形状/胖瘦/提手高度顺不顺？要更圆一点还是更挺一点，说一声我改。</li>
 </ol>
 
 <p class="sub" style="margin-top:26px">v2 · 产品 CSS 片段逐字对照插件仓当前源；网图仅作候选展示，落地时下载进目录仓。</p>
