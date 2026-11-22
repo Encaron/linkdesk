@@ -82,8 +82,13 @@
 
 ## 八、回执
 
-- 总调度台 `sess_f471a6eb-…`：**本次会话不存在**（`proto.sessionNotFound`，只试一次未重试）；回执改在本档与用户会话给出。
+- 总调度台 `sess_f471a6eb-…`：早先一次 `proto.sessionNotFound`；2026-11-22 复查 `ListSessions` 可见（idle/pinned），已成功递交 **棒 17 发版交接**（`admission:"accepted"` / `delivery:"start_now"`）。
 - 未自建会话；未与修 bug 会话交叉改同一文件（壳 `src/`/`electron/` 零改动）。
+- **npm 发布回执（2026-11-22，用户授权）**：
+  - `@linkdesk/plugin-sdk` **0.1.99**、`@linkdesk/marketplace-kit` **0.1.2**、`@linkdesk/plugin-docs` **0.1.83** 已 `npm publish`（官方 registry，`--access public`）；`npm view` 已可见 `latest`。
+  - `@linkdesk/ui` 0.2.66 / contracts 0.1.48 / create-linkdesk-plugin 0.1.26 **无作者面漂移**，按「看货定」未空 bump；`release:mark` 同笔记录基线，`check:npm-release` 已绿。
+  - npm 身份 `fengyili`；`prepublish-auth-preflight --npm` 通过。⛔ 未发软件 tag、未触发插件 Release。
+- **棒 17 交接**：市场插件 1.3.0 发版（GitHub Release → 官方目录 `downloadUrl/version` → `sync:bundled` → 旧版实机更新）已作为棒 17 任务递交给总调度台；npm 轴不重复发。
 - **推送回执（2026-11-22，用户指令「推送一次」）**：
   - 代理 `127.0.0.1:7890` 重启后未启动（端口无监听）⇒ 改用**直连 GitHub**（`curl https://github.com` = 200）；⛔ 未重试代理。
   - 15 个官方插件/主题仓：各 1–2 笔 `main` 推送成功。
