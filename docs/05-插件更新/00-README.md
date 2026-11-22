@@ -34,7 +34,7 @@
 | Marketplace-Store | 插件市场商店视图（橱窗=其顶部「编辑推荐」横幅，已并入作一章） | — | [04-软件更新/待抉择池/Marketplace-Store/](../04-软件更新/待抉择池/Marketplace-Store/00-README.md) |
 | Serial-Simulator | 串口模拟器 | — | [Serial-Simulator/](Serial-Simulator/README.md) |
 | Snapshot-Share | 快照分享（**普通插件**——旧档案里的「壳级」标记已过时，以本行为准） | — | [Snapshot-Share/](Snapshot-Share/README.md) |
-| 玫瑰窗 | 教堂彩窗主题：亮色磨砂玻璃 + 全窗巴黎圣母院玫瑰窗 + 三组彩窗配色（午后圣光 / 青金石 / 晚祷紫） | ✅ **已发 1.0.1（2026-11-23）＋ 官方目录已收录（含 3 张场景截图）**；源码 `E:\linkdesk-plugins\official\theme-rose-window`（GitHub `Encaron/linkdesk-plugin-theme-rose-window`）；同批下架三只测试主题（宋体印刷体 / 全胶囊 / 终端机） | [玫瑰窗/](玫瑰窗/00-README.md) |
+| 玫瑰窗 | 教堂彩窗主题：亮色磨砂玻璃 + 全窗巴黎圣母院玫瑰窗 + 三组彩窗配色（午后圣光 / 青金石 / 晚祷紫） | ✅ **已发 1.0.2（2026-11-23）＋ 官方目录已收录（含 3 张场景截图；1.0.2 修跟随主题玻璃）**；源码 `E:\linkdesk-plugins\official\theme-rose-window`（GitHub `Encaron/linkdesk-plugin-theme-rose-window`）；同批下架三只测试主题（宋体印刷体 / 全胶囊 / 终端机） | [玫瑰窗/](玫瑰窗/00-README.md) |
 | Theme-Maker | 主题制作器 | ⚠️ **过时**——现主题系统已远超其设想；技术骨架尚可留用，重启前必须重新构思（见其 README 顶部标记） | [Theme-Maker/](Theme-Maker/00-README.md) |
 | PDF阅读器 | 单击 pdf 开**真阅读器**（渲染/翻页/缩放/搜索），不再是编辑器乱码 | ✅ **已收口 ＋ 已发版 0.1.1（2026-10-08）**——T1–T10 全格走完：只靠 **一行 `contributes.fileAssociations` 声明**接管单击、卸载即退回，**壳源码零 diff**；引擎选 pdf.js；GitHub Release [v0.1.1](https://github.com/Encaron/linkdesk-plugin-pdf-reader/releases/tag/v0.1.1) · 官方目录 `Encaron/linkdesk-marketplace` 已收录（19 条里下标 4） · ⛔ 不进出厂种子（`seed:false`，用户从市场装） | 📦 **档案已归还插件仓** → [docs/01-PDF阅读器插件/](https://github.com/Encaron/linkdesk-plugin-pdf-reader/tree/main/docs/01-PDF阅读器插件) |
 | 图片阅读器 | 单击 jpg/png/gif/webp 开看图器（适窗/缩放/旋转） | 📋 **蓝图起头**：四只里体量最小（MVP 1–2 天）、零宿主新能力；**svg 不声明**（双身份默认归编辑器，壳案 D8）——「默认不动、选择器可换」原则；🧭 与 04 案的先后 → [04 案 07 §五](../04-软件更新/已落地/文件打开方式与贡献点/07-插件侧适配-文件树与编辑器.md) | [图片阅读器插件/](图片阅读器插件/00-README.md) |
