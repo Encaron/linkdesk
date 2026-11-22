@@ -264,8 +264,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.83",
-      "contentHash": "a3444f4ad721d255a6d262471bcce87ec9d26b8b150d575c706b1f92ab711d21",
+      "version": "0.1.84",
+      "contentHash": "e841473347ce4471f6f0070f93869fe491ce992961e89217efdcf0f09f09007c",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8a114a274be827f7",
@@ -293,7 +293,7 @@
         "packages/plugin-docs/docs/22-menu-contribution-points.md": "b8475624a6a079c7",
         "packages/plugin-docs/docs/23-marketplace-catalog-and-author-store.md": "4f080dc9f663ef74",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
-        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "6aa2a97c0462aa76",
+        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "a9ca857e73b3e13f",
         "packages/plugin-docs/docs/zh/00-README.md": "138a49b8660e4af2",
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "4b836a5d63e7e02f",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
@@ -320,7 +320,7 @@
         "packages/plugin-docs/docs/zh/23-市场目录与作者主页.md": "55431f1ef4585115",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "0fbcb8f88275bf6f",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
-        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "9f6479b8f0db0573"
+        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "ee521afd5ad7247b"
       }
     },
     {
