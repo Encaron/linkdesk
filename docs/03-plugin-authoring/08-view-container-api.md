@@ -82,6 +82,29 @@
 | `order` | ❌ | number | Ordering among containers in the same location. Smaller values come first |
 | `icon` | ❌ | string | Container icon — overrides the plugin's own icon |
 | `mergeHeaderWhenSingle` | ❌ | boolean | When the container holds only one view, hide the view's collapse header — the title merges into the container header. Aligned with VS Code's `mergeViewWithContainerWhenSingleView` (a sidebar container holding a single view uses exactly this mode) |
+| `iconCommand` | ❌ | string | **Container entry command** (shell 0.2.60+): clicking this plugin's icon switches to this container **and** executes this command. The plugin defines what "open my icon" means (open the main page, a panel, a wizard) instead of the shell guessing from the implicit `tab type == pluginId` convention. Must be declared in `contributes.commands`; if the shell cannot find it, legacy behaviour resumes. Omitted = legacy behaviour, unchanged |
+
+> **Entry normalization (decided 2026-11-23)**: the icon click, the sidebar button and an AI call must all converge on the
+> **command surface**. Once `iconCommand` is declared, "click the icon" and "`commands.execute(<iconCommand>)`" are the same
+> thing — AI does not need to fake mouse input, and the plugin does not need a second road for AI. With several containers:
+> the one whose `id === pluginId` wins, otherwise declaration order; a `location: "main"` container is not an icon-bar entry
+> and is ignored.
+
+```json
+{
+  "viewsContainers": {
+    "demo-market": {
+      "title": "Demo Market",
+      "location": "sidebar",
+      "iconCommand": "demo.openStore"
+    }
+  },
+  "commands": [
+    { "id": "demo.openStore", "title": "Open Demo Market", "description": "Open (or focus) the demo market main page and reset it to home" }
+  ]
+}
+```
+
 
 ### views fields (full table)
 

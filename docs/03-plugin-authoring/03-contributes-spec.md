@@ -685,6 +685,7 @@ Slots: `left` (left side of the title bar) / `right` (right side).
 | `order` | ❌ | ordering within the same location. Smaller comes first |
 | `icon` | ❌ | overrides the plugin's own icon |
 | `mergeHeaderWhenSingle` | ❌ | hide the view header when the container has only one view — the title merges into the container header |
+| `iconCommand` | ❌ | **container entry command** (0.2.60+): clicking this plugin's icon switches to this container and executes this command — the plugin defines what "opens", on the same command surface as its sidebar button and AI calls. Must be declared in `contributes.commands`; omitted/missing = legacy behaviour. See 08 §2 |
 
 **views — registering content in a container:**
 

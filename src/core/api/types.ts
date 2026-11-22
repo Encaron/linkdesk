@@ -292,6 +292,11 @@ export interface ContributesViewsContainers {
     hideIfEmpty?: boolean;
     order?: number;
     mergeHeaderWhenSingle?: boolean;
+    /** 容器入口命令（0.2.60+）：点本插件的图标 = 切到该容器 **且** 执行这条命令。
+     *  「点我的图标该干什么」由插件自己声明——壳不再靠 tab type == pluginId 的隐式约定。
+     *  未声明 = 沿用旧行为（tabOnly 直开 / `{pluginId}.openTabOnIcon` 配置）。
+     *  命令必须在本插件 contributes.commands 里注册；找不到时壳回落到旧行为（不静默失效）。 */
+    iconCommand?: string;
   };
 }
 

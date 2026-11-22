@@ -673,6 +673,7 @@ npx @linkdesk/plugin-sdk import-icon-theme package/dist/material-icons.json \
 | `order` | ❌ | 同位置排序。小值靠前 |
 | `icon` | ❌ | 覆盖插件自身图标 |
 | `mergeHeaderWhenSingle` | ❌ | 容器内只有一个 view 时隐藏 view header——标题合并到容器 header |
+| `iconCommand` | ❌ | **容器入口命令**（0.2.60+）：点本插件图标 = 切到该容器且执行这条命令——「打开什么」由插件定义，与侧栏按钮/AI 调用同一条命令面。须登记在 `contributes.commands`；未声明/找不到 = 旧行为。详见 08 §二 |
 
 **views——往容器注册内容：**
 

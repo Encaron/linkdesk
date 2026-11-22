@@ -581,6 +581,10 @@
                   "type": "boolean",
                   "default": false,
                   "description": "Hide the view header when the container holds a single view — the title merges into the container header. Mirrors VS Code mergeViewWithContainerWhenSingleView"
+                },
+                "iconCommand": {
+                  "type": "string",
+                  "description": "Container entry command (shell 0.2.60+): clicking this plugin's icon switches to this container AND executes this command. Lets the plugin define what \"opening\" means (open its main page, a panel, a wizard) instead of relying on the implicit tab-type == pluginId convention. Must be a command declared in this plugin's contributes.commands; if the shell cannot find it, it falls back to the legacy behaviour (tabOnly opens its tab / {pluginId}.openTabOnIcon). Omitted = legacy behaviour unchanged."
                 }
               },
               "additionalProperties": false

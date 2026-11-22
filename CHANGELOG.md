@@ -2,6 +2,12 @@
 
 ## v0.2.60（2026-11-23）
 
+### feat
+
+- 🧭 **图标点击归一到命令面（`iconCommand`，作者面新能力）**：`contributes.viewsContainers.<id>.iconCommand` 声明一条命令 ⇒ 点插件图标 = 切到该容器**且执行该命令**；「点我的图标该干什么」由插件定义，壳不再靠 `tab type == pluginId` 的隐式约定去猜。图标点击、侧栏按钮、AI 调用从此汇到同一条命令——AI 不必模拟鼠标。未声明/命令未注册 = 旧行为一字不变（回落 tabOnly 直开 / `{pluginId}.openTabOnIcon`）。多容器选择：`id === pluginId` 优先、其余按声明顺序、`main` 容器忽略。
+  - 契约：`ContributesViewsContainers[string].iconCommand`；schema 三份拷贝同步；作者文档 08 §二 / 03 §3.11 / 21 §2.2（中英）。
+  - 市场插件 1.4.9 首个消费：`viewsContainers.marketplace.iconCommand = "marketplace.openStore"`（图标 = 切侧栏 ＋ 打开/复位商店首页）。
+
 ### fix
 
 - 🪟 **玻璃主题在「跟随主题」下也合成表面（主题作者的一处系统性坑）**：旧引擎只在用户动过玻璃配置（`app.glassBlur/Opacity/Tint/Saturate`）时才跑 `synthesizeGlassSurfaces`，跟随主题时表面色写什么就渲染什么——主题声明的 `glass.opacity` 只影响 tint 层和「切自定义」的种子。于是玻璃主题在跟随主题下前面板全实、右键菜单/下拉没有磨砂，作者只能靠 colorway 写 rgba 绕；官方 schema 却写着 `opacity` 是表面不透明度基线。

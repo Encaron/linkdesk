@@ -99,6 +99,37 @@ const list = await window.linkdesk.commands?.getCommands?.();
 setCanOpenWith(!!list?.some((c) => c?.id === SHELL_COMMANDS.openWith));
 ```
 
+### 2.2 The third leg: container entry command (`iconCommand`, 0.2.60+)
+
+What happens when someone clicks your icon in the icon bar is **declared by the plugin** — the shell no longer guesses
+(it used to open a tab through the implicit `tab type == pluginId` convention).
+
+```json
+{
+  "contributes": {
+    "viewsContainers": {
+      "demo-market": { "title": "Demo Market", "location": "sidebar", "iconCommand": "demo.openStore" }
+    },
+    "commands": [
+      { "id": "demo.openStore", "title": "Open Demo Market", "description": "Open (or focus) the main page and reset it to home" }
+    ]
+  }
+}
+```
+
+Once declared, **clicking the icon = switch the sidebar container + execute `demo.openStore`**; the "Enter …" button in the
+sidebar and an AI call to `commands.execute("demo.openStore")` all take **the same command**. "Open my main page" therefore
+has one implementation and one behaviour — AI does not have to fake mouse input, and you do not need a second road for AI.
+
+| Situation | Shell behaviour |
+|:--|:--|
+| `iconCommand` declared and the command is registered | Switch the container + execute the command (exactly the same action as your button/AI) |
+| Declared, but the command is not registered (typo / only registered when a view mounts and that view never opened) | Diagnostic warn + **fall back to legacy behaviour** (no silent no-op) |
+| Not declared | Legacy behaviour, unchanged (tabOnly opens its tab / the `{pluginId}.openTabOnIcon` config) |
+
+> The selection rule for multiple containers and the `main`-container exclusion are in
+> [08-view-container-api](08-view-container-api.md) §2.
+
 ---
 
 ## 3. Five things every command should get right

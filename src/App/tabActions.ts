@@ -12,7 +12,8 @@ import { useEffect } from "react";
 import { getViewPlugin } from "../pluginLoader/contributions/viewRegistry";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService";
-import { resolveIconTabOpen } from "./iconTabOpen";
+import { resolveIconCommand, resolveIconTabOpen } from "./iconTabOpen";
+import { executeCommand, getCommand } from "../core/registry/commands/CommandRegistry";
 import { getTabLayout, getPanelLayout, getSidebarLayout } from "../core/services/layout/LayoutService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { syncCountersAfterRestore, type LayoutData } from "../hooks/useTabManager";
@@ -45,9 +46,20 @@ export function useTabActions({
 }: TabActionsDeps): void {
   // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）。
   // R4-1.1（I14）：非 tabOnly 插件声明 `{pluginId}.openTabOnIcon` 为 true 时也直开（默认关＝只切侧栏，零行为差异）。
+  // 0.2.60+（归一化）：插件声明 contributes.viewsContainers.<id>.iconCommand ⇒ 图标点击 = 执行该命令
+  //   （与侧栏按钮/AI 调用同一条命令面，「打开什么」由插件定义）；未声明/命令未注册 = 回落下面旧行为。
   useEffect(() => {
     const unsub = shellEvents.on("icon:selected", (pluginId) => {
       const plugin = getViewPlugin(pluginId);
+      const iconCommand = resolveIconCommand(plugin?.manifest, pluginId);
+      if (iconCommand) {
+        if (getCommand(iconCommand)) {
+          // 空转失败由命令面统一记账（executeCommand 非严格模式不抛）——图标点击本身不阻断。
+          void executeCommand(iconCommand);
+          return;
+        }
+        console.warn(`[iconCommand] 插件 "${pluginId}" 声明的入口命令 "${iconCommand}" 未注册——回落旧行为`);
+      }
       const openOnIcon = getConfigurationValue<boolean>(`${pluginId}.openTabOnIcon`);
       if (resolveIconTabOpen(plugin?.manifest, openOnIcon)) {
         // 点图标 = 打开/聚焦该插件的主标签页，⛔ 不是每次再新建一个实例。

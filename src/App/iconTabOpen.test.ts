@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { resolveIconTabOpen } from "./iconTabOpen";
+import { resolveIconCommand, resolveIconTabOpen } from "./iconTabOpen";
 
 type ManifestLike = Parameters<typeof resolveIconTabOpen>[0];
 
@@ -34,5 +34,45 @@ describe("resolveIconTabOpen", () => {
 
   it("视图注册表查不到的 pluginId（manifest undefined）＝永不直开", () => {
     expect(resolveIconTabOpen(undefined, true)).toBe(false);
+  });
+});
+
+/**
+ * resolveIconCommand 单测——0.2.60+ 容器入口命令（归一化：图标点击 = 命令面）。
+ * 判据：非 main 容器；pluginId 同 id 优先；空白串 = 未声明；结构异常一律 null（回落旧行为）。
+ */
+describe("resolveIconCommand", () => {
+  const withContainers = (viewsContainers: unknown) => ({ contributes: { viewsContainers } });
+
+  it("未声明 / 结构异常 ⇒ null（回落旧行为，零行为差异）", () => {
+    expect(resolveIconCommand(undefined)).toBeNull();
+    expect(resolveIconCommand({})).toBeNull();
+    expect(resolveIconCommand(withContainers(undefined))).toBeNull();
+    expect(resolveIconCommand(withContainers([]))).toBeNull();
+    expect(resolveIconCommand(withContainers({ sidebar: null }))).toBeNull();
+    expect(resolveIconCommand(withContainers({ sidebar: { title: "A" } }))).toBeNull();
+  });
+
+  it("声明了 iconCommand ⇒ 原样返回（去首尾空白）", () => {
+    expect(resolveIconCommand(withContainers({ marketplace: { title: "市场", iconCommand: "marketplace.openStore" } }))).toBe("marketplace.openStore");
+    expect(resolveIconCommand(withContainers({ marketplace: { title: "市场", iconCommand: "  x.y  " } }))).toBe("x.y");
+  });
+
+  it("空白串 = 未声明", () => {
+    expect(resolveIconCommand(withContainers({ sidebar: { title: "A", iconCommand: "   " } }))).toBeNull();
+  });
+
+  it("main 容器不是图标栏入口 ⇒ 忽略", () => {
+    expect(resolveIconCommand(withContainers({ main: { title: "主区", location: "main", iconCommand: "x.main" } }))).toBeNull();
+  });
+
+  it("多容器：id === pluginId 优先，其余按声明顺序", () => {
+    const containers = {
+      alpha: { title: "A", iconCommand: "a.cmd" },
+      demo: { title: "D", iconCommand: "d.cmd" },
+      beta: { title: "B", iconCommand: "b.cmd" },
+    };
+    expect(resolveIconCommand(withContainers(containers), "demo")).toBe("d.cmd");
+    expect(resolveIconCommand(withContainers(containers), "nope")).toBe("a.cmd");
   });
 });

@@ -82,6 +82,27 @@
 | `order` | ❌ | number | 同位置容器排序。小值靠前 |
 | `icon` | ❌ | string | 容器图标——覆盖插件自身图标 |
 | `mergeHeaderWhenSingle` | ❌ | boolean | 容器内只有一个 view 时，隐藏 view 折叠头——标题合并到容器 header。对标 VS Code `mergeViewWithContainerWhenSingleView`（只装一个 view 的侧栏容器即用此模式） |
+| `iconCommand` | ❌ | string | **容器入口命令**（壳 0.2.60+）：点本插件图标 = 切到该容器 **且** 执行这条命令。「点我的图标该干什么」由插件定义（开主页面 / 开面板 / 跑向导），壳不再靠 `tab type == pluginId` 的隐式约定去猜。必须登记在 `contributes.commands`；壳找不到该命令时回落旧行为。未声明 = 旧行为一字不变 |
+
+> **入口归一化（2026-11-23 拍板）**：图标点击、侧栏按钮、AI 调用三条路必须汇到**命令面**。
+> 声明 `iconCommand` 后，「点图标」与「`commands.execute(<iconCommand>)`」是同一件事——AI 不需要模拟鼠标，
+> 插件也不需要为 AI 另开一条路。多容器时：`id === pluginId` 的容器优先，其余按声明顺序；`location: "main"` 的容器不是图标栏入口，忽略。
+
+```json
+{
+  "viewsContainers": {
+    "demo-market": {
+      "title": "示例市场",
+      "location": "sidebar",
+      "iconCommand": "demo.openStore"
+    }
+  },
+  "commands": [
+    { "id": "demo.openStore", "title": "打开示例市场", "description": "打开（或聚焦）示例市场主页面并复位到首页" }
+  ]
+}
+```
+
 
 ### views 字段（全表）
 
