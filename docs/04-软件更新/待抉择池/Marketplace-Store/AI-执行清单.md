@@ -128,8 +128,11 @@
   - ⚠️ ④ 实机「检查更新真装上」：userData 里装的已是 **1.3.0 的开发构建**（与发布资产哈希不同）⇒ 目录同版、应用判定「已装无更新」，**过渡未观测**；需观测则先降回 1.2.1（安装要用户点头）。详见 `21-棒17发版交接单.md`。
 - R4-R.2 ✅ 2026-11-23 npm 轴收口（⛔ 重发）
   - 六包货架 = 基线：contracts 0.1.48 / **plugin-sdk 0.1.100**（0.1.99→0.1.100：dev-host 补 4 个内容面 token，壳主题 token 加账后 npm 表面漂移，按「凡更新就发」补发）/ ui 0.2.66 / plugin-docs 0.1.84 / marketplace-kit 0.1.2 / create-linkdesk-plugin 0.1.26；`release:mark` 跑绿，基线随 v0.2.59 提交。
-- R4-R.3 🟡 软件本体随批发版走到端（用户 2026-11-23 会话内授权发版）
-  - `v0.2.59` tag **移动重打**：首轮 `da244cd76` CI 红（`--surface-ink` token 审计）→ 修 `scripts/check-token-audit.mjs` 插件面豁免 → 二轮 `ca2a3db34` CI 红（`packages/plugin-sdk/src/dev-host.test.ts`：壳 :root 4 个新 token 不在 dev-host 兜底集）→ dev-host 补 4 键 → 本地全量 `npm run check` **EXIT 0（282 文件 / 3850 例）** → tag 第三次重打。首两轮均未产出 Release。
+- R4-R.3 ✅ 2026-11-23 软件本体随批发版走到端（用户 2026-11-23 会话内授权）
+  - `v0.2.59` tag **三次重打**：首轮 `da244cd76` CI 红（`--surface-ink` token 审计）→ 修 `scripts/check-token-audit.mjs` 插件面豁免；二轮 `ca2a3db34` CI 红（`packages/plugin-sdk/src/dev-host.test.ts`：壳 :root 4 个新 token 不在 dev-host 兜底集）→ dev-host 补 4 键 ＋ plugin-sdk 0.1.100 补发；三轮 `b67d0b243` **CI 全绿**。前两轮均未产出 Release。
+  - Release **`v0.2.59`**（`https://github.com/Encaron/linkdesk/releases/tag/v0.2.59`）：`linkdesk-setup-0.2.59.exe` **107,733,455 B** ＋ `latest.yml`，发布时刻 `2026-11-22T17:21:59Z`。
+  - **耗时实测**：第三轮从推 tag 到 Release 资产齐 **10 分 27 秒**；从首推（16:47:53Z）算总 **34 分 06 秒**（含两轮约 11 分钟的红灯返工 ＋ 本地全量门禁约 8 分钟 ＋ npm 传播等待）。
+  - 旧版实机（`D:\01link\linkdesk` 0.2.57）`update.checkForUpdates` 已实机识别「有可用的更新 0.2.59」；安装动作待用户点「立即更新」/确认框。
 
 ---
 
@@ -138,5 +141,5 @@
 | 段 | 格数 | 已交 |
 |---|---|---|
 | 棒 0 Toast | （Toast 档计数） | 0 |
-| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 59 / 62 |
-| **总计** | — | **59 / 62 ＋ Toast**（剩棒 17 发版 3 格） |
+| 棒 1–17 R4 | 55 ＋ 验收 4 ＋ 发版 3 | 62 / 62 |
+| **总计** | — | **62 / 62 ＋ Toast** |
