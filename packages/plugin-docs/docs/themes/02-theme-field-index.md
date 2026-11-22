@@ -143,3 +143,26 @@ appearance.<domain>.<key>  write only the keys you want to change   →  unwritt
 | The full table of the shell's default tokens | `:root` in the repo's `src/index.css` |
 
 > All of the above are reachable on GitHub; **inside your plugin project, the only one within arm's reach is `theme.schema.json` in the SDK package** — point `$schema` at it to get editor completion and validation errors.
+
+
+---
+
+## 7. Content readability (2026-11-22; recommended for glass themes)
+
+A theme may add four ordinary color keys (the `colors` map accepts arbitrary keys; no schema change):
+
+| key | purpose |
+|:--|:--|
+| `surface-reading` | content card/floating surface |
+| `surface-reading-strong` | text band / expanded face over media |
+| `surface-media-scrim` | hero/media edge scrim |
+| `surface-ink` | ink on the content surface |
+
+```json
+"surface-reading": "rgba(10,14,20,0.62)",
+"surface-reading-strong": "rgba(10,14,20,0.72)",
+"surface-media-scrim": "rgba(10,14,20,0.82)",
+"surface-ink": "#FFFFFF"
+```
+
+When omitted, the shell derives them from `bg-card-solid`/`bg-window-solid` and `text-primary`. Do not stack environment glass alpha again on these keys.
