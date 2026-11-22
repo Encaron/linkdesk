@@ -3,17 +3,17 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.48",
-      "contentHash": "2ee16fd3f4fe33997765b912fdb3eed1688c7e430f4cbbbe90ee012b9f3cd515",
+      "version": "0.1.49",
+      "contentHash": "59423aeb2712bfc714829c8225dc46f5ba2e867d7db2d0800feed7427eaab4b3",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "81475d81b28cd96f"
+        "contracts/linkdesk.d.ts": "cd707a7cc32cf565"
       }
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.100",
-      "contentHash": "1d1ecdc9f0dc9ebbc30273f981dc6812ba8dbe11313fce42b01067daac64c697",
+      "version": "0.1.101",
+      "contentHash": "8c36f2376139f6c28d8c814db7ed36410a4a390ecc70f0f3473038600d70336e",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "294092c09456064a",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -27,7 +27,7 @@
         "packages/plugin-sdk/schemas/marketplace.schema.json": "23fcb56961f167a5",
         "packages/plugin-sdk/schemas/plugin.schema.json": "0fbcb8f88275bf6f",
         "packages/plugin-sdk/schemas/reserved-class-names.json": "3af8764375de786a",
-        "packages/plugin-sdk/schemas/theme.schema.json": "cc8fb0810239b4af",
+        "packages/plugin-sdk/schemas/theme.schema.json": "42ea3903ec198fac",
         "packages/plugin-sdk/schemas/ui-surface.json": "5beaa792c3cf6e3b",
         "packages/plugin-sdk/src/bin.ts": "e05c42a90ff44ed6",
         "packages/plugin-sdk/src/check-config-titles.test.ts": "ba2b9ec7f9fac50b",
@@ -264,8 +264,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.84",
-      "contentHash": "e841473347ce4471f6f0070f93869fe491ce992961e89217efdcf0f09f09007c",
+      "version": "0.1.85",
+      "contentHash": "da0dbeda1c21d4864aee23460e5d6c205dd5d18f8a39e2bc60499913300f1f53",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8a114a274be827f7",
@@ -279,7 +279,7 @@
         "packages/plugin-docs/docs/08-view-container-api.md": "66c393600bde53fa",
         "packages/plugin-docs/docs/09-plugin-directory-layout.md": "509af5be578702a2",
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "1cb1d4f1b5c0bb19",
-        "packages/plugin-docs/docs/11-authoring-themes.md": "537fd25311d316d2",
+        "packages/plugin-docs/docs/11-authoring-themes.md": "4db3bd2fa7f32acf",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f7cb640e07d9dbd3",
         "packages/plugin-docs/docs/13-development-guide.md": "ee373e7029977b0e",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
@@ -293,7 +293,7 @@
         "packages/plugin-docs/docs/22-menu-contribution-points.md": "b8475624a6a079c7",
         "packages/plugin-docs/docs/23-marketplace-catalog-and-author-store.md": "4f080dc9f663ef74",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
-        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "a9ca857e73b3e13f",
+        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "13a6b53d90eb6564",
         "packages/plugin-docs/docs/zh/00-README.md": "138a49b8660e4af2",
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "4b836a5d63e7e02f",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
@@ -305,7 +305,7 @@
         "packages/plugin-docs/docs/zh/08-ViewContainer-视图容器API.md": "273d38a40c21414d",
         "packages/plugin-docs/docs/zh/09-插件目录规范.md": "1de60956abd0f103",
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "2e09cd548617cb1e",
-        "packages/plugin-docs/docs/zh/11-主题制作.md": "57a869b1b4443846",
+        "packages/plugin-docs/docs/zh/11-主题制作.md": "fd14137ffe1bb952",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "612f7993c107bf42",
         "packages/plugin-docs/docs/zh/13-插件开发指南.md": "506d9bcffb5da737",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",
@@ -320,7 +320,7 @@
         "packages/plugin-docs/docs/zh/23-市场目录与作者主页.md": "55431f1ef4585115",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "0fbcb8f88275bf6f",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
-        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "ee521afd5ad7247b"
+        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "6115ecb4b226ddf9"
       }
     },
     {

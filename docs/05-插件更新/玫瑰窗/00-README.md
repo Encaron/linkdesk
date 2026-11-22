@@ -23,7 +23,7 @@
 
 **为什么玻璃 `opacity` 是 0.46**：亮色玻璃要「亮」得靠后面的彩窗透上来。表面合成不透明度越低，彩窗颜色越足；0.46 是最终取值——彩窗仍透过约 38% 的光（46% 表面 + 28.5% 暖白叠加之后）。文字承载面另走 `surface-reading*`（0.94 / 0.97），正文不会跟着玻璃一起透没。
 
-🔴 **根因（2026-11-23 实机反馈修）**：外观模式 = **跟随主题** 时，壳的玻璃表面合成**不激活**——`getGlassSurfaceSpec().active` 看的是用户配置键（`app.glassBlur/Opacity/Tint/Saturate`），跟随主题会把这些键清空，于是 `synthesizeGlassSurfaces` 不跑，表面色写什么就渲染什么。此前表面写成不透明 hex ⇒ 跟随主题下前面板全实、右键菜单/下拉没有磨砂；只有切到「自定义」播种后才激活合成、透出背景。**修法 = 表面色一律写 `rgba(...,0.46)`**（官方极光玻璃也是 rgba 写法）：跟随主题直接透；自定义模式再做一次 0.46 × 玻璃不透明度（默认 46% ⇒ 约 21%，更透；拉到 100% 回到 46%）。已用真壳引擎验证：跟随主题 `--bg-window: rgba(251,245,233,0.46)`；自定义 `color-mix(...)` + `--glass-surface-alpha: 0.46`。
+🔴 **根因与最终修法（2026-11-23 壳 0.2.60）**：旧引擎只在用户动过玻璃配置时才合成表面（`getGlassSurfaceSpec` 以 `app.glass*` 为激活闸），跟随主题时表面色写什么就渲染什么——主题声明的 `glass.opacity` 只影响 tint 层和自定义种子。于是玻璃主题在跟随主题下前面板全实、右键菜单/下拉没有磨砂；作者只能靠 colorway 写 rgba 绕。**0.2.60 起**：`getThemeGlassSurfaceSpec(glass)` 在跟随主题也认**主题声明**，alpha = `glass.opacity`；colorway 表面色按**基色**处理（自带 alpha 不再二次相乘）；新增 `glass.tintOpacity` 把 tint 厚度与表面 alpha 解耦。玫瑰窗保留 `rgba(...,.46)` 只作**旧壳（≤0.2.59）回退**——新壳两种写法都得到 0.46，自定义也是 0.46（旧壳自定义才是 0.46×0.46≈0.21）。
 
 **文字对比实测**（从渲染图取样）：玻璃面上主文字 10.2–12.4:1、次级 6.4–7.7:1、弱文字 ≥4.5:1；内容面 17.1:1 / 10.7:1 / 6.6:1。
 
@@ -42,7 +42,7 @@
 |---|---|
 | 插件仓（真源） | `E:\linkdesk-plugins\official\theme-rose-window` |
 | GitHub 仓 | <https://github.com/Encaron/linkdesk-plugin-theme-rose-window> |
-| Release | <https://github.com/Encaron/linkdesk-plugin-theme-rose-window/releases/tag/v1.0.2> |
+| Release | <https://github.com/Encaron/linkdesk-plugin-theme-rose-window/releases/tag/v1.0.3> |
 | 官方目录 | `Encaron/linkdesk-marketplace`：`plugins[]` 新增 1 条 + `official-themes` 合集收录 |
 | 本预览稿 | `rose-window-preview.html`（含底部宣传图）+ `promo-shots.html` + `preview-bg.jpg` |
 | 宣传图 | `cover.jpg`（README/目录封面）＋ `shot-1..3.jpg`（官方目录 `media/theme-rose-window/`） |

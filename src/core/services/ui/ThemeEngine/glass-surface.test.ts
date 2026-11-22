@@ -8,12 +8,12 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 // E5.8 Phase 11.15 3b：synthesizeGlassSurfaces/getGlassSurfaceSpec 从门面撤出（仅内部消费）——测试直引本体
-import { synthesizeGlassSurfaces } from "./tokens";
-import { getGlassSurfaceSpec } from "./seeds";
+import { synthesizeGlassSurfaces, surfaceVariables } from "./tokens";
+import { getGlassSurfaceSpec, getThemeGlassSurfaceSpec } from "./seeds";
 import { applyRecipe, applyTheme, deriveAppearanceSeeds } from "../ThemeEngine";
 import { SURFACE_COLOR_KEYS, GLASS_SURFACE_DEFAULT_ALPHA } from "../ThemeEngine";
 import { applyRemoteConfigChange, clearConfigurationCache } from "../../configuration/ConfigurationService";
-import { RECIPE } from "./testFixtures.mock";
+import { RECIPE, RECIPE_NO_COLOR } from "./testFixtures.mock";
 
 /** 合成 color-mix 串形状（与 synthesizeGlassSurfaces 产物同构） */
 function mixFor(key: string): string {
@@ -45,9 +45,9 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.4 });
     expect(tokens["bg-window"]).toBe(mixFor("bg-window"));
-    expect(tokens["bg-window-solid"]).toBe("rgba(18, 16, 12, 0.55)");
+    expect(tokens["bg-window-solid"]).toBe("rgb(18,16,12)"); // 2026-11-23：solid = 去 alpha 基色（表面 alpha 单点）
     expect(tokens["bg-card"]).toBe(mixFor("bg-card"));
-    expect(tokens["bg-card-solid"]).toBe("#1B1813");
+    expect(tokens["bg-card-solid"]).toBe("rgb(27,24,19)");
     expect(tokens["glass-surface-alpha"]).toBe("0.4");
     // 背景图/不透明度/遮罩键不在白名单——绝不碰（前缀匹配会误伤）
     expect(tokens["bg-image"]).toBe('url("bg.png")');
@@ -60,8 +60,8 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
     expect(tokens["bg-window"]).toBe("#FBF8F2");
     expect(tokens["bg-card"]).toBe("#FFF0F5");
-    expect(tokens["bg-window-solid"]).toBe("#FBF8F2"); // solid 恒写——合成引用源 + 主题素材存档
-    expect(tokens["bg-card-solid"]).toBe("#FFF0F5");
+    expect(tokens["bg-window-solid"]).toBe("rgb(251,248,242)"); // solid 恒写——合成引用源 + 去 alpha 基色
+    expect(tokens["bg-card-solid"]).toBe("rgb(255,240,245)");
     expect(tokens["glass-surface-alpha"]).toBe("0.5");
   });
 
@@ -105,11 +105,11 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(tokens["bg-window"]).toBe(mixFor("bg-window"));
     // 缺键派生：solid 取锚原值（bg-window），键 = 合成 color-mix
     expect(tokens["bg-titlebar"]).toBe(mixFor("bg-titlebar"));
-    expect(tokens["bg-titlebar-solid"]).toBe("#fff");
+    expect(tokens["bg-titlebar-solid"]).toBe("rgb(255,255,255)");
     expect(tokens["bg-input"]).toBe(mixFor("bg-input"));
-    expect(tokens["bg-input-solid"]).toBe("#fff");
+    expect(tokens["bg-input-solid"]).toBe("rgb(255,255,255)");
     for (const key of SURFACE_COLOR_KEYS) {
-      expect(tokens[`${key}-solid`]).toBe("#fff");
+      expect(tokens[`${key}-solid`]).toBe("rgb(255,255,255)");
       expect(tokens[key]).toBe(mixFor(key));
     }
   });
@@ -117,7 +117,7 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
   it("E5.8#151 派生用锚原值非合成串——循环内先合成的 bg-window 不污染后续缺键（锚捕获于循环前）", () => {
     const tokens: Record<string, string> = { "bg-window": "rgb(18, 16, 12)" };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });
-    expect(tokens["bg-titlebar-solid"]).toBe("rgb(18, 16, 12)"); // 原值，非 color-mix 串
+    expect(tokens["bg-titlebar-solid"]).toBe("rgb(18,16,12)"); // 原值（去 alpha），非 color-mix 串
     expect(tokens["bg-titlebar"]).toBe(mixFor("bg-titlebar"));
   });
 
@@ -228,6 +228,35 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(getGlassSurfaceSpec().alpha).toBe(0);
   });
 
+  it("tintOpacity → --glass-tint-opacity；缺省不写（CSS 回退 --glass-opacity）", () => {
+    const withTint = surfaceVariables({ type: "glass", opacity: 0.55, tintOpacity: 0.275 });
+    expect(withTint["glass-tint-opacity"]).toBe("0.275");
+    const without = surfaceVariables({ type: "glass", opacity: 0.55 });
+    expect(without["glass-tint-opacity"]).toBeUndefined();
+  });
+
+  /* ── getThemeGlassSurfaceSpec：跟随主题也认主题声明 ── */
+
+  it("无用户配置 + 主题声明 glass → active，alpha = 主题 opacity（含 clamp / 缺省 0.5）", () => {
+    clearConfigurationCache();
+    expect(getThemeGlassSurfaceSpec({ type: "glass", blur: 20, opacity: 0.46 })).toEqual({ active: true, alpha: 0.46 });
+    expect(getThemeGlassSurfaceSpec({ type: "glass", blur: 20 })).toEqual({ active: true, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(getThemeGlassSurfaceSpec({ type: "glass", opacity: 2 })).toEqual({ active: true, alpha: 1 });
+    expect(getThemeGlassSurfaceSpec({ type: "glass", opacity: -1 })).toEqual({ active: true, alpha: 0 });
+  });
+
+  it("无用户配置 + 无玻璃声明 → inactive（整窗主视觉的 per-surface alpha 原样保留）", () => {
+    clearConfigurationCache();
+    expect(getThemeGlassSurfaceSpec(undefined)).toEqual({ active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(getThemeGlassSurfaceSpec({ radius: 8 })).toEqual({ active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+  });
+
+  it("用户配置优先（custom）——主题 opacity 让位给用户值", () => {
+    clearConfigurationCache();
+    applyRemoteConfigChange("app.glassOpacity", 0.3);
+    expect(getThemeGlassSurfaceSpec({ type: "glass", opacity: 0.46 })).toEqual({ active: true, alpha: 0.3 });
+  });
+
   /* ── applyRecipe / applyTheme 集成 ── */
 
   it("applyRecipe 集成——玻璃激活 → :root 表面键 color-mix + solid + alpha；玻璃覆盖照常直写", () => {
@@ -236,7 +265,7 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     applyRecipe(RECIPE, "dew");
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--bg-window")).toBe(mixFor("bg-window"));
-    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("#FFFBF5");
+    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("rgb(255,251,245)");
     expect(root.style.getPropertyValue("--glass-surface-alpha")).toBe("0.4");
     expect(root.style.getPropertyValue("--glass-blur")).toBe("15px"); // 覆盖直写不受合成影响
   });
@@ -246,26 +275,35 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     applyRecipe(RECIPE, "dew");
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--bg-titlebar")).toBe(mixFor("bg-titlebar"));
-    expect(root.style.getPropertyValue("--bg-titlebar-solid")).toBe("#FFFBF5"); // 锚原值 = bg-window
+    expect(root.style.getPropertyValue("--bg-titlebar-solid")).toBe("rgb(255,251,245)"); // 锚原值 = bg-window（去 alpha）
     expect(root.style.getPropertyValue("--bg-window")).toBe(mixFor("bg-window"));
-    // 关闭玻璃 → 派生键 stale 清理移除（零变化回 :root 壳默认）
+    // 关闭玻璃（切到无玻璃配方）→ 派生键 stale 清理移除（零变化回 :root 壳默认）
     clearConfigurationCache();
-    applyRecipe(RECIPE, "dew");
+    applyRecipe(RECIPE_NO_COLOR, "plain");
     expect(root.style.getPropertyValue("--bg-titlebar")).toBe("");
     expect(root.style.getPropertyValue("--bg-titlebar-solid")).toBe("");
-    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 已写键回主题原生
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#FAFAFA"); // 已写键回主题原生
   });
 
-  it("applyRecipe 集成——重置玻璃（清配置）→ bg-window 回主题原生（合成停），solid/alpha 恒写", () => {
+  it("2026-11-23：跟随主题（清配置）→ 主题声明了 glass ⇒ 仍合成，alpha 用主题 opacity（缺省 0.5）", () => {
     applyRemoteConfigChange("app.glassBlur", 15);
     applyRecipe(RECIPE, "dew");
     clearConfigurationCache();
     applyRecipe(RECIPE, "dew");
     const root = document.documentElement;
-    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 零变化回主题原生
-    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("#FFFBF5"); // solid 恒写
-    expect(root.style.getPropertyValue("--glass-surface-alpha")).toBe("0.5"); // alpha 缺省
+    expect(root.style.getPropertyValue("--bg-window")).toBe(mixFor("bg-window")); // 主题声明玻璃 ⇒ 跟随主题也透
+    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("rgb(255,251,245)");
+    expect(root.style.getPropertyValue("--glass-surface-alpha")).toBe("0.5"); // RECIPE 未写 opacity → 默认
     expect(root.style.getPropertyValue("--glass-blur")).toBe("14px"); // 回主题基线（RECIPE glass.blur）
+  });
+
+  it("2026-11-23：无玻璃配方 ⇒ 合成停，表面回主题原生、派生键清理", () => {
+    applyRemoteConfigChange("app.glassBlur", 15);
+    applyRecipe(RECIPE, "dew");
+    clearConfigurationCache();
+    applyRecipe(RECIPE_NO_COLOR, "plain");
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg-window")).toBe("#FAFAFA");
   });
 
   it("#125 applyRecipe 集成——zone 图 + glassOpacity=0 → :root glass-surface-bg-opacity 落 0；重置玻璃回主题基线", () => {
@@ -292,12 +330,12 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     applyTheme(theme);
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--bg-window")).toBe("#101014");
-    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("#101014");
+    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("rgb(16,16,20)");
     applyRemoteConfigChange("app.glassBlur", 15);
     applyTheme(theme);
     expect(root.style.getPropertyValue("--bg-window")).toBe(mixFor("bg-window"));
     expect(root.style.getPropertyValue("--bg-card")).toBe(mixFor("bg-card"));
-    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("#101014");
+    expect(root.style.getPropertyValue("--bg-window-solid")).toBe("rgb(16,16,20)");
   });
 
   /* ── 播种无污染 ── */

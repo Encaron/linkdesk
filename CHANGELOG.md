@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.2.60（2026-11-23）
+
+### fix
+
+- 🪟 **玻璃主题在「跟随主题」下也合成表面（主题作者的一处系统性坑）**：旧引擎只在用户动过玻璃配置（`app.glassBlur/Opacity/Tint/Saturate`）时才跑 `synthesizeGlassSurfaces`，跟随主题时表面色写什么就渲染什么——主题声明的 `glass.opacity` 只影响 tint 层和「切自定义」的种子。于是玻璃主题在跟随主题下前面板全实、右键菜单/下拉没有磨砂，作者只能靠 colorway 写 rgba 绕；官方 schema 却写着 `opacity` 是表面不透明度基线。
+  - 新语义：`getThemeGlassSurfaceSpec(glass)`——用户配置优先；否则**主题声明了 glass 就激活**，alpha = `glass.opacity`（缺省 0.5）。跟随主题与自定义都合成，colorway 表面色按**基色**处理（自带 alpha 不再二次相乘）。
+  - **新增 `glass.tintOpacity`**（缺省 = `opacity`）：tint 盖片厚度与表面 alpha 解耦（例：表面 0.55 + tint 0.275）；CSS 用 `--glass-tint-opacity`，缺省回退 `--glass-opacity`。
+  - 向后兼容：无 `glass` 域的主题（纯配色 / 整窗主视觉）零变化；已有玻璃主题的 rgba 表面色在新引擎里仍得到同一 alpha（`-solid` 保存去 alpha 基色）。
+- 🧪 引擎单测补 4 例（跟随主题按主题 opacity 合成 / 无玻璃主题不动 / 用户值优先 / tintOpacity 独立写），`ThemeEngine` 15 文件 280 例全绿。
+
+### docs
+
+- 作者面 `11-主题制作`（中/英）＋ `02-主题字段速查`（中/英）：写死「表面色 = 基色、透明度只认一个旋钮」；`glass.opacity` / `tintOpacity` 语义；旧「表面色必须 rgba」偏方标注作废。
 > 📦 **0.1.x 版本线的完整说明已归档**：[`docs/04-软件更新/CHANGELOG-归档-v0.1.md`](docs/04-软件更新/CHANGELOG-归档-v0.1.md)（54 段；2026-10-01 首次执行「主文件 > 50 版 或 > 300 KB 即归档」的体积纪律）。**本文件只留当前版本线**（0.2.x）。归档只治仓库体积——`CHANGELOG.md` 不进安装包 / npm 包 / 插件 zip，三个分发面本来就不带它。
 
 ## v0.2.59（2026-11-21）

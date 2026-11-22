@@ -128,12 +128,23 @@ theme-liquid-glass/
 | Domain | How to write it | Notes |
 |:--|:--|:--|
 | radius | six size steps | `--radius-pill`/`--radius-full` form values are not written here (excluded from the scale domain) |
-| glass | material keys + floating form | specular/morph = liquid glass's "specular highlight / response"; radius/shadow = floating corner radius / drop shadow (inset is host-derived and border is not a field) |
+| glass | material keys + floating form | `opacity` = **surface alpha baseline**; `tintOpacity` = tint thickness (defaults to `opacity`); specular/morph = liquid glass's "specular highlight / response"; radius/shadow = floating corner radius / drop shadow (inset is host-derived and border is not a field) |
 | font | ui asset path + mono system family name | asset fonts take two steps: first register the family name with @font-face → then write `--font-ui` |
 | background | image asset + opacity + mask | relative path → getPluginAssetPath (hard constraint 12) |
 | colorways | style base + N colorways | 3-4 is recommended; a single colorway is still an array with 1 item (decision F) |
 
 > **Sparse and omittable:** the fully-loaded example only means "every domain is written" — missing domains inherit the shell defaults and missing keys within a domain inherit too (§3 sparse override); the less you write, the more stable it is. A pure-color theme = only `colorways` (and can skip even `assets/`).
+
+### ④·b Glass themes: surface colors are base colors, with one opacity knob (2026-11-23)
+
+The one rule a glass theme must get right:
+
+- The eight surface colors in a colorway (`bg-window` / `bg-card` / `bg-titlebar` / `bg-toolbar` / `bg-icon-bar` / `bg-side-panel` / `bg-input` / `bg-status`) are **base colors** — opaque hex is perfectly fine;
+- Surface transparency comes from **one** place: in follow-theme mode `appearance.glass.opacity`; in custom mode the user's "glass opacity" (`app.glassOpacity`). The engine applies it to the base color and **does not** multiply the colorway's own alpha again;
+- `glass.tint` is the overlay color; its thickness is controlled separately by `glass.tintOpacity` (defaults to `opacity`);
+- Themes without a `glass` domain (pure color schemes / full-window visuals) keep their per-surface rgba as authored — the engine leaves them alone.
+
+> 🔴 **Why this note exists**: the old engine only synthesized surfaces when the *user* had touched a glass setting, so follow-theme mode left panels fully opaque and context menus un-frosted; authors had to work around it with rgba surface colors. Since 2026-11-23 the engine also synthesizes in follow-theme mode from `glass.opacity`, and colorway alpha no longer participates — the old "surfaces must be rgba" workaround is obsolete; write base colors.
 
 ### ⑤ Names and translations (Chinese source + your own dictionary)
 

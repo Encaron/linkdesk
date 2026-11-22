@@ -17,7 +17,7 @@ import {
 } from "./mix";
 import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces, synthesizeIconGlow } from "./tokens";
 import { resolveRecipeFonts } from "./fonts";
-import { getAppearanceOverrides, getGlassSurfaceSpec, getIconGlowSpec } from "./seeds";
+import { getAppearanceOverrides, getThemeGlassSurfaceSpec, getIconGlowSpec } from "./seeds";
 import { setActiveRecipe, setCurrentTheme } from "./state";
 
 /** 应用主题（flat 桥接）：colors + 玻璃/背景/悬浮 + 用户覆盖 + 玻璃表面合成 → 写 :root + 广播。 */
@@ -30,7 +30,9 @@ export function applyTheme(theme: Theme): void {
   applyOverrides(variables, getAppearanceOverrides());
   // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖后、提交前（玻璃激活 → 表面配色键半透明；
   // 未激活 → 零变化。绝不放 mergeDomains 内部——getThemeBaseTokens 纯基线语义）。
-  synthesizeGlassSurfaces(variables, getGlassSurfaceSpec());
+  // 2026-11-23：玻璃激活 = 用户配置 ∨ **主题声明**（跟随主题也合成）——表面 alpha 来自
+  // 用户 glassOpacity（custom）或主题 glass.opacity（followTheme），不再依赖 rgba 写法。
+  synthesizeGlassSurfaces(variables, getThemeGlassSurfaceSpec(theme.surface));
   // 主题前景可读性 · 第 1 刀：图标反向光晕——挂底图时按墨色极性发 filter 串（同位置：覆盖后、提交前）
   synthesizeIconGlow(variables, getIconGlowSpec(theme.type));
   commitTokens(variables, theme.type, { recipeId: theme.name });
@@ -84,7 +86,11 @@ export function applyRecipe(
 
   // E5.8 Phase 11.16：玻璃系统标尺化——合成放覆盖（mergeDomains/mergeMixDomains 内已 applyOverrides）后、
   // 提交前（玻璃激活 → 表面配色键半透明；未激活 → 零变化。绝不放 merge 内部——纯基线语义）。
-  synthesizeGlassSurfaces(effective, getGlassSurfaceSpec());
+  // 2026-11-23：玻璃激活 = 用户配置 ∨ **主题声明**（跟随主题也合成）；surface 只在末尾算一次，两处复用。
+  const glassSurface = isMix
+    ? resolveMixDomainRecipe("glass", getMixProfile(), recipe, colorway).appearance?.glass
+    : recipe.appearance?.glass;
+  synthesizeGlassSurfaces(effective, getThemeGlassSurfaceSpec(glassSurface));
   // 主题前景可读性 · 第 1 刀：图标反向光晕（同位置；配方 type 决定未显式 fontTone 时的极性）
   synthesizeIconGlow(effective, getIconGlowSpec(recipe.type));
   commitTokens(
@@ -100,9 +106,7 @@ export function applyRecipe(
     colors: effectiveColors,
     // E5.8#59（审计#7 附注）：mix 下 surface/background 取混搭各域生效来源配方——原取基础配方
     // appearance.glass/background 与生效玻璃/背景来源不符（resolveMixDomainRecipe 同 mergeMixDomains 含缺域回退）
-    surface: isMix
-      ? resolveMixDomainRecipe("glass", getMixProfile(), recipe, colorway).appearance?.glass
-      : recipe.appearance?.glass,
+    surface: glassSurface,
     background: isMix
       ? resolveMixDomainRecipe("background", getMixProfile(), recipe, colorway).appearance?.background
       : recipe.appearance?.background,

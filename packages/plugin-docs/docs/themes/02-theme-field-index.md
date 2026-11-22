@@ -50,7 +50,8 @@
 | `blur` | `--glass-blur` | backdrop blur in px | `0` |
 | `saturate` | `--glass-saturate` | Saturation boost | `1` |
 | `tint` | `--glass-tint` | Color laid over the glass surface | `"transparent"` |
-| `opacity` | `--glass-opacity` | Opacity of the glass surface (1 = opaque) | `1` |
+| `opacity` | `--glass-opacity` | **Surface alpha baseline**: used in follow-theme mode; a user-set "glass opacity" overrides it in custom mode. 1 = opaque | `1` |
+| `tintOpacity` | `--glass-tint-opacity` | Tint overlay thickness; **defaults to `opacity`** (write it to decouple a solid surface from a light tint) | omit |
 | `specular` | `--glass-specular` | Top highlight strength (the "sheen" of liquid glass) | `0` |
 | `specularColor` | — | Base color of the highlight (white by default; alpha still comes from `specular`) | — |
 | `morph` | `--glass-morph` | Morph transition in ms ("responsiveness") | `0` |
@@ -59,6 +60,8 @@
 | `texture` / `textureOpacity` | (written into the per-surface background family) | Path to a tileable texture asset, and its opacity | omit |
 
 > ⚠️ **Large areas of `blur` are a GPU cost** — the more sparing you are, the smoother things run.
+>
+> 🔴 **One opacity knob for surfaces** (2026-11-23): `glass.opacity` is the surface alpha baseline in follow-theme mode; the user's "glass opacity" (`app.glassOpacity`) overrides it in custom mode. They never multiply. Surface colors in colorways are treated as **base colors** (their own alpha no longer participates), and the tint layer thickness is controlled separately by `tintOpacity` (defaults to `opacity`).
 
 ### `font` — fonts
 

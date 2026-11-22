@@ -129,7 +129,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     applyRemoteConfigChange("app.themeColor", "mint"); // E5.8#82：colors 域来源 = app.themeColor
     applyRecipe(RECIPE, "dew", {});
     const root = document.documentElement;
-    expect(root.style.getPropertyValue("--bg-window")).toBe("#F7FBF8"); // 颜色域 → mint
+    expect(root.style.getPropertyValue("--bg-window")).toContain("color-mix(in srgb, var(--bg-window-solid)"); // 颜色域 → mint（玻璃主题已合成）
     expect(root.style.getPropertyValue("--accent")).toBe("#3E9E8C");
     expect(root.style.getPropertyValue("--radius-lg")).toBe("12px"); // 数值域来源已删 → 基础配方 radius.lg=12（#97）
     expect(root.style.getPropertyValue("--glass-blur")).toBe("14px"); // 玻璃域来源已删 → 基础配方 glass.blur=14（#97）
@@ -164,7 +164,7 @@ describe("ThemeEngine — 混搭合并（E5.8#50.26，10 §1/§3 每域各自取
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--font-ui")).toBe("__ld_demo-mix_DemoFont"); // 资产 → 两步换族名
     expect(document.getElementById("ld-ff-__ld_demo-mix_DemoFont")).not.toBeNull();
-    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5"); // 颜色域跟随 → dew
+    expect(root.style.getPropertyValue("--bg-window")).toContain("color-mix(in srgb, var(--bg-window-solid)"); // 颜色域跟随 → dew（玻璃主题已合成）
   });
 
   it("E5.8#58 审计#1——mix 下 zones 背景不被 surface 域零值吞掉（surface-bg-* 归 background 域）", () => {

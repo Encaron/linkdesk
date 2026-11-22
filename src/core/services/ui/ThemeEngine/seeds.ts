@@ -15,6 +15,7 @@ import {
 import { getActiveRecipe } from "./state";
 import { resolveColorway, mergeDomains } from "./recipe";
 import { getMixProfile, mergeMixDomains } from "./mix";
+import type { ThemeSurface } from "../../../types/theme";
 // E5.8#151：tint 强制半透明——用户 glassTint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
 import { capTintAlpha } from "./color";
 
@@ -202,6 +203,34 @@ export function getGlassSurfaceSpec(): GlassSurfaceSpec {
       ? Number(opacity)
       : GLASS_SURFACE_DEFAULT_ALPHA;
   return { active, alpha };
+}
+
+/**
+ * 跟随主题下的玻璃表面规格（2026-11-23 语义补全）——用户配置优先，否则由**主题声明**决定：
+ *   ① 用户动过玻璃配置（custom）→ 用 getGlassSurfaceSpec（用户值即表面 alpha）；
+ *   ② 否则主题声明了玻璃（type:"glass" 或任一材质键）→ active，alpha = glass.opacity（缺省 0.5）；
+ *   ③ 都没有 → inactive（表面色原样；无玻璃主题的 per-surface rgba 照作者写的生效，如整窗主视觉）。
+ * 这条补的是「跟随主题不会合成表面」的旧缝：主题声明了 glass.opacity，表面却全实、浮层无磨砂。
+ * 表面色一律按**基色**处理（synthesizeGlassSurfaces 会剥 alpha），colorway 的 alpha 不再二次相乘。
+ */
+export function getThemeGlassSurfaceSpec(glass?: ThemeSurface): GlassSurfaceSpec {
+  const user = getGlassSurfaceSpec();
+  if (user.active) return user;
+  const declared =
+    glass != null &&
+    (glass.type === "glass" ||
+      glass.blur != null ||
+      glass.saturate != null ||
+      glass.tint != null ||
+      glass.opacity != null ||
+      glass.specular != null);
+  if (!declared) return { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA };
+  const raw = glass?.opacity;
+  const alpha =
+    raw != null && Number.isFinite(Number(raw))
+      ? Math.min(1, Math.max(0, Number(raw)))
+      : GLASS_SURFACE_DEFAULT_ALPHA;
+  return { active: true, alpha };
 }
 
 /** 主题前景可读性 · 第 1 刀：图标墨色极性（消费 synthesizeIconGlow）——决定反向光晕取哪一支。

@@ -23,9 +23,14 @@ export interface ThemeSurface {
   saturate?: number;
   /** Color layered over the glass surface */
   tint?: string;
-  /** Glass surface opacity (the compositing-layer baseline)—1 = opaque / 0 = fully see-through to the background. Writes the --glass-opacity token (consumed by the tint overlay's
-   *  opacity) + seeds a back-computed compositing alpha (#112: the recipe's surface baseline; takes priority when the user's app.glassOpacity overrides) */
+  /** Glass surface opacity (the compositing-layer baseline)—1 = opaque / 0 = fully see-through to the background.
+   *  Written to --glass-opacity and used by the engine as the surface alpha in follow-theme mode; a user-written
+   *  app.glassOpacity overrides it in custom mode. Surface colors are treated as opaque base colors (their own
+   *  alpha is ignored once glass is declared); themes without glass keep their per-surface alpha as authored. */
   opacity?: number;
+  /** Tint overlay opacity (the glass tint layer)—defaults to `opacity`. Decouple the tint thickness from the
+   *  surface alpha: e.g. surface 0.55 + tintOpacity 0.275 keeps a strong glass but a light tint. */
+  tintOpacity?: number;
   /** Liquid-glass top highlight intensity—0 = off */
   specular?: number;
   /** E5.8#63: top highlight base color (the hairline-light edge color)—omitted = white; alpha still goes through specular */

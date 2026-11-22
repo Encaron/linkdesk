@@ -73,7 +73,7 @@ describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E
     expect(root.style.getPropertyValue("--radius-lg")).toBe("12px");
     expect(root.style.getPropertyValue("--glass-blur")).toBe("14px");
     expect(root.style.getPropertyValue("--font-ui")).toBe("Noto Sans SC");
-    expect(root.style.getPropertyValue("--bg-window")).toBe("#FFFBF5");
+    expect(root.style.getPropertyValue("--bg-window")).toContain("color-mix(in srgb, var(--bg-window-solid)");
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(getActiveRecipe()).toEqual({ recipeId: "demo-recipe", colorwayId: "dew" });
   });
@@ -109,7 +109,7 @@ describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E
     applyRecipe(RECIPE, "dew", {});
     const tokens = getEffectiveTokens();
     expect(tokens["glass-blur"]).toBe("14px");
-    expect(tokens["bg-window"]).toBe("#FFFBF5");
+    expect(tokens["bg-window"]).toContain("color-mix(in srgb, var(--bg-window-solid)");
     expect(tokens["radius-lg"]).toBe("12px");
     expect(tokens["font-ui"]).toBe("Noto Sans SC");
   });
@@ -139,7 +139,7 @@ describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E
       expect(vars["accent"]).toBeUndefined();
       expect(vars["accent-hover"]).toBeUndefined();
       expect(vars["accent-light"]).toBeUndefined();
-      expect(vars["bg-window"]).toBe("#FFFBF5"); // 非 accent 键正常携带
+      expect(vars["bg-window"]).toContain("color-mix(in srgb, var(--bg-window-solid)"); // 非 accent 键正常携带（玻璃主题已合成）
       expect(vars["radius-lg"]).toBe("12px");
     } finally {
       if (original) linkdesk!.bridge = { broadcast: original }; else delete linkdesk!.bridge;

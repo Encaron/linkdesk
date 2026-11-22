@@ -65,6 +65,8 @@ export function surfaceVariables(surface?: ThemeSurface): Record<string, string>
   // E5.8#151：配方 tint alpha 强制 ≤0.5（封顶保留色相）——solid tint 不当不透明死盖片（盖死 backdrop-filter blur/saturate）
   if (surface.tint != null) vars["glass-tint"] = capTintAlpha(surface.tint);
   if (surface.opacity != null) vars["glass-opacity"] = String(surface.opacity);
+  // 2026-11-23：tint 盖片不透明度与「表面 alpha」解耦——缺省回退 --glass-opacity（CSS），写了才独立
+  if (surface.tintOpacity != null) vars["glass-tint-opacity"] = String(surface.tintOpacity);
   if (surface.specular != null) vars["glass-specular"] = String(surface.specular);
   // E5.8#63：高光基色 token——发丝光边颜色（缺省白）；alpha 仍走 glass-specular（消费侧 color-mix 组合）
   if (surface.specularColor != null) vars["glass-specular-color"] = surface.specularColor;
@@ -332,11 +334,11 @@ export function applyOverrides(
 /**
  * 合成玻璃表面——玻璃激活时把表面配色键变半透明（玻璃 = 系统表面层，非主题材质域）：
  * 对 tokens 里存在的每个 SURFACE_COLOR_KEYS 键：
- *   恒写 <key>-solid = 原值（合成引用源 + 主题素材存档）；
+ *   恒写 <key>-solid = **去 alpha 的基色**（合成引用源 + 内容面实色兜底）；
  *   激活 → <key> = color-mix(in srgb, var(--<key>-solid) calc(var(--glass-surface-alpha)*100%), transparent)
- *     ——预乘插值只缩 alpha 不漂 RGB（rgba(11,16,32,.55) 50% transparent → rgba(11,16,32,.275)），
- *     库内先例 index.css --glass-specular-line；Electron/Chromium 支持 var()/calc() 进 color-mix 百分比。
- *   未激活 → <key> 原值（零变化回主题原生）。
+ *     ——表面 alpha 由「主题 glass.opacity（跟随主题）/ 用户 glassOpacity（自定义）」单点决定，
+ *     ⛔ 不再与 colorway 里自带的 alpha 相乘（2026-11-23 定案：colorway 表面色是基色，不是第二根 alpha 旋钮）。
+ *   未激活 → <key> 原值（零变化回主题原生；无玻璃主题的 per-surface alpha 照作者写的生效）。
  * 写 glass-surface-alpha = spec.alpha（激活时 color-mix 引用源；未激活惰性无消费）。
  * 只合成 tokens 里存在的键——主题没写的表面色 = CSS :root 壳默认，不碰。
  * E5.8#151 稀疏合成补齐（19-档案规则 1）：主题 colorway 未写的 SURFACE_COLOR_KEYS 键（如 mint-soda
@@ -353,7 +355,8 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
     const v = tokens[k];
     return v != null && v.trim() !== "";
   });
-  const anchorValue = anchorKey ? tokens[anchorKey] : undefined;
+  const anchorRaw = anchorKey ? tokens[anchorKey] : undefined;
+  const anchorValue = anchorRaw === undefined ? undefined : opaqueColor(anchorRaw) ?? anchorRaw;
   for (const key of SURFACE_COLOR_KEYS) {
     const value = tokens[key];
     if (value == null || value.trim() === "") {
@@ -364,7 +367,7 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
       }
       continue;
     }
-    tokens[`${key}-solid`] = value;
+    tokens[`${key}-solid`] = opaqueColor(value) ?? value;
     if (spec.active) {
       tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;
     }
