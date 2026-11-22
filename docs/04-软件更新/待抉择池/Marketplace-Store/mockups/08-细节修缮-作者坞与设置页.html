@@ -366,7 +366,7 @@
 
 <h2>五、插件市场图标重绘：购物袋</h2>
 
-<p>两枚图标都换成「购物袋」：<b>线稿版</b>（图标栏用，跟着主题墨色走）＋<b>彩色版</b>（市场/详情里显示的身份图，暖橙底＋白袋）。下面是新图预览与源码；旧图一并列出对照。</p>
+<p>两枚图标都换成「购物袋」。前两版都栽在同一处——<b>单提梁 + 方圆袋身就是一把锁</b>。第三版换成<b>双提手托特包</b>（两只提手并排，锁不可能有两只），并守住三条：超细线（1.1–1.2，不用粗描边）、上宽下窄的袋身、彩色版有层次。16 / 32 / 48 / 96 四个尺寸都渲染验过。</p>
 
 <h3>5.1 旧图标（v1.4.0 现行）</h3>
 <div class="row">
@@ -384,58 +384,47 @@
 </div>
 
 <h3>5.2 新：线稿购物袋（icon.svg · 16×16 · currentColor）</h3>
-<div class="box" style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
-  <div style="background:#22232a;border:1px solid var(--line);border-radius:8px;padding:12px 18px;display:flex;gap:22px;align-items:center;color:#e6e6ea">
-    <div style="text-align:center"><svg width="32" height="32" viewBox="0 0 16 16" fill="none"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg><div class="sub" style="font-size:11px">32</div></div>
-    <div style="text-align:center"><svg width="24" height="24" viewBox="0 0 16 16" fill="none"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg><div class="sub" style="font-size:11px">24</div></div>
-    <div style="text-align:center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg><div class="sub" style="font-size:11px">16</div></div>
+<div class="row">
+  <div class="box" style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
+    <div style="background:#1b1c22;border:1px solid var(--line);border-radius:10px;padding:14px 20px;display:flex;gap:24px;align-items:center">
+      <svg width="48" height="48" viewBox="0 0 16 16" fill="none" style="color:#e6e6ea"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><svg width="32" height="32" viewBox="0 0 16 16" fill="none" style="color:#e6e6ea"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:#e6e6ea"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+    </div>
+    <div style="background:#f4f1ec;border:1px solid #ded8ce;border-radius:10px;padding:14px 20px;display:flex;gap:24px;align-items:center">
+      <svg width="48" height="48" viewBox="0 0 16 16" fill="none" style="color:#26262b"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><svg width="32" height="32" viewBox="0 0 16 16" fill="none" style="color:#26262b"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:#26262b"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+    </div>
   </div>
-  <div style="flex:1;min-width:260px;color:var(--txt2);font-size:12.5px">描边 1.35、圆角连接；跟在主题墨色后面（`currentColor`），亮暗主题自动翻转。16px 下线条不糊、袋口与提手仍分得清。</div>
+  <div class="box" style="max-width:430px;color:var(--txt2);font-size:12.5px">
+    <b>暗/亮两套都验过，16 实尺还放大 5× 看过像素。</b>袋身 3.4→12.6、上宽下窄；两只提手各 3.5 宽、并排放；线宽 1.1–1.2、圆头圆角。<br><br>
+    <b>为什么这版不像锁：</b>锁只有<b>一只</b>提梁，而且提梁<b>比袋身窄</b>；这里是<b>两只并排提手</b>、跨度接近袋宽——这是托特包独有的轮廓，锁和手包都凑不出来。
+  </div>
 </div>
 <pre>&lt;svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"&gt;
-  &lt;path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"
-        stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/&gt;
-  &lt;path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4"
-        stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/&gt;
+  &lt;path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z"
+        stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/&gt;
+  &lt;path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/&gt;
+  &lt;path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/&gt;
 &lt;/svg&gt;</pre>
 
 <h3>5.3 新：彩色购物袋（icon-brand.svg · 48×48）</h3>
 <div class="box" style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
-  <svg width="96" height="96" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="mkBg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient>
-      <linearGradient id="mkGlass2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/></linearGradient>
-    </defs>
-    <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg2)"/>
-    <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkGlass2)"/>
-    <rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#FFEDD5" stroke-opacity="0.30" stroke-width="1"/>
-    <g transform="translate(12 11) scale(1.5)" fill="#FFF7ED">
-      <path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/>
-      <path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/>
-    </g>
-  </svg>
-  <div style="display:flex;gap:14px;align-items:flex-end">
-    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkBg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg3)"/><g transform="translate(12 11) scale(1.5)" fill="#FFF7ED"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/></g></svg>
-    <svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkBg4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg4)"/><g transform="translate(12 11) scale(1.5)" fill="#FFF7ED"><path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/><path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/></g></svg>
-  </div>
-  <div style="flex:1;min-width:260px;color:var(--txt2);font-size:12.5px">沿用现有品牌底：暖橙渐变块（#FB923C→#C2410C）＋玻璃叠层＋1px 浅边，袋体白色实心、提手白线。与原图同一个底，只把「店屋」换成「购物袋」——换图不换品牌色。</div>
+  <svg width="96" height="96" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkAb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient><linearGradient id="mkAg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/></linearGradient><linearGradient id="mkAw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFF1E2"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkAb)"/><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkAg)"/><rect x="4.5" y="4.5" width="39" height="39" rx="9.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/><g transform="translate(12 10.5) scale(1.5)"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="#7C2D12" opacity="0.18" transform="translate(0 0.6)"/><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="url(#mkAw)"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/></g></svg>
+  <div style="display:flex;gap:14px;align-items:flex-end"><svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkBb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient><linearGradient id="mkBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/></linearGradient><linearGradient id="mkBw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFF1E2"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBb)"/><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg)"/><rect x="4.5" y="4.5" width="39" height="39" rx="9.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/><g transform="translate(12 10.5) scale(1.5)"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="#7C2D12" opacity="0.18" transform="translate(0 0.6)"/><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="url(#mkBw)"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/></g></svg><svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mkCb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#C2410C"/></linearGradient><linearGradient id="mkCg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/></linearGradient><linearGradient id="mkCw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFF1E2"/></linearGradient></defs><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkCb)"/><rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkCg)"/><rect x="4.5" y="4.5" width="39" height="39" rx="9.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/><g transform="translate(12 10.5) scale(1.5)"><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="#7C2D12" opacity="0.18" transform="translate(0 0.6)"/><path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="url(#mkCw)"/><path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/><path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/></g></svg></div>
+  <div style="flex:1;min-width:280px;color:var(--txt2);font-size:12.5px">品牌底不动（暖橙渐变＋玻璃叠层＋1px 内高光边）；袋身白渐变 <code>#FFFFFF→#FFF1E2</code>，两只提手用暖白描出，袋底一层 <code>#7C2D12 / 18%</code> 轻投影把它托起来——白袋在橙底上，立体但不花。</div>
 </div>
 <pre>&lt;svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"&gt;
   &lt;defs&gt;
-    &lt;linearGradient id="mkBg" x1="0" y1="0" x2="1" y2="1"&gt;
-      &lt;stop offset="0" stop-color="#FB923C"/&gt;&lt;stop offset="1" stop-color="#C2410C"/&gt;
-    &lt;/linearGradient&gt;
-    &lt;linearGradient id="mkGlass" x1="0" y1="0" x2="0" y2="1"&gt;
-      &lt;stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/&gt;
-      &lt;stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/&gt;
-    &lt;/linearGradient&gt;
+    &lt;linearGradient id="mkBg" x1="0" y1="0" x2="1" y2="1"&gt;&lt;stop offset="0" stop-color="#FB923C"/&gt;&lt;stop offset="1" stop-color="#C2410C"/&gt;&lt;/linearGradient&gt;
+    &lt;linearGradient id="mkGlass" x1="0" y1="0" x2="0" y2="1"&gt;&lt;stop offset="0" stop-color="#FFF" stop-opacity=".22"/&gt;&lt;stop offset="1" stop-color="#FFF" stop-opacity=".02"/&gt;&lt;/linearGradient&gt;
+    &lt;linearGradient id="mkBag" x1="0" y1="0" x2="0" y2="1"&gt;&lt;stop offset="0" stop-color="#FFFFFF"/&gt;&lt;stop offset="1" stop-color="#FFF1E2"/&gt;&lt;/linearGradient&gt;
   &lt;/defs&gt;
   &lt;rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkBg)"/&gt;
   &lt;rect x="4" y="4" width="40" height="40" rx="10" fill="url(#mkGlass)"/&gt;
-  &lt;rect x="4" y="4" width="40" height="40" rx="10" fill="none" stroke="#FFEDD5" stroke-opacity="0.30" stroke-width="1"/&gt;
-  &lt;g transform="translate(12 11) scale(1.5)" fill="#FFF7ED"&gt;
-    &lt;path d="M4.35 5.35h7.3l.72 7.6a1.35 1.35 0 0 1-1.35 1.48H4.98a1.35 1.35 0 0 1-1.35-1.48l.72-7.6Z"/&gt;
-    &lt;path d="M5.85 5.35V3.95a2.15 2.15 0 0 1 4.3 0v1.4" fill="none" stroke="#FFF7ED" stroke-width="1.6" stroke-linecap="round"/&gt;
+  &lt;rect x="4.5" y="4.5" width="39" height="39" rx="9.5" fill="none" stroke="#FFF" stroke-opacity=".22"/&gt;
+  &lt;g transform="translate(12 10.5) scale(1.5)"&gt;
+    &lt;path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="#7C2D12" opacity=".18" transform="translate(0 .6)"/&gt;
+    &lt;path d="M3.4 7.3h9.2l-.6 6.3a1.2 1.2 0 0 1-1.2 1H5.2a1.2 1.2 0 0 1-1.2-1Z" fill="url(#mkBag)"/&gt;
+    &lt;path d="M4.5 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/&gt;
+    &lt;path d="M8 7.3V6.5a1.75 1.75 0 0 1 3.5 0v.8" fill="none" stroke="#FFF7ED" stroke-width="1.5" stroke-linecap="round"/&gt;
   &lt;/g&gt;
 &lt;/svg&gt;</pre>
 <p class="lead">落地：两张 SVG 覆盖 <code>resources/icon.svg</code> 与 <code>resources/icon-brand.svg</code>，<code>plugin.json</code> 的 <code>icon</code>/<code>marketIcon</code> 指向不变；随 1.4.1 一起发。</p>
