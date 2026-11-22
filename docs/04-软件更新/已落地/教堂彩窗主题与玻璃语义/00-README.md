@@ -1,5 +1,6 @@
 # 玫瑰窗（theme-rose-window）——教堂彩窗主题
 
+> **归档位置**：本档案是**多仓＋软件主体合案**（主题插件 ＋ 壳玻璃语义 ＋ 设置/通知/菜单连带修复），2026-11-23 按 04「归属规则」从 `docs/05-插件更新/玫瑰窗/` **整夹迁入** `docs/04-软件更新/已落地/`；05 只保留单只插件自身的更新行。壳侧 **0.2.60 攒批未发版**（玻璃语义：跟随主题合成 / 自定义单次 / `tintOpacity`；设置页生效值；跨明暗配色标签；右键菜单加宽；通知面板折叠图标与自动收起）。
 > 2026-11-23 立案并当日落地。源码真源 = `E:\linkdesk-plugins\official\theme-rose-window`（GitHub `Encaron/linkdesk-plugin-theme-rose-window`）。
 > 预览稿：[rose-window-preview.html](rose-window-preview.html)（浏览器直接打开，背景图同目录 `preview-bg.jpg`）。
 
