@@ -277,6 +277,7 @@ useEffect(() => {
 | `title` | ❌ | **该行的人话短名**——渲染为设置页行名，市场详情「功能」页把它显示在键的上方一行。不声明 = 行上回退显配置键，第三方存量声明照旧能用。值域约定与 `description` 同：中文原文即 i18n key，英文译名进插件自己的 `i18n/en.json`。名词短语、≤12 字（去掉插件名前缀）；`renderHint: "action"` 的行读作按钮，起动词短语 |
 | `enumDescriptions` | ❌ | 下拉选项显示名——**对象**（每个 `enum` 值 → 显示名）；写数组会被 schema 判为字段类型不对。没给显示名的选项回退显原文 |
 | `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"`/`"slider"`/`"segmented"`/`"image"` 等，开放 string——未知 hint 降级回 type 默认渲染）。`"segmented"` = 分段单选（ghost 双轨制，配合 `enum` + `enumDescriptions` 声明，短标签 = enumDescription `—` 前段、tooltip = 全句） |
+| `allowAlpha` | ❌ | 颜色键的 alpha 能力档（仅 `"color"` 有意义，0.2.60+）。`false`/缺省 = 调色器不显示 alpha 条、输出 `#RRGGBB`；`true` = 多一条 alpha 滑杆、可输出 `rgba(r,g,b,a)`（alpha=1 仍写 hex）。只影响 UI 与输出格式，值本身仍是字符串；强调色等参与对比度的键保持默认 |
 | `group` | ❌ | **组内二级标题**——同 `group` 值的 key 在设置页归到子标题下渲染；无 `group` 的 key 保持平铺。声明中文节名即显示；节名标题走 i18n（插件 `contributes.i18n` 提供翻译）。零壳改动——壳机制对插件键同样生效。 |
 | `renderHint` | ❌ | 特殊行的渲染提示（开放 string，未知值降级回 `type` 默认渲染）。`"action"` = 渲染成**按钮**（按钮文字 = `description`，点击执行 `actionCommand`）；`"readonly"` = 渲染成**只读状态行**（值 = 执行 `statusCommand` 的返回值，每 3 秒重取；不读配置存储）。两个值都是通用能力——任何插件声明即生效，用法与示例见 [20-我的插件加一条配置项](20-我的插件加一条配置项.md) |
 | `actionCommand` | ❌ | `renderHint: "action"` 的行点击时执行的命令 id——可以是插件自己的命令，也可以是壳命令 |

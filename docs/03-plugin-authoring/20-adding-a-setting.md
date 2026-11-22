@@ -83,11 +83,16 @@ Once installed into LinkDesk, a "My Plugin" group appears on the left of the set
 | `"segmented"` | Segmented radio (pair with `enum` + `enumDescriptions`) |
 | `"fontFamily"` | Font family picker (`monoOnly: true` lists monospace families only) |
 | `"fontSize"` / `"file"` / `"directory"` / `"image"` | The matching specialized widget |
+| **A color key that needs transparency** | `uiHint: "color"` + `allowAlpha: true` — see below |
 
 ```jsonc
 "my-plugin.accent": {
   "type": "string", "default": "#3B82F6",
   "uiHint": "color", "description": "Accent color"
+},
+"my-plugin.glassTint": {
+  "type": "string", "default": "rgba(255,247,230,0.62)",
+  "uiHint": "color", "allowAlpha": true, "description": "Glass tint"
 },
 "my-plugin.level": {
   "type": "number", "default": 50,
@@ -95,6 +100,13 @@ Once installed into LinkDesk, a "My Plugin" group appears on the left of the set
   "description": "Sensitivity"
 }
 ```
+
+> **The color picker's alpha capability tier (0.2.60+)**: color keys are opaque by default — the picker hides
+> the alpha slider and writes `#RRGGBB`. A key that needs transparency (a glass tint, a scrim, a panel
+> backdrop) declares `"allowAlpha": true`; the same picker then adds an alpha slider and writes
+> `rgba(r,g,b,a)`. At alpha=1 it still writes hex, so old values are unchanged. Keys that participate in
+> contrast (accent etc.) **stay on the default** — do not enable it. The picker itself is a shared
+> component: declare the capability, **do not draw a second color picker in your plugin**.
 
 > ⚠️ **There is no `"integer"`** — integers use `"number"` too (with `step: 1`).
 

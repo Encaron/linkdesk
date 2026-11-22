@@ -61,7 +61,7 @@ class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      const name = this.props.pluginId ?? i18n.t("应用");
+      const name = this.props.pluginId ?? i18n.t("应用名");
       return (
         <div style={{
           display: "flex",

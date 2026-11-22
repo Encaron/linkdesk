@@ -1,9 +1,9 @@
 # ColorPicker 升级：RGBA / 透明度
 
-> 2026-11-23 用户点出「调色器能力不足，玻璃色调不了」。**状态：🟢 设计稿已出，待用户看稿**（Q1–Q5 按建议收口）——本夹只做设计与契约，未动代码。
-> **可交互预览**：[color-picker-preview.html](color-picker-preview.html)（点色块/拖 SV/拖 alpha/输入/预设，右下角实时命令日志）。
+> 2026-11-23 用户点出「调色器能力不足，玻璃色调不了」。**状态：🟢 已实施**——共享件 `@linkdesk/ui` 0.2.69、设置插件 1.0.45；壳随 **0.2.60** 攒批（未单独发版）。
+> **可交互预览**：[color-picker-preview.html](color-picker-preview.html)（点色块/拖 SV/拖 alpha/输入/预设，右下角实时命令日志；HTML 即最终呈现）。
 > **设计正文**：[01-设计-交互与AI操作面.md](01-设计-交互与AI操作面.md)。
-> 档案归属 = 04（共享控件 ＋ 设置消费 ＋ UI 包发版，多面交织）。拍板后转 §三 已立项并补任务清单。
+> 档案归属 = 04（共享控件 ＋ 设置消费 ＋ UI 包发版，多面交织）。
 
 ## 一、现状与证据
 
@@ -51,3 +51,17 @@
 - 强调色仍不透明（`allowAlpha` 默认关）；
 - 旧 hex 值打开/保存后零变化；
 - 单测 + 作者文档 + UI 包发版齐全。
+
+## 六、实施落点（2026-11-23）
+
+| 面 | 落点 |
+|:--|:--|
+| 解析/格式化 | `src/components/shared/color/colorUtils.ts`（**唯一实现**；`@linkdesk/ui` 导出 `parseColor` / `formatColor` / `isCssVariableExpression`） |
+| 调色器 | `src/components/shared/color-picker/ColorPicker.{tsx,css}`（260 宽 / 329·307 高；alpha 行按能力档渲染） |
+| 色块 | `src/components/shared/color-field/ColorField.{tsx,css}`（棋盘格 + 色层） |
+| 能力声明 | `LinkDeskConfigProperty.allowAlpha`（壳注册表 + 契约 + plugin.schema ×2）；`app.glassTint` 首个 `true` |
+| 命令面 | `color-picker.pick`（加 `allowAlpha`）＋ `color-picker.session`（open/setHsv/setHue/setAlpha/setValue/applyPreset/apply/cancel） |
+| 单测 | `colorUtils.test.ts`（解析/格式化/边界）＋ `ColorPicker.test.tsx`（alpha 档/提交语义/会话命令） |
+| 发版 | `@linkdesk/ui` 0.2.69 · `@linkdesk/contracts` 0.1.51 · `@linkdesk/plugin-sdk` 0.1.103 · 设置插件 1.0.45 · 语言包 1.0.66 |
+
+> 壳本体随 **0.2.60** 攒批发版；插件与 npm 包按各自轴先发。

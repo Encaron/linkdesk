@@ -17,6 +17,25 @@
   border: 1px solid var(--separator);
   flex-shrink: 0;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 2026-11-23：RGBA——色块下垫棋盘格，半透明值不再骗人（原版直接 background 看不出 alpha） */
+.ldk-color-field__checker {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-input);
+  background-image: repeating-conic-gradient(
+    color-mix(in srgb, var(--text-primary) 14%, transparent) 0 25%,
+    transparent 0 50%
+  );
+  background-size: 6px 6px;
+}
+
+.ldk-color-field__fill {
+  position: absolute;
+  inset: 0;
 }
 
 .ldk-color-field__swatch:hover {

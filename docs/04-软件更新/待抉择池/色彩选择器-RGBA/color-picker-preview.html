@@ -154,9 +154,9 @@
     box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.7);
     padding: 12px;
   }
-  .pk-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .pk-head .title { font-size: 13px; font-weight: 600; }
-  .pk-head .sp { flex: 1; }
+  /* 预览注记：在面板**外**（真实组件没有标题/能力 chip——由设置行与 alpha 条的有无表达） */
+  .demo-cap { font-size: 10.5px; line-height: 1.6; color: #C9A96A; padding-left: 2px; }
+  .demo-cap b { color: #E6D6B6; font-weight: 600; }
   /* 小预览：与原版一致的 28×28，紧贴输入框左侧 */
   .pk-preview {
     width: 28px; height: 28px; border-radius: var(--radius-sm); position: relative; overflow: hidden;
@@ -164,7 +164,6 @@
   }
   .pk-preview .cbg { position: absolute; inset: 0; background: var(--checker); }
   .pk-preview .fill { position: absolute; inset: 0; }
-  .capchip { font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--sep); color: var(--text-3); background: rgba(255,255,255,.4); }
 
   .sv {
     position: relative; height: 140px; border-radius: var(--radius-md); overflow: hidden;
@@ -307,13 +306,8 @@
 
       <!-- 右：调色器 -->
       <div class="picker-col">
+      <div class="demo-cap">预览注记（真实组件不显示这行）：<b id="demo-target">玻璃叠加色</b> · <span id="demo-cap">allowAlpha = true</span></div>
       <div class="picker" id="picker">
-        <div class="pk-head">
-          <span class="title" id="pk-title">玻璃叠加色</span>
-          <span class="sp"></span>
-          <span class="capchip" id="pk-cap">RGBA · 可调透明度</span>
-        </div>
-
         <div class="sv" id="sv">
           <span class="white"></span><span class="black"></span><span class="knob" id="knob"></span>
         </div>
@@ -529,8 +523,8 @@
     const c = current[target];
     // 能力档 = 配置键声明（app.glassTint: allowAlpha=true / app.accentColor: false）
     allowAlpha = target === "tint";
-    $("pk-title").textContent = target === "tint" ? "玻璃叠加色" : "强调色";
-    $("pk-cap").textContent = allowAlpha ? "RGBA · 可调透明度" : "HEX · 不透明";
+    $("demo-target").textContent = target === "tint" ? "玻璃叠加色" : "强调色";
+    $("demo-cap").textContent = allowAlpha ? "allowAlpha = true（可调 alpha）" : "allowAlpha = false（不透明）";
     $("alpha-row").style.display = allowAlpha ? "" : "none";
 
     $("sv").style.background = `hsl(${c.h}, 100%, 50%)`;

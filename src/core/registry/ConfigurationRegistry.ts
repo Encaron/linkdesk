@@ -132,6 +132,10 @@ export interface ConfigurationProperty {
    *  壳 appearance 四键（fontFamily/fontFamilyMono/backgroundImage/zoneBackgroundImage）声明；
    *  第三方键声明即得同能力（零壳改动）。不含 = 「重置此设置」保持删 user scope 回 schema 默认。 */
   resetsToDefault?: boolean;
+  /** ColorPicker 2（2026-11-23）：颜色键能力档——true = 调色器显示 alpha 条、输出 rgba；
+   *  false/缺省 = 不透明、输出 hex（旧键零变化）。只对 "color" 渲染有意义。
+   *  消费方 = 设置插件 SettingRow → ColorPicker `allowAlpha`（壳只透传声明，不认识具体键）。 */
+  allowAlpha?: boolean;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

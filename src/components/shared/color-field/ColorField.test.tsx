@@ -14,13 +14,15 @@ afterEach(() => {
 });
 
 describe("ColorField", () => {
-  it("色块取当前值作背景，并挂悬停提示（零延迟）", () => {
+  it("色块垫棋盘格、填充层取当前值作背景，并挂悬停提示（零延迟）", () => {
     const { container } = render(
       <ColorField value="#8a6ff0" onChange={() => {}} />,
     );
     const swatch = container.querySelector(".ldk-color-field__swatch") as HTMLElement;
-    // jsdom 会把 hex 归一成 rgb(...)——断言归一后的形态，避免把 jsdom 的序列化习惯当成契约
-    expect(swatch.style.background).toBe("rgb(138, 111, 240)");
+    const fill = container.querySelector(".ldk-color-field__fill") as HTMLElement;
+    // 2026-11-23 RGBA：色值落在填充层（棋盘格垫底，半透明值才看得出来）；jsdom 会把 hex 归一成 rgb(...)
+    expect(fill.style.background).toBe("rgb(138, 111, 240)");
+    expect(container.querySelector(".ldk-color-field__checker")).not.toBeNull();
     expect(swatch.getAttribute("data-hint")).toBe("#8a6ff0");
     expect(swatch.getAttribute("data-hint-delay")).toBe("0");
   });

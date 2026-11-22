@@ -31,11 +31,13 @@ function ColorField({
     <div className="ldk-color-field">
       <div
         className="ldk-color-field__swatch"
-        style={{ background: value }}
         data-hint={value}
         data-hint-delay="0"
         onClick={onSwatchClick}
-      />
+      >
+        <span className="ldk-color-field__checker" />
+        <span className="ldk-color-field__fill" style={{ background: value }} />
+      </div>
       <input
         className="ldk-input"
         type="text"

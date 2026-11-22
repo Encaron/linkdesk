@@ -239,14 +239,33 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
         title: t("选择颜色…"),
         category: t("开发人员"),
         description: "弹出取色器让用户选一个颜色，并把色值返回给调用方",
-        params: [{ name: "opts", type: "object", required: false, description: "{ initialColor?: string; presets?: string[] }——浮层初始颜色与预设色，省略 = 空选择器" }],
+        params: [{ name: "opts", type: "object", required: false, description: "{ initialColor?: string; presets?: string[]; allowAlpha?: boolean }——浮层初始颜色、预设色与 alpha 能力档；allowAlpha=true 时可调透明度并返回 rgba，省略/false = 不透明 hex" }],
         handler: async (...args: unknown[]) => {
-          const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
+          const opts = (args[0] as { initialColor?: string; presets?: string[]; allowAlpha?: boolean }) ?? {};
           const color = await import("../components/shared/color-picker/ColorPicker").then(m =>
-            m.showColorPicker({ initialColor: opts.initialColor, presets: opts.presets })
+            m.showColorPicker({ initialColor: opts.initialColor, presets: opts.presets, allowAlpha: opts.allowAlpha })
           );
           // 返回值通过 executeCommand 的 Promise 传回调用方——对标 VS Code commands.executeCommand
           return color as unknown as void;
+        },
+      });
+
+      // 硬约束 26：调色器的每个 GUI 动作都有非鼠标路径——一条结构化命令收口全部动作
+      //（open / setHsv / setHue / setAlpha / setValue / applyPreset / apply / cancel）。
+      // `open` 立即返回不阻塞；`apply` 返回最终值，落盘仍走 configuration.set（唯一持久化出口）。
+      registerCommand(APP_PLUGIN_ID, {
+        id: "color-picker.session",
+        title: t("调色器操作"),
+        category: t("开发人员"),
+        description: "结构化操作当前打开的调色器（AI 友好）——open/setHsv/setHue/setAlpha/setValue/applyPreset/apply/cancel",
+        params: [{ name: "args", type: "object", required: true, description: '{ action: "open"|"setHsv"|"setHue"|"setAlpha"|"setValue"|"applyPreset"|"apply"|"cancel", h?, s?, v?, a?, value?, index?, initialColor?, presets?, allowAlpha? }——open 用 initialColor/presets/allowAlpha；apply 返回 { value, format, alpha }' }],
+        handler: async (...args: unknown[]) => {
+          const payload = (args[0] as Record<string, unknown>) ?? {};
+          const action = typeof payload.action === "string" ? payload.action : "";
+          if (!action) throw new Error("color-picker.session 需要 action");
+          return import("../components/shared/color-picker/ColorPicker").then(m =>
+            m.runColorPickerSessionAction(action, payload)
+          ) as unknown as void;
         },
       });
 

@@ -7,7 +7,8 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 37 组件（32 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名）
+ *   - 40 组件（32 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名
+ *       + parseColor / formatColor / isCssVariableExpression 颜色工具）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
  *       CONFIG_NONE_SENTINEL / MIX_FOLLOW_THEME_SENTINEL / SETTINGS_UI_HINTS / SETTINGS_RENDER_HINTS /
@@ -15,11 +16,12 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 30 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 32 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
- *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps / SharedIconDefault）
+ *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps / SharedIconDefault /
+ *       Rgba / Hsv）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
@@ -102,6 +104,12 @@ export { SegmentPreviewText, SegmentPreviewSwatch } from "@shared/segment-previe
 //     （`newKeyBase` 是**数据键名**，故意不翻译）。
 export { default as ColorField } from "@shared/color-field/ColorField";
 export { default as ObjectEditor } from "@shared/object-editor/ObjectEditor";
+
+// 2026-11-23 ColorPicker 2：颜色解析/格式化的**唯一实现**对外——插件自绘取色 UI 复用它，
+//  ⛔ 不要在自己插件里再写一套 hex/rgba/hsl 正则（口径不一致 = 同一色值在两处显示不同）。
+//  `formatColor`：allowAlpha=false 或 a=1 ⇒ hex；a<1 ⇒ rgba(r,g,b,a)（2 位小数）。
+export { parseColor, formatColor, isCssVariableExpression } from "@shared/color/colorUtils";
+export type { Rgba, Hsv } from "@shared/color/colorUtils";
 
 export type { RunStatusCommand } from "@shared/readonly-text/useStatusPolling";
 export type { BackgroundImagePickerProps } from "@shared/image-picker/BackgroundImagePicker";

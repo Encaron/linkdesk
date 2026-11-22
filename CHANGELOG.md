@@ -4,6 +4,12 @@
 
 ### feat
 
+- 🎨 **ColorPicker 2：RGBA / 透明度能力档**（作者面新字段 `allowAlpha`）：调色器从 hex-only 升级为 hex/rgb(a)/hsl(a) 通吃——SV ＋ 色相 ＋ alpha 条 ＋ 棋盘格 ＋ 28px 小预览 ＋ 预设（可带 alpha）；版式按交互稿逐项对齐（260 宽、实测 329/307 高、滑杆 1fr+40 数值列、取消/应用右对齐）。
+  - **默认零变化**：颜色键不声明 `allowAlpha` ⇒ 不显示 alpha 条、输出 `#RRGGBB`（强调色等参与对比度的键保持不透明）；声明 `true` ⇒ 多一条 alpha 条、输出 `rgba(r,g,b,a)`（alpha=1 仍写 hex）。`app.glassTint` 首个开启。
+  - **每个 GUI 动作都有命令**（硬约束 26）：一条结构化命令 `color-picker.session` 收口 open/setHsv/setHue/setAlpha/setValue/applyPreset/apply/cancel；`color-picker.pick` 增 `allowAlpha`，可返回 rgba。落盘仍只走 `configuration.set`。
+  - 提交语义：拖动/输入只改预览，点「应用」或 Enter 才回调；取消/Esc/点遮罩不写值（旧版是边拖边写）。
+  - 解析/格式化单一实现 `@linkdesk/ui/color`（`parseColor` / `formatColor`，导出给插件复用）；ColorField 色块垫棋盘格。
+  - 契约：`LinkDeskConfigProperty.allowAlpha`；`plugin.schema.json` 两份拷贝同步；作者文档 20/03/19（中英）。
 - 🧭 **图标点击归一到命令面（`iconCommand`，作者面新能力）**：`contributes.viewsContainers.<id>.iconCommand` 声明一条命令 ⇒ 点插件图标 = 切到该容器**且执行该命令**；「点我的图标该干什么」由插件定义，壳不再靠 `tab type == pluginId` 的隐式约定去猜。图标点击、侧栏按钮、AI 调用从此汇到同一条命令——AI 不必模拟鼠标。未声明/命令未注册 = 旧行为一字不变（回落 tabOnly 直开 / `{pluginId}.openTabOnIcon`）。多容器选择：`id === pluginId` 优先、其余按声明顺序、`main` 容器忽略。
   - 契约：`ContributesViewsContainers[string].iconCommand`；schema 三份拷贝同步；作者文档 08 §二 / 03 §3.11 / 21 §2.2（中英）。
   - 市场插件 1.4.9 首个消费：`viewsContainers.marketplace.iconCommand = "marketplace.openStore"`（图标 = 切侧栏 ＋ 打开/复位商店首页）。

@@ -300,6 +300,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         title: t("玻璃叠加色"),
         description: t("玻璃叠加色——空 = 主题自带"),
         renderHint: "color",
+        allowAlpha: true, // 2026-11-23：玻璃叠加色是 rgba——调色器必须能调 alpha
         effectiveToken: "glass-tint", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--glass-tint）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),

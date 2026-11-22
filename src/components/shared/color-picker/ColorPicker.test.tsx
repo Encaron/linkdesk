@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 
-import ColorPicker, { resolvePanelPosition, PANEL_WIDTH } from "./ColorPicker";
+import ColorPicker, { resolvePanelPosition, PANEL_WIDTH, runColorPickerSessionAction } from "./ColorPicker";
 
 const VIEWPORT = { width: 1024, height: 768 };
 const PANEL_H = 224;
@@ -121,5 +121,106 @@ describe("ColorPicker 组件 — overlay 点击关闭（E5.8#83 根因 B）", ()
     const { panel } = renderPicker();
     expect(panel()!.style.left).toBe("");
     expect(panel()!.style.top).toBe("");
+  });
+});
+
+describe("ColorPicker 2 — alpha 能力档与提交语义", () => {
+  it("allowAlpha 缺省 → 不渲染 alpha 条；确定输出 hex", () => {
+    const { onChange, ok } = renderPicker({ value: "rgba(255,247,230,0.5)" });
+    expect(document.querySelector(".ldk-colorpicker-alpha")).toBeNull();
+    fireEvent.click(ok());
+    expect(onChange).toHaveBeenCalledWith("#fff7e6"); // a 被强制回 1
+  });
+
+  it("allowAlpha → 渲染 alpha 条；保留输入的半透明值、确定输出 rgba", () => {
+    const { onChange, ok } = renderPicker({ value: "rgba(255,247,230,0.5)", allowAlpha: true });
+    expect(document.querySelector(".ldk-colorpicker-alpha")).not.toBeNull();
+    fireEvent.click(ok());
+    expect(onChange).toHaveBeenCalledWith("rgba(255,247,230,0.5)");
+  });
+
+  it("取消 → 只关闭，不回调 onChange", () => {
+    const { onChange, onClose } = renderPicker({ allowAlpha: true });
+    fireEvent.click(document.querySelector(".ldk-colorpicker-cancel")!);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("Esc → 只关闭，不回调", () => {
+    const { onChange, onClose } = renderPicker();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("输入非法值 → 红框且不改内部值（确定仍输出原色）", () => {
+    const { onChange, ok } = renderPicker({ value: "#8a6ff0" });
+    const hex = document.querySelector(".ldk-colorpicker-hex") as HTMLInputElement;
+    fireEvent.change(hex, { target: { value: "nope" } });
+    expect(hex.className).toContain("is-invalid");
+    fireEvent.click(ok());
+    expect(onChange).toHaveBeenCalledWith("#8a6ff0");
+  });
+
+  it("输入 #RRGGBBAA → 解析成功，allowAlpha 下确定输出 rgba", () => {
+    const { onChange, ok } = renderPicker({ value: "#ffffff", allowAlpha: true });
+    const hex = document.querySelector(".ldk-colorpicker-hex") as HTMLInputElement;
+    fireEvent.change(hex, { target: { value: "#8a6ff080" } });
+    fireEvent.click(ok());
+    expect(onChange).toHaveBeenCalledWith("rgba(138,111,240,0.5)");
+  });
+
+  it("var() → 只读：输入框 readonly、应用禁用、说明文案出现", () => {
+    renderPicker({ value: "var(--glass-tint)" });
+    const hex = document.querySelector(".ldk-colorpicker-hex") as HTMLInputElement;
+    const ok = document.querySelector(".ldk-colorpicker-ok") as HTMLButtonElement;
+    expect(hex.readOnly).toBe(true);
+    expect(ok.disabled).toBe(true);
+    expect(document.querySelector(".ldk-colorpicker-error.is-info")?.textContent).toContain("只读");
+  });
+
+  it("预设点击 → 更新内部值；确定输出该色", () => {
+    const { onChange, ok } = renderPicker({ presets: ["#ff0000", "#00ff00"] });
+    fireEvent.click(document.querySelectorAll(".ldk-colorpicker-preset")[1]);
+    fireEvent.click(ok());
+    expect(onChange).toHaveBeenCalledWith("#00ff00");
+  });
+});
+
+describe("命令面 color-picker.session — 每个 GUI 动作都有非鼠标路径", () => {
+  it("setHsv + apply → 返回并回调 hex", () => {
+    const { onChange } = renderPicker({ allowAlpha: true });
+    runColorPickerSessionAction("setHsv", { h: 0, s: 1, v: 1 });
+    const snap = runColorPickerSessionAction("apply");
+    expect(snap).toMatchObject({ value: "#ff0000", format: "hex" });
+    expect(onChange).toHaveBeenCalledWith("#ff0000");
+  });
+
+  it("setValue rgba + apply → allowAlpha 下返回 rgba", () => {
+    const { onChange } = renderPicker({ allowAlpha: true });
+    const snap = runColorPickerSessionAction("setValue", { value: "rgba(255,247,230,0.5)" });
+    expect(snap).toMatchObject({ value: "rgba(255,247,230,0.5)", format: "rgba" });
+    runColorPickerSessionAction("apply");
+    expect(onChange).toHaveBeenCalledWith("rgba(255,247,230,0.5)");
+  });
+
+  it("setValue 非法 → invalid，apply 仍用旧值", () => {
+    const { onChange } = renderPicker();
+    expect(runColorPickerSessionAction("setValue", { value: "nope" })).toMatchObject({ invalid: true });
+    runColorPickerSessionAction("apply");
+    expect(onChange).toHaveBeenCalledWith("#0078d4");
+  });
+
+  it("applyPreset / setAlpha / cancel 均可脚本化", () => {
+    const { onChange, onClose } = renderPicker({ allowAlpha: true, presets: ["#00ff00"] });
+    runColorPickerSessionAction("applyPreset", { index: 0 });
+    expect(runColorPickerSessionAction("setAlpha", { a: 0.5 })).toMatchObject({ alpha: 0.5, format: "rgba" });
+    runColorPickerSessionAction("cancel");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("没有打开的调色器 → 结构化报错（不静默）", () => {
+    expect(() => runColorPickerSessionAction("apply")).toThrow("没有打开的调色器");
   });
 });

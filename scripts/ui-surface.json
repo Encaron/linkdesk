@@ -38,7 +38,10 @@
     "SourceBadge": { "since": "0.2.40" },
     "StringListEditor": { "since": "0.2.13" },
     "ThemePicker": { "since": "0.2.13" },
-    "Toggle": { "since": "0.2.13" }
+    "Toggle": { "since": "0.2.13" },
+    "formatColor": { "since": "0.2.60" },
+    "isCssVariableExpression": { "since": "0.2.60" },
+    "parseColor": { "since": "0.2.60" }
   },
   "hooks": {
     "useClickPreview": { "since": "0.2.13" },
@@ -86,6 +89,7 @@
     "ExtRowModel": { "since": "0.2.52" },
     "HandlerSnapshot": { "since": "0.2.52" },
     "HintTipProps": { "since": "0.2.20" },
+    "Hsv": { "since": "0.2.60" },
     "IconDescriptor": { "since": "0.2.13" },
     "InlineInputHandle": { "since": "0.2.13" },
     "ManagerModel": { "since": "0.2.52" },
@@ -95,6 +99,7 @@
     "OpenWithPickerProps": { "since": "0.2.48" },
     "OpenWithRequest": { "since": "0.2.48" },
     "ResolvedIcon": { "since": "0.2.13" },
+    "Rgba": { "since": "0.2.60" },
     "RowOption": { "since": "0.2.52" },
     "RowSortMode": { "since": "0.2.52" },
     "RowState": { "since": "0.2.52" },
@@ -104,5 +109,5 @@
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 95
+  "count": 100
 }

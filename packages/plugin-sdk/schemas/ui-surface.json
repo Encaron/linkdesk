@@ -112,6 +112,15 @@
     },
     "Toggle": {
       "since": "0.2.13"
+    },
+    "formatColor": {
+      "since": "0.2.60"
+    },
+    "isCssVariableExpression": {
+      "since": "0.2.60"
+    },
+    "parseColor": {
+      "since": "0.2.60"
     }
   },
   "hooks": {
@@ -242,6 +251,9 @@
     "HintTipProps": {
       "since": "0.2.20"
     },
+    "Hsv": {
+      "since": "0.2.60"
+    },
     "IconDescriptor": {
       "since": "0.2.13"
     },
@@ -269,6 +281,9 @@
     "ResolvedIcon": {
       "since": "0.2.13"
     },
+    "Rgba": {
+      "since": "0.2.60"
+    },
     "RowOption": {
       "since": "0.2.52"
     },
@@ -294,5 +309,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 95
+  "count": 100
 }

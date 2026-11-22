@@ -157,6 +157,9 @@ export interface LinkDeskConfigProperty {
    *  (returns a string; the display wording is assembled on the command side). The value comes from the command, not from config storage — a general capability any plugin can use.
    *  Settings row case 2.1: **companion declaration** — coexists with any primary control ⇒ the companion read-only to the right of the primary control (reuses the read-only base's polling). */
   statusCommand?: string;
+  /** 2026-11-23: color capability — true = the ColorPicker may edit alpha and emit rgba (glass tints);
+   *  false/omitted = opaque only, emits hex (accents etc.). Only meaningful for renderHint "color". */
+  allowAlpha?: boolean;
   /** E5.8#50.26: disable condition for renderHint "action" buttons — disabled when all {key,value} pairs match the current config values */
   actionDisabledAll?: Array<{ key: string; value: unknown }>;
   /** E5.8#78: secondary heading within a group — SettingsView groups keys with the same group under a subheading; without group it stays flat (zero intrusion) */

@@ -36,6 +36,7 @@ export const UI_SURFACE = [
   "packages/linkdesk-ui/README.md",
   "src/components/shared/badge/**",
   "src/components/shared/button/**",
+  "src/components/shared/color/**", // 2026-11-23 ColorPicker 2：解析/格式化唯一实现，barrel 已导出
   "src/components/shared/color-picker/**",
   "src/components/shared/combobox/**",
   "src/components/shared/context-menu/**",
