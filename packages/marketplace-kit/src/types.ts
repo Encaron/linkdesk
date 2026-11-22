@@ -42,6 +42,8 @@ export interface CatalogEntry {
   /** 聚合键（推荐 GitHub 用户名＝身份正典） */
   authorId?: string;
   screenshots?: Array<string | { type: "video"; url: string; poster?: string }>;
+  /** 目录卡封面（绝对 HTTPS URL；缺省按「视频海报 → 首张静帧 → 生成式封面」选帧） */
+  cover?: string;
   license?: string;
   repository?: string;
   pricing?: {
@@ -75,7 +77,7 @@ export interface CollectionDecl {
   subtitle?: string;
   hint?: string;
   cover?: string;
-  layout?: "banner" | "strip" | "duo" | "grid";
+  layout?: "banner" | "strip" | "duo" | "grid" | "mega" | "small" | "split" | "wall";
   items: string[];
   glow?: boolean;
   more?: SectionMore;
@@ -106,7 +108,7 @@ export type SectionDecl =
   | {
       type: "collection";
       collection: string;
-      layout?: "small" | "mega" | "duo";
+      layout?: "small" | "mega" | "duo" | "split" | "wall";
       title?: string;
       hint?: string;
       glow?: boolean;

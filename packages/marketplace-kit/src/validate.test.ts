@@ -153,3 +153,76 @@ describe("小分类封闭名单——可用清单直接进报错（作者不用�
     expect(r.warnings).toEqual([]);
   });
 });
+
+/* ── 媒体声明（批次 A2/E2）：错误模板 = 文件:字段 → 期望 → 示例 ── */
+describe("媒体校验——相对 URL / 多视频 / 视频越位 / http 明文 / 缺海报", () => {
+  const mediaEntry = (extra: Record<string, unknown>): Record<string, unknown> => ({
+    id: "demo-plugin",
+    name: "Demo",
+    version: "1.0.0",
+    author: { name: "Demo Author" },
+    repository: "https://github.com/demo-owner/demo-repo",
+    downloadUrl: "https://example.invalid/a.zip",
+    publishedAt: "2026-11-20T00:00:00.000Z",
+    versions: [{ version: "1.0.0", downloadUrl: "https://example.invalid/a.zip", publishedAt: "2026-11-20T00:00:00.000Z" }],
+    ...extra,
+  });
+  const messages = (r: ReturnType<typeof validateMarketplace>): string =>
+    [...r.errors, ...r.warnings].map((i) => i.message).join("\n");
+
+  it("相对 URL → error，消息含「文件:字段 → 期望 → 示例」", () => {
+    const r = validateMarketplace({ plugins: [mediaEntry({ screenshots: ["resources/shot-1.png"] })] });
+    const msg = messages(r);
+    expect(r.errors.some((e) => e.code === "screenshot-url-invalid" && e.path === "plugins[demo-plugin].screenshots[0]")).toBe(true);
+    expect(msg).toContain("文件 marketplace.json：plugins[demo-plugin].screenshots[0] → 期望");
+    expect(msg).toContain("示例：https://");
+    expect(msg).toContain("404");
+  });
+
+  it("多视频 → error（至多 1 段）；视频越位 → error（只能排第一）", () => {
+    const two = validateMarketplace({
+      plugins: [mediaEntry({
+        screenshots: [
+          { type: "video", url: "https://example.invalid/a.mp4", poster: "https://example.invalid/p.jpg" },
+          { type: "video", url: "https://example.invalid/b.mp4", poster: "https://example.invalid/q.jpg" },
+        ],
+      })],
+    });
+    expect(messages(two)).toContain("至多 1 段封面视频");
+    const late = validateMarketplace({
+      plugins: [mediaEntry({ screenshots: ["https://example.invalid/1.png", { type: "video", url: "https://example.invalid/a.mp4" }] })],
+    });
+    expect(late.errors.some((e) => e.code === "screenshot-video-restricted" && e.path.includes("screenshots[1]"))).toBe(true);
+    expect(messages(late)).toContain("封面视频只能排第一");
+  });
+
+  it("http 明文（cover/图片/视频）→ error，说明只接受 https", () => {
+    const r = validateMarketplace({
+      plugins: [mediaEntry({ cover: "http://example.invalid/c.png", screenshots: ["http://example.invalid/1.png"] })],
+    });
+    expect(r.errors.filter((e) => e.code === "screenshot-url-invalid").length).toBe(2);
+    expect(messages(r)).toContain("明文 http 不安全");
+  });
+
+  it("缺海报 → warning（不拦发布，但解释卡片会回落）", () => {
+    const r = validateMarketplace({
+      plugins: [mediaEntry({ screenshots: [{ type: "video", url: "https://example.invalid/a.mp4" }] })],
+    });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings.some((w) => w.code === "screenshot-poster-missing")).toBe(true);
+  });
+
+  it("合法媒体（https 静帧/cover/海报）→ 零 error 零媒体 warning", () => {
+    const r = validateMarketplace({
+      plugins: [mediaEntry({
+        cover: "https://example.invalid/cover.png",
+        screenshots: [
+          { type: "video", url: "https://example.invalid/a.mp4", poster: "https://example.invalid/p.jpg" },
+          "https://example.invalid/2.png",
+        ],
+      })],
+    });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+  });
+});

@@ -94,6 +94,8 @@ export interface CatalogPluginEntry {
   authorId?: string;
   /** v2：画廊媒体——string = 图片（旧数据原样）；视频项至多 1 段且必须排第一（解析期丢越位视频并记声明提示） */
   screenshots?: CatalogScreenshot[];
+  /** 目录卡封面（绝对 HTTPS URL）——缺省时市场按「视频海报 → 首张静帧 → 生成式封面」选帧 */
+  cover?: string;
   /** 作者声明的许可证（展示字段） */
   license?: string;
   /** 作者显式声明的插件主页（完整 URL；非 GitHub 托管/自有官网的唯一出口） */
@@ -165,7 +167,7 @@ export interface CollectionDecl {
   hint?: string;
   cover?: string;
   /** 卡片原型映射：banner→hero · strip→sm 横排 · duo→lg×2 · grid→md 网格（05 §四） */
-  layout?: "banner" | "strip" | "duo" | "grid";
+  layout?: "banner" | "strip" | "duo" | "grid" | "mega" | "small" | "split" | "wall";
   /** 成员 pluginId 引用——缺失条目静默跳过（照目录 merge 防御语义） */
   items: string[];
   /** 环境光晕开关——市场侧板块级/合集级「两处都认」（08 §三·v3.57 U4；缺省开） */
@@ -211,7 +213,7 @@ export type HomepageSection =
       type: "collection";
       collection: string;
       /** 卡片原型（整块统一，⛔ 卡级混排——想混 = 拆两个板块） */
-      layout?: "small" | "mega" | "duo";
+      layout?: "small" | "mega" | "duo" | "split" | "wall";
       title?: string;
       hint?: string;
       glow?: boolean;
@@ -668,6 +670,14 @@ export function upsertCatalogEntry(catalog: MarketplaceCatalog, entry: CatalogPl
       // R4-0.2：分类副标签同待遇（作者漏写 categories 时不抹掉历史值）
       categories: entry.categories ?? existing.categories,
       minAppVersion: entry.minAppVersion ?? existing.minAppVersion,
+      // 🔴 媒体/价格/许可 = 作者在 marketplace.json 手改的**目录元数据**（publish 不产出它们）：
+      // 不回落 = 下次发版把作者补的截图/封面/价格静默抹掉。⛔ 这不是 publish 拥有的字段。
+      authorId: entry.authorId ?? existing.authorId,
+      screenshots: entry.screenshots ?? existing.screenshots,
+      cover: entry.cover ?? existing.cover,
+      license: entry.license ?? existing.license,
+      repository: entry.repository ?? existing.repository,
+      pricing: entry.pricing ?? existing.pricing,
     };
     next[idx] = merged;
   }

@@ -96,6 +96,7 @@ const TS_ENTRY_KEYS: Record<keyof CatalogEntry, true> = {
   categories: true,
   authorId: true,
   screenshots: true,
+  cover: true,
   license: true,
   repository: true,
   pricing: true,

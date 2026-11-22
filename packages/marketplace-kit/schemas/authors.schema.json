@@ -152,7 +152,9 @@
           "enum": [
             "small",
             "mega",
-            "duo"
+            "duo",
+            "split",
+            "wall"
           ],
           "description": "collection only — card prototype for the whole section (one per section; to mix, split into two sections)."
         },

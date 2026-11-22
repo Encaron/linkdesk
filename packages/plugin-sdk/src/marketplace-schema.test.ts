@@ -77,6 +77,7 @@ const GOOD_ENTRY = {
     { type: "video", url: "https://example.invalid/r/demo/v1.2.0/clip.mp4", poster: "https://example.invalid/r/demo/v1.2.0/poster.jpg" },
     "https://example.invalid/r/demo/v1.2.0/shot-1.png",
   ],
+  cover: "https://example.invalid/r/demo/v1.2.0/cover.png",
   license: "MIT",
   repository: "https://example.invalid/someone/demo",
   pricing: { model: "paid", price: 9.9, currency: "USD", licenseUrl: "https://example.invalid/buy", refundUrl: "https://example.invalid/refund", trialDays: 14, channel: "self" },
@@ -325,6 +326,7 @@ const TS_ENTRY_KEYS: Record<keyof CatalogPluginEntry, true> = {
   categories: true,
   authorId: true,
   screenshots: true,
+  cover: true,
   license: true,
   repository: true,
   pricing: true,
@@ -469,5 +471,38 @@ describe("代码契约 ↔ schema 同源（E6#135 防漂移核心）", () => {
     );
     const again = upsertCatalogEntry(merged, second);
     expect(again.sources).toEqual(catalog.sources);
+  });
+
+  it("R4-0.2 媒体/价格保全：upsert 不抹掉作者手改的 screenshots/cover/pricing/license/repository", () => {
+    const existing = {
+      id: "demo-plugin",
+      name: "Demo",
+      version: "1.0.0",
+      downloadUrl: "https://example.invalid/a.zip",
+      publishedAt: "2026-09-20T00:00:00.000Z",
+      versions: [{ version: "1.0.0", downloadUrl: "https://example.invalid/a.zip", publishedAt: "2026-09-20T00:00:00.000Z" }],
+      screenshots: [
+        { type: "video" as const, url: "https://example.invalid/clip.mp4", poster: "https://example.invalid/poster.jpg" },
+        "https://example.invalid/shot-1.png",
+      ],
+      cover: "https://example.invalid/cover.png",
+      pricing: { model: "paid" as const, price: 9.9, currency: "USD", licenseUrl: "https://example.invalid/buy" },
+      license: "MIT",
+      repository: "https://example.invalid/someone/demo",
+    };
+    const next = buildCatalogEntry(
+      { id: "demo-plugin", name: "Demo", version: "1.1.0" },
+      "https://example.invalid/b.zip",
+      2,
+      "someone",
+      "2026-09-21T00:00:00.000Z",
+    );
+    const merged = upsertCatalogEntry({ plugins: [existing] }, next).plugins[0]!;
+    expect(merged.screenshots).toEqual(existing.screenshots);
+    expect(merged.cover).toBe(existing.cover);
+    expect(merged.pricing).toEqual(existing.pricing);
+    expect(merged.license).toBe("MIT");
+    expect(merged.repository).toBe(existing.repository);
+    expect(merged.version).toBe("1.1.0"); // 版本/下载仍由 publish 拥有
   });
 });

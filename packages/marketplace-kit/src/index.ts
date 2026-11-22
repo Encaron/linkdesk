@@ -37,4 +37,12 @@ export {
 } from "./validate.js";
 export { initMarketplace, type InitForm, type InitOptions, type InitResult } from "./init.js";
 export { keygen, parseExpSpec, signLicense, type KeygenOptions, type KeygenResult, type SignOptions, type SignResult } from "./license.js";
+export {
+  MEDIA_MAX_FRAMES,
+  formatMediaResolve,
+  mediaResolve,
+  type MediaKind,
+  type MediaResolveResult,
+  type ResolvedMedia,
+} from "./mediaResolve.js";
 export { main } from "./cli.js";

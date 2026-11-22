@@ -145,6 +145,10 @@
           "type": "array",
           "description": "Gallery media. `string` = image URL (legacy entries keep working unchanged). At most ONE video item and it must be the FIRST item (cover video): `{\"type\":\"video\",\"url\":…,\"poster\":…}`. Extra/mispositioned videos are dropped at parse time with a declaration warning (never silently turned into images). Playback mirrors the README video contract: controls forced, preload=metadata, autoplay stripped, poster preferred; no hosting — the author's direct link only."
         },
+        "cover": {
+          "type": "string",
+          "description": "Catalogue card cover image — an absolute HTTPS URL (author-hosted / CDN; the store never re-hosts). Preferred over the first still when picking the cover frame; omitted ⇒ the first screenshot (or the generated cover) is used. Shape-checked by `marketplace-kit validate` (relative/http URLs are errors: uninstalled users cannot resolve package-relative paths, and plaintext is rejected)."
+        },
         "license": {
           "type": "string",
           "description": "License declared by the author (display field on the detail page)."
@@ -236,8 +240,8 @@
         "hint": { "type": "string", "description": "Section sub-caption under the title — declared ⇒ rendered, undeclared ⇒ nothing (renderers never invent copy)." },
         "cover": { "type": "string", "description": "Optional cover image URL." },
         "layout": {
-          "enum": ["banner", "strip", "duo", "grid"],
-          "description": "Collection shape → card variant mapping (banner→hero, strip→small row, duo→large pair, grid→medium grid). One prototype per collection — no per-card mixing."
+          "enum": ["banner", "strip", "duo", "grid", "mega", "small", "split", "wall"],
+          "description": "Collection shape → card variant mapping (banner→hero, strip→small row, duo→large pair, grid→medium grid, mega→theme strip, small→compact row, split→full-width split card, wall→cover wall). One prototype per collection — no per-card mixing."
         },
         "items": {
           "type": "array",
@@ -357,7 +361,7 @@
           "description": "collection only — the CollectionDecl id to render."
         },
         "layout": {
-          "enum": ["small", "mega", "duo"],
+          "enum": ["small", "mega", "duo", "split", "wall"],
           "description": "collection only — card prototype for the whole section (one per section; to mix, split into two sections)."
         },
         "top": { "type": "integer", "minimum": 1, "description": "rank only — how many rows to show (computed slot; the author may omit it)." },

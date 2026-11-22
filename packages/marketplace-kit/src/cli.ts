@@ -16,6 +16,7 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { formatIssues, isAuthorFileName, isMarketplaceFileName, validateAuthorFile, validateMarketplace } from "./validate.js";
+import { formatMediaResolve, mediaResolve } from "./mediaResolve.js";
 import { initMarketplace } from "./init.js";
 import { keygen, signLicense } from "./license.js";
 
@@ -40,6 +41,10 @@ const USAGE = `marketplace-kit <command>
                         签发许可密钥（v1.<payload>.<signature>，LinkDesk 壳离线验签）。
                         --exp：YYYY-MM-DD（用到当天底）/ 完整 ISO 时刻 / 30d·12w·6m·1y
                         --machine：买家 machineFingerprint（壳「本机信息」可查）；给了 = 一机一码
+  media:resolve <marketplace.json> [id] [--json]
+                        媒体选帧 dry-run：逐条打印 kind（video/image/generated）/ frames / video / poster。
+                        相对 URL、http 明文、视频越位、多视频 → 非零退出（与发布校验同一套错误）。
+                        「--json」给 AI 读；不给 id = 全部条目。
 `;
 
 /** 解析校验目标 → (kind, data)。文件名 marketplace.json 直接定类；其余按顶层形状嗅探
@@ -131,6 +136,17 @@ function main(argv: string[]): number {
       const p = result.payload;
       console.log(`载荷：pluginId=${p.pluginId}${p.machine ? ` machine=${p.machine}` : "（未绑机器）"}${p.exp ? ` exp=${new Date(p.exp * 1000).toISOString()}` : "（永久）"}`);
       return 0;
+    }
+    case "media:resolve": {
+      const args = rest.filter((a) => !a.startsWith("--"));
+      const file = args[0] ?? "marketplace.json";
+      const id = args[1];
+      const abs = isAbsolute(file) ? file : resolve(file);
+      if (!existsSync(abs)) throw new Error(`路径不存在：${file}`);
+      const data: unknown = JSON.parse(readFileSync(abs, "utf8"));
+      const result = mediaResolve(data, id);
+      console.log(rest.includes("--json") ? JSON.stringify(result, null, 2) : formatMediaResolve(result));
+      return result.errors.length > 0 ? 1 : 0;
     }
     default:
       console.error(command ? `未知命令：${command}\n` + USAGE : USAGE);

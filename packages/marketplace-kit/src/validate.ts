@@ -217,15 +217,94 @@ function authorSemantics(data: AuthorFile, knownCollections?: ReadonlySet<string
   return out;
 }
 
+/* ── 语义层：marketplace.json 媒体声明（批次 A2/E2）────────────────────
+ * 统一错误模板：`文件:字段 → 期望 → 示例`（E2）。schema 管形状（视频只能首位、至多一段），
+ * 本层管 schema 表达不了的**可达性**：绝对 HTTPS（未装用户要能直接访问；相对路径必 404）、
+ * video/poster/cover 同规。媒体声明错了只降级不崩店，但作者必须能看懂为什么。 */
+
+const MEDIA_EXAMPLE = "https://raw.githubusercontent.com/<owner>/<repo>/HEAD/media/shot-1.png";
+const VIDEO_EXAMPLE = '{"type":"video","url":"https://…/clip.mp4","poster":"https://…/poster.jpg"}';
+const HTTPS_URL = /^https:\/\/[^\s]+$/i;
+
+function mediaUrlMessage(path: string, value: string, example = MEDIA_EXAMPLE): string {
+  const why = /^https?:/i.test(value)
+    ? "明文 http 不安全，商店只接受 https"
+    : "相对路径在未装用户的机器上必 404（包内路径不可达）";
+  return `文件 marketplace.json：${path} → 期望：以 https:// 开头的绝对 URL（${why}） → 示例：${example}`;
+}
+
+/** 媒体语义体检——无论 schema 是否通过都跑（schema 的 pattern 报错不够可执行；E2） */
+function mediaSemantics(data: unknown): ValidateIssue[] {
+  if (!data || typeof data !== "object") return [];
+  const plugins = (data as { plugins?: unknown }).plugins;
+  if (!Array.isArray(plugins)) return [];
+  const out: ValidateIssue[] = [];
+  for (const raw of plugins) {
+    if (!raw || typeof raw !== "object") continue;
+    const e = raw as { id?: unknown; screenshots?: unknown; cover?: unknown };
+    const id = typeof e.id === "string" ? e.id : "?";
+    const base = `plugins[${id}]`;
+
+    if (typeof e.cover === "string" && e.cover.trim() && !HTTPS_URL.test(e.cover.trim()))
+      out.push({ code: "screenshot-url-invalid", severity: "error", path: `${base}.cover`, message: mediaUrlMessage(`${base}.cover`, e.cover.trim(), "https://raw.githubusercontent.com/<owner>/<repo>/HEAD/media/cover.png") });
+
+    if (!Array.isArray(e.screenshots)) continue;
+    let videos = 0;
+    e.screenshots.forEach((item, i) => {
+      const at = `${base}.screenshots[${i}]`;
+      if (typeof item === "string") {
+        if (item.trim() && !HTTPS_URL.test(item.trim()))
+          out.push({ code: "screenshot-url-invalid", severity: "error", path: at, message: mediaUrlMessage(at, item.trim()) });
+        return;
+      }
+      if (!item || typeof item !== "object") return; // schema 报类型错
+      const v = item as { type?: unknown; url?: unknown; poster?: unknown };
+      if (v.type !== "video") return; // schema 报「后续位只能是图片」
+      videos += 1;
+      if (i !== 0)
+        out.push({
+          code: "screenshot-video-restricted",
+          severity: "error",
+          path: at,
+          message: `文件 marketplace.json：${at} → 期望：封面视频只能排第一（至多 1 段） → 示例：screenshots[0] = ${VIDEO_EXAMPLE}`,
+        });
+      if (typeof v.url === "string" && v.url.trim() && !HTTPS_URL.test(v.url.trim()))
+        out.push({ code: "screenshot-url-invalid", severity: "error", path: `${at}.url`, message: mediaUrlMessage(`${at}.url`, v.url.trim(), "https://…/clip.mp4") });
+      if (v.poster === undefined)
+        out.push({
+          code: "screenshot-poster-missing",
+          severity: "warning",
+          path: `${at}.poster`,
+          message: `文件 marketplace.json：${at}.poster → 期望：建议补海报（没海报时卡片只能回落到静帧/生成式封面） → 示例：${VIDEO_EXAMPLE}`,
+        });
+      else if (typeof v.poster === "string" && v.poster.trim() && !HTTPS_URL.test(v.poster.trim()))
+        out.push({ code: "screenshot-url-invalid", severity: "error", path: `${at}.poster`, message: mediaUrlMessage(`${at}.poster`, v.poster.trim(), "https://…/poster.jpg") });
+    });
+    if (videos > 1)
+      out.push({
+        code: "screenshot-video-restricted",
+        severity: "error",
+        path: `${base}.screenshots`,
+        message: `文件 marketplace.json：${base}.screenshots → 期望：至多 1 段封面视频（发现 ${videos} 段） → 示例：只保留第一段 ${VIDEO_EXAMPLE}`,
+      });
+  }
+  return out;
+}
+
 /* ── 对外入口 ─────────────────────────────────────────────────────────── */
 
 export function validateMarketplace(data: unknown): ValidateResult {
   const schema = JSON.parse(readFileSync(join(SCHEMAS_DIR, "marketplace.schema.json"), "utf8")) as object;
   const validate = getMarketplaceValidate();
   const ok = validate(data) as boolean;
-  const errors = ok ? [] : ajvErrorsToIssues(validate, schema);
-  const warnings = ok ? marketplaceSemantics(data as MarketplaceFile) : [];
-  return { errors, warnings };
+  const media = mediaSemantics(data);
+  return {
+    errors: [...(ok ? [] : ajvErrorsToIssues(validate, schema)), ...media.filter((m) => m.severity === "error")],
+    warnings: [
+      ...(ok ? marketplaceSemantics(data as MarketplaceFile) : []),
+      ...media.filter((m) => m.severity === "warning"),
+    ],
+  };
 }
 
 export function validateAuthorFile(data: unknown, knownCollections?: ReadonlySet<string>): ValidateResult {
