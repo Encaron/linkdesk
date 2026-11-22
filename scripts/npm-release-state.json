@@ -264,8 +264,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.85",
-      "contentHash": "da0dbeda1c21d4864aee23460e5d6c205dd5d18f8a39e2bc60499913300f1f53",
+      "version": "0.1.86",
+      "contentHash": "9a26101fe096f9759231708ed380d28089678168f12309067353048e4e2f4661",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8a114a274be827f7",
@@ -279,7 +279,7 @@
         "packages/plugin-docs/docs/08-view-container-api.md": "66c393600bde53fa",
         "packages/plugin-docs/docs/09-plugin-directory-layout.md": "509af5be578702a2",
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "1cb1d4f1b5c0bb19",
-        "packages/plugin-docs/docs/11-authoring-themes.md": "4db3bd2fa7f32acf",
+        "packages/plugin-docs/docs/11-authoring-themes.md": "02df67d584b710c4",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f7cb640e07d9dbd3",
         "packages/plugin-docs/docs/13-development-guide.md": "ee373e7029977b0e",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
@@ -305,7 +305,7 @@
         "packages/plugin-docs/docs/zh/08-ViewContainer-视图容器API.md": "273d38a40c21414d",
         "packages/plugin-docs/docs/zh/09-插件目录规范.md": "1de60956abd0f103",
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "2e09cd548617cb1e",
-        "packages/plugin-docs/docs/zh/11-主题制作.md": "fd14137ffe1bb952",
+        "packages/plugin-docs/docs/zh/11-主题制作.md": "75bfbc185def6ee1",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "612f7993c107bf42",
         "packages/plugin-docs/docs/zh/13-插件开发指南.md": "506d9bcffb5da737",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",

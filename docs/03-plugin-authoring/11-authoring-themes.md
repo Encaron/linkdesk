@@ -145,6 +145,8 @@ The one rule a glass theme must get right:
 - Themes without a `glass` domain (pure color schemes / full-window visuals) keep their per-surface rgba as authored — the engine leaves them alone.
 
 > 🔴 **Why this note exists**: the old engine only synthesized surfaces when the *user* had touched a glass setting, so follow-theme mode left panels fully opaque and context menus un-frosted; authors had to work around it with rgba surface colors. Since 2026-11-23 the engine also synthesizes in follow-theme mode from `glass.opacity`, and colorway alpha no longer participates — the old "surfaces must be rgba" workaround is obsolete; write base colors.
+>
+> ⚠️ **Version floor**: the new semantics start with **LinkDesk 0.2.60**. Targeting an older shell: either keep surface colors as `rgba(...,alpha)` (older shells need it) or declare `"minAppVersion": "0.2.60"` in `plugin.json` (the market blocks older shells).
 
 ### ⑤ Names and translations (Chinese source + your own dictionary)
 
