@@ -29,11 +29,21 @@
 }
 
 .ldk-boot-mark-logo {
+  display: block;
   width: calc(48px * var(--ui-scale));
   height: calc(48px * var(--ui-scale));
+  margin: 0 auto;
+  align-self: center;
 }
 
 .ldk-boot-mark-wordmark {
+  /* 2026-11-22 用户实机：启动屏字标视觉偏左。显式吃满容器并居中，
+     不再依赖 flex item 的隐式宽度/继承 text-align（旧构建/主题覆盖都可能把它带偏）。 */
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
   font-size: var(--font-size-lg); /* 14→lg */
   color: var(--text-muted);
   user-select: none;

@@ -50,13 +50,15 @@ export function useTabActions({
       const plugin = getViewPlugin(pluginId);
       const openOnIcon = getConfigurationValue<boolean>(`${pluginId}.openTabOnIcon`);
       if (resolveIconTabOpen(plugin?.manifest, openOnIcon)) {
-        const tabId = createTab(pluginId);
+        // 点图标 = 打开/聚焦该插件的主标签页，⛔ 不是每次再新建一个实例。
+        // 旧行为 createTab 会绕过 openOrFocus 去重：商店 tab 已开时再点图标 ⇒ 两个商店实例。
+        const tabId = openOrFocusTab(pluginId);
         // E5.6 fix：icon:selected 直开标签页也不会触发 tab:focused → activeEditor 不更新
         if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });
       }
     });
     return unsub;
-  }, [createTab]);
+  }, [createTab, openOrFocusTab]);
 
   // E5#5e-ii-f：TabActions 桥接——ShellEvents → useTabManager
   useEffect(() => {
