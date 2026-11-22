@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ColorPicker 2 · 交互与 AI 操作面预览</title>
+<style>
+  /* ══════════════════════════════════════════════════════════════════════
+     ColorPicker 2 设计预览（可交互）——2026-11-23
+     真值口径：docs/04-软件更新/待抉择池/色彩选择器-RGBA/01-设计-交互与AI操作面.md
+     ⚠️ 预览稿不是产品源码；真实组件住 @linkdesk/ui（color-picker / color-field）。
+     ══════════════════════════════════════════════════════════════════════ */
+  :root {
+    --bg: #F7F1E6;
+    --bg-card: #FFFCF5;
+    --bg-input: #FFFDF8;
+    --text: #1F160D;
+    --text-2: #4A3823;
+    --text-3: #7A654B;
+    --accent: #A6771B;
+    --accent-2: #C6952F;
+    --border: rgba(110, 78, 36, 0.24);
+    --sep: rgba(110, 78, 36, 0.14);
+    --danger: #A32A38;
+    --ok: #2E7D53;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-pill: 999px;
+    --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    --ui: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    --shadow: 0 24px 60px rgba(45, 28, 10, 0.18);
+    --checker: repeating-conic-gradient(rgba(70, 50, 25, 0.16) 0 25%, transparent 0 50%) 0 0 / 10px 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: var(--ui);
+    color: var(--text);
+    background:
+      radial-gradient(900px 500px at 18% 8%, rgba(178, 58, 72, 0.14), transparent 65%),
+      radial-gradient(900px 520px at 82% 4%, rgba(47, 93, 158, 0.16), transparent 65%),
+      radial-gradient(900px 600px at 50% 100%, rgba(166, 119, 27, 0.18), transparent 70%),
+      #0E0906;
+    padding: 28px 22px 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  .board-head { width: min(1420px, 100%); display: flex; align-items: baseline; justify-content: space-between; color: #C9A96A; }
+  .board-head b { font-size: 14px; letter-spacing: 4px; font-weight: 500; }
+  .board-head span { font-size: 11.5px; color: #9C8663; }
+
+  /* ── 壳预览 ── */
+  .app {
+    position: relative;
+    width: min(1420px, 100%);
+    min-height: 560px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 239, 192, 0.22);
+    box-shadow: 0 40px 110px rgba(0, 0, 0, 0.6);
+    background:
+      radial-gradient(700px 420px at 25% 20%, rgba(178, 58, 72, 0.20), transparent 70%),
+      radial-gradient(700px 420px at 80% 15%, rgba(47, 93, 158, 0.22), transparent 70%),
+      radial-gradient(500px 320px at 60% 85%, rgba(46, 125, 83, 0.16), transparent 70%),
+      #120B06;
+    display: grid;
+    grid-template-rows: 30px 1fr;
+    isolation: isolate;
+  }
+  .app::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background-image:
+      repeating-linear-gradient(60deg, rgba(255, 239, 192, 0.03) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(-60deg, rgba(255, 239, 192, 0.03) 0 1px, transparent 1px 26px);
+  }
+  .titlebar { display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 12px; color: var(--text-2); background: rgba(255, 252, 245, 0.55); border-bottom: 1px solid var(--sep); backdrop-filter: blur(20px); }
+  .titlebar .dot { width: 18px; height: 18px; border-radius: 5px; background: conic-gradient(from 0deg, #B23A48, #A6771B, #2F5D9E, #2E7D53, #B23A48); box-shadow: inset 0 0 0 1px rgba(255,239,192,.5); }
+  .titlebar .sp { flex: 1; }
+  .titlebar i { font-style: normal; width: 34px; text-align: center; }
+
+  .workspace { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; padding: 18px; }
+  @media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: rgba(255, 252, 245, 0.94);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 14px 36px rgba(52, 32, 12, 0.12);
+    padding: 20px 22px;
+    min-width: 0;
+  }
+  .panel h2 { margin: 0 0 3px; font-size: 19px; letter-spacing: .5px; font-weight: 600; }
+  .panel .sub { margin: 0 0 16px; font-size: 11px; letter-spacing: 3px; color: var(--text-3); }
+  .rule { height: 1px; background: linear-gradient(90deg, var(--accent), transparent); opacity: .45; margin: 0 0 16px; }
+
+  .crow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 12px;
+    border: 1px solid var(--sep);
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,.45);
+    cursor: pointer;
+    transition: background .15s, border-color .15s, box-shadow .15s;
+    margin-bottom: 10px;
+  }
+  .crow:hover { background: rgba(166, 119, 27, 0.06); }
+  .crow.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(166,119,27,.14); background: rgba(166,119,27,.05); }
+  .crow .meta { min-width: 0; }
+  .crow .name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .crow .desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .crow .value { display: flex; align-items: center; gap: 10px; }
+  .swatch {
+    width: 34px; height: 34px; border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.08);
+    background-color: transparent;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .swatch .cbg { position: absolute; inset: 0; background: var(--checker); }
+  .swatch .fill { position: absolute; inset: 0; }
+  .code { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+  .chip {
+    font-size: 10px; letter-spacing: 1px; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid rgba(166, 119, 27, 0.35); color: var(--accent); background: rgba(166,119,27,.08);
+    flex-shrink: 0;
+  }
+  .hintline { margin: 12px 0 0; font-size: 11.5px; line-height: 1.7; color: var(--text-3); }
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-size: 12.5px; line-height: 1; padding: 6px 12px; min-height: 26px;
+    border-radius: var(--radius-sm); border: 1px solid transparent; background: var(--accent);
+    color: #FFF9EC; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; border-color: var(--sep); color: var(--text-2); }
+  .btn:hover { opacity: .86; }
+
+  /* ── 调色器 ── */
+  .picker {
+    background: rgba(255, 252, 245, 0.96);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.7);
+    padding: 14px;
+    align-self: start;
+    min-width: 0;
+  }
+  .pk-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .pk-head .title { font-size: 13px; font-weight: 600; }
+  .pk-head .sp { flex: 1; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); cursor: pointer; user-select: none; }
+  .toggle input { accent-color: var(--accent); }
+  .preview {
+    height: 54px; border-radius: var(--radius-md); overflow: hidden; position: relative;
+    margin-bottom: 10px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  }
+  .preview .cbg { position: absolute; inset: 0; background: var(--checker); }
+  .preview .fill { position: absolute; inset: 0; }
+  .preview .label { position: absolute; left: 8px; bottom: 6px; font-family: var(--mono); font-size: 10.5px; padding: 2px 6px; border-radius: 4px; background: rgba(20,12,6,.62); color: #FFF3D0; }
+
+  .sv {
+    position: relative; height: 150px; border-radius: var(--radius-md); overflow: hidden;
+    cursor: crosshair; touch-action: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14);
+    margin-bottom: 10px;
+  }
+  .sv .white, .sv .black { position: absolute; inset: 0; }
+  .sv .white { background: linear-gradient(to right, #fff, transparent); }
+  .sv .black { background: linear-gradient(to top, #000, transparent); }
+  .sv .knob {
+    position: absolute; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .slider-row { display: grid; grid-template-columns: 1fr 40px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .slider {
+    -webkit-appearance: none; appearance: none; height: 12px; border-radius: 999px; outline: none;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); cursor: pointer;
+  }
+  .slider.hue { background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  .slider.alpha { background: var(--checker); position: relative; }
+  .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .slider-row .num { font-family: var(--mono); font-size: 11px; color: var(--text-2); text-align: right; }
+
+  .field { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .field input[type="text"] {
+    flex: 1; min-width: 0; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--bg-input); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 0 9px;
+    outline: none;
+  }
+  .field input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(166,119,27,.18); }
+  .field input[type="text"].bad { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(163,42,56,.16); }
+  .err { font-size: 10.5px; color: var(--danger); margin: 5px 0 0; min-height: 14px; }
+
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .preset {
+    width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,.14);
+    cursor: pointer; padding: 0; position: relative; overflow: hidden;
+  }
+  .preset .cbg { position: absolute; inset: 0; background: var(--checker); }
+  .preset .fill { position: absolute; inset: 0; }
+  .preset:hover { transform: translateY(-1px); }
+
+  .pk-foot { display: flex; gap: 8px; margin-top: 12px; }
+  .pk-foot .btn { flex: 1; }
+
+  /* ── 规格区 ── */
+  .specs { width: min(1420px, 100%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .specs .span2 { grid-column: span 2; }
+  @media (max-width: 980px) { .specs { grid-template-columns: 1fr; } .specs .span2 { grid-column: auto; } }
+  .spec {
+    border: 1px solid rgba(255, 239, 192, 0.16);
+    background: rgba(255, 248, 232, 0.035);
+    border-radius: 14px; padding: 16px 18px;
+    box-shadow: inset 0 1px 0 rgba(255,239,192,.10), 0 16px 40px rgba(0,0,0,.3);
+    color: #D8C7A8;
+  }
+  .spec h3 { margin: 0 0 4px; font-size: 13px; letter-spacing: 1px; color: #E6D6B6; font-weight: 600; }
+  .spec .cap { font-family: var(--mono); font-size: 10.5px; color: #B7A07A; margin-bottom: 12px; }
+  .spec p, .spec li { font-size: 12px; line-height: 1.75; color: #C4AE88; }
+  .spec ul { margin: 6px 0 0; padding-left: 18px; }
+  .spec b { color: #E6D6B6; }
+  .spec code { font-family: var(--mono); font-size: 11px; color: #E8D8B8; }
+  .mini { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mini .box { border: 1px solid rgba(255,239,192,.14); border-radius: 10px; padding: 10px; }
+  .mini .box h4 { margin: 0 0 6px; font-size: 11.5px; color: #E6D6B6; }
+  .mini .box .out { font-family: var(--mono); font-size: 10.5px; color: #C4AE88; word-break: break-all; }
+  .table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .table th, .table td { text-align: left; font-size: 11.5px; padding: 6px 8px; border-bottom: 1px solid rgba(255,239,192,.10); vertical-align: top; }
+  .table th { color: #E6D6B6; font-weight: 600; }
+  .table td { color: #C4AE88; }
+  .table code { font-family: var(--mono); font-size: 10.5px; color: #E8D8B8; }
+  .log {
+    margin-top: 10px; height: 180px; overflow: auto; border-radius: 10px;
+    background: rgba(14, 9, 6, 0.6); border: 1px solid rgba(255,239,192,.12);
+    padding: 10px 12px; font-family: var(--mono); font-size: 10.5px; line-height: 1.75; color: #C4AE88;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .log .k { color: #E8B750; }
+  .log .s { color: #A7C6A0; }
+  .case-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .case {
+    font-family: var(--mono); font-size: 10.5px; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid rgba(255,239,192,.16); background: rgba(255,248,232,.05); color: #C4AE88; cursor: pointer;
+  }
+  .case:hover { border-color: rgba(232,183,80,.5); color: #E6D6B6; }
+  .case.danger { border-color: rgba(178,58,72,.4); }
+  .case.ok { border-color: rgba(46,125,83,.4); }
+  .pill { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(166,119,27,.18); color: #E8B750; margin-left: 6px; }
+  .decis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+  @media (max-width: 980px) { .decis { grid-template-columns: repeat(2, 1fr); } }
+  .decis div { border: 1px solid rgba(255,239,192,.14); border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #C4AE88; }
+  .decis b { display: block; color: #E8B750; font-size: 10px; letter-spacing: 1px; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+  <div class="board-head">
+    <b>C O L O R P I C K E R  2  ·  R G B A</b>
+    <span>LinkDesk 共享件设计预览 · 可交互 · 2026-11-23</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar"><span class="dot"></span><span>设置 · 外观</span><span class="sp"></span><i>─</i><i>□</i><i>✕</i></div>
+    <div class="workspace">
+      <!-- 左：设置页模拟 -->
+      <div class="panel">
+        <h2>外观</h2>
+        <div class="sub">APPEARANCE · COLOR ROWS</div>
+        <div class="rule"></div>
+
+        <div class="crow active" id="row-tint" data-target="tint">
+          <div class="meta">
+            <div class="name">玻璃叠加色</div>
+            <div class="desc">colorway.glass.tint · rgba 值，直接决定玻璃的染色与透明度</div>
+          </div>
+          <div class="value">
+            <span class="chip">RGBA</span>
+            <span class="swatch"><span class="cbg"></span><span class="fill" id="sw-tint"></span></span>
+            <span class="code" id="val-tint">rgba(255,247,230,0.62)</span>
+          </div>
+        </div>
+
+        <div class="crow" id="row-accent" data-target="accent">
+          <div class="meta">
+            <div class="name">强调色</div>
+            <div class="desc">accent · 只允许不透明（参与对比度，allowAlpha = false）</div>
+          </div>
+          <div class="value">
+            <span class="chip">HEX</span>
+            <span class="swatch"><span class="cbg"></span><span class="fill" id="sw-accent"></span></span>
+            <span class="code" id="val-accent">#A6771B</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="btn-open-tint">编辑玻璃叠加色</button>
+          <button class="btn ghost" id="btn-open-accent">编辑强调色</button>
+        </div>
+        <p class="hintline">点色块或按钮切换调色器目标。真实壳里调色器是锚定浮层；本页常显在右侧，方便直接操作。<br>每个操作都会写进右下「AI 命令日志」——GUI 动作与命令一一对应。</p>
+      </div>
+
+      <!-- 右：调色器 -->
+      <div class="picker" id="picker">
+        <div class="pk-head">
+          <span class="title" id="pk-title">玻璃叠加色</span>
+          <span class="pill" id="pk-chip">RGBA</span>
+          <span class="sp"></span>
+          <label class="toggle" title="演示开关：对应配置键的 allowAlpha 声明"><input type="checkbox" id="allow-alpha" checked> 允许透明度</label>
+        </div>
+
+        <div class="preview"><span class="cbg"></span><span class="fill" id="pv-fill"></span><span class="label" id="pv-label">rgba(255,247,230,0.62)</span></div>
+
+        <div class="sv" id="sv">
+          <span class="white"></span><span class="black"></span><span class="knob" id="knob"></span>
+        </div>
+
+        <div class="slider-row">
+          <input class="slider hue" id="hue" type="range" min="0" max="360" step="1" value="38">
+          <span class="num" id="hue-num">38°</span>
+        </div>
+        <div class="slider-row" id="alpha-row">
+          <input class="slider alpha" id="alpha" type="range" min="0" max="100" step="1" value="62">
+          <span class="num" id="alpha-num">62%</span>
+        </div>
+
+        <div class="field">
+          <input type="text" id="input" value="rgba(255,247,230,0.62)" spellcheck="false" aria-label="颜色值">
+        </div>
+        <p class="err" id="err"></p>
+
+        <div class="presets" id="presets"></div>
+
+        <div class="pk-foot">
+          <button class="btn ghost" id="cancel">取消</button>
+          <button class="btn" id="apply">应用</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 规格 ── -->
+  <div class="specs">
+    <div class="spec span2">
+      <h3>一、两档能力（为什么用 allowAlpha 而不是“永远 RGBA”）</h3>
+      <div class="cap">同一个 ColorPicker，按配置键声明决定是否开放 alpha——不是两套组件。</div>
+      <div class="mini">
+        <div class="box">
+          <h4>allowAlpha: false（默认）</h4>
+          <p>alpha 滑杆隐藏；输入接受 hex/rgb/hsl 但强制 alpha=1；<b>输出恒为 hex</b>。<br>用于：强调色、按钮色、任何参与对比度的颜色。</p>
+          <div class="out">#A6771B</div>
+        </div>
+        <div class="box">
+          <h4>allowAlpha: true（显式开）</h4>
+          <p>alpha 滑杆显示；输入/输出支持 rgba/hsla；<b>alpha=1 时仍输出 hex</b>（旧值零变化），&lt;1 输出 rgba。</p>
+          <div class="out">rgba(255,247,230,0.62)</div>
+        </div>
+      </div>
+      <p style="margin-top:10px">上方的「允许透明度」勾选就是模拟这个声明——勾掉后 alpha 滑杆消失、输出立刻变 hex。</p>
+    </div>
+
+    <div class="spec">
+      <h3>二、输入与输出</h3>
+      <div class="cap">一个共享解析器（<code>parseColor</code>）＋ 一个格式化器（<code>formatColor</code>），调色器/色块/校验共用。</div>
+      <table class="table">
+        <tr><th>输入</th><th>解析为</th><th>输出（allowAlpha）</th></tr>
+        <tr><td><code>#A6771B</code></td><td>rgb(166,119,27), a=1</td><td><code>#A6771B</code></td></tr>
+        <tr><td><code>#FFCC80CC</code></td><td>a≈0.8</td><td><code>rgba(255,204,128,0.8)</code></td></tr>
+        <tr><td><code>rgba(255,247,230,.62)</code></td><td>a=0.62</td><td><code>rgba(255,247,230,0.62)</code></td></tr>
+        <tr><td><code>hsl(38 62% 60% / .5)</code></td><td>a=0.5</td><td><code>rgba(…,0.5)</code></td></tr>
+        <tr><td><code>var(--glass-tint)</code></td><td>不可解析</td><td><b>只读展示</b>（不改值）</td></tr>
+      </table>
+    </div>
+
+    <div class="spec">
+      <h3>三、边界情况</h3>
+      <div class="cap">点一条把值送进调色器，看它怎么处理。</div>
+      <div class="case-row">
+        <button class="case ok" data-case="rgba(255,247,230,0.62)">正常 rgba</button>
+        <button class="case ok" data-case="#FFCC80CC">#RRGGBBAA</button>
+        <button class="case ok" data-case="hsl(38 62% 60% / .5)">hsl( / a )</button>
+        <button class="case" data-case="rgba(0,0,0,0)">alpha = 0</button>
+        <button class="case" data-case="#A6771B">alpha = 1</button>
+        <button class="case danger" data-case="#12">非法 hex</button>
+        <button class="case danger" data-case="var(--glass-tint)">var() 只读</button>
+        <button class="case" data-case="rgb(255 204 128)">rgb 空格语法</button>
+      </div>
+      <ul>
+        <li><b>alpha 越界</b>：输入 1.2 / -1 ⇒ 钳到 0..1，并提示。</li>
+        <li><b>var()/color-mix()</b>：只读展示，弹层内禁用编辑（不改用户变量）。</li>
+        <li><b>小视口</b>：面板宽 232→300 自适应，右/下放不下翻左/上，恒在视口内。</li>
+        <li><b>键盘</b>：Tab 到 SV/滑杆/输入；Esc 取消；Enter 应用；滑块带 aria-valuetext。</li>
+        <li><b>首选减少动效</b>：过渡 150ms → 0。</li>
+      </ul>
+    </div>
+
+    <div class="spec span2">
+      <h3>四、AI 操作面（死规定：每个 GUI 动作都有命令）</h3>
+      <div class="cap">右栏是实时命令日志——你在这页做的每个动作都会落一条结构化命令（命令名是设计提案，实现时注册；真正落盘仍是 <code>configuration.set</code>）。</div>
+      <table class="table">
+        <tr><th>GUI 动作</th><th>命令 / API</th><th>载荷</th></tr>
+        <tr><td>打开调色器 / 读当前值</td><td><code>appearance.colorPicker.open</code></td><td><code>{ key, allowAlpha }</code> → 返回 <code>{ value, format }</code></td></tr>
+        <tr><td>拖动 SV 面板</td><td><code>appearance.colorPicker.setHsv</code></td><td><code>{ key, h, s, v }</code></td></tr>
+        <tr><td>拖色相</td><td><code>appearance.colorPicker.setHue</code></td><td><code>{ key, h }</code></td></tr>
+        <tr><td>拖 alpha</td><td><code>appearance.colorPicker.setAlpha</code></td><td><code>{ key, a }</code></td></tr>
+        <tr><td>输入框改值</td><td><code>appearance.colorPicker.setValue</code></td><td><code>{ key, value }</code>（接受 hex/rgb/rgba/hsl）</td></tr>
+        <tr><td>点预设</td><td><code>appearance.colorPicker.applyPreset</code></td><td><code>{ key, index, value }</code></td></tr>
+        <tr><td>应用 / 取消 / 复位</td><td><code>appearance.colorPicker.apply</code> · <code>.cancel</code> · <code>.reset</code></td><td><code>{ key }</code></td></tr>
+        <tr><td>真正落盘</td><td><code>configuration.set</code></td><td><code>{ key, value }</code>（唯一持久化出口）</td></tr>
+      </table>
+      <div class="log" id="log" aria-live="polite"></div>
+    </div>
+
+    <div class="spec">
+      <h3>五、工程结构（归一化 / 无硬编码 / 无死代码）</h3>
+      <div class="cap">共享件三层，消费方零复制：</div>
+      <ul>
+        <li><b>@linkdesk/ui/color</b>：<code>parseColor</code> / <code>formatColor</code> / <code>hsv↔rgb</code>——唯一实现，调色器/色块/校验共用。</li>
+        <li><b>@linkdesk/ui/color-picker</b>：SV + 色相 + alpha + 输入 + 预设；只认 <code>value / onChange / allowAlpha / presets</code>。</li>
+        <li><b>@linkdesk/ui/color-field</b>：色块（棋盘格）+ 文本；不弹层、不认识配置键。</li>
+        <li><b>设置插件</b>：注入 <code>allowAlpha</code> / 锚点 / 开合；不重画调色器。</li>
+      </ul>
+      <p>颜色全走 <code>var(--…)</code>；无新 token；无死键（<code>allowAlpha</code> 默认 false，旧调用零变化）；目录按角色分夹、不平铺。</p>
+    </div>
+
+    <div class="spec">
+      <h3>六、拍板结果（按建议收口）</h3>
+      <div class="decis">
+        <div><b>Q1 alpha</b>连续 0–1 + 数值输入</div>
+        <div><b>Q2 强调色</b>默认不允许 alpha</div>
+        <div><b>Q3 颜色空间</b>继续 HSV</div>
+        <div><b>Q4 var()</b>只读，不进调色器</div>
+        <div><b>Q5 吸管</b>本期不做</div>
+      </div>
+      <p style="margin-top:10px">这页只做设计验证；动手时按 04 攒批，先转「已立项」再落代码。</p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const logEl = $("log");
+
+  // ── 状态 ───────────────────────────────────────────────
+  const THEME = {
+    tint: { h: 41, s: 0.098, v: 1, a: 0.62, allowAlpha: true },
+    accent: { h: 38, s: 0.84, v: 0.65, a: 1, allowAlpha: false },
+  };
+  const current = {
+    tint: { ...THEME.tint },
+    accent: { ...THEME.accent },
+  };
+  let target = "tint";
+  let allowAlpha = true;
+  let pickerValue = "rgba(255,247,230,0.62)";
+
+  // ── 颜色工具 ───────────────────────────────────────────
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+  function hsvToRgb(h, s, v) {
+    const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+  }
+  function rgbToHsv(r, g, b) {
+    const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255, d = max - min;
+    let h = 0;
+    if (d > 0) {
+      if (max === r / 255) h = 60 * (((g / 255 - b / 255) / d) % 6);
+      else if (max === g / 255) h = 60 * (((b / 255 - r / 255) / d) + 2);
+      else h = 60 * (((r / 255 - g / 255) / d) + 4);
+    }
+    if (h < 0) h += 360;
+    return { h, s: max === 0 ? 0 : d / max, v: max };
+  }
+  const hex2 = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, "0");
+  function formatColor(c) {
+    const [r, g, b] = hsvToRgb(c.h, c.s, c.v);
+    if (!allowAlpha || c.a >= 1) return "#" + hex2(r) + hex2(g) + hex2(b);
+    return `rgba(${r},${g},${b},${Math.round(c.a * 100) / 100})`;
+  }
+  function parseColor(raw) {
+    const v = String(raw).trim().toLowerCase();
+    if (v.startsWith("var(") || v.startsWith("color-mix(")) return { readonly: true };
+    let m = v.match(/^#([0-9a-f]{3,8})$/);
+    if (m) {
+      const h = m[1];
+      if (h.length === 3) return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16), a: 1 };
+      if (h.length === 6) return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: 1 };
+      if (h.length === 8) return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: parseInt(h.slice(6, 8), 16) / 255 };
+      return null;
+    }
+    m = v.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/);
+    if (m) {
+      const a = m[4] == null ? 1 : (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : parseFloat(m[4]));
+      return { r: clamp(+m[1], 0, 255), g: clamp(+m[2], 0, 255), b: clamp(+m[3], 0, 255), a: clamp(a, 0, 1) };
+    }
+    m = v.match(/^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/);
+    if (m) {
+      const [r, g, b] = hsvToRgb(((parseFloat(m[1]) % 360) + 360) % 360, clamp(parseFloat(m[2]) / 100, 0, 1), clamp(parseFloat(m[3]) / 100, 0, 1));
+      const a = m[4] == null ? 1 : (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : parseFloat(m[4]));
+      return { r, g, b, a: clamp(a, 0, 1) };
+    }
+    return null;
+  }
+  function toState(rgb) {
+    const { h, s, v } = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    return { h, s, v, a: rgb.a };
+  }
+
+  // ── 日志 ───────────────────────────────────────────────
+  function log(cmd, payload) {
+    const line = document.createElement("div");
+    line.innerHTML = `<span class="k">${cmd}</span>(<span class="s">${JSON.stringify(payload)}</span>)`;
+    logEl.prepend(line);
+  }
+  const keyOf = () => target === "tint" ? "app.glassTint" : "app.accentColor";
+
+  // ── 渲染 ───────────────────────────────────────────────
+  function render() {
+    const c = current[target];
+    allowAlpha = target === "tint" ? $("allow-alpha").checked : false;
+    $("allow-alpha").checked = allowAlpha;
+    $("allow-alpha").disabled = target === "accent";
+    $("pk-title").textContent = target === "tint" ? "玻璃叠加色" : "强调色";
+    $("pk-chip").textContent = allowAlpha ? "RGBA" : "HEX";
+    $("alpha-row").style.display = allowAlpha ? "" : "none";
+
+    $("sv").style.background = `hsl(${c.h}, 100%, 50%)`;
+    $("knob").style.left = `${c.s * 100}%`;
+    $("knob").style.top = `${(1 - c.v) * 100}%`;
+    $("hue").value = String(Math.round(c.h));
+    $("hue-num").textContent = `${Math.round(c.h)}°`;
+    $("alpha").value = String(Math.round(c.a * 100));
+    $("alpha-num").textContent = `${Math.round(c.a * 100)}%`;
+
+    const [r, g, b] = hsvToRgb(c.h, c.s, c.v);
+    const rgba = `rgba(${r},${g},${b},${Math.round(c.a * 100) / 100})`;
+    $("pv-fill").style.background = rgba;
+    // alpha 滑杆：透明→实色的渐变 + 棋盘格（两层背景）
+    $("alpha").style.backgroundImage = `linear-gradient(to right, rgba(${r},${g},${b},0), rgb(${r},${g},${b})), repeating-conic-gradient(rgba(70,50,25,.16) 0 25%, transparent 0 50%)`;
+    $("alpha").style.backgroundSize = "auto, 10px 10px";
+    const out = formatColor(c);
+    $("pv-label").textContent = out;
+    pickerValue = out;
+    $("input").value = out;
+    $("input").classList.remove("bad");
+    $("err").textContent = "";
+
+    $("sw-tint").style.background = formatColor(current.tint);
+    $("val-tint").textContent = formatColor(current.tint);
+    $("sw-accent").style.background = formatColor(current.accent);
+    $("val-accent").textContent = formatColor(current.accent);
+    document.querySelectorAll(".crow").forEach((el) => el.classList.toggle("active", el.dataset.target === target));
+  }
+
+  // ── 交互 ───────────────────────────────────────────────
+  function setTarget(t) {
+    target = t;
+    log("appearance.colorPicker.open", { key: keyOf(), allowAlpha: t === "tint" });
+    render();
+  }
+
+  function dragSV(e) {
+    const rect = $("sv").getBoundingClientRect();
+    const x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+    const y = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+    current[target].s = x;
+    current[target].v = 1 - y;
+    log("appearance.colorPicker.setHsv", { key: keyOf(), h: Math.round(current[target].h), s: +x.toFixed(3), v: +(1 - y).toFixed(3) });
+    render();
+  }
+  let dragging = false;
+  $("sv").addEventListener("pointerdown", (e) => { dragging = true; $("sv").setPointerCapture(e.pointerId); dragSV(e); });
+  $("sv").addEventListener("pointermove", (e) => { if (dragging) dragSV(e); });
+  $("sv").addEventListener("pointerup", () => { dragging = false; });
+
+  $("hue").addEventListener("input", () => {
+    current[target].h = +$("hue").value;
+    log("appearance.colorPicker.setHue", { key: keyOf(), h: current[target].h });
+    render();
+  });
+  $("alpha").addEventListener("input", () => {
+    current[target].a = +$("alpha").value / 100;
+    log("appearance.colorPicker.setAlpha", { key: keyOf(), a: current[target].a });
+    render();
+  });
+
+  $("input").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const parsed = parseColor($("input").value);
+    if (!parsed || parsed.readonly) {
+      $("input").classList.add("bad");
+      $("err").textContent = parsed && parsed.readonly ? "这是 CSS 变量/表达式——只读展示，不能在调色器里改。" : "无法解析：支持 #hex / #RRGGBBAA / rgb() / rgba() / hsl() / hsla()。";
+      return;
+    }
+    current[target] = toState(parsed);
+    log("appearance.colorPicker.setValue", { key: keyOf(), value: $("input").value });
+    render();
+  });
+
+  $("presets").addEventListener("click", (e) => {
+    const btn = e.target.closest(".preset");
+    if (!btn) return;
+    const parsed = parseColor(btn.dataset.color);
+    if (!parsed) return;
+    current[target] = toState(parsed);
+    log("appearance.colorPicker.applyPreset", { key: keyOf(), index: [...$("presets").children].indexOf(btn), value: btn.dataset.color });
+    render();
+  });
+
+  $("apply").addEventListener("click", () => {
+    log("appearance.colorPicker.apply", { key: keyOf(), value: formatColor(current[target]) });
+    log("configuration.set", { key: keyOf(), value: formatColor(current[target]) });
+    render();
+  });
+  $("cancel").addEventListener("click", () => {
+    current[target] = target === "tint" ? { ...THEME.tint } : { ...THEME.accent };
+    log("appearance.colorPicker.cancel", { key: keyOf() });
+    render();
+  });
+
+  $("allow-alpha").addEventListener("change", () => {
+    allowAlpha = $("allow-alpha").checked;
+    log("appearance.colorPicker.setCapability", { key: keyOf(), allowAlpha });
+    render();
+  });
+
+  document.querySelectorAll("#btn-open-tint, #row-tint").forEach((el) => el.addEventListener("click", () => setTarget("tint")));
+  document.querySelectorAll("#btn-open-accent, #row-accent").forEach((el) => el.addEventListener("click", () => setTarget("accent")));
+
+  // 边界样例
+  document.querySelectorAll(".case").forEach((btn) => btn.addEventListener("click", () => {
+    target = "tint";
+    $("allow-alpha").checked = true;
+    $("input").value = btn.dataset.case;
+    $("input").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  }));
+
+  // 预设（含 alpha）
+  const PRESETS = [
+    "rgba(255,247,230,0.62)", "rgba(59,77,148,0.35)", "rgba(178,58,72,0.42)",
+    "rgba(46,125,83,0.38)", "#A6771B", "#2F5D9E", "#6B3F8E", "#FBF5E9",
+  ];
+  $("presets").innerHTML = PRESETS.map((c) =>
+    `<button class="preset" data-color="${c}" title="${c}"><span class="cbg"></span><span class="fill" style="background:${c}"></span></button>`
+  ).join("");
+
+  // 初始
+  log("appearance.colorPicker.open", { key: "app.glassTint", allowAlpha: true });
+  log("appearance.colorPicker.get", { key: "app.glassTint" });
+  render();
+})();
+</script>
+</body>
+</html>
