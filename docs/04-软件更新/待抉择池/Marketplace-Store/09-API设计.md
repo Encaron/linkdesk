@@ -136,15 +136,19 @@
 | GUI 动作 | 命令 id | 参数 | 回执 |
 |---|---|---|---|
 | 打开 Plugin Store | `marketplace.openStore` | — | `{ ok, tabId }` |
+| 查看本仓全部插件 | `marketplace.openRepoAll` | — | `{ ok, tabId }` |
 | 打开某分类 | `marketplace.openCategory` | `category: string, authorId?: string` | 同上 |
 | 打开排行榜 | `marketplace.openRank` | — | 同上 |
-| 打开作者列表 | `marketplace.openAuthors` | — | 同上 |
+| 打开作者页 | `marketplace.openAuthors` | `mode?: "browse"\|"manage"` | 同上 |
 | 打开我的库 | `marketplace.openLibrary` | — | 同上 |
 | 打开作者主页 | `marketplace.openAuthor` | `authorId: string, repoId?: string` | 同上 |
 | 打开插件详情 | `marketplace.openPlugin` | `pluginId: string, pinned?: boolean` | 同上 |
-| 打开来源管理 | `marketplace.openSources` | — | 同上 |
+| 打开来源管理（作者页管理模式别名） | `marketplace.openSources` | — | 同上 |
+| 交换作者顺序 | `marketplace.swapAuthors` | `authorIdA, authorIdB` | `{ ok, authorOrder, repoOrder }` 或 `{ ok:false, reason }` |
+| 交换仓库顺序 | `marketplace.swapRepos` | `authorId, repoIdA, repoIdB` | 同上 |
+| 读取市场顺序 | `marketplace.getOrder` | — | `{ ok, authorOrder, repoOrder }` |
 | 搜索 | `marketplace.search` | `query: string` | 同上 |
-| **读取市场状态（只读）** | `marketplace.getState` | — | `{ ok, route, visibleEntryIds, visibleAuthorIds, navCommands, entries, collections, authors, sources, counts }` |
+| **读取市场状态（只读）** | `marketplace.getState` | — | `{ ok, route, currentRepo, currentRepoName, authorOrder, repoOrder, visibleAuthors, visibleRepos, visibleEntryIds, visibleAuthorIds, navCommands, entries, collections, authors, sources, counts }` |
 | 添加市场源 | `marketplace.addSource`（已有） | `url: string` | 现三态回执 |
 | 添加本地插件 | `marketplace.addLocalPlugin` | `path: string` | `{ ok, reason? }` |
 | 移除市场源 | `marketplace.removeSource` | `url` 或 `index` | `{ ok, reason? }` |
