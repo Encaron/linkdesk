@@ -196,6 +196,15 @@ const FACTS = {
       "玻璃参数与色板在 README 里有专节——改数值前先读那份。",
     ],
   },
+  "theme-rose-window": {
+    what: "玫瑰窗——教堂彩窗主题：亮色磨砂玻璃表面 ＋ 全窗巴黎圣母院玫瑰窗背景 ＋ 三组彩窗配色（午后圣光 / 青金石 / 晚祷紫）。",
+    where: "外观主题：在设置 → 外观里切换。",
+    layout: "配方在 `themes/rose-window.json`（一个文件三套 colorway）。",
+    notes: [
+      "`resources/cathedral-bg.jpg` 是公有领域玫瑰窗照片经日光提亮与暖光合成（2560×1200）。",
+      "玻璃配方刻意较透（`opacity 0.38`）：亮色玻璃要让彩窗透上来；文字用暖墨、内容面走 surface-reading。",
+    ],
+  },
   "theme-panorama": {
     what: "整窗主视觉——把 `background` 域拉到极限：一张全窗低遮罩主视觉图，chrome 半透明让位。",
     where: "外观主题：在设置 → 外观里切换。",
@@ -204,27 +213,6 @@ const FACTS = {
       "`resources/sailor-moon.jpg` 是**全仓唯一提交进来的位图**（.jpg）——其它仓的资源都是 svg。",
       "本仓**没有 `icon`**、也没有封面图（资源目录只有那张 jpg）。",
     ],
-  },
-  "theme-pill": {
-    what: "全胶囊——把 `radius` 域拉满：圆角八档全部 999px，配合悬浮形态，泡泡糖配色。",
-    where: "外观主题：在设置 → 外观里切换。",
-    layout: "配方在 `themes/pill-bubble.json`。",
-    notes: ["本仓**没有 `resources/`**、`plugin.json` 里**没有 `icon`**（市场侧走默认块）。", "配方顶层键用 `appearance`。"],
-  },
-  "theme-songti": {
-    what: "宋体印刷体——字族轴：整个 UI 走宋体（SimSun），纸白墨黑的文档感。",
-    where: "外观主题：在设置 → 外观里切换。",
-    layout: "配方在 `themes/songti-print.json`。",
-    notes: [
-      "它是「字族轴」的极限样本：改 `font` 相关 token 时照它看边界。",
-      "本仓**没有 `resources/`**、`plugin.json` 里**没有 `icon`**。",
-    ],
-  },
-  "theme-terminal": {
-    what: "终端机——字族轴：`ui` / `mono` 双键全指等宽族（Cascadia Mono），绿字黑底的终端配色。",
-    where: "外观主题：在设置 → 外观里切换。",
-    layout: "配方在 `themes/terminal-monofont.json`。",
-    notes: ["少数带完整封面的主题之一（`resources/cover.svg` ＋ `icon.svg`）。", "配方顶层键用 `appearance`。"],
   },
   "theme-twilight-forest": {
     what: "暮色森林——四套森林系暗色配色（青澜 / 暮紫 / 翠微 …）。",
