@@ -16,13 +16,20 @@
   /* pointer-events 不在此写——池侧由 FloatingLayerHost #context-menu-root 根级提供
      （§2 根级 opt-in，补丁 2026-08-14）；壳侧 portal 回退 body 无 none 祖先，天然可点。 */
   min-width: 140px;
-  max-width: 280px;
+  /* 2026-11-23：280 → 420——「切换开发人员工具 + Ctrl+Shift+I」这类行在 280 下会被
+     max-width 钳住：标签省略号 + 快捷键被 overflow 裁掉（用户实机「右键菜单显示不全」）。
+     菜单是内容驱动宽度（shrink-to-fit），420 足够放下最长标签 + 键帽；同时留 viewport 兜底。 */
+  max-width: min(420px, calc(100vw - 16px));
+  /* 2026-11-23：超高菜单不再被窗口底边裁掉——限高后滚动（原无 max-height，长度超过
+     innerHeight-30 时定位钳到 top:30 仍会溢出屏幕）。 */
+  max-height: calc(100vh - 40px);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-hairline), var(--context-menu-shadow);
   padding: 4px 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   /* E5.8#53：容器程序化聚焦（tabIndex=-1 + .focus() 抢键盘焦点）不画 outline——
      显式豁免稳压全局 *:focus-visible（同特异性时全局后声明胜，光写 outline:none 不够）；
      菜单项键盘高亮仍走 .ldk-ctx-item.focused 背景，不受影响 */
