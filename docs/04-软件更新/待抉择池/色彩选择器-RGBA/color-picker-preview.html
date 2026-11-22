@@ -80,7 +80,7 @@
   .titlebar .sp { flex: 1; }
   .titlebar i { font-style: normal; width: 34px; text-align: center; }
 
-  .workspace { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; padding: 18px; }
+  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; padding: 18px; }
   @media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
 
   .panel {
@@ -141,42 +141,45 @@
   .btn:hover { opacity: .86; }
 
   /* ── 调色器 ── */
+  /* 2026-11-23 看稿修订：面板收窄到 248（原版 232 的 RGBA 版）——不再撑满右列 */
+  /* 最终尺寸（拍板）：260 宽；SV 236×140；高度随 alpha 有无 ~330/~310 */
+  .picker-col { min-width: 0; align-self: start; display: flex; flex-direction: column; gap: 6px; }
+  .size-tag { font-family: var(--mono); font-size: 10px; color: #C9A96A; opacity: .85; padding-left: 2px; }
   .picker {
+    width: 260px;
+    justify-self: start;
     background: rgba(255, 252, 245, 0.96);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.7);
-    padding: 14px;
-    align-self: start;
-    min-width: 0;
+    padding: 12px;
   }
-  .pk-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .pk-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .pk-head .title { font-size: 13px; font-weight: 600; }
   .pk-head .sp { flex: 1; }
-  .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); cursor: pointer; user-select: none; }
-  .toggle input { accent-color: var(--accent); }
-  .preview {
-    height: 54px; border-radius: var(--radius-md); overflow: hidden; position: relative;
-    margin-bottom: 10px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  /* 小预览：与原版一致的 28×28，紧贴输入框左侧 */
+  .pk-preview {
+    width: 28px; height: 28px; border-radius: var(--radius-sm); position: relative; overflow: hidden;
+    border: 1px solid var(--sep); flex-shrink: 0;
   }
-  .preview .cbg { position: absolute; inset: 0; background: var(--checker); }
-  .preview .fill { position: absolute; inset: 0; }
-  .preview .label { position: absolute; left: 8px; bottom: 6px; font-family: var(--mono); font-size: 10.5px; padding: 2px 6px; border-radius: 4px; background: rgba(20,12,6,.62); color: #FFF3D0; }
+  .pk-preview .cbg { position: absolute; inset: 0; background: var(--checker); }
+  .pk-preview .fill { position: absolute; inset: 0; }
+  .capchip { font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--sep); color: var(--text-3); background: rgba(255,255,255,.4); }
 
   .sv {
-    position: relative; height: 150px; border-radius: var(--radius-md); overflow: hidden;
+    position: relative; height: 140px; border-radius: var(--radius-md); overflow: hidden;
     cursor: crosshair; touch-action: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14);
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   .sv .white, .sv .black { position: absolute; inset: 0; }
   .sv .white { background: linear-gradient(to right, #fff, transparent); }
   .sv .black { background: linear-gradient(to top, #000, transparent); }
   .sv .knob {
-    position: absolute; width: 14px; height: 14px; border-radius: 50%;
+    position: absolute; width: 12px; height: 14px; border-radius: 50%;
     border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
     transform: translate(-50%, -50%); pointer-events: none;
   }
-  .slider-row { display: grid; grid-template-columns: 1fr 40px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .slider-row { display: grid; grid-template-columns: 1fr 40px; gap: 8px; align-items: center; margin-bottom: 6px; }
   .slider {
     -webkit-appearance: none; appearance: none; height: 12px; border-radius: 999px; outline: none;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); cursor: pointer;
@@ -196,7 +199,7 @@
   .field input[type="text"].bad { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(163,42,56,.16); }
   .err { font-size: 10.5px; color: var(--danger); margin: 5px 0 0; min-height: 14px; }
 
-  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .preset {
     width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,.14);
     cursor: pointer; padding: 0; position: relative; overflow: hidden;
@@ -205,8 +208,8 @@
   .preset .fill { position: absolute; inset: 0; }
   .preset:hover { transform: translateY(-1px); }
 
-  .pk-foot { display: flex; gap: 8px; margin-top: 12px; }
-  .pk-foot .btn { flex: 1; }
+  .pk-foot { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+  .pk-foot .btn { min-height: 24px; padding: 4px 10px; font-size: 12px; }
 
   /* ── 规格区 ── */
   .specs { width: min(1420px, 100%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -250,7 +253,6 @@
   .case:hover { border-color: rgba(232,183,80,.5); color: #E6D6B6; }
   .case.danger { border-color: rgba(178,58,72,.4); }
   .case.ok { border-color: rgba(46,125,83,.4); }
-  .pill { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(166,119,27,.18); color: #E8B750; margin-left: 6px; }
   .decis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
   @media (max-width: 980px) { .decis { grid-template-columns: repeat(2, 1fr); } }
   .decis div { border: 1px solid rgba(255,239,192,.14); border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #C4AE88; }
@@ -300,19 +302,17 @@
           <button class="btn" id="btn-open-tint">编辑玻璃叠加色</button>
           <button class="btn ghost" id="btn-open-accent">编辑强调色</button>
         </div>
-        <p class="hintline">点色块或按钮切换调色器目标。真实壳里调色器是锚定浮层；本页常显在右侧，方便直接操作。<br>每个操作都会写进右下「AI 命令日志」——GUI 动作与命令一一对应。</p>
+        <p class="hintline">点色块或按钮切换调色器目标。真实壳里调色器是锚定浮层；本页常显在右侧，方便直接操作。<br>强调色的键声明 <code>allowAlpha = false</code>，所以右侧<strong>不会出现 alpha 条</strong>——这是能力档，不是坏掉的开关。<br>每个操作都会写进「AI 命令日志」——GUI 动作与命令一一对应。</p>
       </div>
 
       <!-- 右：调色器 -->
+      <div class="picker-col">
       <div class="picker" id="picker">
         <div class="pk-head">
           <span class="title" id="pk-title">玻璃叠加色</span>
-          <span class="pill" id="pk-chip">RGBA</span>
           <span class="sp"></span>
-          <label class="toggle" title="演示开关：对应配置键的 allowAlpha 声明"><input type="checkbox" id="allow-alpha" checked> 允许透明度</label>
+          <span class="capchip" id="pk-cap">RGBA · 可调透明度</span>
         </div>
-
-        <div class="preview"><span class="cbg"></span><span class="fill" id="pv-fill"></span><span class="label" id="pv-label">rgba(255,247,230,0.62)</span></div>
 
         <div class="sv" id="sv">
           <span class="white"></span><span class="black"></span><span class="knob" id="knob"></span>
@@ -328,6 +328,7 @@
         </div>
 
         <div class="field">
+          <span class="pk-preview" aria-hidden="true"><span class="cbg"></span><span class="fill" id="pk-preview-fill"></span></span>
           <input type="text" id="input" value="rgba(255,247,230,0.62)" spellcheck="false" aria-label="颜色值">
         </div>
         <p class="err" id="err"></p>
@@ -338,6 +339,8 @@
           <button class="btn ghost" id="cancel">取消</button>
           <button class="btn" id="apply">应用</button>
         </div>
+      </div>
+      <div class="size-tag" id="size-tag"></div>
       </div>
     </div>
   </div>
@@ -359,7 +362,7 @@
           <div class="out">rgba(255,247,230,0.62)</div>
         </div>
       </div>
-      <p style="margin-top:10px">上方的「允许透明度」勾选就是模拟这个声明——勾掉后 alpha 滑杆消失、输出立刻变 hex。</p>
+      <p style="margin-top:10px">点左侧两行切换：玻璃叠加色出现 alpha 条（allowAlpha=true），强调色不出现（allowAlpha=false）——同一个组件，按声明分档。</p>
     </div>
 
     <div class="spec">
@@ -454,9 +457,8 @@
     tint: { ...THEME.tint },
     accent: { ...THEME.accent },
   };
-  let target = "tint";
+  let target = new URLSearchParams(location.search).get("target") === "accent" ? "accent" : "tint";
   let allowAlpha = true;
-  let pickerValue = "rgba(255,247,230,0.62)";
 
   // ── 颜色工具 ───────────────────────────────────────────
   const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -525,11 +527,10 @@
   // ── 渲染 ───────────────────────────────────────────────
   function render() {
     const c = current[target];
-    allowAlpha = target === "tint" ? $("allow-alpha").checked : false;
-    $("allow-alpha").checked = allowAlpha;
-    $("allow-alpha").disabled = target === "accent";
+    // 能力档 = 配置键声明（app.glassTint: allowAlpha=true / app.accentColor: false）
+    allowAlpha = target === "tint";
     $("pk-title").textContent = target === "tint" ? "玻璃叠加色" : "强调色";
-    $("pk-chip").textContent = allowAlpha ? "RGBA" : "HEX";
+    $("pk-cap").textContent = allowAlpha ? "RGBA · 可调透明度" : "HEX · 不透明";
     $("alpha-row").style.display = allowAlpha ? "" : "none";
 
     $("sv").style.background = `hsl(${c.h}, 100%, 50%)`;
@@ -542,13 +543,11 @@
 
     const [r, g, b] = hsvToRgb(c.h, c.s, c.v);
     const rgba = `rgba(${r},${g},${b},${Math.round(c.a * 100) / 100})`;
-    $("pv-fill").style.background = rgba;
+    $("pk-preview-fill").style.background = rgba;
     // alpha 滑杆：透明→实色的渐变 + 棋盘格（两层背景）
     $("alpha").style.backgroundImage = `linear-gradient(to right, rgba(${r},${g},${b},0), rgb(${r},${g},${b})), repeating-conic-gradient(rgba(70,50,25,.16) 0 25%, transparent 0 50%)`;
     $("alpha").style.backgroundSize = "auto, 10px 10px";
     const out = formatColor(c);
-    $("pv-label").textContent = out;
-    pickerValue = out;
     $("input").value = out;
     $("input").classList.remove("bad");
     $("err").textContent = "";
@@ -558,6 +557,9 @@
     $("sw-accent").style.background = formatColor(current.accent);
     $("val-accent").textContent = formatColor(current.accent);
     document.querySelectorAll(".crow").forEach((el) => el.classList.toggle("active", el.dataset.target === target));
+    // 设计标注：实测最终面板尺寸与比例（实现时以 CSS 固定值为准）
+    const box = $("picker").getBoundingClientRect();
+    $("size-tag").textContent = `面板 ${Math.round(box.width)} × ${Math.round(box.height)} px · 宽高比 ${(box.width / box.height).toFixed(2)}`;
   }
 
   // ── 交互 ───────────────────────────────────────────────
@@ -626,19 +628,12 @@
     render();
   });
 
-  $("allow-alpha").addEventListener("change", () => {
-    allowAlpha = $("allow-alpha").checked;
-    log("appearance.colorPicker.setCapability", { key: keyOf(), allowAlpha });
-    render();
-  });
-
   document.querySelectorAll("#btn-open-tint, #row-tint").forEach((el) => el.addEventListener("click", () => setTarget("tint")));
   document.querySelectorAll("#btn-open-accent, #row-accent").forEach((el) => el.addEventListener("click", () => setTarget("accent")));
 
   // 边界样例
   document.querySelectorAll(".case").forEach((btn) => btn.addEventListener("click", () => {
     target = "tint";
-    $("allow-alpha").checked = true;
     $("input").value = btn.dataset.case;
     $("input").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   }));
@@ -653,8 +648,8 @@
   ).join("");
 
   // 初始
-  log("appearance.colorPicker.open", { key: "app.glassTint", allowAlpha: true });
-  log("appearance.colorPicker.get", { key: "app.glassTint" });
+  log("appearance.colorPicker.open", { key: keyOf(), allowAlpha: target === "tint" });
+  log("appearance.colorPicker.get", { key: keyOf() });
   render();
 })();
 </script>
