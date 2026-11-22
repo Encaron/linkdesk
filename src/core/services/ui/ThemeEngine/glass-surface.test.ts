@@ -65,6 +65,40 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(tokens["glass-surface-alpha"]).toBe("0.5");
   });
 
+  it("内容面可读性 token：激活吃 solid 基色 + alpha 下限；非激活回落实色", () => {
+    const tokens: Record<string, string> = { "bg-window": "#101014", "bg-card": "#1B1B20" };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.38 });
+    expect(tokens["surface-reading"]).toContain("rgb(27,27,32)");
+    expect(tokens["surface-reading"]).toContain("max(var(--glass-surface-alpha), 0.45)");
+    expect(tokens["surface-reading-strong"]).toContain("max(var(--glass-surface-alpha), 0.62)");
+    expect(tokens["surface-media-scrim"]).toContain("rgb(16,16,20)");
+    expect(tokens["surface-media-scrim"]).toContain("max(var(--glass-surface-alpha), 0.68)");
+    expect(tokens["surface-reading"]).not.toContain("var(--bg-card) ");
+
+    const off: Record<string, string> = { "bg-window": "#FFFFFF", "bg-card": "#F5F5F5" };
+    synthesizeGlassSurfaces(off, { active: false, alpha: 0.38 });
+    expect(off["surface-reading"]).toContain("rgb(245,245,245)");
+    expect(off["surface-reading"]).toContain("max(var(--glass-surface-alpha), 0.45)");
+    expect(off["surface-reading-strong"]).toContain("max(var(--glass-surface-alpha), 0.62)");
+    expect(off["surface-media-scrim"]).toContain("rgb(255,255,255)");
+    expect(off["surface-media-scrim"]).toContain("max(var(--glass-surface-alpha), 0.68)");
+  });
+
+  it("主题显式声明 surface-* 时不被派生覆盖（surface-ink 原样保留）", () => {
+    const tokens: Record<string, string> = {
+      "bg-window": "#101014", "bg-card": "#1B1B20", "text-primary": "#FFFFFF",
+      "surface-reading": "rgba(10,14,20,0.68)",
+      "surface-reading-strong": "rgba(10,14,20,0.78)",
+      "surface-media-scrim": "rgba(10,14,20,0.82)",
+      "surface-ink": "#FFFFFF",
+    };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });
+    expect(tokens["surface-reading"]).toBe("rgba(10,14,20,0.68)");
+    expect(tokens["surface-reading-strong"]).toBe("rgba(10,14,20,0.78)");
+    expect(tokens["surface-media-scrim"]).toBe("rgba(10,14,20,0.82)");
+    expect(tokens["surface-ink"]).toBe("#FFFFFF");
+  });
+
   it("E5.8#151 稀疏合成补齐——激活 + 有锚：缺键从系统标尺锚派生（全 8 键均匀半透明，消顶栏岛）", () => {
     const tokens: Record<string, string> = { "bg-window": "#fff" };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });

@@ -28,6 +28,12 @@
   --icon-ink: color-mix(in srgb, var(--text-primary) 78%, transparent);
   --icon-ink-hover: color-mix(in srgb, var(--text-primary) 92%, transparent);
   --icon-ink-active: var(--text-primary);
+  /* 内容面可读性（2026-11-22）：环境玻璃允许透，承载文字的卡片/浮层/媒体遮罩走这三键。
+     ThemeEngine 的 synthesizeGlassSurfaces 激活时会写带 alpha 下限的版本；这里是首帧/无主题兜底。 */
+  --surface-reading: var(--bg-card-solid, var(--bg-card));
+  --surface-reading-strong: var(--bg-card-solid, var(--bg-card));
+  --surface-media-scrim: var(--bg-window-solid, var(--bg-window));
+  --surface-ink: var(--text-primary);
   --system-log: #6A6A6A;
   --sent-echo: #0078D4;
   --status-connected: #4EC9B0;

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { capTintAlpha } from "./color";
+import { capTintAlpha, opaqueColor, readableSurfaceBase } from "./color";
 
 describe("capTintAlpha — E5.8#151 tint 强制半透明", () => {
   /* ── hex ── */
@@ -61,5 +61,17 @@ describe("capTintAlpha — E5.8#151 tint 强制半透明", () => {
   it("自定义 maxAlpha 参数", () => {
     expect(capTintAlpha("rgba(255,0,0,0.35)", 0.3)).toBe("rgba(255,0,0,0.3)");
     expect(capTintAlpha("rgba(255,0,0,0.35)", 0.3)).not.toBe("rgba(255,0,0,0.5)");
+  });
+
+  it("opaqueColor：去 alpha 保 RGB；未知颜色不猜", () => {
+    expect(opaqueColor("rgba(22, 32, 62, 0.55)")).toBe("rgb(22,32,62)");
+    expect(opaqueColor("#1B1B20")).toBe("rgb(27,27,32)");
+    expect(opaqueColor("var(--x)")).toBeNull();
+  });
+
+  it("readableSurfaceBase：白字遇白色高亮卡片 → 退深窗底；白字遇深卡 → 保留卡片色", () => {
+    expect(readableSurfaceBase("#FFFFFF", ["rgba(255,255,255,0.10)", "rgba(10,14,20,0.30)"])).toBe("rgb(10,14,20)");
+    expect(readableSurfaceBase("#FFFFFF", ["#2D2D2D", "#1E1E1E"])).toBe("rgb(45,45,45)");
+    expect(readableSurfaceBase("#2D2D2D", ["#F5F5F5", "#FFFFFF"])).toBe("rgb(245,245,245)");
   });
 });

@@ -19,7 +19,7 @@ import {
 } from "./constants";
 // E5.8#151：tint 强制半透明——配方 tint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
 // 9.4：图标光晕极性改读生效 text-primary 亮度（解析不出回落档位）——颜色串解析与 capTintAlpha 同源
-import { capTintAlpha, colorLuminance } from "./color";
+import { capTintAlpha, colorLuminance, opaqueColor, readableSurfaceBase } from "./color";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
 import type { GlassSurfaceSpec } from "./seeds";
@@ -382,6 +382,30 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
     tokens["glass-surface-bg-opacity"] = String(Number.isFinite(baseOpacity) ? baseOpacity * spec.alpha : 0);
   }
   tokens["glass-surface-alpha"] = String(spec.alpha);
+  // 内容面可读性下限（2026-11-22）：环境玻璃可以透，但承载文字的卡片/浮层/媒体遮罩不能跟着透没。
+  // 主题仍决定 solid 色相；active 时 alpha 取 max(用户玻璃值, 下限)，非玻璃主题 = 实色。
+  // 主题可能把 bg-*-solid 本身写成 rgba（整窗主视觉/极光玻璃即如此）——内容面基色必须去 alpha，
+  // 否则 color-mix(..., 100%) 仍只有 .55，文字照样被图吃掉。
+  const cardSolid = tokens["bg-card-solid"] ?? tokens["bg-card"];
+  const windowSolid = tokens["bg-window-solid"] ?? tokens["bg-window"];
+  const readingBase =
+    readableSurfaceBase(tokens["text-primary"], [cardSolid, windowSolid]) ||
+    (cardSolid && opaqueColor(cardSolid)) ||
+    "var(--bg-card)";
+  const scrimBase = (windowSolid && opaqueColor(windowSolid)) || "var(--bg-window)";
+  // 主题显式声明 surface-* 时尊重作者值；未声明才派生（作者可为整窗主视觉这类特殊底定值）。
+  if (!tokens["surface-reading"]) {
+    tokens["surface-reading"] =
+      `color-mix(in srgb, ${readingBase} calc(max(var(--glass-surface-alpha), 0.45) * 100%), transparent)`;
+  }
+  if (!tokens["surface-reading-strong"]) {
+    tokens["surface-reading-strong"] =
+      `color-mix(in srgb, ${readingBase} calc(max(var(--glass-surface-alpha), 0.62) * 100%), transparent)`;
+  }
+  if (!tokens["surface-media-scrim"]) {
+    tokens["surface-media-scrim"] =
+      `color-mix(in srgb, ${scrimBase} calc(max(var(--glass-surface-alpha), 0.68) * 100%), transparent)`;
+  }
 }
 
 /**

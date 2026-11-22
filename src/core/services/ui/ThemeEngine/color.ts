@@ -64,6 +64,52 @@ function parseColor(color: string): ParsedColor | null {
   return { r, g, b, alpha };
 }
 
+/** 去掉 alpha、保留 RGB——内容面可读性下限的基色（主题可能把 bg-card 本身写成 rgba，不能当作 solid）。 */
+export function opaqueColor(color: string): string | null {
+  const parsed = parseColor(color);
+  if (!parsed) return null;
+  return `rgb(${parsed.r},${parsed.g},${parsed.b})`;
+}
+
+function contrastRatio(a: number, b: number): number {
+  const hi = Math.max(a, b);
+  const lo = Math.min(a, b);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * 选择内容面基色：优先用第一个与前景色对比达 4.5 的候选（通常是 bg-card，保留主题卡片色）；
+ * 卡片本身是「白色 10%」这类高亮叠层时（整窗主视觉），它的实色与白字对比≈1 → 退到 bg-window 深底。
+ * 主题色可能本身带 alpha，先 opaqueColor 去 alpha 再比较；解析不出 → 第一个可解析候选/原样回落。
+ */
+export function readableSurfaceBase(
+  textColor: string | undefined,
+  candidates: ReadonlyArray<string | undefined>,
+): string | null {
+  const opaque = candidates
+    .map((c) => (c ? opaqueColor(c) : null))
+    .filter((c): c is string => !!c);
+  if (opaque.length === 0) return null;
+  const textL = textColor ? colorLuminance(textColor) : null;
+  if (textL == null) return opaque[0];
+  for (const c of opaque) {
+    const l = colorLuminance(c);
+    if (l != null && contrastRatio(l, textL) >= 4.5) return c;
+  }
+  let best = opaque[0];
+  let bestRatio = -1;
+  for (const c of opaque) {
+    const l = colorLuminance(c);
+    if (l == null) continue;
+    const ratio = contrastRatio(l, textL);
+    if (ratio > bestRatio) {
+      best = c;
+      bestRatio = ratio;
+    }
+  }
+  return best;
+}
+
 /**
  * tint 强制半透明——alpha > maxAlpha（缺省 0.5）→ 重写 `rgba(r,g,b,maxAlpha)`；已 ≤ maxAlpha / 未解析 → 原串零改动。
  * 21-档案 §三 #151：tint 永不当不透明死盖片（盖死 backdrop-filter 的 blur/saturate）——保留色相、强制 ≥50% 透。
