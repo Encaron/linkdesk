@@ -35,6 +35,12 @@
         --sent-echo: #0078D4;
         --status-connected: #4EC9B0;
         --status-disconnected: #6A6A6A;
+        /* 内容面可读性（2026-11-22 壳主题 token）＋墨色——dev-host 无引擎，直接吃兜底面；
+           dev-host.test.ts 生成式对账要求壳有它必在场，且页面自身 var() 必须都在兜底集内 */
+        --surface-reading: var(--bg-card);
+        --surface-reading-strong: var(--bg-card);
+        --surface-media-scrim: var(--bg-window);
+        --surface-ink: var(--text-primary);
         --scrollbar-thumb: rgba(255, 255, 255, 0.15);
         --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
         --tab-hover-bg: #353535;

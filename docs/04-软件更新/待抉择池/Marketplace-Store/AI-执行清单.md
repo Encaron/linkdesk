@@ -120,17 +120,16 @@
 
 ## 棒 17 · 发版棒
 
-- R4-R.1 ⬜ 市场插件发版走到端
-  - 🔴 **媒体丰富度 1.3.0 已交棒（2026-11-22，实施 AI `sess_820b0cf9-abb8-4832-9865-b99c71ab977d`；代码已推、⛔ 17 棒不需重做代码）**：
-    - 市场插件 **1.3.0**：媒体丰富度 A→F（`Art` 五态/生成式封面/卡内轮播/wall/split/详情同源选帧）＋ CHANGELOG；仓 `Encaron/linkdesk-plugin-marketplace` 最新 **`7a5d894`**（代码 `2405669` 已在其历史）。
-    - 官方目录 `Encaron/linkdesk-marketplace` 最新 **`829e63b`**：4 个 collections（hero/主题 mega/装机必备/编辑精选 split）＋ 17 条 cover ＋约 3.3MB 媒体（designed cover.svg / 黑主题真机截图 / 免费图库补帧）；raw 已验 200。
-    - 15 个官方插件/主题仓的 `marketplace.json` 已补 cover/screenshots 并推送；壳仓 `electron` 已推 **`ae7ece734`**。
-    - 台账：`14-任务档案/媒体丰富度-F批.md` §八；`16-真机问题登记与验收报告.md` §七。
-    - **17 棒待做**：① 市场插件 1.3.0 **GitHub Release**（build→publish，资产 `marketplace.linkdesk-plugin`）；② 官方目录 **`downloadUrl`＋`version` 升到 1.3.0**（当前仍指 1.2.1——不升则真实用户看不到新版式）；③ **`sync:bundled`** 出厂种子追新；④ 旧版实机「检查更新」**真装上**（发版定义照硬约束 24）。
-- R4-R.2 ⬜ SDK/kit npm 轴
-  - ⚠️ **实施 AI 侧进行中，17 棒勿重复**：`@linkdesk/marketplace-kit` 0.1.2、`@linkdesk/plugin-sdk` 0.1.99、`@linkdesk/plugin-docs` 0.1.83 准备中；`@linkdesk/ui` 无作者面漂移、按「看货定」**不建议空 bump**；本机 `npm whoami` 未登录（need auth），发布前需 `npm login`/token；**若 17 棒接手时 npm 已发，直接 `release:mark` 收口，⛔ 重发**。
-- R4-R.3 ⬜ 软件本体随批发版走到端（用户 2026-11-20 拍板——tag→CI 安装包→Release 资产齐→**旧版实机点更新真更到**，发版定义照硬约束 24）
-  - 注：实施 AI 本次推送为**直连 GitHub 成功**；代理 `127.0.0.1:7890` 当前未启动，17 棒推送前按规范**先起代理再推**。⛔ 本轮未打软件 tag、未发版、未收录。
+- R4-R.1 ✅ 2026-11-23 市场插件发版走到端（媒体丰富度，⛔ 不含作者身份）
+  - 构建源 = **干净检出 `7a5d894`**（= 远端 main）；validate / verify 九段 / build（160.4 KB·10 表面）/ test 78 文件 772 例 **全绿**。
+  - GitHub Release **`v1.3.0`**（tag → `7a5d894`，资产 `marketplace.linkdesk-plugin` 164273 B·`application/zip`·sha256 `397ff281…` 与本地构建逐字节一致）。
+  - 官方目录 **`Encaron/linkdesk-marketplace@9323af5`**：version/downloadUrl/icon/marketIcon/readmeUrl 全升 v1.3.0，versions[] 头插 1.3.0 段；raw 读回 1.3.0。
+  - `sync:bundled --latest`：marketplace **1.2.1 → 1.3.0**、theme-defaults **1.0.14 → 1.0.15**（箱内种子 sha256 = 发布资产）。
+  - ⚠️ ④ 实机「检查更新真装上」：userData 里装的已是 **1.3.0 的开发构建**（与发布资产哈希不同）⇒ 目录同版、应用判定「已装无更新」，**过渡未观测**；需观测则先降回 1.2.1（安装要用户点头）。详见 `21-棒17发版交接单.md`。
+- R4-R.2 ✅ 2026-11-23 npm 轴收口（⛔ 重发）
+  - 六包货架 = 基线：contracts 0.1.48 / **plugin-sdk 0.1.100**（0.1.99→0.1.100：dev-host 补 4 个内容面 token，壳主题 token 加账后 npm 表面漂移，按「凡更新就发」补发）/ ui 0.2.66 / plugin-docs 0.1.84 / marketplace-kit 0.1.2 / create-linkdesk-plugin 0.1.26；`release:mark` 跑绿，基线随 v0.2.59 提交。
+- R4-R.3 🟡 软件本体随批发版走到端（用户 2026-11-23 会话内授权发版）
+  - `v0.2.59` tag **移动重打**：首轮 `da244cd76` CI 红（`--surface-ink` token 审计）→ 修 `scripts/check-token-audit.mjs` 插件面豁免 → 二轮 `ca2a3db34` CI 红（`packages/plugin-sdk/src/dev-host.test.ts`：壳 :root 4 个新 token 不在 dev-host 兜底集）→ dev-host 补 4 键 → 本地全量 `npm run check` **EXIT 0（282 文件 / 3850 例）** → tag 第三次重打。首两轮均未产出 Release。
 
 ---
 
