@@ -414,6 +414,13 @@ do not need it (`icon` *is* the identity image).
 { "icon": "resources/icon-bar.svg", "marketIcon": "resources/icon.svg" }
 ```
 
+> 🔴 **Icon sizing (fill the canvas)**: the shell drops your icon into a fixed small box (Icon Bar ≈22 px) and
+> **never crops or rescales the artwork for you**. So the artwork itself should fill ≈80–85% of the viewBox
+> (≈4 px margin on a 48 canvas, ≈1–1.5 px on a 16 canvas). A viewBox with large empty margins makes your icon
+> look one size smaller than its neighbours in the Icon Bar (real case 2026-11-23: the marketplace bag spanned
+> 9.6/16 = 60% while the official plugins spanned 40/48 = 83%). Validation only checks "file exists, valid SVG" —
+> **this convention is the only rule for size**; there is no automated gate for it.
+
 **The two data paths (not your concern, but they decide who sees which image):**
 
 | Who is looking | Read from | Value form |
