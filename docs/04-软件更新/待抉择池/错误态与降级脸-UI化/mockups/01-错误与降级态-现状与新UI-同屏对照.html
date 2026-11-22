@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · 错误态与降级脸——现状／新设计同屏对照（真 token 逐值 · 双主题）</title>
+<!-- 图标字形＝**真 codicon 字体**（与产品同一支：壳 main.tsx import @vscode/codicons/dist/codicon.css）。
+     缺 node_modules 时字形退化为空框，跑 npm i 即可。 -->
+<link rel="stylesheet" id="codiconLink" href="../../../../../node_modules/@vscode/codicons/dist/codicon.css">
+<!-- ═════════════════════════════════════════════════════════════════════════════════════════
+  设计门：硬约束 16（ui-ux-pro-max ＋ impeccable 已走；impeccable app 上下文缺 PRODUCT/DESIGN，
+  按 fallback 规程直读既有真源）。母案拟真纪律照抄（共享输入框圆角/mockups/01 立下的判据）：
+    · **真 token 逐值**：:root 与 [data-theme="light"] 每个 token **照抄 src/index.css**
+      （含亮色 --error:#B3261E / --warning:#B45309 家族，src/index.css:196-197——母案未转录，本图补全）
+    · **现状区＝真规则照抄**：ErrorBoundary crash 界面的 inline style（ErrorBoundary.tsx:70-98）
+      逐条转写为 .crash-legacy-*，值一条不改；.plugin-missing-view **真源零规则 ⇒ 刻意零声明**
+    · **新设计区＝全 token**：字号一律 var(--font-size-*)、尺寸一律 calc(Npx * var(--ui-scale))、
+      圆角一律 var(--radius-*)、色一律 var(--xxx)——零手填 px/hex（产品件）
+    · **图例**：🟥 现状（今天）／🟩 新设计（本方案，类名 ldk-fallback-* 为落地建议名）
+    · ⚠️ 页面外框（页头、分栏、格子、图例、tab 条示意、section 标题条示意）是**图的脚手架**、
+      非产品件；产品件一律真类名，别把脚手架样式当产品样式读。
+══════════════════════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* ═══ 1. 设计 token——src/index.css 逐值照抄（暗色 :root 兜底 ＋ 亮色 [data-theme=light]）═══ */
+:root{
+  --bg-window:#1E1E1E;
+  --bg-card:#2D2D2D;
+  --bg-input:#3C3C3C;
+  --text-primary:#D4D4D4;
+  --text-secondary:#9D9D9D;
+  --text-muted:#8A8A8A;
+  --accent:#0078D4;
+  --accent-hover:#1A8CE8;
+  --border:#3C3C3C;
+  --separator:#474747;
+  --bg-side-panel:#1E1E22;
+  --hover-overlay:rgba(255, 255, 255, 0.06);
+  --text-on-accent:#FFFFFF;
+  --status-connected:#4EC9B0;
+  --warning:#CCA700;
+  --warning-text:#E8AB3E;
+  --warning-bg:rgba(255, 200, 0, 0.12);
+  --error:#E06C75;
+  --success:#4CAF50;
+  --tone-ink-on-light:#1A1A1A;
+  --statusbar-height:22px;
+  --tab-hover-bg:#353535;
+  --font-ui:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:"JetBrains Mono", Consolas, monospace;
+  --ui-scale:1;
+  --font-size-2xs:11px;
+  --font-size-xs:12px;
+  --font-size-sm:13px;
+  --font-size-md:14px;
+  --font-size-lg:16px;
+  --font-size-xl:18px;
+  --radius-xs:2px;
+  --radius-sm:4px;
+  --radius-md:6px;
+  --radius-lg:8px;
+  --radius-pill:999px;
+  --shadow-float:0 4px 16px rgba(0, 0, 0, 0.25);
+}
+[data-theme="light"]{
+  --bg-window:#FFFFFF;
+  --bg-card:#F5F5F5;
+  --bg-input:#FFFFFF;
+  --text-primary:#2D2D2D;
+  --text-secondary:#5A5A5A;
+  --text-muted:#767676;
+  --accent:#0078D4;
+  --accent-hover:#106EBE;
+  --border:#D4D4D4;
+  --separator:#E8E8E8;
+  --bg-side-panel:#F5F5F5;
+  --hover-overlay:rgba(0, 0, 0, 0.04);
+  --text-on-accent:#FFFFFF;
+  --status-connected:#388A34;
+  --warning:#B45309;
+  --warning-text:#BF8800;
+  --warning-bg:rgba(200, 150, 0, 0.08);
+  --error:#B3261E;
+  --success:#388A34;
+  --tab-hover-bg:#E8E8E8;
+}
+
+/* ═══ 2. 页面脚手架（⛔ 非产品件——页头/格子/图例/示意 chrome）═══ */
+*{ box-sizing:border-box; }
+body{
+  margin:0; background:var(--bg-window); color:var(--text-primary);
+  font-family:var(--font-ui); font-size:var(--font-size-md); line-height:1.5;
+  padding:24px 32px 64px;
+}
+.page{ max-width:1180px; margin:0 auto; }
+h1{ font-size:var(--font-size-xl); font-weight:600; margin:0 0 6px; }
+.page-sub{ color:var(--text-secondary); font-size:var(--font-size-sm); margin:0 0 20px; }
+.legend{ display:flex; gap:16px; align-items:center; margin:0 0 24px; font-size:var(--font-size-sm); }
+.legend .sw{ display:inline-block; width:10px; height:10px; border-radius:var(--radius-xs); margin-right:5px; vertical-align:-1px; }
+.sw--before{ background:var(--error); } .sw--after{ background:var(--status-connected); }
+.legend .note{ color:var(--text-muted); font-size:var(--font-size-xs); margin-left:auto; }
+section{ margin:0 0 36px; }
+h2{ font-size:var(--font-size-lg); font-weight:600; margin:0 0 4px; padding-top:12px; border-top:1px solid var(--separator); }
+h2:first-of-type{ border-top:none; padding-top:0; }
+h2 .tag{ font-size:var(--font-size-xs); font-weight:400; color:var(--text-muted); margin-left:10px; }
+.sec-sub{ color:var(--text-secondary); font-size:var(--font-size-sm); margin:0 0 14px; }
+.grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.grid--3col{ grid-template-columns:1fr 1fr 1fr; }
+.cell{ border:1px solid var(--border); border-radius:var(--radius-md); background:var(--bg-window); overflow:hidden; display:flex; flex-direction:column; }
+.cell-head{ display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--border); font-size:var(--font-size-xs); color:var(--text-secondary); }
+.cell-head .mark{ font-weight:600; }
+.cell[data-kind="before"] .cell-head{ border-left:3px solid var(--error); }
+.cell[data-kind="after"]  .cell-head{ border-left:3px solid var(--status-connected); }
+.cell[data-kind="ref"]    .cell-head{ border-left:3px solid var(--warning); }
+.cell-head .src{ margin-left:auto; color:var(--text-muted); font-family:var(--font-mono); font-size:10px; }
+.cell-body{ padding:14px; display:flex; flex-direction:column; gap:10px; flex:1; min-height:0; }
+.cell-note{ padding:8px 12px; border-top:1px dashed var(--border); color:var(--text-muted); font-size:var(--font-size-xs); }
+.cell-note b{ color:var(--text-secondary); }
+.theme-toggle{ position:fixed; top:16px; right:16px; z-index:9; padding:5px 12px; font-size:var(--font-size-xs);
+  font-family:var(--font-ui); color:var(--text-secondary); background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-pill,999px); cursor:pointer; }
+.theme-toggle:hover{ background:var(--hover-overlay); color:var(--text-primary); }
+
+/* 主区 tab 示意（脚手架） */
+.tabchrome{ border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-window); }
+.tabbar{ display:flex; align-items:center; gap:8px; background:var(--tab-hover-bg); border-bottom:1px solid var(--border); padding:0 8px; height:32px; font-size:var(--font-size-xs); color:var(--text-secondary); }
+.tabbar .tab{ display:flex; align-items:center; gap:6px; padding:0 12px; height:100%; background:var(--bg-window); border:1px solid var(--border); border-bottom:none; border-radius:var(--radius-sm) var(--radius-sm) 0 0; color:var(--text-primary); transform:translateY(1px); }
+.tabbar .codicon{ font-size:var(--font-size-xs); }
+.tabview{ min-height:170px; background:var(--bg-window); position:relative; }
+
+/* 侧栏 section 示意（脚手架）——宽度示意 240px 档（用户可拖，此处取窄档） */
+.sidechrome{ width:246px; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-side-panel); }
+.side-head{ display:flex; align-items:center; gap:6px; padding:5px 10px; font-size:var(--font-size-xs); color:var(--text-secondary);
+  background:var(--tab-hover-bg); border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.04em; }
+.side-body{ min-height:132px; }
+
+/* 底部面板示意（脚手架）——横扁容器 */
+.panelchrome{ border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-window); width:100%; }
+.panel-head{ display:flex; align-items:center; gap:6px; padding:4px 10px; font-size:var(--font-size-xs); color:var(--text-secondary); background:var(--tab-hover-bg); border-bottom:1px solid var(--border); }
+.panel-body{ min-height:110px; }
+
+/* 状态栏示意（脚手架）——极窄横条 */
+.statusbarchrome{ display:flex; align-items:center; gap:14px; width:100%; height:26px; padding:0 8px; background:var(--bg-side-panel); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:var(--font-size-2xs); color:var(--text-muted); }
+
+/* ═══ 3. 现状产品件（真规则照抄区）═══ */
+/* ① .plugin-missing-view——真源（PluginComponent.tsx:42）零 CSS 规则 ⇒ 刻意零声明。
+   下面这条空规则只为锚住「它真的什么都没有」；落地真源里连这条都不存在。 */
+.plugin-missing-view{ /* 真源零规则——刻意零声明（观感 = 浏览器默认排版：顶格左上、默认 margin） */ }
+
+/* ② ErrorBoundary 内置 crash 界面——inline style（ErrorBoundary.tsx:70-98）逐条转写，值零改动 */
+.crash-legacy{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100%; gap:12px;
+  color:var(--text-muted);
+  font-size:var(--font-size-md);
+  user-select:none;
+}
+.crash-legacy-btn{
+  padding:4px 16px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--bg-card);
+  color:var(--text-primary);
+  cursor:pointer;
+  font-size:var(--font-size-sm);
+}
+
+/* ③ ViewSkeleton——真源照抄（view-skeleton/ViewSkeleton.css，家族视觉基准） */
+.ldk-view-skeleton{ display:flex; flex-direction:column; gap:calc(8px * var(--ui-scale)); padding:calc(16px * var(--ui-scale)); height:100%; user-select:none; }
+.ldk-view-skeleton > *{ animation:ldk-view-skeleton-breath 1.4s ease-in-out infinite; }
+.ldk-view-skeleton-title{ height:calc(12px * var(--ui-scale)); width:40%; border-radius:var(--radius-xs); background:var(--tab-hover-bg); }
+.ldk-view-skeleton-card{ height:calc(64px * var(--ui-scale)); border-radius:var(--radius-sm); background:var(--tab-hover-bg); }
+.ldk-view-skeleton-row{ height:calc(12px * var(--ui-scale)); border-radius:var(--radius-xs); background:var(--tab-hover-bg); }
+.ldk-view-skeleton-row.w100{ width:100%; } .ldk-view-skeleton-row.w85{ width:85%; } .ldk-view-skeleton-row.w60{ width:60%; }
+@keyframes ldk-view-skeleton-breath{ 0%,100%{ opacity:0.55; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){ .ldk-view-skeleton > *{ animation:none; } }
+
+/* ═══ 4. 🟩 新设计产品件：ldk-fallback 降级脸家族（全 token · 五段结构 · 三变体 · 三尺度）═══
+   落地建议 = src/pool/shared/fallback/（FallbackFace.tsx + .css）；类名为本图建议名。
+   铁律：色 var(--xxx) / 字号 var(--font-size-*) / 尺寸 calc(*var(--ui-scale)) / 圆角 var(--radius-*)。 */
+.ldk-fallback{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; gap:calc(10px * var(--ui-scale));
+  width:100%; height:100%; padding:calc(24px * var(--ui-scale));
+  user-select:none;
+}
+.ldk-fallback-icon{ font-size:calc(24px * var(--ui-scale)); line-height:1; }
+.ldk-fallback-title{ font-size:var(--font-size-md); font-weight:600; color:var(--text-primary); }
+.ldk-fallback-desc{ margin:0; max-width:calc(420px * var(--ui-scale)); font-size:var(--font-size-sm); line-height:1.55; color:var(--text-secondary); }
+.ldk-fallback-actions{ display:flex; align-items:center; gap:calc(8px * var(--ui-scale)); }
+.ldk-fallback-btn{
+  padding:calc(4px * var(--ui-scale)) calc(16px * var(--ui-scale));
+  font-size:var(--font-size-sm); font-family:var(--font-ui);
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:transparent; color:var(--text-primary); cursor:pointer;
+  transition:background 150ms ease-out, border-color 150ms ease-out;
+}
+.ldk-fallback-btn:hover{ background:var(--hover-overlay); }
+.ldk-fallback-btn--primary{ background:var(--accent); border-color:var(--accent); color:var(--text-on-accent); }
+.ldk-fallback-btn--primary:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+.ldk-fallback-detail{ max-width:calc(460px * var(--ui-scale)); width:100%; text-align:left;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); }
+.ldk-fallback-detail summary{ cursor:pointer; padding:calc(6px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  font-size:var(--font-size-xs); color:var(--text-muted); list-style:none; display:flex; align-items:center; gap:6px; }
+.ldk-fallback-detail summary::-webkit-details-marker{ display:none; }
+.ldk-fallback-detail summary .codicon{ font-size:var(--font-size-xs); transition:transform 150ms ease-out; }
+.ldk-fallback-detail[open] summary .codicon{ transform:rotate(90deg); }
+.ldk-fallback-detail summary:hover{ color:var(--text-secondary); }
+.ldk-fallback-kv{ display:grid; grid-template-columns:auto 1fr; gap:calc(3px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  padding:calc(4px * var(--ui-scale)) calc(10px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  font-family:var(--font-mono); font-size:var(--font-size-xs); color:var(--text-secondary); }
+.ldk-fallback-kv dt{ color:var(--text-muted); white-space:nowrap; }
+.ldk-fallback-kv dd{ margin:0; word-break:break-all; }
+
+/* 变体语义——色只点在图标（克制：不大面积铺色） */
+.ldk-fallback--crash  .ldk-fallback-icon{ color:var(--error); }
+.ldk-fallback--missing .ldk-fallback-icon,
+.ldk-fallback--empty  .ldk-fallback-icon{ color:var(--text-muted); }
+
+/* 双尺度——panel（侧栏 section 紧凑档）：图标缩、说明收敛、无详情披露 */
+.ldk-fallback--panel{ padding:calc(12px * var(--ui-scale)); gap:calc(7px * var(--ui-scale)); }
+.ldk-fallback--panel .ldk-fallback-icon{ font-size:calc(16px * var(--ui-scale)); }
+.ldk-fallback--panel .ldk-fallback-title{ font-size:var(--font-size-sm); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ldk-fallback--panel .ldk-fallback-desc{ max-width:100%; font-size:var(--font-size-xs); color:var(--text-muted); }
+.ldk-fallback--panel .ldk-fallback-btn{ padding:calc(3px * var(--ui-scale)) calc(10px * var(--ui-scale)); font-size:var(--font-size-xs); }
+
+/* micro——状态栏条目/工具槽极窄档：横排单行、无说明、小重试钮（砍视觉不砍通路） */
+.ldk-fallback--micro{ flex-direction:row; justify-content:flex-start; gap:calc(6px * var(--ui-scale)); padding:calc(2px * var(--ui-scale)) calc(8px * var(--ui-scale)); width:auto; height:auto; }
+.ldk-fallback--micro .ldk-fallback-icon{ font-size:calc(12px * var(--ui-scale)); }
+.ldk-fallback--micro .ldk-fallback-title{ font-size:var(--font-size-2xs); font-weight:400; max-width:calc(140px * var(--ui-scale)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ldk-fallback--micro .ldk-fallback-desc{ display:none; }
+.ldk-fallback--micro .ldk-fallback-actions{ gap:calc(4px * var(--ui-scale)); }
+.ldk-fallback--micro .ldk-fallback-btn{ padding:calc(1px * var(--ui-scale)) calc(8px * var(--ui-scale)); font-size:var(--font-size-2xs); }
+
+/* ═══ 5. 轻 toast 拟真复刻——真源 src/pool/floating/transient-toast/transient-toast.css 逐条照抄 ═══
+   规格：底部居中（bottom = --statusbar-height + 12px）· min 240 / max 360 · padding 12 · 圆角 lg ·
+   条间 gap 8 · severity 圆标 14px（彩底墨字）· 文本 sm/1.45 两行 clamp · × 常驻占位 18px 仅 opacity ·
+   160ms 位移淡入。TTL 与栈上限在壳侧（toast.ts）：info 6s / success 5s / 栈 ≤3 最旧先退场——本图 JS 同规则。 */
+.ldk-tt-stack{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(var(--statusbar-height) * var(--ui-scale) + 12px);
+  display:flex; flex-direction:column; gap:8px; align-items:center;
+  pointer-events:none; z-index:9;
+}
+.ldk-tt{
+  pointer-events:auto; display:flex; align-items:center; gap:12px;
+  min-width:240px; max-width:min(360px, calc(100vw - 32px));
+  padding:12px; border-radius:var(--radius-lg);
+  background:var(--bg-card); border:1px solid var(--border);
+  box-shadow:var(--shadow-pop);
+  font-size:var(--font-size-sm); line-height:1.45; color:var(--text-primary);
+  animation:ldk-tt-in 160ms ease-out;
+}
+@keyframes ldk-tt-in{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+.ldk-tt-sev{ width:14px; height:14px; flex:none; border-radius:var(--radius-full); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--tone-ink-on-light); }
+.ldk-tt[data-severity="info"] .ldk-tt-sev{ background:var(--accent); }
+.ldk-tt[data-severity="success"] .ldk-tt-sev{ background:var(--success); }
+.ldk-tt[data-severity="warning"] .ldk-tt-sev{ background:var(--warning); }
+.ldk-tt-msg{ flex:1; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ldk-tt-x{
+  flex:none; width:18px; height:18px; border:none; background:transparent;
+  color:var(--text-secondary); cursor:pointer; opacity:0; transition:opacity 150ms;
+  display:flex; align-items:center; justify-content:center; padding:0;
+}
+.ldk-tt:hover .ldk-tt-x, .ldk-tt:focus-within .ldk-tt-x{ opacity:1; }
+.ldk-tt-x:hover{ color:var(--text-primary); }
+@media (prefers-reduced-motion: reduce){ .ldk-tt{ animation:none; } }
+
+/* §二注记框（脚手架级说明件） */
+.remark{ border:1px dashed var(--border); border-radius:var(--radius-md); padding:10px 14px; font-size:var(--font-size-sm); color:var(--text-secondary); background:var(--bg-card); }
+.remark b{ color:var(--text-primary); }
+.remark code{ font-family:var(--font-mono); font-size:var(--font-size-xs); color:var(--text-secondary); background:var(--hover-overlay); padding:1px 5px; border-radius:var(--radius-xs); }
+
+/* §三 断言清单 */
+ol.asserts{ margin:0; padding-left:22px; font-size:var(--font-size-sm); color:var(--text-secondary); }
+ol.asserts li{ margin-bottom:7px; }
+ol.asserts code{ font-family:var(--font-mono); font-size:var(--font-size-xs); color:var(--text-primary); background:var(--hover-overlay); padding:1px 5px; border-radius:var(--radius-xs); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>01 · 错误态与降级脸 —— 现状／新设计同屏对照</h1>
+  <p class="page-sub">任务档：<code>docs/04-软件更新/待抉择池/错误态与降级脸-UI化/</code> · 衔接《万物皆可插件-表现层可替换化》§四-4 降级脸槽位族 ＋ §四-7 回退链机械化 · 证据时效 2026-11-21 electron 工作树</p>
+  <div class="legend">
+    <span><span class="sw sw--before"></span>🟥 现状（今天）</span>
+    <span><span class="sw sw--after"></span>🟩 新设计（本方案 · <code>ldk-fallback</code> 家族）</span>
+    <span><span class="sw sw--ref"></span>🟡 基准参照（已验收件，不动）</span>
+    <span class="note">页面外框＝图的脚手架，非产品件 · 右上按钮 = 亮暗真切换（与实机同机制）</span>
+  </div>
+  <button class="theme-toggle" id="themeToggle" type="button">切换亮／暗主题</button>
+
+  <!-- ═══════════════ §一 现状取证 ═══════════════ -->
+  <section>
+    <h2>§一 现状取证 <span class="tag">🟥 同一条 PluginComponent 管线上的四个兜底态，待遇割裂</span></h2>
+    <p class="sec-sub">加载有验收级骨架，崩溃只有 inline style，不可用连 CSS 都没有——主区 / 侧栏 / 底部面板 / 悬浮窗 / 对话框 / 状态栏等<b>九个挂载点全中招</b>（同一条加载链），病灶详单见 <code>01-现状出现点清单.md</code>。</p>
+    <div class="grid">
+
+      <!-- A1 -->
+      <div class="cell" data-kind="before">
+        <div class="cell-head"><span class="mark">A1 · 主区 tab · 插件不可用＝裸文本顶左上</span><span class="src">PluginComponent.tsx:39-45 · 零 CSS</span></div>
+        <div class="cell-body">
+          <div class="tabchrome">
+            <div class="tabbar"><span class="tab"><span class="codicon codicon-plug" aria-hidden="true"></span>示例视图</span></div>
+            <div class="tabview">
+              <!-- 产品件＝真类名，零规则原样呈现 -->
+              <div class="plugin-missing-view"><p>插件 "demo-plugin" 不可用</p></div>
+            </div>
+          </div>
+          <div class="cell-note"><b>观感＝坏了个东西贴在左上角。</b>浏览器默认排版：正文色、默认字号、&lt;p&gt; 默认 margin，顶格无居中——用户原话「显示在最左上角」即此。</div>
+        </div>
+      </div>
+
+      <!-- A2 -->
+      <div class="cell" data-kind="before">
+        <div class="cell-head"><span class="mark">A2 · 主区 tab · 崩溃＋重试＝28 行 inline style</span><span class="src">ErrorBoundary.tsx:70-98</span></div>
+        <div class="cell-body">
+          <div class="tabchrome">
+            <div class="tabbar"><span class="tab"><span class="codicon codicon-terminal" aria-hidden="true"></span>终端</span></div>
+            <div class="tabview">
+              <div class="crash-legacy">
+                <span>「终端」已崩溃</span>
+                <button class="crash-legacy-btn" type="button" data-act="retry">重试</button>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>机制健康、脸缺席：</b>无类名（主题/门禁/审计触达不了）、无语义色（--error 闲着）、无诊断出口（错误只进 console）、屏读只拿到两个裸文本节点。</div>
+        </div>
+      </div>
+
+      <!-- A3 -->
+      <div class="cell" data-kind="before">
+        <div class="cell-head"><span class="mark">A3 · 侧栏 section · 同款全尺寸塞窄栏</span><span class="src">PoolSectionStack.tsx:249-255</span></div>
+        <div class="cell-body">
+          <div class="sidechrome">
+            <div class="side-head"><span class="codicon codicon-chevron-down" aria-hidden="true"></span>文件树</div>
+            <div class="side-body">
+              <div class="crash-legacy">
+                <span>「serial-monitor」已崩溃</span>
+                <button class="crash-legacy-btn" type="button" data-act="retry">重试</button>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>窄容器不适配：</b>full 尺寸原样塞进 ~240px 窄栏——长插件名把「已崩溃」顶得换行挤兑，按钮下缘贴边。每个 section 都可能长这样。</div>
+        </div>
+      </div>
+
+      <!-- A4 基准参照 -->
+      <div class="cell" data-kind="ref">
+        <div class="cell-head"><span class="mark">A4 · 同家族的验收件＝加载骨架（基准）</span><span class="src">ViewSkeleton.tsx + .css</span></div>
+        <div class="cell-body">
+          <div class="tabchrome">
+            <div class="tabbar"><span class="tab"><span class="codicon codicon-terminal" aria-hidden="true"></span>终端</span></div>
+            <div class="tabview">
+              <div class="ldk-view-skeleton" role="status" aria-label="加载中...">
+                <div class="ldk-view-skeleton-title" aria-hidden="true"></div>
+                <div class="ldk-view-skeleton-card" aria-hidden="true"></div>
+                <div class="ldk-view-skeleton-card" aria-hidden="true"></div>
+                <div class="ldk-view-skeleton-row w100" aria-hidden="true"></div>
+                <div class="ldk-view-skeleton-row w85" aria-hidden="true"></div>
+                <div class="ldk-view-skeleton-row w60" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>同一条管线上，加载态已是验收级设计。</b>🟡 本格是基准不是病灶——新家族把这套待遇推广到崩了／没有／空三张脸，不另起炉灶。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ §二 新设计 ═══════════════ -->
+  <section>
+    <h2>§二 新设计：ldk-fallback 降级脸家族 <span class="tag">🟩 五段结构 · 三变体 · 三尺度 · 全 token</span></h2>
+    <p class="sec-sub"><b>五段</b>：图标（codicon，随变体换形换色）→ 标题（一句话事实）→ 说明（一句下一步建议）→ 动作区（primary ＋ 次级 ＋ 详情披露）→ 诊断详情（&lt;details&gt; 默认收起）。<b>三尺度</b>＝full（主区 tab / 底部面板等横宽容器）· panel（侧栏窄栏）· micro（状态栏/工具槽极窄档）——<b>通用功能：一张脸管九个挂载点</b>，新 zone 挂上加载链即自动继承。落地建议 <code>src/pool/shared/fallback/</code>。</p>
+    <div class="grid">
+
+      <!-- B1 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B1 · crash 变体 · full 尺度（对治 A2）</span><span class="src">ldk-fallback--crash--full</span></div>
+        <div class="cell-body">
+          <div class="tabchrome">
+            <div class="tabbar"><span class="tab"><span class="codicon codicon-terminal" aria-hidden="true"></span>终端</span></div>
+            <div class="tabview">
+              <div class="ldk-fallback ldk-fallback--crash ldk-fallback--full">
+                <span class="codicon codicon-error ldk-fallback-icon" aria-hidden="true"></span>
+                <div class="ldk-fallback-title">「终端」已崩溃</div>
+                <p class="ldk-fallback-desc">视图渲染时遇到错误，重试即可恢复；<br>若反复出现，请展开详情查看原因。</p>
+                <div class="ldk-fallback-actions">
+                  <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button" data-act="retry" data-name="终端"><span class="codicon codicon-debug-restart" aria-hidden="true"></span> 重试</button>
+                  <button class="ldk-fallback-btn" type="button" data-act="detail" data-detail="detail-b1">查看详情</button>
+                </div>
+                <details class="ldk-fallback-detail" id="detail-b1">
+                  <summary><span class="codicon codicon-chevron-right" aria-hidden="true"></span>诊断信息</summary>
+                  <dl class="ldk-fallback-kv">
+                    <dt>插件 id</dt><dd>demo-plugin</dd>
+                    <dt>错误消息</dt><dd>TypeError: Cannot read properties of undefined (reading 'map')</dd>
+                    <dt>发生时间</dt><dd>2026-11-21 14:32:05</dd>
+                    <dt>建议</dt><dd>重试；反复出现时带上此信息到插件页反馈</dd>
+                  </dl>
+                </details>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>语义色只点图标</b>（--error，暗 #E06C75／亮 #B3261E）——不大面积铺红，保持桌面克制；重试为主按钮，详情默认收起（progressive disclosure）。</div>
+        </div>
+      </div>
+
+      <!-- B2 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B2 · missing 变体 · full 尺度（对治 A1）</span><span class="src">ldk-fallback--missing--full</span></div>
+        <div class="cell-body">
+          <div class="tabchrome">
+            <div class="tabbar"><span class="tab"><span class="codicon codicon-plug" aria-hidden="true"></span>示例视图</span></div>
+            <div class="tabview">
+              <div class="ldk-fallback ldk-fallback--missing ldk-fallback--full">
+                <span class="codicon codicon-puzzle ldk-fallback-icon" aria-hidden="true"></span>
+                <div class="ldk-fallback-title">插件 "demo-plugin" 不可用</div>
+                <p class="ldk-fallback-desc">找不到这只插件——它可能已被卸载或未安装。<br>可重试，或到插件市场找一找。</p>
+                <div class="ldk-fallback-actions">
+                  <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button" data-act="retry" data-name="示例视图"><span class="codicon codicon-refresh" aria-hidden="true"></span> 重试</button>
+                  <button class="ldk-fallback-btn" type="button" data-act="market">打开插件市场</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>「没有」≠「坏了」</b>（PluginComponent.tsx:37 注释哲学，E6#162 归一化的延续）：全套中性 muted，不出 --error；动作给「重试 ＋ 打开市场」两条出路。</div>
+        </div>
+      </div>
+
+      <!-- B3 三容器形态全家福 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B3 · 三容器形态全家福（通用功能＝一张脸管全部挂载点）</span><span class="src">--full / --panel / --micro</span></div>
+        <div class="cell-body">
+          <div class="panelchrome">
+            <div class="panel-head"><span class="codicon codicon-chevron-up" aria-hidden="true"></span>输出</div>
+            <div class="panel-body">
+              <div class="ldk-fallback ldk-fallback--crash ldk-fallback--full">
+                <span class="codicon codicon-error ldk-fallback-icon" aria-hidden="true"></span>
+                <div class="ldk-fallback-title">「serial-monitor」已崩溃</div>
+                <p class="ldk-fallback-desc">渲染遇到错误，重试即可恢复；<br>若反复出现，请展开详情查看原因。</p>
+                <div class="ldk-fallback-actions">
+                  <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button"><span class="codicon codicon-debug-restart" aria-hidden="true"></span> 重试</button>
+                  <button class="ldk-fallback-btn" type="button">查看详情</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>底部面板（横宽容器）＝full 尺度原样复用</b>——横宽不改尺度，五段结构自动居中；与主区 tab 同一张脸。</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div class="sidechrome">
+              <div class="side-head"><span class="codicon codicon-chevron-down" aria-hidden="true"></span>文件树</div>
+              <div class="side-body">
+                <div class="ldk-fallback ldk-fallback--crash ldk-fallback--panel">
+                  <span class="codicon codicon-error ldk-fallback-icon" aria-hidden="true"></span>
+                  <div class="ldk-fallback-title">「serial-monitor」已崩溃</div>
+                  <p class="ldk-fallback-desc">渲染遇到错误，重试即可恢复。</p>
+                  <div class="ldk-fallback-actions">
+                    <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button" data-act="retry">重试</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="sidechrome">
+              <div class="side-head"><span class="codicon codicon-chevron-down" aria-hidden="true"></span>会话</div>
+              <div class="side-body">
+                <div class="ldk-fallback ldk-fallback--missing ldk-fallback--panel">
+                  <span class="codicon codicon-puzzle ldk-fallback-icon" aria-hidden="true"></span>
+                  <div class="ldk-fallback-title">插件 "demo-plugin" 不可用</div>
+                  <p class="ldk-fallback-desc">可能已卸载或未安装。</p>
+                  <div class="ldk-fallback-actions">
+                    <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button" data-act="retry">重试</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>侧栏窄栏＝panel 尺度</b>：图标 16px · 说明收敛为短句 · 详情披露不渲染（窄容器不披露，数据照走 AI 通路）。</div>
+          <div class="statusbarchrome">
+            <span>⎇ main</span>
+            <span style="flex:1;"></span>
+            <div class="ldk-fallback ldk-fallback--crash ldk-fallback--micro">
+              <span class="codicon codicon-error ldk-fallback-icon" aria-hidden="true"></span>
+              <div class="ldk-fallback-title">「serial-monitor」已崩溃</div>
+              <div class="ldk-fallback-actions">
+                <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button" data-act="retry">重试</button>
+              </div>
+            </div>
+            <div class="ldk-fallback ldk-fallback--missing ldk-fallback--micro">
+              <span class="codicon codicon-puzzle ldk-fallback-icon" aria-hidden="true"></span>
+              <div class="ldk-fallback-title">插件 "demo-plugin" 不可用</div>
+              <div class="ldk-fallback-actions">
+                <button class="ldk-fallback-btn ldk-fallback-btn--primary" type="button" data-act="retry">重试</button>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>状态栏/工具槽极窄档＝micro 尺度</b>：横排单行、无说明、小重试钮——视觉收缩，通路照旧（硬约束 26：非鼠标路径不随容器变窄而消失）。</div>
+          <div class="cell-note"><b>通用功能的机制保证：</b>九个挂载点全走同一条 PluginComponent / ErrorBoundary 加载链（见 01 清单 §二）——<b>新 zone 只要挂上加载链就自动继承这张脸，零新增代码</b>；尺度和变体只由容器 props 决定，与挂载点解耦。</div>
+        </div>
+      </div>
+
+      <!-- B4 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B4 · empty 变体 · full 尺度</span><span class="src">ldk-fallback--empty--full</span></div>
+        <div class="cell-body">
+          <div class="tabchrome">
+            <div class="tabbar"><span class="tab"><span class="codicon codicon-search" aria-hidden="true"></span>搜索</span></div>
+            <div class="tabview">
+              <div class="ldk-fallback ldk-fallback--empty ldk-fallback--full">
+                <span class="codicon codicon-files ldk-fallback-icon" aria-hidden="true"></span>
+                <div class="ldk-fallback-title">暂无结果</div>
+                <p class="ldk-fallback-desc">当前筛选条件下没有内容。<br>请更换关键词，或清空条件显示全部。</p>
+                <div class="ldk-fallback-actions">
+                  <button class="ldk-fallback-btn" type="button" data-act="clear">清空条件</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cell-note"><b>可选统一件，不强制收编</b>（E5.6#11g：空态由插件自判是既有拍板）——when 空态机制（ViewEmptyContentDescriptor）与插件自判都可消费这张脸。</div>
+        </div>
+      </div>
+
+      <!-- B5 AI 友好化 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B5 · AI 友好化＝命令直取，不读屏</span><span class="src">ai-bridge 直取 · ⛔ 截图猜坐标</span></div>
+        <div class="cell-body">
+          <div class="ldk-fallback-detail" style="max-width:none;" open>
+            <summary><span class="codicon codicon-chevron-right" aria-hidden="true"></span>诊断信息（默认收起 · 此格展示展开态）</summary>
+            <dl class="ldk-fallback-kv">
+              <dt>插件 id</dt><dd>demo-plugin</dd>
+              <dt>变体</dt><dd>crash（视图崩溃）</dd>
+              <dt>错误消息</dt><dd>TypeError: Cannot read properties of undefined (reading 'map')</dd>
+              <dt>发生时间</dt><dd>2026-11-21 14:32:05</dd>
+              <dt>建议</dt><dd>重试；反复出现时带上此信息到插件页反馈</dd>
+            </dl>
+          </div>
+          <div class="cell-note"><b>AI 直取，不读屏</b>：这四行键值就是一份结构化 JSON 的 GUI 渲染——AI 走命令面直接拿同一份数据（建议命令 <code>app.getViewFallbackData</code>，meta 必带 description＋params 出契约），经 ai-bridge / linkdeskctl / MCP 可读可执行——<b>读结构化状态 → 调命令带参数 → 读结构化结果</b>（硬约束 26③），⛔ 截图→视觉理解→猜坐标。重试动作同理：GUI 点击与 AI 调用指向<b>同一命令位</b>（建议 id <code>app.reloadView</code>，随槽位落地同笔注册）。aria/role 语义是给<b>视障用户的读屏软件</b>（无障碍面），与 AI 通路无关。</div>
+        </div>
+      </div>
+
+      <!-- B6 回退链衔接 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B6 · 衔接万物皆可插件＝回退链终点站</span><span class="src">母案 §四-4 · §四-7</span></div>
+        <div class="cell-body">
+          <div class="remark">
+            <b>将来：</b>插件贡献 <code>contributes.renderers</code> 替换体接管某张脸（emptyStage 槽位族）——
+            <b>替换体崩溃 → 自动回退本内置脸 ＋ 一条 toast 通知</b>（母案 §四-7 回退链机械化）。<br><br>
+            <b>所以这张内置脸必须先做到验收级：</b>它是所有未来替换体的兜底终点。数据五段同构（插件 id / 变体 / 消息 / 时间 / 建议）⇒ 替换体照走同一契约，换皮零迁移；「列出候选 / 切换 / 回退默认」命令化随槽位落地同笔做（铁律 B），本档只留位不抢跑。<br><br>
+            <b>命令面＝跨皮稳定契约：</b>皮被替换后<b>同一批命令与参数照常工作</b>（用户口述：未来即便换成通用 UI 的形式，底层命令不变）——AI 与用户的操作面永不因换皮重写。且<b>每张脸都可被命令主动调出</b>（建议 <code>app.previewFallbackFace</code>，variant / scale / name 参数化）——哪怕没有真实崩溃，AI 也能把崩溃脸调出来（演示 / 验收 / AI 验证共用同一入口）。
+          </div>
+          <div class="cell-note"><b>机制不抢跑：</b>本档只定型「皮」＋预留「骨」的接口（数据命令 / 动作命令位）；槽位总线的拍板与实施在母案，两边互不阻塞。</div>
+        </div>
+      </div>
+
+      <!-- B7 动作反馈三分工 -->
+      <div class="cell" data-kind="after">
+        <div class="cell-head"><span class="mark">B7 · 动作反馈三分工（轻 toast 已复刻——点本图任何按钮看效果）</span><span class="src">transient-toast.css 逐条照抄</span></div>
+        <div class="cell-body">
+          <div class="remark">
+            <b>重试 →</b> 轻 toast（底部居中）「正在重试「终端」…」；<b>查看详情 →</b> <b>页内原位展开</b>（再点收起——⛔ 不进 toast：诊断是多行结构化数据，轻 toast 两行 clamp 装不下）；<b>打开插件市场 / 清空条件 →</b> 轻 toast 反馈；<b>回退链通知（母案 §四-7）→</b> 右下铃铛面板常驻（失败待办与 [重试] 行住那）。<br><br>
+            轻 toast 真源 = <code>src/pool/floating/transient-toast/</code>：底部居中（距状态栏 12px）· 240–360 宽 · severity 圆标（i/✓/!）· 160ms 位移淡入 · 两行 clamp · × hover 显 · TTL info 6s / success 5s · 栈上限 3 最旧先退场——本图样式与 JS 规则逐条照抄。
+          </div>
+          <div class="cell-note"><b>三个通路各司其职：</b>轻 toast＝路过反馈（几秒即走）· 页内详情＝就地深读（多行结构化）· 铃铛面板＝常驻待办——⛔ 互相客串（历史教训：右下角同角落堆两层）。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ §三 断言清单 ═══════════════ -->
+  <section>
+    <h2>§三 怎么读本图（断言清单）</h2>
+    <ol class="asserts">
+      <li><b>真源逐值</b>：token 表照抄 <code>src/index.css</code>（含亮色 <code>--error:#B3261E</code>）；现状区 <code>.crash-legacy-*</code> 每条声明＝ErrorBoundary.tsx:70-98 的 inline style 逐条转写，值零改动；<code>.plugin-missing-view</code> 真源零规则 ⇒ 本图刻意零声明。</li>
+      <li><b>新设计零手填</b>（产品件）：字号一律 <code>var(--font-size-*)</code>、尺寸一律 <code>calc(Npx * var(--ui-scale))</code>、圆角一律 <code>var(--radius-*)</code>、色一律 <code>var(--xxx)</code>；类名 <code>ldk-fallback-*</code> 为落地建议名（<code>ldk-</code> 族段，硬约束 23 纪律）。</li>
+      <li><b>语义对齐既有裁决</b>：missing＝中性（「没有」≠「坏了」，E6#162）；crash 图标点 <code>--error</code>；empty 为可选统一件（E5.6#11g 插件自判在先）；加载态不并入（ViewSkeleton 已是验收件，语义「内容在路上」不同于「结果不是内容」）。<b>加载与三脸由 React 状态机互斥区分</b>：import pending→骨架 / rejected→crash / null→missing / resolve→内容——永不错位互串；⏳ 边界：import 永久 pending 无超时兜底（骨架永转，慢与挂不可辨），是否立 <code>--timeout</code> 第四变体 → 提案 §六-5 开放问题。</li>
+      <li><b>双主题真切换</b>：右上按钮改 <code>data-theme</code>，与实机同机制；两主题均过对比度（error on window、primary 白字 on accent）。</li>
+      <li><b>AI 友好化＝命令直取，不读屏</b>（硬约束 26③）：详情四行＝结构化命令返回值的 GUI 渲染，AI 经 ai-bridge / linkdeskctl / MCP 直接拿同一份 JSON（⛔ 截图→视觉理解→猜坐标）；动作指向命令位（GUI 点击与 AI 调用同源）；aria/role 是视障用户读屏软件的无障碍面，与 AI 无关；panel/micro 尺度砍视觉不砍通路（说明与详情可以不渲染，命令照返回）。命令 id 为建议值，注册随槽位落地同笔做。</li>
+      <li><b>交互为真，不是摆设</b>：图内所有按钮真实可点——重试 → 轻 toast「正在重试…」；查看详情 → 页内原位展开（再点收起）；打开插件市场 / 清空条件 → 轻 toast 反馈；现状区（🟥）按钮同样接了演示反馈（真源行为＝state 重置重渲染，此处用轻 toast 演示反馈形态）。</li>
+      <li><b>反馈通路三分工</b>（B7）：轻 toast＝路过反馈 · 页内详情＝就地深读 · 右下铃铛面板＝常驻待办（不在本档范围）——⛔ 互相客串。</li>
+      <li><b>变体判定零新增机制</b>：crash＝ErrorBoundary catch（既有）；missing＝loader 存在性闸 null（E6#162 既有）；empty＝when 空态 / 插件自判（E5.6#11g 既有）——全部是既有出口换脸，判定逻辑不新增。</li>
+      <li><b>全脸可命令调出＋命令跨皮不变</b>（AI 友好化终极判据，用户 2026-11-21 口述）：所见 AI 能见、所操作 AI 能操作、指哪打哪——三张脸不依赖真实故障即可被命令调出（建议 <code>app.previewFallbackFace</code>，演示/验收/AI 验证共用）；未来皮被通用 UI 替换，底层命令与参数不变——操作面永不重写。<b>反面判据</b>（LabVIEW 式软件）：模拟鼠标点击/拖动不是通路——每一条能力以结构化命令可达为唯一合格线（「远没有直接写 C 代码方便快捷」）。</li>
+      <li><b>文案规格</b>：说明区两行（行1 事实 · 行2 出路）；禁口语化（「通常」「试试」类词）。</li>
+      <li><b>通用功能＝一张脸管九个挂载点</b>（B3 全家福）：主区 tab / 侧栏视图 / 侧栏 section / 底部面板 / 悬浮面板 / 对话框 / 状态栏组件 / 工具槽 / 壳保底页全走同一条加载链；<b>三尺度由容器 props 决定、与挂载点解耦</b>——新 zone 挂上即自动继承，零新增代码；底部面板＝full 原样复用（横宽不改尺度），状态栏/工具槽＝micro 横排。</li>
+      <li><b>图标＝真 codicon</b>：error / puzzle / files / debug-restart / refresh 与产品同一支字体；缺 node_modules 时字形退化为空框，跑 <code>npm i</code> 即可。</li>
+      <li><b>范围边界</b>：状态栏通知面板失败行（ldk-notif-*）不在本档（有自己的三段结构），仅对齐动作语义；EmptyStage 品牌空场不并入（装饰件语义不同）。</li>
+    </ol>
+  </section>
+</div>
+<script>
+  // 主题真切换——与实机同机制（data-theme 属性驱动 CSS 变量组）
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    var el = document.documentElement;
+    el.dataset.theme = el.dataset.theme === "light" ? "" : "light";
+  });
+
+  // ── 轻 toast（拟真复刻壳侧规则 toast.ts：TTL info 6s / success 5s；栈上限 3 最旧先退场）──
+  var TT_TTL = { info: 6000, success: 5000, warning: 6000 };
+  var TT_MAX = 3;
+  var ttStack = document.createElement("div");
+  ttStack.className = "ldk-tt-stack";
+  document.body.appendChild(ttStack);
+  function showToast(msg, sev) {
+    sev = sev || "info";
+    while (ttStack.children.length >= TT_MAX) ttStack.removeChild(ttStack.firstChild);
+    var tt = document.createElement("div");
+    tt.className = "ldk-tt";
+    tt.dataset.severity = sev;
+    var glyph = { info: "i", success: "✓", warning: "!" }[sev] || "i";
+    tt.innerHTML = '<span class="ldk-tt-sev" aria-hidden="true">' + glyph + '</span><span class="ldk-tt-msg"></span><button type="button" class="ldk-tt-x" aria-label="关闭通知">✕</button>';
+    tt.querySelector(".ldk-tt-msg").textContent = msg;
+    ttStack.appendChild(tt);
+    var timer = setTimeout(dismiss, TT_TTL[sev] || 6000);
+    function dismiss() { clearTimeout(timer); if (tt.parentNode) tt.parentNode.removeChild(tt); }
+    tt.querySelector(".ldk-tt-x").addEventListener("click", dismiss);
+  }
+
+  // ── 动作路由（data-act：retry / market / clear / detail）──
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    var act = btn.dataset.act;
+    if (act === "retry") {
+      var name = btn.dataset.name;
+      if (!name) {
+        var host = btn.closest(".ldk-fallback");
+        var t = host && host.querySelector(".ldk-fallback-title");
+        var m = t && t.textContent.match(/[「"]([^」"]+)[」"]/);
+        name = m ? m[1] : "视图";
+      }
+      showToast("正在重试「" + name + "」…", "info");
+    } else if (act === "market") {
+      showToast("正在打开插件市场…", "info");
+    } else if (act === "clear") {
+      showToast("已清空筛选条件", "success");
+    } else if (act === "detail") {
+      var d = document.getElementById(btn.dataset.detail);
+      if (d) {
+        d.open = !d.open;
+        btn.textContent = d.open ? "收起详情" : "查看详情";
+      }
+    }
+  });
+</script>
+</body>
+</html>
