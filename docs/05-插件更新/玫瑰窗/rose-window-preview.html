@@ -2,15 +2,19 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>玫瑰窗 · LinkDesk 主题预览稿</title>
+<title>玫瑰窗 · LinkDesk 主题预览稿 v2</title>
 <style>
-  /* ════════════════════════════════════════════════════════════════
-     玫瑰窗（theme-rose-window）——设计预览稿
+  /* ════════════════════════════════════════════════════════════════════════
+     玫瑰窗（theme-rose-window）——设计预览稿 v2
      真值来源：themes/rose-window.json（午后圣光配色）
-     本页只做「照配方画一遍」：表面 38% 合成 + 玻璃 ::before 层 + 金色受光边。
+     本页做两件事：
+       ① 照配方把整个壳画一遍（玻璃面 = 表面合成 + tint 层 + 金色受光边）
+       ② 底下「细节展示」把按钮 / 胶囊开关 / 输入 / 下拉 / 右键菜单 / 标签页 /
+          状态徽章 / 字体色板 逐个画出来，方便逐项验收
      ⚠️ 预览稿不是产品源码；真实渲染由壳主题引擎执行。
-     ════════════════════════════════════════════════════════════════ */
+     ════════════════════════════════════════════════════════════════════════ */
   :root {
+    /* ── 表面（亮色玻璃基色） ── */
     --bg-window: #FBF5E9;
     --bg-titlebar: #FDF8EE;
     --bg-toolbar: #FDF8EE;
@@ -19,111 +23,122 @@
     --bg-card: #FFFCF5;
     --bg-input: #FFFDF8;
     --bg-status: #F6EDDC;
-    --text-primary: #2B2015;
-    --text-secondary: #57432E;
-    --text-muted: #7E684E;
+    /* ── 文字（暖墨） ── */
+    --text-primary: #1F160D;
+    --text-secondary: #4A3823;
+    --text-muted: #55422B;
     --accent: #A6771B;
     --accent-hover: #C6952F;
     --text-on-accent: #FFF9EC;
-    --border: rgba(96, 70, 38, 0.22);
-    --separator: rgba(96, 70, 38, 0.15);
-    --icon-ink: color-mix(in srgb, var(--text-primary) 78%, transparent);
+    --toggle-knob: #A6771B;
+    --toggle-knob-on: #FFF9EC;
+    --border: rgba(110, 78, 36, 0.26);
+    --separator: rgba(110, 78, 36, 0.16);
+    --icon-ink: color-mix(in srgb, var(--text-primary) 80%, transparent);
     --icon-ink-active: var(--text-primary);
-    --hover-overlay: rgba(120, 88, 40, 0.10);
-    --tab-hover-bg: rgba(120, 88, 40, 0.09);
+    --hover-overlay: rgba(120, 88, 40, 0.11);
+    --tab-hover-bg: rgba(120, 88, 40, 0.10);
     --bg-selection: rgba(166, 119, 27, 0.16);
     --dirty-dot: #B03A46;
     --status-connected: #2E7D53;
     --success: #2E7D53;
     --warning: #B4761C;
+    --error: #A32A38;
     --danger: #A32A38;
-    --surface-reading: rgba(255, 251, 242, 0.90);
-    --surface-reading-strong: rgba(255, 252, 246, 0.96);
-    --surface-ink: #2B2015;
-    --scrollbar-thumb: rgba(166, 119, 27, 0.32);
+    --surface-reading: rgba(255, 252, 245, 0.94);
+    --surface-reading-strong: rgba(255, 253, 248, 0.97);
+    --surface-media-scrim: rgba(26, 16, 7, 0.74);
+    --surface-ink: #1F160D;
+    --scrollbar-thumb: rgba(166, 119, 27, 0.34);
+    --scrollbar-thumb-hover: rgba(166, 119, 27, 0.50);
+    --floating-panel-backdrop: rgba(40, 26, 12, 0.30);
+    --context-menu-shadow: 0 12px 36px rgba(45, 28, 10, 0.28);
+    /* ── 几何 ── */
+    --radius-xs: 3px;
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;
     --radius-xl: 18px;
     --radius-2xl: 22px;
-    --glass-blur: 28px;
-    --glass-saturate: 1.45;
-    --glass-tint: rgba(255, 244, 222, 0.58);
-    --glass-opacity: 0.38;
-    --glass-specular: 0.90;
-    --glass-specular-color: #FFF0C4;
-    --glass-alpha: 0.38;
+    --radius-pill: 999px;
+    /* ── 玻璃材质（候选 1.0.1 参数） ── */
+    --glass-blur: 36px;
+    --glass-saturate: 1.35;
+    --glass-tint: rgba(255, 247, 230, 0.62);
+    --glass-opacity: 0.60;
+    --glass-specular: 0.92;
+    --glass-specular-color: #FFEFC0;
+    --glass-alpha: 0.46;          /* 用户「玻璃不透明度」种子 = 配方 opacity */
+    --float-blur-floor: 16px;
     --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    --font-ui-app: Constantia, "Palatino Linotype", "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, Georgia, serif;
+    --font-size-xs: 12px;
+    --font-size-sm: 13px;
+    --font-size-md: 14px;
+    --shadow-pop: 0 4px 12px rgba(45, 28, 10, 0.28);
     --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    --font-mark: Georgia, "Times New Roman", "Songti SC", serif;
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; }
   body {
-    background: #070403;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(166, 119, 27, 0.08), transparent 70%),
+      #060403;
     font-family: var(--font-ui);
-    color: var(--text-primary);
+    color: #D8C7A8;
+    padding: 34px 24px 64px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 26px;
-    padding: 34px 24px 48px;
+    gap: 30px;
   }
 
-  .board-title {
-    width: min(1440px, 100%);
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    color: #C9A96A;
-    letter-spacing: 2px;
-  }
+  .board-title, .details, .app-frame { width: min(1440px, 100%); }
+  .board-title { display: flex; align-items: baseline; justify-content: space-between; color: #C9A96A; }
   .board-title b { font-size: 15px; font-weight: 500; letter-spacing: 5px; }
-  .board-title span { font-size: 12px; color: #8A7358; letter-spacing: 1px; }
+  .board-title span { font-size: 12px; color: #B7A07A; letter-spacing: 1px; }
 
-  /* ── 窗口 ─────────────────────────────────────────────────────── */
+  /* ════════════════════════════════════════════════════════════════════════
+     ① 壳预览
+     ════════════════════════════════════════════════════════════════════════ */
   .window {
     position: relative;
-    width: min(1440px, 100%);
+    width: 100%;
     aspect-ratio: 16 / 10;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 242, 207, 0.14);
-    color: var(--text-primary);
+    box-shadow:
+      0 40px 120px rgba(0, 0, 0, 0.72),
+      0 0 0 1px rgba(255, 239, 192, 0.20),
+      0 0 0 4px rgba(166, 119, 27, 0.10);
     isolation: isolate;
     display: grid;
     grid-template-rows: 30px 1fr 22px;
+    color: var(--text-primary);
+    font-family: var(--font-ui-app);
   }
-
-  /* 全窗背景图（最底层） */
   .window::before {
     content: "";
-    position: absolute;
-    inset: 0;
-    background: #1A1008 url("preview-bg.jpg") center / cover no-repeat;
-    z-index: -2;
+    position: absolute; inset: 0; z-index: -2;
+    background: #120B06 url("preview-bg.jpg") center / cover no-repeat;
   }
-  /* 背景遮罩：mask 0.12 + 暖黑 #1A1008 */
   .window::after {
     content: "";
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0; z-index: -1;
     background: #1A1008;
-    opacity: 0.12;
-    z-index: -1;
+    opacity: 0.12;               /* 配方 background.mask */
   }
 
-  /* 玻璃面公用：表面 38% 合成 + tint 层 + 受光边 */
+  /* 玻璃面：表面合成 + tint 层 + 受光边 */
   .glass {
     position: relative;
     background: color-mix(in srgb, var(--surface) calc(var(--glass-alpha) * 100%), transparent);
-    box-shadow: inset 0 0 0 1px rgba(255, 242, 207, 0.22);
   }
   .glass::before {
     content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 0;
+    position: absolute; inset: 0; z-index: 0;
     pointer-events: none;
     border-radius: inherit;
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -131,21 +146,21 @@
     background: var(--glass-tint);
     opacity: var(--glass-opacity);
     box-shadow:
-      inset 0 1px 0 rgba(255, 242, 207, var(--glass-specular)),
-      inset 0 0 0 1px rgba(255, 242, 207, var(--glass-specular));
+      inset 0 1px 0 rgba(255, 239, 192, var(--glass-specular)),
+      inset 0 0 0 1px rgba(255, 239, 192, calc(var(--glass-specular) * 0.55));
   }
   .glass > * { position: relative; z-index: 1; }
 
-  .titlebar { --surface: var(--bg-titlebar); display: flex; align-items: center; padding: 0 0 0 8px; }
+  .titlebar { --surface: var(--bg-titlebar); display: flex; align-items: center; padding-left: 8px; }
   .logo {
     width: 18px; height: 18px; margin-right: 8px; border-radius: 5px;
     background:
-      radial-gradient(circle at 38% 38%, #FFF3CE 0 18%, transparent 19%),
+      radial-gradient(circle at 50% 50%, #FFF3CE 0 17%, transparent 18%),
       conic-gradient(from 0deg, #B23A48, #A6771B, #2F5D9E, #2E7D53, #B23A48);
-    box-shadow: inset 0 0 0 1px rgba(255, 242, 207, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(255, 239, 192, 0.5);
     flex-shrink: 0;
   }
-  .menu { font-size: 13px; color: var(--text-secondary); padding: 4px 9px; border-radius: var(--radius-sm); }
+  .menu { font-size: 13px; color: var(--text-secondary); padding: 4px 9px; border-radius: var(--radius-sm); transition: background 120ms; }
   .menu:hover { background: var(--hover-overlay); color: var(--text-primary); }
   .drag { flex: 1; }
   .wc { display: flex; }
@@ -153,26 +168,23 @@
   .wc i.close:hover { background: #B03A46; color: #fff; }
 
   .body { display: grid; grid-template-columns: 42px 258px 1fr; min-height: 0; }
-
-  /* 图标栏 */
   .iconbar { --surface: var(--bg-icon-bar); display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
-  .ibtn { width: 42px; height: 42px; display: grid; place-items: center; position: relative; color: var(--icon-ink); }
+  .ibtn { width: 42px; height: 42px; display: grid; place-items: center; position: relative; color: var(--icon-ink); cursor: pointer; transition: background 120ms; }
   .ibtn:hover { background: var(--hover-overlay); }
-  .ibtn.on { background: radial-gradient(circle at center, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%); color: var(--icon-ink-active); }
+  .ibtn.on { background: radial-gradient(circle at center, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%); color: var(--icon-ink-active); }
   .ibtn.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; background: var(--accent); border-radius: 0 2px 2px 0; }
   .ibtn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.6; }
   .ibtn .rose { width: 24px; height: 24px; }
 
-  /* 侧栏 */
   .sidebar { --surface: var(--bg-side-panel); display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--separator); }
   .side-head {
     height: 34px; display: flex; align-items: center; justify-content: space-between;
-    padding: 0 12px; font-size: 11px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase;
-    border-bottom: 1px solid var(--separator);
+    padding: 0 12px; font-size: 11px; letter-spacing: 1.5px; color: var(--text-muted);
+    border-bottom: 1px solid var(--separator); text-transform: uppercase;
   }
   .side-head b { font-weight: 600; color: var(--text-secondary); letter-spacing: 1px; }
   .tree { padding: 8px 0; font-size: 13px; overflow: hidden; }
-  .row { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 12px; color: var(--text-secondary); white-space: nowrap; }
+  .row { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 12px; color: var(--text-secondary); white-space: nowrap; cursor: pointer; transition: background 120ms; }
   .row:hover { background: var(--hover-overlay); }
   .row.sel { background: var(--bg-selection); color: var(--text-primary); box-shadow: inset 2px 0 0 var(--accent); }
   .row .fold { width: 12px; color: var(--text-muted); font-size: 10px; }
@@ -182,204 +194,563 @@
   .dot.js { background: #B4761C; }
   .dot.ts { background: #2F5D9E; }
   .dot.css { background: #B23A48; }
-  .dot.md { background: #7E684E; }
-  .badge { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .dot.md { background: #6B573F; }
+  .badge { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 
-  /* 主区 */
   .main { --surface: var(--bg-window); display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--separator); }
-  .tabs { display: flex; height: 35px; border-bottom: 1px solid var(--separator); padding-left: 6px; }
-  .tab { display: flex; align-items: center; gap: 8px; padding: 0 16px; font-size: 12.5px; color: var(--text-muted); border-right: 1px solid var(--separator); }
+  /* 对齐壳 GroupTabBar：条 35px / 项 30px / margin 4px / 圆角 md / 顶 2px accent 短杠 */
+  .tabs { display: flex; height: 35px; background: var(--bg-card); border-bottom: 1px solid var(--separator); padding-left: 4px; }
+  .tab { display: flex; align-items: center; gap: 4px; height: 30px; margin: 4px 4px 0 0; padding: 0 8px; font-size: var(--font-size-md); color: var(--text-secondary); border: 1px solid transparent; border-radius: var(--radius-md); background: var(--bg-card); cursor: pointer; position: relative; transition: background 150ms, color 150ms, border-color 150ms, box-shadow 150ms; }
   .tab:hover { background: var(--tab-hover-bg); }
-  .tab.on { background: var(--surface-reading); color: var(--text-primary); box-shadow: inset 0 2px 0 var(--accent); }
+  .tab.on { background: var(--bg-window); color: var(--text-primary); border-color: var(--separator); box-shadow: 0 1px 4px rgba(70, 45, 15, 0.16); }
+  .tab.on::before { content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 2px; border-radius: var(--radius-xs); background: var(--accent); }
   .tab .x { color: var(--text-muted); font-size: 13px; }
-  .tab .dd { width: 7px; height: 7px; border-radius: 38%; background: var(--dirty-dot); }
+  .tab .dd { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); }
 
   .content { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 18px; overflow: hidden; }
   .doc {
-    background: var(--surface-reading); border: 1px solid var(--separator); border-radius: var(--radius-lg);
-    padding: 26px 30px; overflow: hidden; box-shadow: 0 12px 34px rgba(52, 32, 12, 0.10);
+    background: var(--surface-reading); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 26px 30px; overflow: hidden;
+    box-shadow: 0 12px 34px rgba(52, 32, 12, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   }
   .doc h1 { margin: 0 0 4px; font-size: 27px; font-weight: 600; letter-spacing: 1px; }
   .doc h1 small { display: block; margin-top: 6px; font-size: 11px; letter-spacing: 4px; color: var(--text-muted); font-weight: 400; }
-  .rule { height: 1px; margin: 16px 0 18px; background: linear-gradient(90deg, var(--accent), transparent); opacity: .55; }
-  .doc p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.75; color: var(--text-secondary); }
+  .rule { height: 2px; margin: 16px 0 18px; background: linear-gradient(90deg, var(--accent), rgba(166,119,27,0.15) 60%, transparent); }
+  .doc p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.8; color: var(--text-secondary); }
   .doc p b { color: var(--text-primary); font-weight: 600; }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 20px; }
-  .chip { display: flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); font-size: 12px; color: var(--text-secondary); }
-  .chip i { width: 12px; height: 12px; border-radius: 38%; box-shadow: 0 0 0 1px rgba(0,0,0,.15) inset; }
-  .code {
-    margin-top: 4px; border-radius: var(--radius-md); overflow: hidden;
-    background: rgba(24, 15, 8, 0.86); color: #EADFCB; font-family: var(--font-mono); font-size: 12px; line-height: 1.9;
-    padding: 14px 16px; box-shadow: inset 0 0 0 1px rgba(255, 242, 207, 0.12);
-  }
-  .code .ln { color: #6E5B44; }
-  .code .k { color: #E8B750; }
-  .code .s { color: #A7C6A0; }
-  .code .c { color: #7E684E; font-style: italic; }
-  .code .v { color: #D9A7A7; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 18px; }
+  .chip { display: flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); font-size: 12px; color: var(--text-secondary); }
+  .chip i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.15) inset; }
+  .param-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 6px; }
+  .param { border: 1px solid var(--separator); border-radius: var(--radius-md); padding: 10px 12px; background: rgba(255,255,255,0.35); }
+  .param b { display: block; font-size: 11px; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; }
+  .param span { display: block; margin-top: 4px; font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); }
 
   .aside { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
   .card {
     background: var(--surface-reading-strong); border: 1px solid var(--separator);
-    border-radius: var(--radius-md); padding: 14px 16px; box-shadow: 0 8px 24px rgba(52, 32, 12, 0.08);
+    border-radius: var(--radius-md); padding: 14px 16px; box-shadow: 0 8px 24px rgba(52, 32, 12, 0.10);
   }
   .card h3 { margin: 0 0 10px; font-size: 11px; letter-spacing: 2px; color: var(--text-muted); font-weight: 600; }
   .swatch { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); padding: 4px 0; }
   .swatch i { width: 20px; height: 20px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
   .swatch span { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
-  .meter { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--text-primary) 10%, transparent); overflow: hidden; margin: 6px 0 2px; }
-  .meter > b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); }
-  .btns { display: flex; gap: 8px; margin-top: 4px; }
-  .btn { padding: 7px 14px; border-radius: var(--radius-sm); font-size: 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); color: var(--accent); background: transparent; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent); }
 
-  /* 底栏 */
-  .status { --surface: var(--bg-status); display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 11px; color: var(--text-secondary); }
+  .status { --surface: var(--bg-window); display: flex; align-items: center; gap: 6px; padding: 0 8px; font-size: var(--font-size-sm); color: var(--text-muted); }
   .status .ok { color: var(--status-connected); }
   .status .right { margin-left: auto; display: flex; gap: 16px; }
 
-  /* 规格条 */
-  .spec { width: min(1440px, 100%); display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; color: #B9A381; }
-  .spec div { background: rgba(255, 248, 232, 0.04); border: 1px solid rgba(255, 242, 207, 0.10); border-radius: 10px; padding: 12px 14px; font-size: 12px; line-height: 1.6; }
-  .spec b { display: block; color: #E8D8B8; font-size: 11px; letter-spacing: 2px; margin-bottom: 6px; font-weight: 600; }
+  /* ════════════════════════════════════════════════════════════════════════
+     ② 细节展示
+     ════════════════════════════════════════════════════════════════════════ */
+  .details { display: flex; flex-direction: column; gap: 16px; }
+  .details > h2 {
+    margin: 8px 0 0; font-size: 13px; letter-spacing: 4px; font-weight: 500; color: #C9A96A;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .details > h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(201,169,106,.5), transparent); }
+  .details > p { margin: 0; font-size: 12.5px; line-height: 1.8; color: #C4AE88; max-width: 1000px; }
+  .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .span2 { grid-column: span 2; }
+
+  .spec-card {
+    border-radius: 14px;
+    border: 1px solid rgba(255, 239, 192, 0.16);
+    background: linear-gradient(180deg, rgba(255, 248, 232, 0.055), rgba(255, 248, 232, 0.02));
+    padding: 16px 18px 18px;
+    box-shadow: 0 18px 48px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,239,192,.12);
+  }
+  .spec-card h3 { margin: 0 0 3px; font-size: 13px; letter-spacing: 1px; color: #E6D6B6; font-weight: 600; }
+  .spec-card .tokens { font-family: var(--font-mono); font-size: 10.5px; color: #B7A07A; margin-bottom: 14px; }
+  .spec-card .hint { margin: 12px 0 0; font-size: 11.5px; line-height: 1.7; color: #C4AE88; }
+
+  .paper {
+    position: relative;
+    font-family: var(--font-ui-app);
+    border-radius: 12px;
+    background: var(--surface-reading);
+    color: var(--text-primary);
+    padding: 16px;
+    border: 1px solid var(--border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    overflow: hidden;
+  }
+  .paper.dark { background: rgba(27,17,9,.86); color: #EADFCB; border-color: rgba(255,239,192,.14); }
+  .comp-label { font-size: 10px; letter-spacing: 1px; color: var(--text-muted); margin: 0 0 7px; text-transform: uppercase; }
+  .paper.dark .comp-label { color: #9C8663; }
+
+  .btnrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  /* 对齐壳共享 Button：基类就是实心 accent；hover 只降 opacity，不加渐变/光环 */
+  .btn {
+    display: inline-flex; align-items: center; font: inherit;
+    font-size: var(--font-size-sm); line-height: 1;
+    padding: 4px 12px; min-height: 24px;
+    border-radius: var(--radius-sm); cursor: pointer;
+    border: 1px solid transparent;
+    background: var(--accent); color: var(--text-on-accent);
+    transition: opacity 140ms, background 140ms, border-color 140ms, color 140ms;
+  }
+  .btn:hover:not(:disabled) { opacity: .85; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: transparent; border-color: var(--separator); color: var(--text-secondary); }
+  .btn.ghost:hover:not(:disabled) { background: var(--hover-overlay); color: var(--text-primary); opacity: 1; }
+  .btn.success { background: var(--success); border-color: var(--success); color: var(--text-on-accent); }
+  .btn.danger { background: transparent; border-color: color-mix(in srgb, var(--danger) 45%, transparent); color: var(--danger); }
+  .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 75%, transparent); opacity: 1; }
+  .btn.sm { height: 22px; min-height: 22px; padding: 0 12px; font-size: var(--font-size-xs); }
+
+  .state-note { font-size: 10.5px; color: var(--text-muted); margin-top: 10px; line-height: 1.7; }
+
+  .ctl-row { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .ctl { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); }
+  /* 对齐壳共享 Toggle：36×20、轨道 --border / --accent、旋钮 16px、无光晕无 hover 态 */
+  .pill { width: 36px; height: 20px; border-radius: var(--radius-pill); background: var(--border); position: relative; cursor: pointer; transition: background 150ms; flex-shrink: 0; }
+  .pill::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--radius-pill); background: var(--toggle-knob); transition: transform 150ms, background 150ms; }
+  .pill.on { background: var(--accent); }
+  .pill.on::after { transform: translateX(16px); background: var(--toggle-knob-on); }
+  .pill.disabled { opacity: .4; cursor: not-allowed; }
+  /* 对齐壳共享 SegmentedRadio：透明底 + separator 边；选中 accent 描边 + 12% 底 */
+  .seg { display: flex; gap: 4px; }
+  .seg-opt { display: inline-flex; align-items: center; padding: 4px 8px; border: 1px solid var(--separator); border-radius: var(--radius-sm); font-size: var(--font-size-sm); color: var(--text-secondary); cursor: pointer; transition: border-color 120ms, background 120ms; }
+  .seg-opt:hover { border-color: var(--text-muted); background: var(--hover-overlay); }
+  .seg-opt.is-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text-primary); }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .field label { font-size: 11px; letter-spacing: 1px; color: var(--text-muted); }
+  .input {
+    height: 32px; border-radius: var(--radius-sm); padding: 0 8px; font: inherit; font-size: var(--font-size-md);
+    color: var(--text-primary); background: var(--bg-input); border: 1px solid var(--border);
+    outline: none; transition: border-color 120ms, box-shadow 120ms;
+  }
+  .input::placeholder { color: var(--text-muted); }
+  .input:focus, .input.focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  /* 对齐壳共享 SelectBox：触发器 padding 3px 6px / radius-xs / 字号 md */
+  .select {
+    border-radius: var(--radius-xs); padding: 3px 26px 3px 6px; font: inherit; font-size: var(--font-size-md);
+    color: var(--text-primary); background: var(--bg-input); border: 1px solid var(--border);
+    display: flex; align-items: center; position: relative;
+  }
+  .select::after { content: "▾"; position: absolute; right: 10px; color: var(--text-muted); font-size: 11px; }
+  .select.open { border-color: var(--accent); }
+  /* 对齐壳共享 SelectBox 面板：bg-window + radius-sm + shadow-pop（浮层地板另给背模糊） */
+  .dropdown {
+    margin-top: 2px; border-radius: var(--radius-sm); overflow: hidden;
+    background: color-mix(in srgb, var(--bg-window) calc(var(--glass-alpha) * 100%), transparent);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-pop);
+    -webkit-backdrop-filter: blur(max(var(--glass-blur), var(--float-blur-floor))) saturate(var(--glass-saturate));
+    backdrop-filter: blur(max(var(--glass-blur), var(--float-blur-floor))) saturate(var(--glass-saturate));
+  }
+  .item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; font-size: 12.5px; color: var(--text-primary); cursor: pointer; }
+  .item .k { margin-left: auto; }
+  .item:hover, .item.hover { background: var(--tab-hover-bg); box-shadow: inset 2px 0 0 var(--accent); }
+  .dropdown .item { padding: 3px 8px; font-size: var(--font-size-md); }
+  .dropdown .item.focus { background: var(--accent); color: var(--text-on-accent); box-shadow: none; }
+  .dropdown .item.selected:not(.focus) { background: var(--bg-selection); }
+  .item.danger { color: var(--danger); }
+  .item.danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); box-shadow: inset 2px 0 0 var(--danger); }
+  .sep { height: 1px; margin: 4px 8px; background: var(--separator); }
+  .kbd {
+    font-family: var(--font-mono); font-size: 10.5px; padding: 2px 6px; border-radius: 4px;
+    background: rgba(120, 88, 40, 0.10); border: 1px solid rgba(120, 88, 40, 0.16); color: var(--text-secondary);
+  }
+
+  .menu-stage {
+    position: relative; height: 250px; border-radius: 12px; overflow: hidden;
+    background: #120B06 url("preview-bg.jpg") center / cover no-repeat;
+    display: grid; place-items: center;
+  }
+  .menu-stage::after { content: ""; position: absolute; inset: 0; background: rgba(18,11,6,.18); }
+  .ctx {
+    position: relative; z-index: 1;
+    min-width: 200px; max-width: 280px; padding: 4px 0;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--bg-card) 46%, transparent);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 0 rgba(0,0,0,.25), var(--context-menu-shadow), inset 0 1px 0 rgba(255,239,192,.35);
+    -webkit-backdrop-filter: blur(max(var(--glass-blur), var(--float-blur-floor))) saturate(var(--glass-saturate));
+    backdrop-filter: blur(max(var(--glass-blur), var(--float-blur-floor))) saturate(var(--glass-saturate));
+  }
+  .ctx .item { font-size: var(--font-size-md); padding: 6px 12px; }
+  .ctx .item .ico { width: 16px; text-align: center; opacity: .78; font-size: 13px; }
+  .ctx .item:hover .ico, .ctx .item.hover .ico { opacity: 1; color: var(--accent); }
+
+  .tab-demo { display: flex; height: 35px; background: var(--bg-card); border-bottom: 1px solid var(--separator); padding-left: 4px; }
+  .tab-demo .t { display: flex; align-items: center; gap: 4px; height: 30px; margin: 4px 4px 0 0; padding: 0 8px; font-size: var(--font-size-md); color: var(--text-secondary); border: 1px solid transparent; border-radius: var(--radius-md); background: var(--bg-card); cursor: pointer; position: relative; }
+  .tab-demo .t:hover { background: var(--tab-hover-bg); }
+  .tab-demo .t.on { background: var(--bg-window); color: var(--text-primary); border-color: var(--separator); box-shadow: 0 1px 4px rgba(70, 45, 15, 0.16); }
+  .tab-demo .t.on::before { content: ""; position: absolute; top: 0; left: 8px; right: 8px; height: 2px; border-radius: var(--radius-xs); background: var(--accent); }
+
+  .strow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .st { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 4px 9px; border-radius: 999px; border: 1px solid currentColor; }
+  .st.ok { color: var(--status-connected); background: color-mix(in srgb, var(--status-connected) 10%, transparent); }
+  .st.warn { color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+  .st.err { color: var(--error); background: color-mix(in srgb, var(--error) 10%, transparent); }
+  .st.info { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .pill-badge { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--text-on-accent); }
+  .dot-badge { width: 8px; height: 8px; border-radius: 50%; background: var(--dirty-dot); }
+
+  .type-row { display: flex; align-items: baseline; gap: 14px; padding: 5px 0; border-bottom: 1px dashed var(--separator); }
+  .type-row:last-child { border-bottom: 0; }
+  .type-row .sz { width: 96px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); flex-shrink: 0; }
+  .type-row .sample { color: var(--text-primary); }
+  .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .pal { border-radius: 8px; overflow: hidden; border: 1px solid var(--separator); background: var(--surface-reading-strong); }
+  .pal i { display: block; height: 38px; }
+  .pal b { display: block; font-size: 10.5px; padding: 5px 7px; color: var(--text-secondary); font-weight: 500; }
+  .pal span { display: block; font-family: var(--font-mono); font-size: 9.5px; padding: 0 7px 6px; color: var(--text-muted); }
+
+  .glass-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .gtile { position: relative; height: 128px; border-radius: 10px; overflow: hidden; background: #120B06 url("preview-bg.jpg") center / cover no-repeat; }
+  .gtile .cap {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px;
+    font-size: 11px; color: var(--text-primary);
+    background: color-mix(in srgb, var(--bg-card) 62%, transparent);
+    border-top: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  }
+  .gtile .cap b { color: var(--accent); font-weight: 600; }
+  .gtile .cap span { display: block; font-family: var(--font-mono); font-size: 9.5px; color: var(--text-muted); margin-top: 2px; }
+  .gtile .veil { position: absolute; inset: 0; }
+
+  @media (max-width: 980px) {
+    .detail-grid { grid-template-columns: 1fr; }
+    .span2 { grid-column: auto; }
+    .content { grid-template-columns: 1fr; }
+    .aside { display: none; }
+    .glass-tiles { grid-template-columns: 1fr; }
+    .param-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* 宣传图 */
+  .gallery { width: min(1440px, 100%); display: flex; flex-direction: column; gap: 14px; }
+  .gallery > h2 { margin: 8px 0 0; font-size: 13px; letter-spacing: 4px; font-weight: 500; color: #C9A96A; display: flex; align-items: center; gap: 14px; }
+  .gallery > h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(201,169,106,.5), transparent); }
+  .gallery .cover { border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,239,192,.22); box-shadow: 0 26px 70px rgba(0,0,0,.5); }
+  .gallery .cover img { display: block; width: 100%; height: auto; }
+  .shot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .shot { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,239,192,.16); background: #0b0705; box-shadow: 0 18px 50px rgba(0,0,0,.4); }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot p { margin: 0; padding: 9px 11px; font-size: 11px; line-height: 1.6; color: #C4AE88; background: rgba(255,248,232,.045); }
+  .shot p b { color: #E6D6B6; }
+  @media (max-width: 980px) { .shot-grid { grid-template-columns: 1fr; } }
+
 </style>
 </head>
 <body>
   <div class="board-title">
     <b>玫 瑰 窗 · ROSE WINDOW</b>
-    <span>LinkDesk 主题设计预览稿 · 午后圣光配色 · 2026-11-23</span>
+    <span>LinkDesk 主题设计预览稿 v2 · 午后圣光配色 · 2026-11-23</span>
   </div>
 
-  <div class="window">
-    <!-- 标题栏 -->
-    <div class="titlebar glass">
-      <div class="logo"></div>
-      <div class="menu">文件</div>
-      <div class="menu">编辑</div>
-      <div class="menu">查看</div>
-      <div class="menu">帮助</div>
-      <div class="drag"></div>
-      <div class="wc"><i>─</i><i>□</i><i class="close">✕</i></div>
-    </div>
-
-    <div class="body">
-      <!-- 图标栏 -->
-      <div class="iconbar glass">
-        <div class="ibtn on">
-          <svg viewBox="0 0 24 24"><path d="M4 5h6l2 2h8v12H4z"/><path d="M4 9h16"/></svg>
-        </div>
-        <div class="ibtn">
-          <svg viewBox="0 0 24 24"><path d="M4 4h7v16H4z"/><path d="M13 4h7v9h-7z"/><path d="M13 15h7v5h-7z"/></svg>
-        </div>
-        <div class="ibtn">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
-        </div>
-        <div class="ibtn">
-          <svg viewBox="0 0 24 24"><path d="M6 3v12a3 3 0 0 0 3 3h9"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/></svg>
-        </div>
-        <!-- 玫瑰窗插件图标（本主题自绘身份图） -->
-        <div class="ibtn">
-          <svg class="rose" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.2"/>
-            <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1"/>
-            <g stroke="currentColor" stroke-width="0.9">
-              <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
-              <path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
-            </g>
-          </svg>
-        </div>
-        <div class="drag" style="flex:1"></div>
-        <div class="ibtn">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
-        </div>
+  <div class="app-frame">
+    <div class="window">
+      <div class="titlebar glass">
+        <div class="logo"></div>
+        <div class="menu">文件</div>
+        <div class="menu">编辑</div>
+        <div class="menu">查看</div>
+        <div class="menu">帮助</div>
+        <div class="drag"></div>
+        <div class="wc"><i>─</i><i>□</i><i class="close">✕</i></div>
       </div>
 
-      <!-- 侧栏 -->
-      <div class="sidebar glass">
-        <div class="side-head"><b>资源管理器</b><span>⋯</span></div>
-        <div class="tree">
-          <div class="row"><span class="fold">▾</span><span class="dot md"></span>linkdesk</div>
-          <div class="row ind1"><span class="fold">▾</span><span class="dot js"></span>src</div>
-          <div class="row ind2"><span class="dot ts"></span>theme-engine.ts</div>
-          <div class="row ind2 sel"><span class="dot ts"></span>rose-window.ts<span class="badge">M</span></div>
-          <div class="row ind2"><span class="dot css"></span>glass.css</div>
-          <div class="row ind1"><span class="fold">▸</span><span class="dot js"></span>themes</div>
-          <div class="row ind1"><span class="fold">▸</span><span class="dot js"></span>packages</div>
-          <div class="row ind1"><span class="dot md"></span>README.md</div>
-          <div class="row ind1"><span class="dot js"></span>package.json</div>
-        </div>
-      </div>
-
-      <!-- 主区 -->
-      <div class="main glass">
-        <div class="tabs">
-          <div class="tab on"><span class="dot ts"></span>rose-window.ts<span class="dd"></span><span class="x">✕</span></div>
-          <div class="tab"><span class="dot css"></span>glass.css<span class="x">✕</span></div>
-          <div class="tab"><span class="dot md"></span>README.md<span class="x">✕</span></div>
+      <div class="body">
+        <div class="iconbar glass">
+          <div class="ibtn on"><svg viewBox="0 0 24 24"><path d="M4 5h6l2 2h8v12H4z"/><path d="M4 9h16"/></svg></div>
+          <div class="ibtn"><svg viewBox="0 0 24 24"><path d="M4 4h7v16H4z"/><path d="M13 4h7v9h-7z"/><path d="M13 15h7v5h-7z"/></svg></div>
+          <div class="ibtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg></div>
+          <div class="ibtn"><svg viewBox="0 0 24 24"><path d="M6 3v12a3 3 0 0 0 3 3h9"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/></svg></div>
+          <div class="ibtn">
+            <svg class="rose" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1"/>
+              <g stroke="currentColor" stroke-width="0.9">
+                <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+                <path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
+              </g>
+            </svg>
+          </div>
+          <div class="drag" style="flex:1"></div>
+          <div class="ibtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></div>
         </div>
 
-        <div class="content">
-          <div class="doc">
-            <h1>玫瑰窗<small>ROSE WINDOW · 亮色玻璃 · 三组彩窗配色</small></h1>
-            <div class="chips">
-              <span class="chip"><i style="background:#A6771B"></i>午后圣光</span>
-              <span class="chip"><i style="background:#2F5D9E"></i>青金石</span>
-              <span class="chip"><i style="background:#6B3F8E"></i>晚祷紫</span>
-            </div>
-            <p>午后的光从玫瑰窗灌注进来，落在<span style="color:var(--accent)">亮色磨砂玻璃</span>上。每一块面板都浮在深色石廊与宝石彩窗之上——玻璃把彩窗揉成温柔的光斑，金色受光边沿着面板顶部走一道。</p>
-            <p>文字是暖调深墨，不是纯黑：像旧手抄本的墨与羊皮纸。强调色取自金箔，只在真正需要亮起来的地方出现。</p>
-            <div class="rule"></div>
-            <div class="code">
-<span class="c">// themes/rose-window.json</span><br>
-{<br>
-&nbsp;&nbsp;<span class="k">"type"</span>: <span class="s">"light"</span>,<br>
-&nbsp;&nbsp;<span class="k">"glass"</span>: { <span class="k">"blur"</span>: <span class="v">28</span>, <span class="k">"specular"</span>: <span class="v">0.90</span>, <span class="k">"tint"</span>: <span class="s">"rgba(255,244,222,.58)"</span> },<br>
-&nbsp;&nbsp;<span class="k">"background"</span>: { <span class="k">"image"</span>: <span class="s">"cathedral-bg.jpg"</span>, <span class="k">"mask"</span>: <span class="v">0.12</span> },<br>
-&nbsp;&nbsp;<span class="k">"colorways"</span>: [<span class="s">"午后圣光"</span>, <span class="s">"青金石"</span>, <span class="s">"晚祷紫"</span>]<br>
-}
-            </div>
+        <div class="sidebar glass">
+          <div class="side-head"><b>资源管理器</b><span>⋯</span></div>
+          <div class="tree">
+            <div class="row"><span class="fold">▾</span><span class="dot md"></span>linkdesk</div>
+            <div class="row ind1"><span class="fold">▾</span><span class="dot js"></span>src</div>
+            <div class="row ind2"><span class="dot ts"></span>theme-engine.ts</div>
+            <div class="row ind2 sel"><span class="dot ts"></span>rose-window.ts<span class="badge">M</span></div>
+            <div class="row ind2"><span class="dot css"></span>glass.css</div>
+            <div class="row ind1"><span class="fold">▸</span><span class="dot js"></span>themes</div>
+            <div class="row ind1"><span class="fold">▸</span><span class="dot js"></span>packages</div>
+            <div class="row ind1"><span class="dot md"></span>README.md</div>
+            <div class="row ind1"><span class="dot js"></span>package.json</div>
+          </div>
+        </div>
+
+        <div class="main glass">
+          <div class="tabs">
+            <div class="tab on"><span class="dot ts"></span>rose-window.ts<span class="dd"></span><span class="x">✕</span></div>
+            <div class="tab"><span class="dot css"></span>glass.css<span class="x">✕</span></div>
+            <div class="tab"><span class="dot md"></span>README.md<span class="x">✕</span></div>
           </div>
 
-          <div class="aside">
-            <div class="card">
-              <h3>彩窗色板</h3>
-              <div class="swatch"><i style="background:#B23A48"></i>鸽血红<span>#B23A48</span></div>
-              <div class="swatch"><i style="background:#2F5D9E"></i>青金石<span>#2F5D9E</span></div>
-              <div class="swatch"><i style="background:#2E7D53"></i>祖母绿<span>#2E7D53</span></div>
-              <div class="swatch"><i style="background:#A6771B"></i>金箔<span>#A6771B</span></div>
+          <div class="content">
+            <div class="doc">
+              <h1>玫瑰窗<small>ROSE WINDOW · 亮色玻璃 · 三组彩窗配色</small></h1>
+              <div class="chips">
+                <span class="chip"><i style="background:#A6771B"></i>午后圣光</span>
+                <span class="chip"><i style="background:#2F5D9E"></i>青金石</span>
+                <span class="chip"><i style="background:#6B3F8E"></i>晚祷紫</span>
+              </div>
+              <p>午后的光从玫瑰窗灌注进来，落在<b>亮色磨砂玻璃</b>上。每一块面板都浮在深色石廊与宝石彩窗之上——玻璃把彩窗揉成温柔的光斑，金色受光边沿着面板顶部走一道。</p>
+              <p>文字是暖调深墨，不是纯黑：像旧手抄本的墨与羊皮纸。强调色取自金箔，只在真正需要亮起来的地方出现。</p>
+              <div class="rule"></div>
+              <div class="param-grid">
+                <div class="param"><b>模糊</b><span>36 px</span></div>
+                <div class="param"><b>饱和</b><span>1.35</span></div>
+                <div class="param"><b>表面合成</b><span>46%</span></div>
+                <div class="param"><b>金色受光边</b><span>0.92</span></div>
+              </div>
             </div>
-            <div class="card">
-              <h3>玻璃</h3>
-              <div class="swatch" style="padding:0 0 2px">模糊<b style="margin-left:auto;font-weight:500;color:var(--text-primary)">28 px</b></div>
-              <div class="meter"><b style="width:78%"></b></div>
-              <div class="swatch" style="padding:8px 0 2px">受光边<b style="margin-left:auto;font-weight:500;color:var(--text-primary)">0.90</b></div>
-              <div class="meter"><b style="width:90%"></b></div>
-              <div class="swatch" style="padding:8px 0 2px">表面合成<b style="margin-left:auto;font-weight:500;color:var(--text-primary)">38%</b></div>
-              <div class="meter"><b style="width:38%"></b></div>
-            </div>
-            <div class="card">
-              <h3>应用</h3>
-              <div class="btns"><span class="btn primary">应用主题</span><span class="btn">换配色</span></div>
+
+            <div class="aside">
+              <div class="card">
+                <h3>彩窗色板</h3>
+                <div class="swatch"><i style="background:#B23A48"></i>鸽血红<span>#B23A48</span></div>
+                <div class="swatch"><i style="background:#2F5D9E"></i>青金石<span>#2F5D9E</span></div>
+                <div class="swatch"><i style="background:#2E7D53"></i>祖母绿<span>#2E7D53</span></div>
+                <div class="swatch"><i style="background:#A6771B"></i>金箔<span>#A6771B</span></div>
+              </div>
+              <div class="card">
+                <h3>文字对比（实测目标）</h3>
+                <div class="swatch">主文字 / 卡片<span>≥ 12:1</span></div>
+                <div class="swatch">次级 / 玻璃面<span>≥ 7:1</span></div>
+                <div class="swatch">弱文字 / 玻璃面<span>≥ 4.5:1</span></div>
+              </div>
+              <div class="card">
+                <h3>应用</h3>
+                <div class="btnrow"><span class="btn">应用主题</span><span class="btn ghost">换配色</span></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 状态栏 -->
-    <div class="status glass">
-      <span>⎇ electron</span>
-      <span class="ok">● 已连接</span>
-      <span>UTF-8</span>
-      <span class="right"><span>Ln 42, Col 7</span><span>主题 · 玫瑰窗</span></span>
+      <div class="status glass">
+        <span>⎇ electron</span>
+        <span class="ok">● 已连接</span>
+        <span>UTF-8</span>
+        <span class="right"><span>Ln 42, Col 7</span><span>主题 · 玫瑰窗</span></span>
+      </div>
     </div>
   </div>
 
-  <div class="spec">
-    <div><b>表面</b>标题栏 / 工具栏 / 图标栏 / 侧栏 / 主区 / 面板区 / 状态栏，全部亮色玻璃（暖白叠加 + 28px 模糊）。</div>
-    <div><b>背景</b>全窗玫瑰窗（巴黎圣母院，公有领域）2560×1200 日光与暖光合成；遮罩 0.12 暖黑，让亮玻璃浮起来。</div>
-    <div><b>文字</b>暖调深墨 #2B2015 / #57432E；卡片与浮层走 surface-reading，玻璃再透正文不糊。</div>
-    <div><b>强调</b>金箔 #A6771B（hover #C6952F）+ 鸽血红脏点；青金石 / 晚祷紫两套只换强调色族。</div>
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="details">
+    <h2>细节展示</h2>
+    <p>下面每一块都按配方真值画：玻璃三档材质、按钮、胶囊开关、输入与下拉、右键菜单、标签页与树行、状态徽章、字体与色板。鼠标悬停可以看到真实 hover 反馈。</p>
+
+    <div class="detail-grid">
+
+      <!-- 玻璃三档 -->
+      <article class="spec-card span2">
+        <h3>玻璃材质 · 三档</h3>
+        <div class="tokens">环境玻璃 → --glass-tint / --glass-opacity / --glass-specular　·　内容面 → --surface-reading　·　浮层 → --float-blur-floor 16px</div>
+        <div class="glass-tiles">
+          <div class="gtile">
+            <div class="veil" style="background:color-mix(in srgb, var(--bg-side-panel) calc(var(--glass-alpha) * 100%), transparent);"></div>
+            <div class="cap"><b>环境玻璃</b>表面 46% + 暖白 tint + 金色受光边<span>标题栏 / 侧栏 / 图标栏 / 状态栏</span></div>
+          </div>
+          <div class="gtile">
+            <div class="veil" style="background:var(--surface-reading);"></div>
+            <div class="cap"><b>内容面</b>94% 暖白，承载正文<span>卡片 / 文档 / 浮层面板</span></div>
+          </div>
+          <div class="gtile">
+            <div class="veil"></div>
+            <div class="cap"><b>浮层磨砂</b>玻璃面 + 保底 16px 背模糊<span>右键菜单 / 下拉 / 提示</span></div>
+          </div>
+        </div>
+        <p class="hint">环境玻璃让彩窗透上来；文字面单独加厚，正文不跟背景打架。右键菜单这类浮层永远是「比主屏更重一层磨砂」——即使把玻璃不透明度拉到 0，也保底 16px 模糊，字不叠背景。</p>
+      </article>
+
+      <!-- 按钮 -->
+      <article class="spec-card">
+        <h3>按钮</h3>
+        <div class="tokens">--accent / --accent-hover / --text-on-accent / --radius-sm</div>
+        <div class="paper">
+          <p class="comp-label">Primary · Success · Ghost · Danger</p>
+          <div class="btnrow">
+            <button class="btn">应用主题</button>
+            <button class="btn success">安装</button>
+            <button class="btn ghost">取消</button>
+            <button class="btn danger">恢复默认</button>
+          </div>
+          <p class="state-note">对齐壳共享 Button：基类就是实心 accent（金箔）——hover 只降 15% 不透明度，不加渐变；ghost 走 separator 边 + 暖褐 hover；success 祖母绿；danger 鸽血红。</p>
+          <p class="comp-label" style="margin-top:14px">尺寸 · 小号 / 禁用</p>
+          <div class="btnrow">
+            <button class="btn sm">小号主动作</button>
+            <button class="btn ghost sm">小号幽灵</button>
+            <button class="btn" disabled>禁用</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 开关 / 胶囊 -->
+      <article class="spec-card">
+        <h3>开关与胶囊</h3>
+        <div class="tokens">--toggle-knob / --toggle-knob-on / --accent / --radius-pill</div>
+        <div class="paper">
+          <p class="comp-label">胶囊开关 · 关 / 开 / 禁用（壳共享 Toggle 36×20）</p>
+          <div class="ctl-row" style="margin-bottom:14px">
+            <span class="ctl"><span class="pill"></span>关闭</span>
+            <span class="ctl"><span class="pill on"></span>开启</span>
+            <span class="ctl"><span class="pill disabled"></span>禁用</span>
+          </div>
+          <p class="comp-label">分段单选（壳共享 SegmentedRadio）</p>
+          <div class="seg">
+            <span class="seg-opt is-selected">浅色</span>
+            <span class="seg-opt">深色</span>
+            <span class="seg-opt">跟随系统</span>
+          </div>
+          <p class="state-note">开启态：金箔轨道 + 暖白旋钮；关态轨道用 --border；禁用 40% 透明。分段单选选中档 = 金箔描边 + 12% 金底。</p>
+        </div>
+      </article>
+
+      <!-- 右键菜单 -->
+      <article class="spec-card span2">
+        <h3>右键菜单 · 浮层磨砂</h3>
+        <div class="tokens">--bg-card（合成后）/ --context-menu-shadow / --border / --float-blur-floor</div>
+        <div class="menu-stage">
+          <div class="ctx">
+            <div class="item hover"><span class="ico">✎</span>重命名<span class="k kbd">F2</span></div>
+            <div class="item"><span class="ico">⧉</span>复制路径<span class="k kbd">Ctrl+C</span></div>
+            <div class="item"><span class="ico">↗</span>以 VS Code 打开</div>
+            <div class="sep"></div>
+            <div class="item"><span class="ico">⌕</span>在文件夹中查找<span class="k kbd">Ctrl+Shift+F</span></div>
+            <div class="sep"></div>
+            <div class="item danger"><span class="ico">⌫</span>删除<span class="k kbd">Del</span></div>
+          </div>
+        </div>
+        <p class="hint">菜单面板 = 暖白卡片色 46% + 背模糊（至少 16px）+ 发丝金边 + 暖褐投影。悬停项不铺金底（保文字对比 ≥ 9:1），只用暖褐 10% + 左侧 2px 金条；图标在悬停时转金。危险项悬停转鸽血红。</p>
+      </article>
+
+      <!-- 输入 / 下拉 -->
+      <article class="spec-card">
+        <h3>输入框与下拉</h3>
+        <div class="tokens">--bg-input / --border / --radius-sm / --tab-hover-bg（悬停项）</div>
+        <div class="paper">
+          <div class="field">
+            <label>普通输入</label>
+            <input class="input" placeholder="输入主题名称…">
+          </div>
+          <div class="field">
+            <label>聚焦态</label>
+            <input class="input focus" value="玫瑰窗 · 午后圣光">
+          </div>
+          <label style="display:block;font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">下拉（展开）</label>
+          <div class="select open">午后圣光</div>
+          <div class="dropdown">
+            <div class="item focus"><span>●</span>午后圣光<span class="k kbd">Enter</span></div>
+            <div class="item selected"><span>●</span>青金石<span class="k kbd">⌘2</span></div>
+            <div class="item"><span>●</span>晚祷紫<span class="k kbd">⌘3</span></div>
+            <div class="sep"></div>
+            <div class="item"><span>↺</span>恢复默认</div>
+          </div>
+          <p class="state-note">对齐壳共享 SelectBox：聚焦项 = 实心金箔底 + 暖白字；已选项 = 金底 16%；触发器 3px 圆角；聚焦环 1px 金描边。</p>
+        </div>
+      </article>
+
+      <!-- 标签页 / 树行 -->
+      <article class="spec-card">
+        <h3>标签页与树行</h3>
+        <div class="tokens">--tab-hover-bg / --bg-selection / --dirty-dot / --surface-reading-strong</div>
+        <div class="paper" style="padding:0 0 12px">
+          <div class="tab-demo" style="margin-bottom:10px">
+            <div class="t on"><span class="dot ts"></span>rose-window.ts<span class="dd"></span>✕</div>
+            <div class="t"><span class="dot css"></span>glass.css ✕</div>
+          </div>
+          <div style="padding:0 12px">
+            <div class="row ind1" style="color:var(--text-secondary)"><span class="dot ts"></span>theme-engine.ts</div>
+            <div class="row ind1 sel"><span class="dot ts"></span>rose-window.ts<span class="badge">M</span></div>
+          </div>
+        </div>
+        <p class="state-note">激活标签：内容面白底 + 顶部 2px 金条；悬停标签：暖褐 10%；选中行：金底 16% + 左侧金条；未保存：鸽血红圆点。</p>
+      </article>
+
+      <!-- 状态 / 徽章 -->
+      <article class="spec-card">
+        <h3>状态与徽章</h3>
+        <div class="tokens">--status-connected / --warning / --error / --accent / --dirty-dot</div>
+        <div class="paper">
+          <div class="strow" style="margin-bottom:14px">
+            <span class="st ok">● 已连接</span>
+            <span class="st warn">▲ 待保存</span>
+            <span class="st err">✕ 连接失败</span>
+            <span class="st info">◆ 主题生效</span>
+          </div>
+          <div class="strow">
+            <span class="pill-badge">12</span>
+            <span class="dot-badge"></span><span style="font-size:12px;color:var(--text-secondary)">未保存改动</span>
+            <span class="kbd">Ctrl</span><span class="kbd">S</span>
+          </div>
+        </div>
+        <p class="state-note">连接绿 / 警告琥珀 / 错误鸽血红 / 强调金；徽章金底暖白字；脏点鸽血红。</p>
+      </article>
+
+      <!-- 字体 -->
+      <article class="spec-card">
+        <h3>字体与字号</h3>
+        <div class="tokens">--font-ui（本主题 = Constantia + Noto Serif SC 衬线栈）· --font-mono · --font-mark</div>
+        <div class="paper">
+          <div class="type-row"><span class="sz">壳默认 / 无衬线</span><span class="sample" style="font-family:var(--font-ui);font-size:13px">玫瑰窗 Rose Window · 午后圣光 0123</span></div>
+          <div class="type-row"><span class="sz">本主题 / 贵重衬线</span><span class="sample" style="font-size:13px">玫瑰窗 Rose Window · 午后圣光 0123</span></div>
+          <div class="type-row"><span class="sz">12 / 辅助</span><span class="sample" style="font-size:12px">状态栏、快捷键提示、元数据</span></div>
+          <div class="type-row"><span class="sz">13 / 正文</span><span class="sample" style="font-size:13px">文件树、标签页、菜单项、表单</span></div>
+          <div class="type-row"><span class="sz">18 / 小标题</span><span class="sample" style="font-size:18px;font-weight:600">分组标题</span></div>
+          <div class="type-row"><span class="sz">28 / 标题</span><span class="sample" style="font-size:28px;font-weight:600">玫瑰窗</span></div>
+        </div>
+        <p class="state-note">机制真相：主题的 font 域<b>只有 ui / mono 两个键</b>，没有「标题字体」「正文字体」这种分区——所以「部分字体改成贵重字体」在现行机制里 = 把 ui 整体换成衬线栈（Latin Constantia / Palatino + 中文 思源宋体 / Noto Serif SC），mono 仍然留给代码（Cascadia / Consolas）。壳不做逐组件字体覆盖；预览里的对照就是最终差别。</p>
+      </article>
+
+      <!-- 色板 -->
+      <article class="spec-card span2">
+        <h3>色板全集（午后圣光）</h3>
+        <div class="tokens">colorways[0].colors —— 键 = CSS 变量名去掉 -- 前缀</div>
+        <div class="palette">
+          <div class="pal"><i style="background:#FDF8EE"></i><b>标题栏 / 工具栏</b><span>#FDF8EE</span></div>
+          <div class="pal"><i style="background:#FBF5E9"></i><b>窗口</b><span>#FBF5E9</span></div>
+          <div class="pal"><i style="background:#FAF3E5"></i><b>侧栏</b><span>#FAF3E5</span></div>
+          <div class="pal"><i style="background:#F7EFDF"></i><b>图标栏</b><span>#F7EFDF</span></div>
+          <div class="pal"><i style="background:#FFFCF5"></i><b>卡片</b><span>#FFFCF5</span></div>
+          <div class="pal"><i style="background:#FFFDF8"></i><b>输入</b><span>#FFFDF8</span></div>
+          <div class="pal"><i style="background:#1F160D"></i><b>主文字</b><span>#1F160D</span></div>
+          <div class="pal"><i style="background:#4A3823"></i><b>次级文字</b><span>#4A3823</span></div>
+          <div class="pal"><i style="background:#A6771B"></i><b>金箔</b><span>#A6771B</span></div>
+          <div class="pal"><i style="background:#C6952F"></i><b>金箔 hover</b><span>#C6952F</span></div>
+          <div class="pal"><i style="background:#B23A48"></i><b>鸽血红</b><span>#B23A48</span></div>
+          <div class="pal"><i style="background:#2F5D9E"></i><b>青金石</b><span>#2F5D9E</span></div>
+          <div class="pal"><i style="background:#2E7D53"></i><b>祖母绿</b><span>#2E7D53</span></div>
+          <div class="pal"><i style="background:#B4761C"></i><b>琥珀警告</b><span>#B4761C</span></div>
+          <div class="pal"><i style="background:#FFEFC0"></i><b>受光边</b><span>#FFEFC0</span></div>
+          <div class="pal"><i style="background:#1A1008"></i><b>背景遮罩</b><span>#1A1008</span></div>
+        </div>
+        <p class="hint">另外两组配色只换强调色族：青金石 <code>#2F5D9E</code>（hover <code>#3F76BF</code>）、晚祷紫 <code>#6B3F8E</code>（hover <code>#8658AE</code>）；表面与文字完全不变。</p>
+      </article>
+
+    </div>
+  </div>
+
+  <div class="gallery">
+    <h2>宣传图</h2>
+    <div class="cover"><img src="cover.jpg" alt="玫瑰窗主题封面：午后圣光 / 巴黎圣母院玫瑰窗"></div>
+    <div class="shot-grid">
+      <div class="shot"><img src="shot-1.jpg" alt="工作区：午后圣光"><p><b>① 工作区</b> · 午后圣光<br>文件树、代码编辑器、玻璃面板与彩窗背景</p></div>
+      <div class="shot"><img src="shot-2.jpg" alt="设置页：青金石"><p><b>② 设置页</b> · 青金石<br>三组配色卡、玻璃模糊与不透明度滑杆</p></div>
+      <div class="shot"><img src="shot-3.jpg" alt="分屏与浮层：晚祷紫"><p><b>③ 分屏 + 浮层</b> · 晚祷紫<br>右键菜单磨砂、配色下拉、图片预览</p></div>
+    </div>
   </div>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-11-22T18:12:06.093Z",
+  "syncedAt": "2026-11-22T18:36:08.844Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -126,9 +126,9 @@
     {
       "id": "theme-rose-window",
       "repo": "Encaron/linkdesk-plugin-theme-rose-window",
-      "version": "1.0.0",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-rose-window/releases/download/v1.0.0/theme-rose-window.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:1cb43dbad69f3804fda7ce01e55f05947f327abcc9d3cb57d5ff4dc25e1e281f\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d34c6db58f95cceff633a1e71d3447b4d0003d050fefb5177eccd586df96b0d6\ni18n/en.json:771d6796ac1c7cc7189282374907e1ad138268f15685c40320a36bb8ee81b741\nplugin.json:acfc0fc5e77d505fa982ea57cda17a7d81a3ed08111cfe1d12e18006ee456867\nresources/cathedral-bg.jpg:07202be61034fa209d6a64084fa30ff5708e6b38fd07788bfabc4d973321b3ba\nresources/cover.svg:2a582e8a2cd2520ad67a5563453e9dcd7ddf5f1548f371c18d9ac997f34aef70\nresources/icon.svg:68ad9cd9b9f74fae81fa83177800767e23061d60bbdec8f7e8c71767b8959c90\nthemes/rose-window.json:d2c897a471f7cf47a9353e5a1578b34c6e9991f5abc253cfcf48d7639627f012",
+      "version": "1.0.1",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-rose-window/releases/download/v1.0.1/theme-rose-window.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:b54db0bac4996e89be4bbfabe1392014c232837c0848de184bdc054c9b62aa39\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:49494f2dff9a9283c35f68c6dc6259acba83c6207703881379be98acbcb229ae\ni18n/en.json:771d6796ac1c7cc7189282374907e1ad138268f15685c40320a36bb8ee81b741\nplugin.json:ce1182e1bf71bc8879498325b490c41218e009a17b0c55e1c66ddb3c33ebb10c\nresources/cathedral-bg.jpg:07202be61034fa209d6a64084fa30ff5708e6b38fd07788bfabc4d973321b3ba\nresources/cover.jpg:6c2b44fa206ad0eef165952aa46afb3379ce734bf093414c2e8501a3687c2147\nresources/icon.svg:68ad9cd9b9f74fae81fa83177800767e23061d60bbdec8f7e8c71767b8959c90\nthemes/rose-window.json:0a6cf41fa7dd4068a5b7d9c5eebe7484df1b6a1cc67583092b4d8903bbc9e79e",
       "seed": false
     }
   ]

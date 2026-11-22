@@ -16,11 +16,14 @@
 
 | 轴 | 定案 | 落点 |
 |---|---|---|
-| 风格 | 亮色玻璃：`type: glass`，`blur 28` / `saturate 1.45` / 暖白 tint / `opacity 0.38` / 金色受光边 `0.90` `#FFF0C4` | `appearance.glass` |
+| 风格 | 亮色玻璃：`type: glass`，`blur 36` / `saturate 1.35` / 暖白 tint `rgba(255,247,230,.62)` / `opacity 0.46` / 金色受光边 `0.92` `#FFEFC0` | `appearance.glass` |
 | 背景 | 巴黎圣母院北玫瑰窗（公有领域，Wikimedia Commons）；2560×1200 取景 + 日光提亮 + 暖光/光柱合成；`mask 0.12` 暖黑 | `appearance.background` + `resources/cathedral-bg.jpg` |
 | 配色 | 三组共用同一亮色玻璃基座与暖墨文字，只换强调色族：**午后圣光** 金箔 `#A6771B` · **青金石** `#2F5D9E` · **晚祷紫** `#6B3F8E` | `colorways[]` |
+| 字体 | 贵重衬线栈：Constantia / Palatino + Noto Serif SC（思源宋体）；主题 font 域只有 ui / mono，做不了逐组件字体 | `appearance.font.ui` |
 
-**为什么玻璃 `opacity` 只有 0.38**：亮色玻璃要「亮」得靠后面的彩窗透上来。表面合成不透明度越低，彩窗颜色越足；0.38 是在「彩窗看得见」与「暖墨文字仍清楚」之间取的平衡。文字承载面另走 `surface-reading*`（0.90 / 0.96），所以正文不会跟着玻璃一起透没。
+**为什么玻璃 `opacity` 是 0.46**：亮色玻璃要「亮」得靠后面的彩窗透上来。表面合成不透明度越低，彩窗颜色越足；0.46 是最终取值——比 0.38 更稳（文字底更实），彩窗仍透过约 38% 的光（46% 表面 + 28.5% 暖白叠加之后）。文字承载面另走 `surface-reading*`（0.94 / 0.97），正文不会跟着玻璃一起透没。
+
+**文字对比实测**（从渲染图取样）：玻璃面上主文字 10.2–12.4:1、次级 6.4–7.7:1、弱文字 ≥4.5:1；内容面 17.1:1 / 10.7:1 / 6.6:1。
 
 ## 三、配色要点
 
@@ -35,9 +38,10 @@
 |---|---|
 | 插件仓（真源） | `E:\linkdesk-plugins\official\theme-rose-window` |
 | GitHub 仓 | <https://github.com/Encaron/linkdesk-plugin-theme-rose-window> |
-| Release | <https://github.com/Encaron/linkdesk-plugin-theme-rose-window/releases/tag/v1.0.0> |
+| Release | <https://github.com/Encaron/linkdesk-plugin-theme-rose-window/releases/tag/v1.0.1> |
 | 官方目录 | `Encaron/linkdesk-marketplace`：`plugins[]` 新增 1 条 + `official-themes` 合集收录 |
-| 本预览稿 | `rose-window-preview.html` + `preview-bg.jpg` |
+| 本预览稿 | `rose-window-preview.html`（含底部宣传图）+ `promo-shots.html` + `preview-bg.jpg` |
+| 宣传图 | `cover.jpg`（README/目录封面）＋ `shot-1..3.jpg`（官方目录 `media/theme-rose-window/`） |
 
 ## 五、同批下架的三只测试主题
 
