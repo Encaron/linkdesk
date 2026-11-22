@@ -2,7 +2,7 @@
 
 > 实施 AI：`sess_820b0cf9-abb8-4832-9865-b99c71ab977d`（2026-11-22）
 > 结论：**F 批本地全绿**（壳 `npm run check` EXIT 0 · 插件 test/verify/lint 全绿 · 目录 schema 通过 · 作者文档三腿通过）。
-> 未推送、未发版；D3 图片与目录内容待用户批准推送后对真机生效。
+> **已推送**（2026-11-22 用户指令「推送一次」；代理 7890 未启动，直连 GitHub 成功）；**未发版**、未打 tag。
 
 ---
 
@@ -76,7 +76,7 @@
 
 - 市场插件：`plugin.json` / `package.json` **1.2.1 / 1.2.0 → 1.3.0**；`CHANGELOG.md` 新增 `## v1.3.0（2026-11-22）`。
 - `AGENTS.md` 由 `sync-plugin-agents` 重生成（版本行 1.3.0）。
-- ⛔ 未发版/未推送；`@linkdesk/plugin-sdk` / `@linkdesk/marketplace-kit` 的 npm 版本未动（本轮明确不发版；`cover` 的前向对账已用 `FORWARD_FIELDS` 版本感知）。
+- **已推送、未发版**：`@linkdesk/plugin-sdk` / `@linkdesk/marketplace-kit` 的 npm 版本未动（本轮明确不发版；`cover` 的前向对账已用 `FORWARD_FIELDS` 版本感知）。
 
 ---
 
@@ -84,3 +84,11 @@
 
 - 总调度台 `sess_f471a6eb-…`：**本次会话不存在**（`proto.sessionNotFound`，只试一次未重试）；回执改在本档与用户会话给出。
 - 未自建会话；未与修 bug 会话交叉改同一文件（壳 `src/`/`electron/` 零改动）。
+- **推送回执（2026-11-22，用户指令「推送一次」）**：
+  - 代理 `127.0.0.1:7890` 重启后未启动（端口无监听）⇒ 改用**直连 GitHub**（`curl https://github.com` = 200）；⛔ 未重试代理。
+  - 15 个官方插件/主题仓：各 1–2 笔 `main` 推送成功。
+  - 市场插件仓 `Encaron/linkdesk-plugin-marketplace`：`57cf7f3..7a5d894`。
+  - 官方目录仓 `Encaron/linkdesk-marketplace`：`8cf434d..829e63b`。
+  - 壳仓 `Encaron/linkdesk`：`142428b17..1ae4bc02e`（`electron` 分支，`ahead 159` 攒批一并推送；pre-push release rehearsal + typecheck 通过）。
+  - 远端核验：`media/theme-terminal/shot-1.jpg`、`media/editor/shot-1.jpg`、`plugin-editor/resources/cover.svg`、`plugin-serial-monitor/resources/cover.svg` 均 **HTTP 200**；官方目录 **19 plugins / 4 collections / 17 条 cover**。
+  - ⛔ 未打 tag、未发版、未触发插件收录/更新包。
