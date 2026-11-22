@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>插件市场 1.4.1 · 细节修缮设计稿（作者坞裁切 / 模式记忆 / 设置页排版 / 插件图片）</title>
+<style>
+  /* ── 本文档自己的配色（文档配色，非产品 token）── */
+  :root{
+    --bg:#17171b; --card:#202027; --line:#33333d; --txt:#e9e9ec; --txt2:#b3ada4;
+    --acc:#8a6ff0; --ok:#2fbf8a; --bad:#ff7a6b; --warn:#ffb35c;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    --sans:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 30px 80px;background:var(--bg);color:var(--txt);font:14px/1.7 var(--sans)}
+  h1{margin:0 0 6px;font:600 23px/1.35 var(--sans)}
+  .sub{color:var(--txt2);font-size:13px;margin:0 0 6px}
+  h2{margin:38px 0 12px;font:600 17px/1.4 var(--sans);padding-bottom:7px;border-bottom:1px solid var(--line)}
+  h3{margin:22px 0 8px;font:600 14px/1.4 var(--sans)}
+  p{margin:10px 0;max-width:86ch}
+  .lead{color:var(--txt2)}
+  code,kbd{font:12.5px var(--mono);background:#25252c;padding:1px 5px;border-radius:4px;color:var(--txt)}
+  pre{margin:10px 0;padding:12px 14px;background:#1d1d23;border:1px solid var(--line);border-radius:8px;overflow:auto;font:12.5px/1.65 var(--mono);color:#d8d8de;max-width:1100px}
+  pre .add{color:var(--ok)}
+  pre .del{color:var(--bad)}
+  pre .c{color:#6f6f7a}
+  table{max-width:1100px;border-collapse:collapse;margin:10px 0 6px;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 11px;text-align:left;vertical-align:top}
+  th{background:#23232b;font-weight:600}
+  .yes{color:var(--ok);font-weight:600}
+  .no{color:var(--bad);font-weight:600}
+  .warnc{color:var(--warn);font-weight:600}
+  .pill{display:inline-block;padding:1px 8px;border:1px solid var(--line);border-radius:999px;font-size:11.5px;color:var(--txt2)}
+  .pill.p1{border-color:#4a3f78;background:#221e33;color:#c9bdf5}
+  .pill.p2{border-color:#2f5a49;background:#16241e;color:#9fe0c4}
+  .row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;max-width:100%}
+  .box h4{margin:0 0 8px;font:600 13px/1.4 var(--sans)}
+  .badge-b{color:var(--bad);font-weight:600}
+  .badge-g{color:var(--ok);font-weight:600}
+  .quote{margin:12px 0;padding:10px 14px;border-left:3px solid #4a3f78;background:#1d1d23;color:var(--txt2);font-size:13px;max-width:86ch}
+  .kbd{font:11.5px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px}
+
+  /* ══════════ 产品 CSS 复刻：作者坞（当前实现，逐字对照 store-dock.css / store-authors.css） ══════════
+     用产品自己的 token 值（暗色主题近似），只为把「裁切」这件事现场复现出来。 */
+  .stage{--bg-window:#22232a; --bg-card:#2b2c35; --bg-input:#363741; --text-primary:#e6e6ea; --text-secondary:#b9b9c2;
+         --text-muted:#8b8b95; --border:#3b3c47; --separator:#454651; --accent:#2fbf8a; --radius-sm:4px; --radius-md:6px;
+         --radius-lg:10px; --radius-full:999px; --shadow-pop:0 12px 40px rgba(0,0,0,.45); --font-size-2xs:11px;
+         --font-size-xs:12px; --font-size-sm:13px; --font-size-md:14px;
+         background:#1b1c22;border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;justify-content:flex-end;position:relative;height:430px;overflow:hidden}
+  .stage .page-bg{position:absolute;inset:0;background:
+     repeating-linear-gradient(90deg,rgba(255,255,255,.02) 0 1px,transparent 1px 28px),
+     repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 28px)}
+  .dock{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:52px}
+  .capsule{width:52px;min-height:172px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;
+    border:1px solid color-mix(in srgb,var(--accent) 60%,var(--border));border-radius:var(--radius-lg);background:var(--bg-card);
+    color:var(--text-primary);box-shadow:var(--shadow-pop);font-size:var(--font-size-2xs)}
+  .face{width:30px;height:30px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;
+    background:var(--accent);color:#0c1a14;font-weight:700;font-size:12px;border:1px solid color-mix(in srgb,#2b2c35 55%,transparent)}
+  .face.more{background:var(--bg-input);color:var(--text-secondary);font-size:10.5px}
+  /* 展开面板：产品 = width:386px + overflow:hidden（裁切源） */
+  .panel{position:absolute;top:50%;right:calc(100% + 10px);transform:translateY(-50%);width:386px;max-height:min(72vh,360px);
+    display:flex;flex-direction:column;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border));
+    border-radius:var(--radius-lg);background:var(--bg-window);box-shadow:var(--shadow-pop)}
+  .panel.fixed{width:386px}
+  .panel-head{flex:none;display:flex;align-items:baseline;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--border);font-size:var(--font-size-sm)}
+  .panel-head>span{color:var(--text-muted);font-size:var(--font-size-2xs)}
+  .panel-list{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:0}
+  .panel-list.pad{padding:8px 14px 14px}
+  .dock-card{width:100%!important;padding:16px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);cursor:pointer}
+  .dock-card .t{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+  .dock-card .av{width:52px;height:52px;border-radius:var(--radius-md);background:linear-gradient(140deg,#f0a04b,#e2702f);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+  .dock-card .n{font-weight:700;font-size:var(--font-size-md)}
+  .dock-card .m{color:var(--text-secondary);font-size:var(--font-size-2xs)}
+  .dock-card .desc{color:var(--text-secondary);font-size:var(--font-size-2xs);margin:6px 0}
+  .dock-card .repo{border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;font-size:var(--font-size-2xs);color:var(--text-secondary);text-align:center}
+  .dock-card .foot{display:flex;justify-content:space-between;margin-top:8px;font-size:var(--font-size-2xs);color:var(--text-muted)}
+  .dock-card .foot b{color:var(--accent)}
+  .dock-foot{flex:none;display:flex;gap:12px;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:var(--font-size-2xs);color:var(--text-secondary)}
+  .clipped{outline:2px dashed rgba(255,122,107,.75);outline-offset:-2px}
+  .clipnote{position:absolute;left:10px;top:8px;font-size:11px;color:var(--bad);font:600 11px var(--mono)}
+
+  /* ══════════ 设置页复刻（当前 vs 提议） ══════════ */
+  .set{background:#202127;border:1px solid var(--line);border-radius:10px;padding:16px;width:620px;max-width:100%}
+  .set h4{margin:0 0 4px;font:600 15px/1.4 var(--sans)}
+  .set .hint{color:var(--txt2);font-size:12px;margin:0 0 14px}
+  .frow{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:10px 0;border-top:1px solid #2c2d35}
+  .frow .lbl{font-size:13px;font-weight:600}
+  .frow .d{color:var(--txt2);font-size:12px;margin-top:2px;max-width:46ch}
+  .src{display:flex;gap:8px;align-items:center;margin-top:6px}
+  .src input{flex:1;background:#292a32;border:1px solid var(--line);border-radius:6px;padding:6px 9px;color:var(--txt2);font:12px var(--mono)}
+  .sw{width:38px;height:20px;border-radius:999px;background:#3a3b45;position:relative;flex:none;margin-top:2px}
+  .sw::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#c9c9d1;top:2px;left:2px}
+  .sw.on{background:var(--acc)}
+  .sw.on::after{left:20px;background:#fff}
+  .newsec{border:1px solid #2c2d35;border-radius:8px;margin-top:12px;overflow:hidden}
+  .newsec .hd{background:#26272f;padding:8px 12px;font-size:12px;color:var(--txt2);letter-spacing:.03em}
+  .newsec .frow{border-top:1px solid #2c2d35;padding:10px 12px;margin:0}
+  .newsec .frow:first-of-type{border-top:none}
+
+  /* ══════════ 图片方案：9 只插件的界面示意帧 ══════════ */
+  .grid9{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;max-width:1100px}
+  .art{background:#1d1e25;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .art .frame{height:120px;position:relative;background:#15161b;overflow:hidden}
+  .art .cap{padding:8px 10px;font-size:12px}
+  .art .cap b{display:block;font-size:12.5px}
+  .art .cap span{color:var(--txt2);font-size:11.5px}
+  .art.picsum .frame{background:
+      radial-gradient(circle at 30% 30%,#4a6a55,transparent 60%),
+      radial-gradient(circle at 75% 65%,#6a5a3a,transparent 55%),
+      linear-gradient(160deg,#2e3f38,#3a3226)}
+  .art.picsum .frame::after{content:"随机风景图（picsum）";position:absolute;left:8px;bottom:6px;font:11px var(--mono);color:#ffd9d2;background:rgba(0,0,0,.45);padding:1px 6px;border-radius:4px}
+  /* 示意帧的极简 UI 元素 */
+  .ui-top{height:14px;background:#23242c;border-bottom:1px solid #2c2d35;display:flex;gap:4px;align-items:center;padding:0 6px}
+  .ui-dot{width:5px;height:5px;border-radius:50%;background:#4a4b57}
+  .ui-body{position:absolute;inset:14px 0 0 0;padding:8px;display:flex;gap:6px;font:9px/1.5 var(--mono);color:#9aa0b4}
+  .ui-side{width:34px;background:#1b1c22;border-right:1px solid #2a2b34;padding:4px}
+  .ui-side i{display:block;height:4px;background:#2f313c;border-radius:2px;margin:4px 0}
+  .ui-main{flex:1;min-width:0}
+  .code-line{height:4px;border-radius:2px;background:#2f313c;margin:4px 0}
+  .code-line.k{background:#7f6bd4;width:40%}
+  .code-line.s{background:#4f8f6f;width:66%}
+  .code-line.n{background:#c08b4a;width:28%}
+  .tree-row{height:6px;border-radius:2px;background:#2f313c;margin:3px 0}
+  .tree-row.i1{width:70%;margin-left:6px}
+  .tree-row.i2{width:58%;margin-left:12px}
+  .wave{position:absolute;inset:20px 8px 10px 8px}
+  .set-row{height:8px;border-radius:2px;background:#2f313c;margin:5px 0;position:relative}
+  .set-row::after{content:"";position:absolute;right:0;top:1px;width:12px;height:6px;border-radius:3px;background:#4a7f66}
+  .doc-page{position:absolute;inset:18px 26px 12px 26px;background:#26272f;border-radius:2px;padding:8px}
+  .doc-line{height:3px;background:#3a3b46;margin:4px 0}
+  .doc-line.short{width:60%}
+  .bi-row{display:flex;gap:6px;margin:4px 0}
+  .bi-row i{height:4px;border-radius:2px;background:#3a3b46;flex:1}
+  .bi-row i.zh{background:#5a6f9c}
+  .store-hero{height:38px;border-radius:3px;background:linear-gradient(120deg,#4d3a6b,#2f5c4a);margin-bottom:5px}
+  .store-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  .store-cards i{height:22px;border-radius:3px;background:#2d2f39}
+  .bike{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;filter:grayscale(.2)}
+  .tag{display:inline-block;margin:0 4px 4px 0;padding:1px 6px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--txt2)}
+</style>
+</head>
+<body>
+
+<h1>插件市场 1.4.1 · 细节修缮设计稿</h1>
+<p class="sub">2026-11-23 · 用户实机三点 ＋ 图片重做提案 · 参照：<code>05-设计图-边缘串色.html</code> 的「逐字复刻产品 CSS」画法</p>
+
+<div class="quote">
+  <b>本稿只画设计、不写实现。</b>四个议题：① 作者坞 hover 时左右被截；② 作者页「浏览 / 管理来源」记上次；
+  ③ 设置页·插件市场两个开关的位置与观感；④ 官方插件图片（现在的随机风景图）换准。
+  末尾 §5 给「改哪个包、怎么发」的建议与待拍板项。
+</div>
+
+<h2>〇、一页结论</h2>
+<table>
+  <tr><th>议题</th><th>根因（当前代码事实）</th><th>修法落点</th><th>发版影响</th></tr>
+  <tr>
+    <td>① 作者坞左右被截</td>
+    <td>展开面板 <code>overflow:hidden</code> ＋ 卡在坞内被 <code>width:100%!important</code> 撑满 ⇒ 卡的边框/悬停抬升/阴影贴到裁切边</td>
+    <td><b>marketplace 插件</b>（store-dock.css）</td>
+    <td>插件 1.4.1，⛔ 不动壳</td>
+  </tr>
+  <tr>
+    <td>② 作者页模式记忆</td>
+    <td>模式只来自路由 <code>authorMode</code>，没有落盘；进作者页默认回 browse</td>
+    <td><b>marketplace 插件</b>（<code>ui.prefs</code> 加一键）</td>
+    <td>同上，⛔ 不动壳</td>
+  </tr>
+  <tr>
+    <td>③ 设置页排版</td>
+    <td>三项平铺：长列表「市场源」在上，两个开关被压到底部，无小节分隔</td>
+    <td><b>先改 marketplace 的配置声明</b>（顺序/标题/说明）；观感仍不够再动 <b>settings 插件</b>渲染</td>
+    <td>插件发版；⛔ 不动壳、⛔ 不动 @linkdesk/ui<sup>※</sup></td>
+  </tr>
+  <tr>
+    <td>④ 插件图片</td>
+    <td>9 只官方件的第 2/3 帧是 <code>picsum</code> 随机风景，与功能无关</td>
+    <td><b>官方目录仓 media/</b>（只改 JSON＋图，不发版任何插件）</td>
+    <td>⛔ 零发版，刷新目录即生效</td>
+  </tr>
+</table>
+<p class="sub">※ <code>@linkdesk/ui</code> 会被壳一起打包；改它等于要发壳（20+ 分钟）。本稿三件都不碰它。</p>
+
+<h2>一、作者坞：hover 时左右被截</h2>
+
+<h3>1.1 现象（用户实机两张图）</h3>
+<p>展开面板里那张作者大卡，静止时尺寸正好；<b>指针停上去（hold 住）之后</b>，卡的左右两边贴到面板边缘、边框和阴影被切掉。两张截图的差异是面板宽度/卡内容高度不同，但切法一致：<b>左右各缺一条边</b>。</p>
+
+<h3>1.2 现场复现（逐字用产品 CSS）</h3>
+<div class="row">
+  <div class="box" style="padding:0;border:none;background:none">
+    <h4><span class="badge-b">现状</span> · 面板 <code>overflow:hidden</code>，卡贴边</h4>
+    <div class="stage">
+      <div class="page-bg"></div>
+      <div class="dock">
+        <div class="capsule">
+          <div class="face">E</div><div class="face more">+2</div>
+          <div style="color:#b9b9c2;font-weight:600;letter-spacing:.04em">作者</div>
+          <div style="color:#2fbf8a;font-weight:700;font-size:13px">3</div>
+          <div style="width:5px;height:5px;border-radius:50%;background:#2fbf8a"></div>
+        </div>
+        <div class="panel clipped">
+          <div class="clipnote">↑ 左右两条边被裁</div>
+          <div class="panel-head">作者 <span>选择作者查看其仓库</span></div>
+          <div class="panel-list">
+            <div class="dock-card" style="transform:translateY(-2px) scale(1.015)">
+              <div class="t"><div class="av">E</div><div><div class="n">Encaron</div><div class="m">官方 ✓ · 1 个仓库</div></div></div>
+              <div class="desc">官方运营的插件与主题精选</div>
+              <div class="repo">官方目录　19 个插件 · 唯一仓库</div>
+              <div class="foot"><span>19 个插件</span><b>进入首位仓库 ›</b></div>
+            </div>
+          </div>
+          <div class="dock-foot">作者页　管理来源　<span style="color:#8b8b95">进作者页/管理来源可调整顺序</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box" style="padding:0;border:none;background:none">
+    <h4><span class="badge-g">修后</span> · 列表留呼吸位，坞内卡不放大</h4>
+    <div class="stage">
+      <div class="page-bg"></div>
+      <div class="dock">
+        <div class="capsule">
+          <div class="face">E</div><div class="face more">+2</div>
+          <div style="color:#b9b9c2;font-weight:600;letter-spacing:.04em">作者</div>
+          <div style="color:#2fbf8a;font-weight:700;font-size:13px">3</div>
+          <div style="width:5px;height:5px;border-radius:50%;background:#2fbf8a"></div>
+        </div>
+        <div class="panel fixed">
+          <div class="panel-head">作者 <span>选择作者查看其仓库</span></div>
+          <div class="panel-list pad">
+            <div class="dock-card">
+              <div class="t"><div class="av">E</div><div><div class="n">Encaron</div><div class="m">官方 ✓ · 1 个仓库</div></div></div>
+              <div class="desc">官方运营的插件与主题精选</div>
+              <div class="repo">官方目录　19 个插件 · 唯一仓库</div>
+              <div class="foot"><span>19 个插件</span><b>进入首位仓库 ›</b></div>
+            </div>
+          </div>
+          <div class="dock-foot">作者页　管理来源　<span style="color:#8b8b95">进作者页/管理来源可调整顺序</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>1.3 修法（三条，缺一仍可能切）</h3>
+<pre><span class="c">/* store-dock.css —— ① 列表给内边距：卡的任何描边/阴影不贴裁切边 */</span>
+.marketplace-store-dock-list {
+<span class="add">  padding: 8px 14px 14px;</span>
+}
+<span class="c">/* ② 坞内卡不参与「悬停抬升/放大」——坞是窄容器，放大必然被面板 overflow 裁 */</span>
+.marketplace-store-dock-list .marketplace-store-author-card:hover,
+.marketplace-store-dock-list .marketplace-store-author-card:focus-within {
+<span class="add">  transform: none;</span>
+}
+<span class="c">/* ③ 卡宽改「填满可用宽」而不是 100%!important —— 让 border-box 自己算 */</span>
+.marketplace-store-dock-list .marketplace-store-author-card {
+<span class="del">  width: 100% !important;</span>
+<span class="add">  width: auto !important;
+  align-self: stretch;</span>
+}
+</pre>
+<p class="lead">为什么不是把面板 <code>overflow</code> 开成 visible：面板有圆角＋磨砂，<code>hidden</code> 同时负责「列表滚动边界」。开 visible 会让滚动内容从圆角外溢。给列表留 padding 是等价且更稳的做法。</p>
+
+<h3>1.4 验收</h3>
+<ul>
+  <li>面板展开 → 指针停在卡上 3 秒：左右边框、外阴影完整，卡宽不跳。</li>
+  <li>鼠标从卡移到面板边缘（10px 缝）不丢面板（既有行为不回退）。</li>
+  <li>窄容器（≤760px）降级抽屉下同样不裁。</li>
+</ul>
+
+<h2>二、作者页「浏览 / 管理来源」记上次</h2>
+
+<h3>2.1 行为表（用户口径）</h3>
+<table>
+  <tr><th>入口</th><th>打开哪个模式</th><th>是否写回记忆</th></tr>
+  <tr><td>作者坞点「作者页」</td><td class="yes">浏览</td><td class="yes">写</td></tr>
+  <tr><td>作者坞点「管理来源」</td><td class="yes">管理来源</td><td class="yes">写</td></tr>
+  <tr><td>作者卡 / 作者页里点某个作者进入（直接点作者）</td><td class="yes">上次的模式</td><td>—</td></tr>
+  <tr><td>页内切「浏览 ↔ 管理来源」</td><td>即时切</td><td class="yes">写</td></tr>
+  <tr><td>首次使用（无记忆）</td><td class="yes">浏览（默认）</td><td>—</td></tr>
+  <tr><td>命令面 <code>marketplace.openAuthors</code> / <code>marketplace.openSources</code></td><td>分别强制 浏览 / 管理来源</td><td class="yes">写</td></tr>
+</table>
+
+<h3>2.2 存在哪：不会多出「数据位置」行</h3>
+<p>复用现成的 UI 偏好存储（与「库/作者页的视图方式、排序」同一个抽屉）：</p>
+<pre>pluginState("marketplace", "ui.prefs")  →  壳的 <b>plugin-states.json</b>
+新键：<span class="add">authorMode: "browse" | "manage"</span>（默认 browse，坏值回落）
+⛔ 不进 contributes.configuration（那是用户可见的公开设置）
+⛔ 不写插件的 dataDir ⇒ 插件详情页右侧<b>不会</b>出现「数据位置」行</pre>
+<p class="lead">你担心的「缓存到插件市场详情页右边出现缓存地址」不会发生：<code>ui.prefs</code> 走壳的统一状态文件，插件自己不落盘。清理方式：清市场缓存 / 重置应用数据（与现有视图偏好同一入口）。</p>
+
+<h3>2.3 验收</h3>
+<ul>
+  <li>管理来源 → 关掉软件 → 重开 → 直接点作者：进「管理来源」。</li>
+  <li>同一会话里从坞点「作者页」：强制浏览并写回；再点作者：浏览。</li>
+  <li>首次装（无状态文件）：默认浏览。</li>
+</ul>
+
+<h2>三、设置页 · 插件市场：两个开关的位置与观感</h2>
+
+<h3>3.1 现状</h3>
+<div class="row">
+  <div class="set">
+    <h4>插件市场</h4>
+    <p class="hint">三项平铺：长列表在上，两个开关被压到底部；开关与说明之间没有视觉分组。</p>
+    <div class="frow" style="border-top:none">
+      <div><div class="lbl">市场源</div>
+        <div class="d">商店拉取哪些目录。官方目录内置；添加作者仓库 URL 即可发现该作者的插件（该仓库根目录需有 marketplace.json）。</div>
+        <div class="src"><input value="https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json"><span style="color:#b3ada4;font-size:12px">内置</span><span style="color:#b3ada4">🔒</span></div>
+        <div class="src"><input placeholder="粘贴 URL…"><span class="pill">添加</span></div>
+      </div>
+    </div>
+    <div class="frow">
+      <div><div class="lbl">来源分组默认收起</div><div class="d">打开「来源」页时，官方/作者分组默认折叠（点组头整行展开）。</div></div>
+      <div class="sw"></div>
+    </div>
+    <div class="frow">
+      <div><div class="lbl">点击市场图标时同时打开商店</div><div class="d">关闭（默认）时，点侧栏市场图标只切换侧栏；开启后同时打开 Plugin Store 标签页。</div></div>
+      <div class="sw on"></div>
+    </div>
+  </div>
+</div>
+
+<h3>3.2 提议（同一份配置，换顺序＋分组＋措辞）</h3>
+<div class="row">
+  <div class="set">
+    <h4>插件市场</h4>
+    <p class="hint">把「商店行为」提到最前并成组；「市场源」独立成块，长列表不再把开关压到底。</p>
+    <div class="newsec">
+      <div class="hd">商店行为</div>
+      <div class="frow"><div><div class="lbl">点击侧栏图标时同时打开商店</div><div class="d">默认只切换侧栏；开启后连商店标签页一起打开。</div></div><div class="sw"></div></div>
+      <div class="frow"><div><div class="lbl">来源页默认折叠分组</div><div class="d">来源多的时候，打开先看组头；点组头展开。</div></div><div class="sw"></div></div>
+    </div>
+    <div class="newsec">
+      <div class="hd">市场源</div>
+      <div class="frow">
+        <div><div class="lbl">目录地址</div>
+          <div class="d">官方目录已内置；粘贴作者仓库 URL 即可发现该作者的插件（仓库根需有 marketplace.json）。</div>
+          <div class="src"><input value="https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json"><span style="color:#b3ada4;font-size:12px">内置</span><span style="color:#b3ada4">🔒</span></div>
+          <div class="src"><input placeholder="粘贴 URL…"><span class="pill">添加</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>3.3 改哪个包（三选一的成本）</h3>
+<table>
+  <tr><th>方案</th><th>改什么</th><th>效果</th><th>发版</th></tr>
+  <tr>
+    <td class="yes">A（推荐）</td>
+    <td><b>marketplace 插件</b>：<code>contributes.configuration</code> 的 <code>order</code>＋<code>title</code>＋<code>description</code>；标题去长句、说明收短</td>
+    <td>开关上移、文案更短；但「商店行为 / 市场源」两块灰色小节头做不出来（配置 schema 没有分组键）</td>
+    <td>插件 1.4.1</td>
+  </tr>
+  <tr>
+    <td>A+（推荐组合）</td>
+    <td>A ＋ <b>settings 插件</b>：给插件配置组按 <code>order</code> 画小节头/分隔线（通用能力，不止市场一家用）</td>
+    <td>完整拿到上图的分组观感；其他插件也能用</td>
+    <td>marketplace 1.4.1 ＋ settings 1.0.44</td>
+  </tr>
+  <tr>
+    <td class="no">B</td>
+    <td><code>@linkdesk/ui</code> 共享配置行组件</td>
+    <td>观感最先统一</td>
+    <td class="no">⛔ 随壳打包 ⇒ 要发壳（20+ 分钟），本次不做</td>
+  </tr>
+</table>
+
+<h2>四、官方插件图片：把随机风景图换准</h2>
+
+<h3>4.1 现状</h3>
+<p>官方目录 19 条里，<b>9 条</b>的第 2/3 帧是 <code>picsum.photos</code> 随机风景（下面红标那排）。主题类 7 条已有真实截图/设计封面，不动。</p>
+<div class="grid9">
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>editor</b><span>3 帧 · picsum ×1</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>file-tree</b><span>3 帧 · picsum ×2</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>lang-defaults</b><span>3 帧 · picsum ×2</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>marketplace</b><span>3 帧 · picsum ×1</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>pdf-reader</b><span>3 帧 · picsum ×2</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>python</b><span>3 帧 · picsum ×2</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>serial-monitor</b><span>3 帧 · picsum ×2</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>settings</b><span>3 帧 · picsum ×2</span></div></div>
+  <div class="art picsum"><div class="frame"></div><div class="cap"><b>geme-tihu-bicycle</b><span>3 帧 · picsum ×2</span></div></div>
+</div>
+
+<h3>4.2 方案 A（推荐）：自制「界面示意帧」——每只插件画自己长什么样</h3>
+<p>与现有 designed cover 同一套语言（身份色＋细网格＋UI 骨架），零版权风险，且<b>帧帧对应功能</b>。下面是 9 只的实际画法小样（尺寸按目录媒体 1200×750 等比缩）：</p>
+<div class="grid9">
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="ui-body"><div class="ui-side"><i></i><i></i><i></i></div><div class="ui-main"><div class="code-line k"></div><div class="code-line s"></div><div class="code-line"></div><div class="code-line n"></div><div class="code-line s"></div></div></div></div><div class="cap"><b>editor</b><span>编辑器：行号＋语法色代码</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="ui-body"><div class="ui-side" style="width:44px"><div class="tree-row"></div><div class="tree-row i1"></div><div class="tree-row i2"></div><div class="tree-row i2"></div></div><div class="ui-main"></div></div></div><div class="cap"><b>file-tree</b><span>文件树：层级缩进列表</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="ui-body" style="display:block;color:#7fcf9f;font-size:9px">▓▓ python3<br>»&gt;&gt; import numpy<br>»&gt;&gt; print(42)<br>42<br><span style="color:#9aa0b4"># venv · pip · 运行</span></div></div><div class="cap"><b>python</b><span>终端：REPL 会话</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><svg class="wave" viewBox="0 0 200 60" preserveAspectRatio="none"><polyline points="0,40 12,40 18,20 24,50 30,30 40,42 60,36 90,40 120,36 150,40 200,38" fill="none" stroke="#4fb3a0" stroke-width="1.6"/><polyline points="0,48 20,46 40,50 60,44 80,49 110,45 140,50 170,46 200,49" fill="none" stroke="#8a8f9f" stroke-width="1" stroke-dasharray="3 3"/></svg></div><div class="cap"><b>serial-monitor</b><span>串口：波形＋数据行</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="ui-body" style="display:block"><div class="set-row" style="width:70%"></div><div class="set-row" style="width:58%"></div><div class="set-row" style="width:64%"></div><div class="set-row" style="width:48%"></div></div></div><div class="cap"><b>settings</b><span>设置页：分组行＋开关</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="doc-page"><div class="doc-line"></div><div class="doc-line short"></div><div class="doc-line"></div><div class="doc-line"></div><div class="doc-line short"></div><div style="position:absolute;right:8px;bottom:6px;color:#8b8b95;font:9px var(--mono)">3 / 12</div></div></div><div class="cap"><b>pdf-reader</b><span>阅读页：纸张＋页码</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="ui-body" style="display:block"><div class="bi-row"><i class="zh"></i><i></i></div><div class="bi-row"><i class="zh" style="flex:.8"></i><i style="flex:1.2"></i></div><div class="bi-row"><i class="zh"></i><i style="flex:.9"></i></div><div class="bi-row"><i class="zh" style="flex:.7"></i><i style="flex:1.3"></i></div></div></div><div class="cap"><b>lang-defaults</b><span>双语：左右对照行</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="ui-body" style="display:block"><div class="store-hero"></div><div class="store-cards"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div><div class="cap"><b>marketplace</b><span>商店：首屏＋卡砖墙</span></div></div>
+  <div class="art"><div class="frame"><div class="ui-top"><i class="ui-dot"></i><i class="ui-dot"></i></div><div class="bike">🚲</div></div><div class="cap"><b>geme-tihu-bicycle</b><span>演示件：主题卡＋数据行</span></div></div>
+</div>
+
+<h3>4.3 方案 B：免费开源照片（真实感，但只能做氛围）</h3>
+<p>可用的免费来源：<b>Wikimedia Commons</b>（CC0/CC-BY，需在使用处标注来源）、<b>Unsplash / Pexels</b>（免费商用、建议署名）。照片能拍出「码屏 / 电路 / 纸质文档」的质感，但<b>拍的不是这只插件的界面</b>——所以只建议做第 3 帧的氛围图，第 2 帧仍用方案 A。</p>
+
+<h3>4.4 建议</h3>
+<table>
+  <tr><th>方案</th><th>准确性</th><th>版权</th><th>工作量</th><th>结论</th></tr>
+  <tr><td><b>A 自制示意帧</b></td><td class="yes">帧帧对应功能</td><td class="yes">自有，零风险</td><td>9 张 ×2 帧，可脚本生成 SVG</td><td class="yes">推荐：第 1/2 帧用 A</td></tr>
+  <tr><td>B 免费照片</td><td class="warnc">只到氛围</td><td class="warnc">需署名</td><td>逐张找图/校验许可</td><td>可作第 3 帧补充，≤1 张/件</td></tr>
+  <tr><td>C 真实截图</td><td class="yes">最准</td><td class="yes">自有</td><td>逐插件起实例截图，慢</td><td>留给「以后再说」，本次不做</td></tr>
+</table>
+<p class="lead">落地位置：<b>官方目录仓 <code>media/&lt;pluginId&gt;/</code></b>＋<code>marketplace.json</code> 的 <code>cover/screenshots</code>。⛔ 不改任何插件包、⛔ 不发任何版本——用户刷新目录即见新图。</p>
+
+<h2>五、发布计划与待拍板</h2>
+<table>
+  <tr><th>项</th><th>内容</th><th>发版</th></tr>
+  <tr><td>插件市场</td><td>作者坞裁切三修 ＋ 模式记忆 ＋ 配置顺序/文案（方案 A 部分）</td><td><b>1.4.1</b>（patch）</td></tr>
+  <tr><td>设置插件</td><td>（若选 A+）配置组小节头/分隔线</td><td>1.0.44（patch）</td></tr>
+  <tr><td>官方目录</td><td>9 只插件媒体换新（方案 A 示意帧）</td><td>零发版</td></tr>
+  <tr><td>软件本体</td><td class="no">不动</td><td class="no">⛔ 不发壳</td></tr>
+</table>
+
+<h3>待你拍板</h3>
+<ol>
+  <li><b>设置页</b>：只做 A（市场插件里换顺序＋短文案），还是做 A+（再让设置插件画小节头）？</li>
+  <li><b>图片</b>：9 只插件全用方案 A 自制示意帧？第 3 帧要不要允许补 1 张免费照片（方案 B）？</li>
+  <li>作者坞修法按 §1.3 三条做（内边距 / 坞内不放大 / 卡宽自适应）——有异议再说。</li>
+</ol>
+
+<p class="sub" style="margin-top:26px">本稿为设计稿：文中所有产品 CSS 片段逐字对照插件仓当前源；示意小样仅表达形态，落地实现以源文件为准。</p>
+
+</body>
+</html>
