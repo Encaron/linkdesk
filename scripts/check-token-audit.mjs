@@ -243,6 +243,7 @@ export const PLUGIN_SURFACE = new Map([
   ["sent-echo", "A · AI 会话插件的已发送色（官方仓 2 处 var 消费）"],
   ["status-disconnected", "A · 终端监视插件的断连色（官方仓 2 处 var 消费）"],
   ["cm-timestamp", "A · CodeMirror 会话面的时间戳色（官方仓 2 处 var 消费）"],
+  ["surface-ink", "A · 插件市场媒体压字层的墨色（官方仓 store-cards.css 3 处 var 消费）"],
 ]);
 
 /** D · 真死键（三仓全无消费；清理落点见上注） */
