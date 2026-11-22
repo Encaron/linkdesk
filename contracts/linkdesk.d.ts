@@ -1438,6 +1438,12 @@ export interface DialogOpenOptions {
         name: string;
         extensions: string[];
     }[];
+    /**
+     * 2026-11-23：初始目录的**已知文件夹令牌**（⚠️ 不接受插件给绝对路径）。
+     * `"appearance"` = userData/appearance（受控外观图缓存，背景图选择用）——主进程解析并建目录。
+     * 旧壳忽略本字段（无初始目录），插件可安全传入。
+     */
+    defaultPathKind?: "appearance";
 }
 /** rich-content confirm dialog open params—pool plugin → shell DialogService (addressed by content view declaration).
  *  title/message are fallbacks—when the content view fails to resolve, the shell falls back to a plain-text confirm (the dialog still shows; it does not silently die). */

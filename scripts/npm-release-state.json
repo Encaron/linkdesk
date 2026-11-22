@@ -3,11 +3,11 @@
   "packages": [
     {
       "name": "@linkdesk/contracts",
-      "version": "0.1.49",
-      "contentHash": "59423aeb2712bfc714829c8225dc46f5ba2e867d7db2d0800feed7427eaab4b3",
+      "version": "0.1.50",
+      "contentHash": "fea27677fd210e3f2bfcddb84015d9dd6f42e9fc741cfb773c076b83334bffe2",
       "fileHashes": {
         "contracts/README.md": "24f92b03cbdacc4a",
-        "contracts/linkdesk.d.ts": "cd707a7cc32cf565"
+        "contracts/linkdesk.d.ts": "f646ee426d616969"
       }
     },
     {
@@ -133,8 +133,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.67",
-      "contentHash": "a38ce0d30e48c75ff3b5426060a62359489f95db356bbb1c4cf0223a234ac637",
+      "version": "0.2.68",
+      "contentHash": "a24827eeda89104e86bb23463b1693dd52ad0926491e7c2e84a50471bacb80a6",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "77a34ee8f99e01af",
@@ -231,7 +231,7 @@
         "src/components/shared/segmented-radio/SegmentedRadio.css": "6294289d8cb3c91d",
         "src/components/shared/segmented-radio/SegmentedRadio.test.tsx": "0a61c7a2b209b74a",
         "src/components/shared/segmented-radio/SegmentedRadio.tsx": "7c220fd42a038a8e",
-        "src/components/shared/select-box/DynamicSelect.test.tsx": "9c3b2068dd8396e5",
+        "src/components/shared/select-box/DynamicSelect.test.tsx": "74688dc8cb425a38",
         "src/components/shared/select-box/DynamicSelect.tsx": "2919df80ef563f19",
         "src/components/shared/select-box/SelectBox.css": "a7aa7a73bf626afc",
         "src/components/shared/select-box/SelectBox.tsx": "0117c0f47d408e9f",

@@ -215,6 +215,11 @@
   min-height: calc(24px * var(--ui-scale));
 }
 
+/* 2026-11-23：折叠按钮改成图标——只调图标字号，不新增宿主类名 */
+.ldk-notif-panel-action .codicon {
+  font-size: var(--font-size-md);
+}
+
 .ldk-notif-panel-action:hover {
   background: var(--tab-hover-bg);
   color: var(--text-primary);

@@ -416,7 +416,7 @@ describe("E6#73k（J5）：焦点管理", () => {
     const { container } = render(<StatusBarZone statusBar={{ items: [], notif: PANEL_ITEM }} />);
     const bell = container.querySelector(".ldk-status-bar-notif-btn")!;
     fireEvent.click(bell);
-    const minimize = [...document.querySelectorAll(".ldk-notif-panel-action")].find((b) => b.textContent === "最小化")!;
+    const minimize = document.querySelector('.ldk-notif-panel-action[aria-label="最小化"]')!;
     fireEvent.click(minimize);
     expect(document.activeElement).toBe(bell);
   });
@@ -427,10 +427,38 @@ describe("E6#73k（J5）：焦点管理", () => {
     const elsewhere = document.createElement("button");
     document.body.appendChild(elsewhere);
     elsewhere.focus();
-    const minimize = [...document.querySelectorAll(".ldk-notif-panel-action")].find((b) => b.textContent === "最小化")!;
+    const minimize = document.querySelector('.ldk-notif-panel-action[aria-label="最小化"]')!;
     fireEvent.click(minimize);
     expect(document.activeElement).toBe(elsewhere);
     elsewhere.remove();
+  });
+
+  it("2026-11-23 折叠按钮 = 向下箭头图标（无可见「最小化」文字）", () => {
+    const { container } = render(<StatusBarZone statusBar={{ items: [], notif: PANEL_ITEM }} />);
+    fireEvent.click(container.querySelector(".ldk-status-bar-notif-btn")!);
+    const collapse = document.querySelector('.ldk-notif-panel-action[aria-label="最小化"]')!;
+    expect(collapse.textContent).toBe(""); // 文字已移除
+    expect(collapse.querySelector(".codicon-chevron-down")).not.toBeNull();
+    expect(collapse.getAttribute("aria-label")).toBe("最小化");
+  });
+
+  it("自动唤醒开 + 内容清空 → 面板自动收起（不留空面板）", () => {
+    const { container, rerender } = render(
+      <StatusBarZone statusBar={{ items: [], notif: { ...PANEL_ITEM, autoOpen: true } }} />,
+    );
+    const bell = container.querySelector(".ldk-status-bar-notif-btn")!;
+    expect(bell.getAttribute("aria-expanded")).toBe("true");
+    rerender(<StatusBarZone statusBar={{ items: [], notif: { ...NOTIF, autoOpen: false } }} />);
+    expect(bell.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector(".ldk-status-bar-notif-panel")).toBeNull();
+  });
+
+  it("用户点铃铛开 + 内容清空 → **不**自动收起（只有用户自己点箭头/Esc/再点铃铛才收）", () => {
+    const { container, rerender } = render(<StatusBarZone statusBar={{ items: [], notif: PANEL_ITEM }} />);
+    const bell = container.querySelector(".ldk-status-bar-notif-btn")!;
+    fireEvent.click(bell);
+    rerender(<StatusBarZone statusBar={{ items: [], notif: NOTIF }} />);
+    expect(bell.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("唤醒开面板（autoOpen）→ 焦点**原地不动**（用户可能正在别处打字）", () => {

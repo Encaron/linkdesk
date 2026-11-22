@@ -12,6 +12,7 @@ import { IPC } from '../channels.js';
 import type { DialogOpenOptions } from '../../../src/core/types/ipc/dialogs';
 // E5.8#62 审计#4：对话框父窗绑定——sender 反查宿主窗传 parent（脱出窗选图 modal 到脱出窗）
 import type { WindowManager } from '../../windows/window-manager.js';
+import { fileService } from '../../services/file-service.js';
 
 // E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次。
 // E5.8#62 审计#4：windowManager 引用每次调用刷新（file-handlers 同款模式）——壳崩重建后
@@ -35,6 +36,13 @@ export function registerDialogHandlers(windowManager?: WindowManager): void {
       filters: options?.filters,
       properties: options?.directory ? ['openDirectory'] : ['openFile'],
     };
+    // 2026-11-23：已知文件夹令牌 → 主进程解析初始目录（插件只给令牌，不给绝对路径）。
+    // 背景图选择默认落在受控缓存 userData/appearance，用户可直接复用已入库的图。
+    if (options?.defaultPathKind === 'appearance') {
+      const dir = fileService.join(fileService.appDataDir(), 'appearance');
+      await fileService.createDir(dir);
+      opts.defaultPath = dir;
+    }
     const result = hostWindow
       ? await dialog.showOpenDialog(hostWindow, opts)
       : await dialog.showOpenDialog(opts);

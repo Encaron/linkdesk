@@ -177,6 +177,18 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
     prevAutoOpenRef.current = wantAutoOpen;
   }, [wantAutoOpen, dispatch]);
 
+  // 2026-11-23（用户拍板）：**自动唤醒开的面板在内容清空后自动收起**。
+  // 用户亲手点铃铛打开（markSeen=true）不自动收——只有他点箭头/Esc/再点铃铛才收；
+  // 系统唤醒（wake，markSeen=false）是「有事叫你」，事没了（条目/结果全空）就该缩回铃铛，
+  // 不再留一个空面板占着屏幕。复用 minimize 迁移（第 5 行：收起 + 认账），不新增事件。
+  const notifContentEmpty =
+    notif.groups.length === 0 && (notif.sections?.length ?? 0) === 0 && !notif.resultLabel;
+  useEffect(() => {
+    if (panel.state === "open" && !panel.markSeen && notifContentEmpty) {
+      dispatch({ type: "minimize" });
+    }
+  }, [panel.state, panel.markSeen, notifContentEmpty, dispatch]);
+
   // 左/右分列——switch 判别（eslint E5.5#10 规则拦 `=== "小写字面量"`，tag 判别用 switch 不误报）
   const leftItems: PoolStatusBarItem[] = [];
   const rightItems: PoolStatusBarItem[] = [];
@@ -295,8 +307,16 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
                     {notif.clearLabel}
                   </button>
                 )}
-                <button className="ldk-notif-panel-action" onClick={() => dispatch({ type: "minimize" })}>
-                  {notif.minimizeLabel}
+                {/* 2026-11-23：文字「最小化」→ 向下箭头图标（折叠回铃铛）。可见文字移除，
+                    可读名/悬停提示仍取 minimizeLabel（壳侧已改「折叠」，lang-defaults 有英文）。 */}
+                <button
+                  className="ldk-notif-panel-action"
+                  onClick={() => dispatch({ type: "minimize" })}
+                  aria-label={notif.minimizeLabel}
+                  data-hint={notif.minimizeLabel}
+                  data-hint-delay="0"
+                >
+                  <span className="codicon codicon-chevron-down" />
                 </button>
               </div>
             </div>

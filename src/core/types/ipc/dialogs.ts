@@ -11,6 +11,12 @@ export interface DialogOpenOptions {
   /** true = pick a directory; defaults to picking a file */
   directory?: boolean;
   filters?: { name: string; extensions: string[] }[];
+  /**
+   * 2026-11-23：初始目录的**已知文件夹令牌**（⚠️ 不接受插件给绝对路径）。
+   * `"appearance"` = userData/appearance（受控外观图缓存，背景图选择用）——主进程解析并建目录。
+   * 旧壳忽略本字段（无初始目录），插件可安全传入。
+   */
+  defaultPathKind?: "appearance";
 }
 
 /** E6#71c rich-content confirm dialog open params—pool plugin → shell DialogService (addressed by content view declaration).

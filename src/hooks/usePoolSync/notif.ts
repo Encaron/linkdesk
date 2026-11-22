@@ -346,7 +346,7 @@ export function buildNotif(t: TFunction): NotifLayout {
     // E6#73a：头部两钮分工——一个管**内容**（清消息，面板不关），一个管**面板**（收起）。
     // 原「全部清除」删所有通知（含进行中）⇒ 此后进度静默失效、永不再现（18 档 A2/M5）。
     clearLabel: t("清除已完成"),
-    minimizeLabel: t("最小化"),
+    minimizeLabel: t("折叠"), // 2026-11-23：面板里只剩图标——可读名/悬停说「折叠」
     emptyLabel: t("暂无通知"),
     dismissTitle: t("关闭"),
     ...(install.summaryLabel ? { summaryLabel: install.summaryLabel } : {}),
