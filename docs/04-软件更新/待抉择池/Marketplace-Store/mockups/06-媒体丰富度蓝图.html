@@ -349,17 +349,17 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
 .cs-free.paid,.cm-free.paid,.rr-corner.paid{background:var(--accent);color:var(--text-on-accent);
   font-weight:700;font-size:12px;padding:2px 9px;border-radius:99px;letter-spacing:.02em}
 /* v3.65b 用户拍板：⛔ 描边框——实底系（paid 蓝/update 橙/expired 红/soon 黄）+ 纯字系（installed/free 灰字无底） */
-.cs-free.paid,.cm-free.paid,.rr-corner.paid,.cg-corner.paid,
-.cs-free.update,.cm-free.update,.rr-corner.update,.cg-corner.update,
-.cs-free.expired,.cm-free.expired,.rr-corner.expired,.cg-corner.expired,
-.cs-free.soon,.cm-free.soon,.rr-corner.soon,.cg-corner.soon{
+.cs-free.paid,.cm-free.paid,.rr-corner.paid,.cg-corner.paid,.ct-corner.paid,
+.cs-free.update,.cm-free.update,.rr-corner.update,.cg-corner.update,.ct-corner.update,
+.cs-free.expired,.cm-free.expired,.rr-corner.expired,.cg-corner.expired,.ct-corner.expired,
+.cs-free.soon,.cm-free.soon,.rr-corner.soon,.cg-corner.soon,.ct-corner.soon{
   font-weight:700;font-size:12px;padding:2px 9px;border-radius:99px;letter-spacing:.02em}
-.cs-free.paid,.cm-free.paid,.rr-corner.paid,.cg-corner.paid{background:var(--accent);color:var(--text-on-accent)}
-.cs-free.update,.cm-free.update,.rr-corner.update,.cg-corner.update{background:#B26A1B;color:#fff}
-.cs-free.expired,.cm-free.expired,.rr-corner.expired,.cg-corner.expired{background:var(--danger);color:#fff}
-.cs-free.soon,.cm-free.soon,.rr-corner.soon,.cg-corner.soon{background:var(--warn);color:#3B2F0B}
-.cs-free.installed,.cm-free.installed,.rr-corner.installed,.cg-corner.installed,
-.cs-free.free,.cg-corner.free{color:var(--text-muted);font-size:11px}
+.cs-free.paid,.cm-free.paid,.rr-corner.paid,.cg-corner.paid,.ct-corner.paid{background:var(--accent);color:var(--text-on-accent)}
+.cs-free.update,.cm-free.update,.rr-corner.update,.cg-corner.update,.ct-corner.update{background:#B26A1B;color:#fff}
+.cs-free.expired,.cm-free.expired,.rr-corner.expired,.cg-corner.expired,.ct-corner.expired{background:var(--danger);color:#fff}
+.cs-free.soon,.cm-free.soon,.rr-corner.soon,.cg-corner.soon,.ct-corner.soon{background:var(--warn);color:#3B2F0B}
+.cs-free.installed,.cm-free.installed,.rr-corner.installed,.cg-corner.installed,.ct-corner.installed,
+.cs-free.free,.cg-corner.free,.ct-corner.free{color:var(--text-muted);font-size:11px}
 /* 延伸条：与脚区同底色、紧贴其上（bottom:60px），hover 向上滑出——与本体放大同一时序的一次运动 */
 .card-mega .cm-band{position:absolute;left:0;right:0;bottom:60px;height:108px;
   background:color-mix(in srgb,var(--bg-card) 86%,transparent);
@@ -1005,7 +1005,22 @@ svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;
 .wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:16px}
 .card-theme{overflow:hidden;cursor:pointer}
 .card-theme .ct-media{position:relative;aspect-ratio:var(--media-card);overflow:hidden}
-.card-theme .ct-foot{display:flex;align-items:center;gap:8px;padding:9px 12px;min-height:46px}
+.card-theme .ct-foot{display:flex;align-items:center;gap:8px;padding:9px 12px;min-height:46px;
+  transition:opacity .12s var(--ease)}
+.card-theme:hover .ct-foot,.card-theme:focus-within .ct-foot{opacity:0}
+/* hover 快捷层（v6 修）：主题墙卡也必须能直接安装/购买——整卡进详情只是主语义，不是唯一动作 */
+.card-theme .ct-hover{position:absolute;left:0;right:0;bottom:0;z-index:4;
+  display:flex;flex-direction:column;gap:5px;padding:10px 12px;
+  background:linear-gradient(0deg,rgba(10,12,16,.97) 0%,rgba(10,12,16,.9) 70%,transparent 100%);
+  opacity:0;transform:translateY(6px);pointer-events:none;
+  transition:opacity .16s var(--ease),transform .2s var(--ease)}
+.card-theme:hover .ct-hover,.card-theme:focus-within .ct-hover{opacity:1;transform:none;pointer-events:auto}
+.card-theme .ct-h-top{display:flex;align-items:center;gap:8px;min-width:0}
+.card-theme .ct-h-name{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.card-theme .ct-h-author{font-size:10.5px;color:rgba(255,255,255,.66)}
+.card-theme .ct-h-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
 .card-theme .ct-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
 .card-theme .ct-sub{font-size:10.5px;color:var(--text-muted);margin-top:2px}
@@ -1835,6 +1850,17 @@ function cardTheme(e){
       <div class="fx1 mn0"><div class="ct-name">${e.name}</div>
         <div class="ct-sub">${LABEL[e.cat]} · ▾ ${dl(e.dl)}</div></div>
       <span class="ct-corner js-corner ${statusTag(e).c}" data-base="ct-corner js-corner">${statusTag(e).t}</span>
+    </div>
+    <!-- hover 快捷层：与其它卡同一套 actionBtn/statusTag/角标——作者·价格·安装/购买不必进详情 -->
+    <div class="ct-hover">
+      <div class="ct-h-top">
+        <span class="ct-h-name">${e.name}</span>
+        <span class="ct-corner js-corner ${statusTag(e).c}" data-base="ct-corner js-corner">${statusTag(e).t}</span>
+        <button class="icon-btn" data-more="${e.id}" aria-label="更多动作" title="更多动作">⋯</button>
+      </div>
+      <div class="ct-h-author">${e.author}</div>
+      <div class="ct-h-acts"><span class="js-act flat">${actionBtn(e)}</span></div>
+      ${moreMenu(e)}
     </div>
   </div>`;
 }
