@@ -213,7 +213,7 @@ describe("DynamicSelect", () => {
     const items = dropdownItems();
     expect(items[0]).toBe("跟随主题");
     expect(items).toContain("Demo Mint·Alpha");
-    expect(items).toContain("Demo Forest·Gamma"); // 其他 colors 域配方也可作来源
+    expect(items).toContain("Demo Forest·Gamma（暗色主题）"); // 其他 colors 域配方也可作来源；跨明暗带标签
     expect(items).not.toContain("Demo Serif"); // 只贡献 font 域——colors 行排除
     expect(items).not.toContain("Alpha"); // 非 recipe 配色粒度
   });

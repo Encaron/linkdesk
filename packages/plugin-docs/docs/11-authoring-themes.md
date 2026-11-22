@@ -188,6 +188,7 @@ contain the Chinese source no matter which language this page is written in.
 | Repeating every color | Sparse override = write only the differing keys; unwritten ones inherit `:root`, which is more stable |
 | Wanting to break free of the accent color | Use **your own token** (e.g. `--toggle-on-bg`) instead of reading `--accent` — a self-held token doesn't shift when the shell's accent changes |
 | Large blur values | `--glass-blur` has a performance ceiling (large-area backdrop-filter is a GPU burden) — don't max it out |
+| Mixing colorways across light/dark themes | **A colorway is a full color-token set** (8 surfaces + text + accent + borders + status…), not just an accent swap. Pointing a light theme's colorway id at a dark theme brings the whole light palette along — the settings page (0.2.60+) labels such options "（Light Theme）/（Dark Theme）" in custom mode; stay within the same polarity to avoid "light surfaces on dark glass" |
 
 ## 4. What theme authors get
 

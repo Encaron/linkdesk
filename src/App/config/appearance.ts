@@ -254,6 +254,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
+        effectiveToken: "radius-md", // 2026-11-23：跟随主题显示生效值（主题 radius.md），不再假显 0
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -271,6 +272,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#77：值标签像素单位（mockup 16px）
+        effectiveToken: "glass-blur", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -286,6 +288,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         description: t("玻璃面不透明度——0 全透见背景 / 1 全不透明；只管玻璃表面的合成比例，不改主题自带的玻璃材质厚薄"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
+        effectiveToken: "glass-opacity", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -316,6 +319,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         description: t("玻璃饱和度——1 原图 / 2 加倍饱和 / 0 去饱和"),
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
+        effectiveToken: "glass-saturate", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -366,6 +370,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+        effectiveToken: "bg-opacity", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -382,6 +387,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+        effectiveToken: "bg-mask", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -511,6 +517,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         unit: "px", // E5.8#85：值标签像素单位（绝对 px，非倍数）
+        effectiveToken: "surface-radius", // 2026-11-23：跟随主题显示生效值（主题 surface.radius）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },

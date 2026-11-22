@@ -133,8 +133,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.66",
-      "contentHash": "9b3a25f43215a367e36dc3b79df4d8960a4db12ef69f05122433da5aed1aa6ca",
+      "version": "0.2.67",
+      "contentHash": "a38ce0d30e48c75ff3b5426060a62359489f95db356bbb1c4cf0223a234ac637",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "77a34ee8f99e01af",
@@ -231,8 +231,8 @@
         "src/components/shared/segmented-radio/SegmentedRadio.css": "6294289d8cb3c91d",
         "src/components/shared/segmented-radio/SegmentedRadio.test.tsx": "0a61c7a2b209b74a",
         "src/components/shared/segmented-radio/SegmentedRadio.tsx": "7c220fd42a038a8e",
-        "src/components/shared/select-box/DynamicSelect.test.tsx": "da63de3dae522a8a",
-        "src/components/shared/select-box/DynamicSelect.tsx": "c6c88cc86c04789d",
+        "src/components/shared/select-box/DynamicSelect.test.tsx": "9c3b2068dd8396e5",
+        "src/components/shared/select-box/DynamicSelect.tsx": "2919df80ef563f19",
         "src/components/shared/select-box/SelectBox.css": "a7aa7a73bf626afc",
         "src/components/shared/select-box/SelectBox.tsx": "0117c0f47d408e9f",
         "src/components/shared/select-box/SelectBoxDropdown.test.tsx": "73c95c4e05e6e538",
@@ -264,8 +264,8 @@
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.86",
-      "contentHash": "9a26101fe096f9759231708ed380d28089678168f12309067353048e4e2f4661",
+      "version": "0.1.87",
+      "contentHash": "df435f2dc99d01fa28004490f3c60883a2ec2f1635211fd35119ad7a3fb3f0c9",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8a114a274be827f7",
@@ -279,7 +279,7 @@
         "packages/plugin-docs/docs/08-view-container-api.md": "66c393600bde53fa",
         "packages/plugin-docs/docs/09-plugin-directory-layout.md": "509af5be578702a2",
         "packages/plugin-docs/docs/10-building-a-settings-plugin.md": "1cb1d4f1b5c0bb19",
-        "packages/plugin-docs/docs/11-authoring-themes.md": "02df67d584b710c4",
+        "packages/plugin-docs/docs/11-authoring-themes.md": "45e2a97748ee42c7",
         "packages/plugin-docs/docs/12-readme-media-contract.md": "f7cb640e07d9dbd3",
         "packages/plugin-docs/docs/13-development-guide.md": "ee373e7029977b0e",
         "packages/plugin-docs/docs/14-data-pipeline-command-conventions.md": "36164c41f3799b8e",
@@ -293,7 +293,7 @@
         "packages/plugin-docs/docs/22-menu-contribution-points.md": "b8475624a6a079c7",
         "packages/plugin-docs/docs/23-marketplace-catalog-and-author-store.md": "4f080dc9f663ef74",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
-        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "13a6b53d90eb6564",
+        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "9d9a9abfb865e95f",
         "packages/plugin-docs/docs/zh/00-README.md": "138a49b8660e4af2",
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "4b836a5d63e7e02f",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
@@ -305,7 +305,7 @@
         "packages/plugin-docs/docs/zh/08-ViewContainer-视图容器API.md": "273d38a40c21414d",
         "packages/plugin-docs/docs/zh/09-插件目录规范.md": "1de60956abd0f103",
         "packages/plugin-docs/docs/zh/10-如何造一个设置插件.md": "2e09cd548617cb1e",
-        "packages/plugin-docs/docs/zh/11-主题制作.md": "75bfbc185def6ee1",
+        "packages/plugin-docs/docs/zh/11-主题制作.md": "5d5e6c2b7c0890f8",
         "packages/plugin-docs/docs/zh/12-README说明区媒体契约.md": "612f7993c107bf42",
         "packages/plugin-docs/docs/zh/13-插件开发指南.md": "506d9bcffb5da737",
         "packages/plugin-docs/docs/zh/14-数据管道命令约定.md": "bf3c0b5e0f6fbf25",
@@ -320,7 +320,7 @@
         "packages/plugin-docs/docs/zh/23-市场目录与作者主页.md": "55431f1ef4585115",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "0fbcb8f88275bf6f",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
-        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "6115ecb4b226ddf9"
+        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "2287bf6f51c582db"
       }
     },
     {

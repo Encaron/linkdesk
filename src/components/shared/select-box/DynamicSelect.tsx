@@ -75,12 +75,19 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
         if (domain === "colors") {
           // 颜色域 = 配方+配色粒度（决策 B）——每配色一个选项（value = 配色 id 全局唯一，theme.ts L88 契约），
           // label = 「配方名·配色名」（mockup 01「清凉薄荷包·薄荷苏打」同款），带配色预览色块。
+          // 2026-11-23：跨明暗标签——配色携带整套颜色 token，把亮色主题的配色指给暗色主题会「亮底 + 暗玻璃」；
+          // 自定义模式下给**来源主题明暗类型 ≠ 当前主题明暗类型**的选项追「（亮色主题）/（暗色主题）」标签。
+          const getCfg = window.linkdesk?.configuration?.get;
+          const recipeId = getCfg ? await getCfg<string>("app.theme") : "";
+          const baseType = recipes.find((r) => r.id === recipeId)?.type;
           setOptions([
             { value: FOLLOW_THEME, label: t("跟随主题") },
             ...recipes.flatMap((r) =>
               r.colorways.map((cw) => ({
                 value: cw.id,
-                label: `${r.name}·${cw.name}`,
+                label: `${r.name}·${cw.name}${
+                  baseType && r.type !== baseType ? `（${t(r.type === "light" ? "亮色主题" : "暗色主题")}）` : ""
+                }`,
                 preview: cw.preview?.accent || undefined,
               }))
             ),

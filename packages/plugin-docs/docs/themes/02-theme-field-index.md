@@ -89,6 +89,8 @@
 
 **The rule in one sentence: key = CSS variable name with the `--` prefix stripped.** Write `"bg-window"` in the recipe and the shell writes it into `--bg-window`.
 
+> 🔴 **A colorway is a full color set, not an accent swap**: `colorways[].colors` can carry surfaces (`bg-*`), text (`text-*`), borders, status colors… Mixing across light/dark themes moves the whole palette. Since 0.2.60 the settings page labels colorways that come from a theme of the other polarity as "（Light Theme）/（Dark Theme）" in custom mode — the label means the base polarity will not match the current theme.
+
 **The batch authors change most often** (not the full set):
 
 | Category | Token names |
