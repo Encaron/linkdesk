@@ -2,7 +2,7 @@
 
 LinkDesk 市场数据作者工具包——写、校验、初始化 `marketplace.json` / `authors/<id>.json`，并给付费插件签发许可密钥。运行在**作者机器 / CI**（devDependency），⛔ 不并入 `@linkdesk/contracts`（那是运行时面，会装进用户机器）。
 
-正典：`docs/04-软件更新/待抉择池/Marketplace-Store/11-作者模板与marketplace-kit.md`（任务 K1–K5/K12）；分类封闭名单正典 = 同目录 `04-分类体系.md` §5.1。
+正典：`docs/04-软件更新/已落地/Marketplace-Store/11-作者模板与marketplace-kit.md`（任务 K1–K5/K12）；分类封闭名单正典 = 同目录 `04-分类体系.md` §5.1。
 
 ## 安装
 

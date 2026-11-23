@@ -31,7 +31,7 @@
 | OLED | Canvas 逐像素模拟 128×64 OLED 屏幕 | 照抄 E1 串口服务模式 | [OLED/](OLED/00-README.md) |
 | AI与智能体 | 内嵌 AI 对话 + 代码补全 + 自主执行任务 | 对标 Copilot Chat | [AI与智能体/](AI与智能体/01-AI与智能体.md) |
 | Data-Playground | 数据演示器 | — | [Data-Playground/](Data-Playground/README.md) |
-| Marketplace-Store | 插件市场商店视图（橱窗=其顶部「编辑推荐」横幅，已并入作一章） | — | [04-软件更新/待抉择池/Marketplace-Store/](../04-软件更新/待抉择池/Marketplace-Store/00-README.md) |
+| Marketplace-Store | 插件市场商店视图（橱窗=其顶部「编辑推荐」横幅，已并入作一章） | — | [04-软件更新/已落地/Marketplace-Store/](../04-软件更新/已落地/Marketplace-Store/00-README.md) |
 | Serial-Simulator | 串口模拟器 | — | [Serial-Simulator/](Serial-Simulator/README.md) |
 | Snapshot-Share | 快照分享（**普通插件**——旧档案里的「壳级」标记已过时，以本行为准） | — | [Snapshot-Share/](Snapshot-Share/README.md) |
 | 玫瑰窗 | 教堂彩窗主题：亮色磨砂玻璃 + 全窗巴黎圣母院玫瑰窗 + 三组彩窗配色（午后圣光 / 青金石 / 晚祷紫） | ✅ **已发 1.0.3（2026-11-23）＋ 官方目录已收录（含 3 张场景截图；1.0.3 对齐壳 0.2.60 玻璃语义）**；源码 `E:\linkdesk-plugins\official\theme-rose-window`（GitHub `Encaron/linkdesk-plugin-theme-rose-window`）；同批下架三只测试主题（宋体印刷体 / 全胶囊 / 终端机） | [04 案（多仓合案）](../04-软件更新/已落地/教堂彩窗主题与玻璃语义/00-README.md) |
@@ -68,7 +68,7 @@
 |:--|:--|
 | 01-Theme-Carousel-主题轮播（原 04-出厂制造） | 删——主题系统已大迭代，过时 |
 | 02-More-Themes-更多主题（原 04-出厂制造） | 删——同上 |
-| 06-Plugin-Showcase-插件橱窗（原 04-出厂制造） | 并入 Marketplace-Store 作一章（（旧章随 2026-11-19 系列重立删——现行设计见 [04-软件更新/待抉择池/Marketplace-Store/](../04-软件更新/待抉择池/Marketplace-Store/00-README.md)））——它本是商店顶部横幅组件，随 Marketplace 一起分发，不独立成插件 |
+| 06-Plugin-Showcase-插件橱窗（原 04-出厂制造） | 并入 Marketplace-Store 作一章（（旧章随 2026-11-19 系列重立删——现行设计见 [04-软件更新/已落地/Marketplace-Store/](../04-软件更新/已落地/Marketplace-Store/00-README.md)））——它本是商店顶部横幅组件，随 Marketplace 一起分发，不独立成插件 |
 
 ## 五、已完成升级点的归宿：归还插件仓 docs/（2026-09-30 定）
 
