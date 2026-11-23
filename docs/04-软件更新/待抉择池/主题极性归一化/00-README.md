@@ -186,3 +186,20 @@
 
 
 - Radix Colors（12-step scale，step 11/12 对比度）: <https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale>
+## 十一、外观复位入口归位（2026-11-24 · 用户实机「按钮在最底下、默认置灰、点了没反应」）
+
+**根因**：设置页只有 `app.mixReset`（「⟲ 全部复位为整体配方」→ `theme.resetMix`）——它只复位 3 个**域来源**，
+不动外观覆盖；且 `MIX_RESET_DISABLED_WHEN` 让它在「来源全跟随」时默认置灰 ⇒ 用户第一次点必然哑火。
+真正「清我的覆盖、回主题值」的动作（`theme.resetAppearance`）只存在命令面板，设置页没有入口。
+
+**处置**：
+- 新增动作行 `app.appearanceReset`「以当前主题为起点」→ 新命令 `theme.resetToTheme`：清 13 覆盖 + 域来源，
+  按**主题基线**（`getThemeBaseTokens`，不是生效态）重新播种，**保持自定义**；无 `glass` 声明的主题不写玻璃键
+  （避免「进自定义凭空开玻璃」）。行就贴在外观模式下方（`整体配方` 组）。
+- `app.mixReset` 改名「复位分区来源」、归入 `整体配方` 组、说明写明「外观覆盖不动」——不再用「全部」二字。
+- 词条：lang-defaults **1.0.69**（4 条，中英），已发版 / 目录收录 / 出厂账同步。
+- dev 实测：`glass 0.37 / radius 20` → 执行 `theme.resetToTheme` → `0.5（主题默认）/ 0`，`appearanceMode` 仍 custom；
+  两行动作行已进配置贡献面（title/renderHint/actionCommand 齐全）。
+
+**遗留（未修，登记）**：custom 模式下**切主题**的重播种仍会写入玻璃键 → 无玻璃主题会被「凭空开玻璃」；
+同 `resetToTheme` 的修法（无 glass 主题不写玻璃键）应推广到 `deriveReseedPlan`/`seedAppearanceOverrides`。
