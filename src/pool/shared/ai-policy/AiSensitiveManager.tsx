@@ -10,7 +10,7 @@
 
 import { useTranslation } from "react-i18next";
 
-export interface AiSensitiveRow {
+interface AiSensitiveRow {
   label: string;
   value: string;
   /** 语义色调：fixed = 固定规则（不可调）；tier = 随档位；protected = 只有用户 */

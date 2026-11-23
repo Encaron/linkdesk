@@ -16,7 +16,7 @@
 import { useCallback, useId, useRef } from "react";
 import "./AiPolicyPicker.css";
 
-export type AiPolicyValue = "read" | "ask" | "auto" | "full";
+type AiPolicyValue = "read" | "ask" | "auto" | "full";
 
 export interface AiPolicyOption {
   value: AiPolicyValue;

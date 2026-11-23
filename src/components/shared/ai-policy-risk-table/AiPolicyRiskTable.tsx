@@ -11,8 +11,8 @@
 import { useTranslation } from "react-i18next";
 import "./AiPolicyRiskTable.css";
 
-export type AiPolicyRiskTableDecision = "allow" | "ask" | "deny";
-export type AiPolicyRiskTableRisk = "R0" | "R1" | "R2" | "R3";
+type AiPolicyRiskTableDecision = "allow" | "ask" | "deny";
+type AiPolicyRiskTableRisk = "R0" | "R1" | "R2" | "R3";
 
 export interface AiPolicyRiskTableRow {
   id: string;

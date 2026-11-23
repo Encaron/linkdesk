@@ -28,8 +28,11 @@
     "ObjectEditor": { "since": "0.2.52" },
     "OpenWithPicker": { "since": "0.2.48" },
     "OverlayPortal": { "since": "0.2.13" },
+    "PLUGIN_CONFIRM_HOST_VIEWS": { "since": "0.2.63" },
     "PluginCard": { "since": "0.2.48" },
     "PluginIcon": { "since": "0.2.13" },
+    "PluginInstallConfirm": { "since": "0.2.63" },
+    "PluginUpdateBatchSummary": { "since": "0.2.63" },
     "ReadOnlyText": { "since": "0.2.22" },
     "SectionSubtitle": { "since": "0.2.22" },
     "SegmentPreviewSwatch": { "since": "0.2.40" },
@@ -41,10 +44,15 @@
     "StringListEditor": { "since": "0.2.13" },
     "ThemePicker": { "since": "0.2.13" },
     "Toggle": { "since": "0.2.13" },
+    "buildBatchVM": { "since": "0.2.63" },
+    "buildInstallVM": { "since": "0.2.63" },
     "default as AiPolicyRiskTable": { "since": "0.2.63" },
+    "format as formatConfirmText": { "since": "0.2.63" },
+    "formatBytes": { "since": "0.2.63" },
     "formatColor": { "since": "0.2.60" },
     "isCssVariableExpression": { "since": "0.2.60" },
-    "parseColor": { "since": "0.2.60" }
+    "parseColor": { "since": "0.2.60" },
+    "shortHash": { "since": "0.2.63" }
   },
   "hooks": {
     "useClickPreview": { "since": "0.2.13" },
@@ -83,7 +91,6 @@
     "AiPolicyPickerProps": { "since": "0.2.62" },
     "AiPolicyRiskTableProps": { "since": "0.2.63" },
     "AiPolicyRiskTableRow": { "since": "0.2.63" },
-    "AiPolicyValue": { "since": "0.2.62" },
     "BackgroundImagePickerProps": { "since": "0.2.40" },
     "BuildInput": { "since": "0.2.52" },
     "CardModel": { "since": "0.2.52" },
@@ -106,6 +113,12 @@
     "OpenWithHandler": { "since": "0.2.48" },
     "OpenWithPickerProps": { "since": "0.2.48" },
     "OpenWithRequest": { "since": "0.2.48" },
+    "PluginConfirmBatchGroup": { "since": "0.2.63" },
+    "PluginConfirmBatchRow": { "since": "0.2.63" },
+    "PluginConfirmDialogPayload": { "since": "0.2.63" },
+    "PluginConfirmKvRow": { "since": "0.2.63" },
+    "PluginConfirmVM": { "since": "0.2.63" },
+    "PluginInstallConfirmLabels": { "since": "0.2.63" },
     "ResolvedIcon": { "since": "0.2.13" },
     "Rgba": { "since": "0.2.60" },
     "RowOption": { "since": "0.2.52" },
@@ -117,5 +130,5 @@
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 108
+  "count": 121
 }

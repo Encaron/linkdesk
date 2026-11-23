@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 43 组件（34 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch / AiPolicyRiskLegend 具名
+ *   - 51 组件（41 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch / AiPolicyRiskLegend 具名
  *       + parseColor / formatColor / isCssVariableExpression 颜色工具）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
@@ -16,12 +16,13 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 37 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyValue / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 42 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
  *       ContestedRowModel / ManagerModel / BuildInput / ManagerViewProps / CardRowProps / ContestedRowProps / SharedIconDefault /
- *       Rgba / Hsv）
+ *       Rgba / Hsv / PluginConfirmVM / PluginConfirmKvRow / PluginConfirmBatchRow / PluginConfirmBatchGroup /
+ *       PluginInstallConfirmLabels / PluginConfirmDialogPayload）
  *   - E6#121 起：导出面**只加不删**（check-ui-surface-additive 常驻判红——L9 集中供给的终身承诺）
  *
  * 🔴 公共导出面的唯一真相源——scripts/build.mjs 据此生成 dist/index.d.ts。
@@ -76,14 +77,8 @@ export { default as PluginInstallConfirm } from "@shared/plugin-install-confirm/
 export { default as PluginUpdateBatchSummary } from "@shared/plugin-install-confirm/PluginUpdateBatchSummary";
 export { buildInstallVM, buildBatchVM, formatBytes, shortHash } from "@shared/plugin-install-confirm/buildViewModel";
 export { PLUGIN_CONFIRM_HOST_VIEWS, format as formatConfirmText } from "@shared/plugin-install-confirm/types";
-export type {
-  PluginConfirmVM,
-  PluginConfirmKvRow,
-  PluginConfirmBatchRow,
-  PluginConfirmBatchGroup,
-  PluginInstallConfirmLabels,
-  PluginConfirmDialogPayload,
-} from "@shared/plugin-install-confirm/types";
+export type { PluginConfirmVM, PluginConfirmKvRow, PluginConfirmBatchRow, PluginConfirmBatchGroup } from "@shared/plugin-install-confirm/types";
+export type { PluginInstallConfirmLabels, PluginConfirmDialogPayload } from "@shared/plugin-install-confirm/types";
 export { DEFAULT_PLUGIN_IDENTITY_URI } from "@shared/plugin-icon/defaultIdentityArt";
 export { default as OverlayPortal } from "@shared/overlay-portal/OverlayPortal";
 // E6#15h：零件包扩到 UI 交互 hook（08-共享hook归位.md）——源码壳 src/components/shared/hooks/ 单一副本
@@ -142,7 +137,7 @@ export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUt
 export { default as AiPolicyPicker } from "@shared/ai-policy-picker/AiPolicyPicker";
 export { default as AiPolicyRiskTable, AiPolicyRiskLegend } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
 export type { AiPolicyRiskTableProps, AiPolicyRiskTableRow } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
-export type { AiPolicyOption, AiPolicyPickerProps, AiPolicyValue } from "@shared/ai-policy-picker/AiPolicyPicker";
+export type { AiPolicyOption, AiPolicyPickerProps } from "@shared/ai-policy-picker/AiPolicyPicker";
 export { default as ManagerView } from "@shared/file-associations-manager/ManagerView";
 export { default as CardRow } from "@shared/file-associations-manager/pieces/CardRow";
 export { default as ContestedRow } from "@shared/file-associations-manager/pieces/ContestedRow";

@@ -58,7 +58,7 @@ function summaryOf(matrix: AiPolicyStateDto["matrix"], mode: AiPolicyModeDto): s
 }
 
 /** 渲染体拿到的终稿状态（`getState` 的返回面）：`options[].summary` 已算好，文案已 t() */
-export interface AiPolicyViewState extends Omit<AiPolicyStateDto, "options" | "riskTable"> {
+interface AiPolicyViewState extends Omit<AiPolicyStateDto, "options" | "riskTable"> {
   options: Array<AiPolicyOptionDto & { summary: string }>;
   riskTable: AiPolicyRiskRowDto[];
 }

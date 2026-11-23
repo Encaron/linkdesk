@@ -80,11 +80,20 @@
     "OverlayPortal": {
       "since": "0.2.13"
     },
+    "PLUGIN_CONFIRM_HOST_VIEWS": {
+      "since": "0.2.63"
+    },
     "PluginCard": {
       "since": "0.2.48"
     },
     "PluginIcon": {
       "since": "0.2.13"
+    },
+    "PluginInstallConfirm": {
+      "since": "0.2.63"
+    },
+    "PluginUpdateBatchSummary": {
+      "since": "0.2.63"
     },
     "ReadOnlyText": {
       "since": "0.2.22"
@@ -119,7 +128,19 @@
     "Toggle": {
       "since": "0.2.13"
     },
+    "buildBatchVM": {
+      "since": "0.2.63"
+    },
+    "buildInstallVM": {
+      "since": "0.2.63"
+    },
     "default as AiPolicyRiskTable": {
+      "since": "0.2.63"
+    },
+    "format as formatConfirmText": {
+      "since": "0.2.63"
+    },
+    "formatBytes": {
       "since": "0.2.63"
     },
     "formatColor": {
@@ -130,6 +151,9 @@
     },
     "parseColor": {
       "since": "0.2.60"
+    },
+    "shortHash": {
+      "since": "0.2.63"
     }
   },
   "hooks": {
@@ -233,9 +257,6 @@
     "AiPolicyRiskTableRow": {
       "since": "0.2.63"
     },
-    "AiPolicyValue": {
-      "since": "0.2.62"
-    },
     "BackgroundImagePickerProps": {
       "since": "0.2.40"
     },
@@ -302,6 +323,24 @@
     "OpenWithRequest": {
       "since": "0.2.48"
     },
+    "PluginConfirmBatchGroup": {
+      "since": "0.2.63"
+    },
+    "PluginConfirmBatchRow": {
+      "since": "0.2.63"
+    },
+    "PluginConfirmDialogPayload": {
+      "since": "0.2.63"
+    },
+    "PluginConfirmKvRow": {
+      "since": "0.2.63"
+    },
+    "PluginConfirmVM": {
+      "since": "0.2.63"
+    },
+    "PluginInstallConfirmLabels": {
+      "since": "0.2.63"
+    },
     "ResolvedIcon": {
       "since": "0.2.13"
     },
@@ -333,5 +372,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 108
+  "count": 121
 }
