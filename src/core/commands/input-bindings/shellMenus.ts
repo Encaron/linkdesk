@@ -122,6 +122,10 @@ export function registerShellMenus(): void {
   registerMenuItems(MENU_SLOTS.SettingItemGear, APP_PLUGIN_ID, [
     { command: "workbench.action.copySettingAsUrl", group: "phase6", when: "false" },
     { command: "workbench.action.toggleSettingSync", group: "phase6", when: "false" },
+    // 2026-11-24（方案 A）：外观模式行的两个重置入口——壳注册、按 settingKey 门控（设置插件零改动）。
+    // settingModified = 当前是自定义（跟随态下无覆盖可复位；要进自定义用伴生按钮）。
+    { command: "theme.resetToTheme", group: "navigation", when: "settingKey == 'app.appearanceMode' && settingModified" },
+    { command: "theme.resetMix", group: "navigation", when: "settingKey == 'app.appearanceMode' && settingModified" },
   ]);
 
   // ── E5#44c：View header 右键菜单——提供方注册，消费方（SidePanel）只读 menuId ──

@@ -36,7 +36,6 @@ import {
   reseedAppearanceOnThemeSwitch,
   stashCustomAppearance,
   enterCustomAppearance,
-  MIX_RESET_DISABLED_WHEN,
 } from "./appearanceApplier";
 
 /** t() 类型——仅声明组取 key（原 startup useTranslation t） */
@@ -201,6 +200,11 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         ],
         title: t("外观模式"),
         description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
+        // 2026-11-24（用户拍板 方案 A）：伴生按钮「用主题样式重来」——与主控件同一行、点之前可见。
+        // 语义 = 清我的覆盖 + 分区来源、按主题基线播种并**进入自定义**（从主题原样开始微调）。
+        // 齿轮菜单里另有一项同名命令（见 coreCommands 注册）。
+        actionCommand: "theme.resetToTheme",
+        actionLabel: t("用主题样式重来"),
         onApply: (v) => {
           if (v === "custom") {
             // 2026-11-24 拍板：有 stash 且有用户改动 → 恢复上次自定义；否则按当前主题播种
@@ -223,34 +227,8 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           // applyThemeIfReady 避免二次广播（原 6 连写 + 尾部补调 = 7 次 theme:changed）
         },
       },
-      // 2026-11-24：就近的「回到主题原样」入口——外观模式切换旁（用户实机：复位按钮藏在最底部且默认置灰）。
-      // 语义 = 清我的外观覆盖 + 分区来源，按当前主题重新播种，**保持自定义**（可继续微调）。
-      // 与「切回跟随主题」不同：那个退出自定义（覆盖进 stash，可再切回恢复）。
-      "app.appearanceReset": {
-        type: "string",
-        group: t("整体配方"),
-        default: "",
-        title: t("重置为当前主题"),
-        // 按钮文案 = title（settings 插件 ActionButton 优先取 title）——短到一眼懂；长解释留 description（行下说明）
-        description: t("清除你的外观覆盖与分区来源，按当前主题的值重新开始；仍留在自定义，可继续微调"),
-        renderHint: "action",
-        actionCommand: "theme.resetToTheme",
-        dependsOn: { key: "app.appearanceMode", value: "custom" },
-      },
-      // 分区来源复位（2026-11-24 改名归位）——只复位 3 个域来源键（颜色/玻璃/背景/字体）回「跟随主题」，
-      // **不动**外观覆盖（玻璃不透明度/圆角/壁纸/字号）。旧名「全部复位为整体配方」承诺过大，且默认全跟随 → 置灰，
-      // 用户误以为是坏按钮（实机）。与「重置为当前主题」相邻（同属「整体配方」组，声明顺序即渲染顺序）。
-      "app.mixReset": {
-        type: "string",
-        group: t("整体配方"),
-        default: "",
-        title: t("分区来源改回主题"),
-        description: t("颜色 / 玻璃 / 背景 / 字体的来源改回「跟随主题」；已调好的外观覆盖不受影响"),
-        renderHint: "action",
-        actionCommand: "theme.resetMix",
-        dependsOn: { key: "app.appearanceMode", value: "custom" },
-        actionDisabledAll: MIX_RESET_DISABLED_WHEN,
-      },
+      // 2026-11-24（方案 A）：原来的两行动作已收进本行——「用主题样式重来」是伴生按钮（见上方 actionCommand/
+      // actionLabel），「分区来源改回主题」进本行齿轮菜单（coreCommands 按 settingKey 门控）。顶部不再多行。
       // E5.8#133：图标主题——独立选择器（VS Code 模式），与配色主题完全独立（概念键分离）。
       //   默认 "default" = codicon 保底（零图标主题插件也成立，UI 恒显该项）；枚举 = default + 已登记
       //   图标主题 id（syncIconThemeEnum 装/卸动态刷新）；onApply 广播 iconTheme:changed（载荷带

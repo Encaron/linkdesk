@@ -327,10 +327,12 @@ export function registerSettingsCommands(): void {
       // 2026-11-24「以当前主题为起点」：清覆盖 + 分区来源，按主题基线重新播种，**保持自定义模式**。
       // 与 theme.resetAppearance（退出自定义）分工：这个留在自定义，方便「从主题原样开始微调」。
       id: "theme.resetToTheme",
-      title: "以当前主题为起点",
+      title: "用主题样式重来",
       category: "首选项",
-      description: "清除自定义外观覆盖与分区来源，按当前主题重新播种（保持自定义模式）",
+      description: "清除自定义外观覆盖与分区来源，按当前主题重新播种并进入自定义",
       handler: async () => {
+        // 跟随态下点它 = 以当前主题样式进入自定义；先切模式（会走 stash 恢复/播种），再覆盖成主题值
+        await setConfigurationValue("app.appearanceMode", "custom", "user");
         resetAppearanceToThemeValues();
       },
     },
@@ -347,9 +349,9 @@ export function registerSettingsCommands(): void {
     {
       // E5.8#90：复位混搭——批复位 3 来源键回跟随主题（保持自定义模式；域来源 onApply 重合并回主题基线，startup.ts 单一写入点；E5.8#132 surface 域删来源 4→3）
       id: "theme.resetMix",
-      title: "复位为整体配方…",
+      title: "分区来源改回主题",
       category: "首选项", // 归一化夹 02 批 N1
-      description: "把混搭（分区外观）的各来源复位为跟随主题，保持自定义模式",
+      description: "把混搭（分区外观）的各来源复位为跟随主题，外观覆盖不动",
       handler: async () => {
         await resetConfigurationValueBatch(MIX_SOURCE_KEYS, "user");
       },

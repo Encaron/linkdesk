@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 97 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 98 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -141,7 +141,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（32）
+### 首选项（33）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -163,7 +163,8 @@
 | `storage.openCacheDir` | 打开缓存目录 | 在系统资源管理器中打开当前生效的缓存目录（目录不存在时先建再开） | —— | —— |
 | `theme.pick` | 选择主题 | 打开主题选择器切换当前主题 | `ctx`: object 可选 — { pluginId: string }——只列该插件提供的主题，省略 = 列全部主题 | —— |
 | `theme.resetAppearance` | 复位外观覆盖… | 把外观模式复位为跟随主题，并清掉全部外观覆盖 | —— | —— |
-| `theme.resetMix` | 复位为整体配方… | 把混搭（分区外观）的各来源复位为跟随主题，保持自定义模式 | —— | —— |
+| `theme.resetMix` | 分区来源改回主题 | 把混搭（分区外观）的各来源复位为跟随主题，外观覆盖不动 | —— | —— |
+| `theme.resetToTheme` | 用主题样式重来 | 清除自定义外观覆盖与分区来源，按当前主题重新播种并进入自定义 | —— | —— |
 | `workbench.action.clearConfiguration` | 清除配置项覆盖 | 删掉一个配置键的用户覆盖（user scope）——回到该键的默认值，是 workbench.action.setConfiguration 的反动作；同样按声明面校验（未声明／ai.* 禁写／显示槽一律拒），回执带清掉前后的值与本次顺带… | `key`: string 必填 — 配置键，如 app.glassBlur（键名清单：workbench.action.listConfigurations） | —— |
 | `workbench.action.copySettingAsJson` | 复制为 JSON | 把指定设置项的当前值以 JSON 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
 | `workbench.action.copySettingId` | 复制设置 ID | 把指定设置项的 id 复制到剪贴板 | `ctx`: object 必填 — { settingKey: string }——目标设置项 id | —— |
