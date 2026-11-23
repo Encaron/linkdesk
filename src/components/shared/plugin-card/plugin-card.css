@@ -71,8 +71,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
   flex: none;
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -155,8 +155,8 @@ span.ldk-plugin-card-icon-glyph {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
   padding: 0;
   background: transparent;
   border: none;

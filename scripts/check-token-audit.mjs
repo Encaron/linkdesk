@@ -244,6 +244,16 @@ export const PLUGIN_SURFACE = new Map([
   ["status-disconnected", "A · 终端监视插件的断连色（官方仓 2 处 var 消费）"],
   ["cm-timestamp", "A · CodeMirror 会话面的时间戳色（官方仓 2 处 var 消费）"],
   ["surface-ink", "A · 插件市场媒体压字层的墨色（官方仓 store-cards.css 3 处 var 消费）"],
+  // ── 尺寸域（第七域 · 2026-11-23）：宿主发布、消费方在官方插件仓（壳仓不读外部路径）──
+  //   ⚠️ 插件侧一律带 fallback（var(--size-x, 原值)）——老壳（< 新增 token 的壳版）零视觉，
+  //      新壳自动跟随；规格表 = scripts/ui-size-spec.json，门禁 = check-size-tokens.mjs。
+  ["size-control-sm", "A · 官方 pdf-reader 搜索钮 24（var 消费，fallback 24px）"],
+  ["size-control-md", "A · 官方 marketplace 工具条钮 / pdf-reader tbtn 28（var 消费，fallback 28px）"],
+  ["size-control-lg", "A · 官方 geme-tihu-bicycle 主钮 32（var 消费，fallback 32px）"],
+  ["size-glyph-md", "A · 官方 marketplace 图标块 40（var 消费，fallback 40px）"],
+  ["size-glyph-lg", "A · 官方 marketplace 图标块大号 48（var 消费，fallback 48px）"],
+  ["size-ratio-card", "A · 官方 marketplace 卡片媒体框 3 / 2（var 消费，fallback 3 / 2）"],
+  ["size-ratio-hero", "A · 官方 marketplace hero 媒体框 2 / 1（var 消费，fallback 2 / 1）"],
 ]);
 
 /** D · 真死键（三仓全无消费；清理落点见上注） */

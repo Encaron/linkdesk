@@ -98,6 +98,12 @@
   --radius-2xl: 16px;
   --radius-pill: 999px;
   --radius-full: 50%;
+  /* 尺寸域（第七域 · 2026-11-23）：控件高/图标/图标块/媒体比例唯一来源，值＝存量实值（零视觉迁移）。
+     规格表 scripts/ui-size-spec.json · 门禁 check-size-tokens.mjs。⚠️ 不乘 --ui-scale（几何不随字号缩放）。 */
+  --size-control-sm: 24px; --size-control-md: 28px; --size-control-lg: 32px;
+  --size-icon-sm: 16px; --size-icon-md: 20px; --size-icon-lg: 24px;
+  --size-glyph-md: 40px; --size-glyph-lg: 48px;
+  --size-ratio-card: 3 / 2; --size-ratio-hero: 2 / 1;
   --shadow-hairline: 0 0 1px rgba(0, 0, 0, 0.2);
   --shadow-tiny: 0 0 2px rgba(0, 0, 0, 0.5);
   --shadow-float: 0 4px 16px rgba(0, 0, 0, 0.25);

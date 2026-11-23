@@ -503,12 +503,12 @@ Notice/status bars: mark them `role="status"` (or `role="alert"`). The host give
 
 The scaffold ships a container-query example, and new plugin repos' `verify` prints an advisory when a stylesheet still uses `@media (max-width)` (advisory first; existing plugins are not forced to migrate).
 
-## 11. The Token Contract—Six-Domain Matrix + Honest Boundaries + Data Discipline (.5)
+## 11. The Token Contract—Seven-Domain Matrix + Honest Boundaries + Data Discipline (.5)
 
-> **In one line:** before writing UI, check the 11.1 six-domain matrix—forms/controls/surfaces written with `var(--*)` **follow the theme + glass + global scaling automatically**, with zero plugin awareness. Doing it right is driven by recommendations, doing it wrong shows red through the gate but only as a WARN, and bypassing it takes a knowing declaration via a standard eslint-disable (content/brand fixed colors are legitimately exempt—see 11.2).
+> **In one line:** before writing UI, check the 11.1 seven-domain matrix—forms/controls/surfaces written with `var(--*)` **follow the theme + glass + global scaling automatically**, with zero plugin awareness. Doing it right is driven by recommendations, doing it wrong shows red through the gate but only as a WARN, and bypassing it takes a knowing declaration via a standard eslint-disable (content/brand fixed colors are legitimately exempt—see 11.2).
 > The gate = `linkdesk-plugin-sdk lint` (built into `@linkdesk/plugin-sdk`): the eslint rule leg + the three-check scanner leg, dual-track; all 15 items are **WARNs that never fail the build/upload**—advice, not a lockdown. Run it once at your project root; a violation shows red with self-explanatory fix text.
 
-### 11.1 The six-domain token matrix—authors can only write "follows automatically" if they know what variables exist
+### 11.1 The seven-domain token matrix—authors can only write "follows automatically" if they know what variables exist
 
 | Domain | var() keys (the full list always defers to `src/index.css`) | How authors write it | Gate coverage |
 |---|---|---|---|
@@ -518,8 +518,11 @@ The scaffold ships a container-query example, and new plugin repos' `verify` pri
 | **Glass** | `--glass-blur/--glass-saturate/--glass-tint/--glass-morph/--glass-specular…` (the full group in `src/index.css`) | `backdrop-filter: blur(var(--glass-blur)) …` | contract guidance—composite forms are beyond per-item gating |
 | **Font size** | `--font-size-2xs … 4xl` + `--ui-scale` (the scaling axis for `app.uiFontScale`; the scale table is in §10) | `font-size: var(--font-size-md)` / em/rem | `check-font-scale` (the check leg—a bare px font size is red) |
 | **Font family** | `--font-ui` / `--font-mono` | `font-family: var(--font-ui)` | contract guidance (authors may legitimately choose their own font) |
+| **Size** | `--size-control-sm/md/lg` (24/28/32) + `--size-icon-sm/md/lg` (16/20/24) + `--size-glyph-md/lg` (40/48) + `--size-ratio-card/hero` (3/2, 2/1) | `height: var(--size-control-md)` / `aspect-ratio: var(--size-ratio-card)` | `check-size-tokens` (host gate; official repos enforced, third-party guided only) |
 
 `var(--*)` = theme/glass/global scaling follow automatically, with zero plugin awareness—**this is exactly why the @linkdesk/ui control layer can be "follow without thinking"**—the controls are written entirely on tokens, so a plugin that does `npm i @linkdesk/ui` and consumes them follows along. Control reuse always imports from `@linkdesk/ui` (see §Quick Reference)—don't hand-roll wheels.
+
+**Size tokens + older shells:** the size domain is newer than some shipped shells. A plugin released independently of the shell must write `var(--size-control-md, 28px)` (token **with the current px as fallback**) until its `minAppVersion` includes the size-domain tokens—otherwise an older shell resolves the variable to nothing and the box collapses. Bespoke card geometry (your own card width/height) is legitimate: declare it once as a plugin-local `--<plugin>-*` variable and consume that; do not scatter raw px. The machine-readable contract is `scripts/ui-size-spec.json` in the shell repo.
 
 ### 11.2 Honest boundaries / knowing bypasses—content and brand colors can have their own sky
 

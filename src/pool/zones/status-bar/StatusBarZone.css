@@ -269,8 +269,8 @@
 
 /* VS Code: icon 16px, margin 4px, font-size 18px */
 .ldk-notif-panel-item .notif-icon {
-  flex: 0 0 16px;
-  width: 16px;
+  flex: 0 0 var(--size-icon-sm);
+  width: var(--size-icon-sm);
   height: calc(var(--statusbar-height) * var(--ui-scale)); /* E5.8 Phase 12 #166：22px 行高链乘 scale */
   display: flex;
   align-items: center;

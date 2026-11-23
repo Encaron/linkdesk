@@ -77,8 +77,8 @@
    图标也在按钮之外，同吃这条（否则那条支路没有 mask ⇒ 拖影成一块纯色方块）。标签栏图标不带这个类名
    ⇒ 逐字节不变（D6 按类名分叉；扩到标签栏/壳侧孪生点是第 4 刀的事）。 */
 .ldk-icon-bar-plugin-icon.plugin-icon--img {
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
   display: block;
   color: var(--icon-ink);
   /* C 案兜底：挂底图时引擎发来的反向光晕（--bg-image: none ⇒ none，D3 判据）。
@@ -112,8 +112,8 @@
 
 /* E5#100: Lucide SVG 图标——对齐 codicon 的尺寸与墨色阶梯 */
 .ldk-icon-btn .plugin-icon--lucide {
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
   color: var(--icon-ink);
   transition: color 150ms;
 }
@@ -216,8 +216,8 @@
 }
 
 .ldk-icon-drag-preview .plugin-icon--img {
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
   opacity: 0.8;
 }
 
