@@ -409,6 +409,16 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
     tokens["surface-media-scrim"] =
       `color-mix(in srgb, ${scrimBase} calc(max(var(--glass-surface-alpha), 0.68) * 100%), transparent)`;
   }
+  // 2026-11-23 实机：只声明了暗遮罩、没声明 surface-ink ⇒ 不能让它沿用 text-primary（浅色主题＝深字压深遮罩）。
+  // 墨色极性跟遮罩走：暗遮罩 → 白墨；亮遮罩 → 主题墨。作者显式声明 surface-ink 时优先作者值。
+  if (!tokens["surface-ink"] && tokens["surface-media-scrim"]) {
+    const scrimLum = colorLuminance(tokens["surface-media-scrim"]);
+    if (scrimLum != null) {
+      tokens["surface-ink"] = scrimLum < 0.35
+        ? (tokens["text-on-accent"] ?? "var(--text-on-accent)")
+        : (tokens["text-primary"] ?? "var(--text-primary)");
+    }
+  }
 }
 
 /**

@@ -99,6 +99,25 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(tokens["surface-ink"]).toBe("#FFFFFF");
   });
 
+  it("只声明暗遮罩、没声明 surface-ink ⇒ 自动派生亮墨（浅色主题不再深字压深遮罩）", () => {
+    const tokens: Record<string, string> = {
+      "bg-window": "#FBF5E9", "bg-card": "#FFFCF5", "text-primary": "#1F160D",
+      "text-on-accent": "#FFF8EA",
+      "surface-media-scrim": "rgba(18,13,9,0.72)",
+    };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.46 });
+    expect(tokens["surface-ink"]).toBe("#FFF8EA");
+  });
+
+  it("只声明亮遮罩 ⇒ surface-ink 跟主题墨色（浅遮罩配深墨）", () => {
+    const tokens: Record<string, string> = {
+      "bg-window": "#FBF5E9", "bg-card": "#FFFCF5", "text-primary": "#1F160D",
+      "surface-media-scrim": "rgba(255,255,255,0.86)",
+    };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.46 });
+    expect(tokens["surface-ink"]).toBe("#1F160D");
+  });
+
   it("E5.8#151 稀疏合成补齐——激活 + 有锚：缺键从系统标尺锚派生（全 8 键均匀半透明，消顶栏岛）", () => {
     const tokens: Record<string, string> = { "bg-window": "#fff" };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });

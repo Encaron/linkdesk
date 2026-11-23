@@ -16,6 +16,9 @@
 
 ### fix
 
+- 🌗 **媒体墨色必须与遮罩反向（商店 Hero 浅色主题实机）**：`surface-ink` 是压在 `surface-media-scrim` 上的文字色。玫瑰窗把 `surface-ink` 写成深棕（同 `text-primary`），Hero/封面文字在深遮罩上只剩轮廓；极光玻璃「深遮罩＋浅字」所以正常。主题已修 1.0.4（暖白墨＋中性遮罩），市场插件 1.4.11 的 Hero 文案改走 `--surface-ink` 与其 alpha 派生（不再继承 `text-*`）。
+  - 系统补强：引擎在**只声明暗遮罩、未声明 `surface-ink`** 时按遮罩亮度自动派生白墨（亮遮罩回落主题墨），单测 2 例。
+  - 作者门禁：SDK 0.1.104 的 `validateThemeJson` 增加 WCAG 4.5:1 对比校验（`var()`/`color-mix()` 跳过），暗字压暗遮罩直接判红；作者文档 02（中英）写明配对规则。
 - 🪟 **玻璃主题在「跟随主题」下也合成表面（主题作者的一处系统性坑）**：旧引擎只在用户动过玻璃配置（`app.glassBlur/Opacity/Tint/Saturate`）时才跑 `synthesizeGlassSurfaces`，跟随主题时表面色写什么就渲染什么——主题声明的 `glass.opacity` 只影响 tint 层和「切自定义」的种子。于是玻璃主题在跟随主题下前面板全实、右键菜单/下拉没有磨砂，作者只能靠 colorway 写 rgba 绕；官方 schema 却写着 `opacity` 是表面不透明度基线。
   - 新语义：`getThemeGlassSurfaceSpec(glass)`——用户配置优先；否则**主题声明了 glass 就激活**，alpha = `glass.opacity`（缺省 0.5）。跟随主题与自定义都合成，colorway 表面色按**基色**处理（自带 alpha 不再二次相乘）。
   - **新增 `glass.tintOpacity`**（缺省 = `opacity`）：tint 盖片厚度与表面 alpha 解耦（例：表面 0.55 + tint 0.275）；CSS 用 `--glass-tint-opacity`，缺省回退 `--glass-opacity`。

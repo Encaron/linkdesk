@@ -379,9 +379,110 @@ function validateDataFile(path: string, validator: CompiledSchema): ValidationRe
   return { valid: true, errors: [] };
 }
 
+/* ── 媒体遮罩可读性（2026-11-23：商店 Hero 深字压深遮罩实机案） ──
+ * `surface-ink` 是**压在 `surface-media-scrim` 上的文字色**，两者必须反向（暗遮罩配亮墨）。
+ * 作者常直接抄 `text-primary`——浅色主题就会得到「深棕字压深棕遮罩」，Hero/封面文字几乎看不见。
+ * 这里做一道语义校验（schema 管不了颜色关系）：两边都能解析成字面色才判；var()/color-mix() 跳过。
+ * 判据 = WCAG 对比度，取「遮罩压在黑/白两种极端底图」的**最差**值，阈值 4.5:1（正文级）。 */
+
+interface RgbaColor { r: number; g: number; b: number; a: number }
+
+const clampByte = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
+
+function parseColorLiteral(raw: string): RgbaColor | null {
+  const v = raw.trim().toLowerCase();
+  const hex = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/);
+  if (hex) {
+    const h = hex[1];
+    if (h.length === 3) {
+      return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16), a: 1 };
+    }
+    if (h.length === 6) {
+      return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: 1 };
+    }
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16),
+      a: parseInt(h.slice(6, 8), 16) / 255,
+    };
+  }
+  const fn = v.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/);
+  if (fn) {
+    const alpha = fn[4] == null
+      ? 1
+      : Number.parseFloat(fn[4]) / (fn[4].endsWith("%") ? 100 : 1);
+    return {
+      r: clampByte(Number.parseFloat(fn[1])),
+      g: clampByte(Number.parseFloat(fn[2])),
+      b: clampByte(Number.parseFloat(fn[3])),
+      a: Math.min(1, Math.max(0, alpha)),
+    };
+  }
+  return null;
+}
+
+/** 相对亮度（WCAG 2.x） */
+function relativeLuminance(r: number, g: number, b: number): number {
+  const lin = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function contrastRatio(a: number, b: number): number {
+  const [hi, lo] = a > b ? [a, b] : [b, a];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** 半透明遮罩压在纯黑/纯白底图上的最差对比度——底图不可知，取两端 */
+function worstInkContrast(ink: RgbaColor, scrim: RgbaColor): number {
+  const inkLum = relativeLuminance(ink.r, ink.g, ink.b);
+  const over = (bg: number) => {
+    const mix = (c: number) => c * scrim.a + bg * (1 - scrim.a);
+    return relativeLuminance(mix(scrim.r), mix(scrim.g), mix(scrim.b));
+  };
+  return Math.min(contrastRatio(inkLum, over(0)), contrastRatio(inkLum, over(255)));
+}
+
+/** 主题配方的媒体墨色检查——返回错误串（空 = 通过/无可判定值） */
+function collectMediaInkErrors(path: string, data: unknown): string[] {
+  if (data == null || typeof data !== "object") return [];
+  const colorways = (data as { colorways?: unknown }).colorways;
+  if (!Array.isArray(colorways)) return [];
+  const errors: string[] = [];
+  for (const cw of colorways) {
+    if (cw == null || typeof cw !== "object") continue;
+    const colors = (cw as { colors?: unknown }).colors;
+    if (colors == null || typeof colors !== "object") continue;
+    const map = colors as Record<string, unknown>;
+    const inkRaw = map["surface-ink"];
+    const scrimRaw = map["surface-media-scrim"];
+    if (typeof inkRaw !== "string" || typeof scrimRaw !== "string") continue;
+    const ink = parseColorLiteral(inkRaw);
+    const scrim = parseColorLiteral(scrimRaw);
+    if (!ink || !scrim) continue; // var()/color-mix()/命名色——解析不了就不判
+    const ratio = worstInkContrast(ink, scrim);
+    if (ratio < 4.5) {
+      const id = typeof (cw as { id?: unknown }).id === "string" ? ` colorway "${(cw as { id: string }).id}"` : "";
+      errors.push(
+        `${basename(path)}:${id} 的 surface-ink（${inkRaw}）压 surface-media-scrim（${scrimRaw}）对比度仅 `
+        + `${ratio.toFixed(1)}:1（< 4.5:1）——商店 Hero/封面上的文字会看不清。`
+        + `暗遮罩配亮墨、亮遮罩配暗墨；⛔ 不要直接抄 text-primary。`,
+      );
+    }
+  }
+  return errors;
+}
+
 /** 校验主题数据 JSON 文件（对照 theme.schema.json draft-07——E5.8#129，引擎 parseThemeRecipe 消费格式） */
 export function validateThemeJson(path: string): ValidationResult {
-  return validateDataFile(path, getThemeValidator());
+  const base = validateDataFile(path, getThemeValidator());
+  if (!base.valid) return base;
+  const read = readDataFileStrict(path);
+  const semantic = "data" in read ? collectMediaInkErrors(path, read.data) : [];
+  return semantic.length > 0 ? { valid: false, errors: semantic } : base;
 }
 
 /** 校验图标主题 mappings JSON 文件（对照 icon-theme.schema.json 2020-12——E5.8#133 / E6#60 实收格式，引擎 normalizeIconThemeMappings 消费） */
