@@ -176,6 +176,15 @@
       "replacedBy": "ManagerView（@linkdesk/ui 共享组装视图 ＋ buildManagerModel／orderRows／filterRows；since 0.2.52）",
       "landing": "无落点（插件仓随件删除；壳源码面零残留）",
       "approvedBy": "用户 · 2026-10-06"
+    },
+    {
+      "name": "app.mixReset",
+      "kind": "configKey",
+      "since": "2026-11-24",
+      "why": "v0.2.62「外观复位入口归位」：撤掉独立复位行，复位入口改为外观模式行齿轮菜单的 theme.resetMix 命令（同一动作、少一行；用户实机反馈驱动）",
+      "replacedBy": "theme.resetMix（外观模式行齿轮菜单；src/core/commands/input-bindings/shellMenus.ts:128 when settingKey=='app.appearanceMode'）",
+      "landing": "src/core/commands/shell/settingsCommands.ts:351",
+      "approvedBy": "用户 · 2026-11-24（v0.2.62 实机反馈「复位按钮在最底部、默认置灰、点了没反应」→ 撤行改齿轮菜单，已发版）"
     }
   ]
 }
