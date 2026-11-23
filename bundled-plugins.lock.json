@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-11-23T18:16:34.930Z",
+  "syncedAt": "2026-11-23T19:00:53.119Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -46,9 +46,9 @@
     {
       "id": "serial-monitor",
       "repo": "Encaron/linkdesk-plugin-serial-monitor",
-      "version": "1.0.40",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-serial-monitor/releases/download/v1.0.40/serial-monitor.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:e6f44c159ad52f424bb4c97df136f7711f96e7ad45485377025b5aea5fe39576\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:1eb3c0b4c4bf5f9eae9c321457980d95e79cb75115a00e3917285604e91aafcf\ndocs/readme/en.md:c3eb8261a2ca588d42f831d7704ec162979ce94913a5c50a4b03ab062c2fc0c5\ni18n/en.json:f7965b201bfd4e592360402b0f6d3b674247ffaefd070285574fc46a92342ca5\nindex.bundle.css:4ea4df45a8e92985662bbdafe3068759a364b670d926b2d3eff392487c191df5\nindex.bundle.js:b165afd0802c8be99fea266058e36cc359c533869df20440fbd487d9ee5a6ade\nplugin.json:c2440475b94d5315714c19a6f25eb6bf3d6d8f0657d63f604db32727d98b99ab\npluginId-BXS91V9k.js:160994e5fb044ae098ae19999ea7f75f022b7493ecd5b3c841cdb430ffd8bac3\nresources/cover.svg:cfe36821784bad38a84d51ed9349bfc54037f9ac5cdc09d9c61166ae940e8d73\nresources/icon-bar.svg:5d769d20d92899c4530b7372efb41a14539818a819ac640664e41275a51114e2\nresources/icon.svg:2583933e504c70e8f0b44ac2be3c82b3db48c75631c8511ce7bb30fe86a4990b\nstatusBar.bundle.js:b1b81428b45de1947b0e2f845d52640e37d6e2e21e52d883a6f1b02ffae08806\nstore-BZnnHs5c.js:12cf955c7dcbb782198b8217aacefbdd54c6ff181492d8e77720d30aaf45e0cd\nusePortStats-AVBemyHD.js:734932d167da8caf0578b0d3d4c30928ceda28c1968916e9d73cf005210ebd9a\nuseSerialContext-UnXV54ci.js:7b75ac7cbb7704690f752b58b8e220b4e2893e5e0df78aeaab15e4ea1be79276\nviews/SerialSettingsView.bundle.js:417aec3784871651b082775c2721a533dc5ea9d3f36d0f56a36759102555a1c1\nviews/SessionListView.bundle.js:eee91ebb8af2635199b98a1661a1583056f1443904bce996f133a7bb4cf8e06a",
+      "version": "1.0.41",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-serial-monitor/releases/download/v1.0.41/serial-monitor.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:06f86b16dda96aab8e93e22a31c9aa0f91a423bb728e1b8fb80f8277e879d8bc\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:1eb3c0b4c4bf5f9eae9c321457980d95e79cb75115a00e3917285604e91aafcf\ndocs/readme/en.md:c3eb8261a2ca588d42f831d7704ec162979ce94913a5c50a4b03ab062c2fc0c5\ni18n/en.json:f7965b201bfd4e592360402b0f6d3b674247ffaefd070285574fc46a92342ca5\nindex.bundle.css:4ea4df45a8e92985662bbdafe3068759a364b670d926b2d3eff392487c191df5\nindex.bundle.js:b165afd0802c8be99fea266058e36cc359c533869df20440fbd487d9ee5a6ade\nplugin.json:81a4e571e38dcd373a13700d0f5c5fbfe9f14684882c4fb5eb8928da16248155\npluginId-BXS91V9k.js:160994e5fb044ae098ae19999ea7f75f022b7493ecd5b3c841cdb430ffd8bac3\nresources/cover.svg:3bf84654777e6bfd4f03f77d8375200dff5ed89b0c94f144d21a57872e9e83da\nresources/icon-bar.svg:5d769d20d92899c4530b7372efb41a14539818a819ac640664e41275a51114e2\nresources/icon.svg:2583933e504c70e8f0b44ac2be3c82b3db48c75631c8511ce7bb30fe86a4990b\nstatusBar.bundle.js:b1b81428b45de1947b0e2f845d52640e37d6e2e21e52d883a6f1b02ffae08806\nstore-BZnnHs5c.js:12cf955c7dcbb782198b8217aacefbdd54c6ff181492d8e77720d30aaf45e0cd\nusePortStats-AVBemyHD.js:734932d167da8caf0578b0d3d4c30928ceda28c1968916e9d73cf005210ebd9a\nuseSerialContext-UnXV54ci.js:7b75ac7cbb7704690f752b58b8e220b4e2893e5e0df78aeaab15e4ea1be79276\nviews/SerialSettingsView.bundle.js:417aec3784871651b082775c2721a533dc5ea9d3f36d0f56a36759102555a1c1\nviews/SessionListView.bundle.js:eee91ebb8af2635199b98a1661a1583056f1443904bce996f133a7bb4cf8e06a",
       "seed": false
     },
     {
@@ -86,9 +86,9 @@
     {
       "id": "theme-panorama",
       "repo": "Encaron/linkdesk-plugin-theme-panorama",
-      "version": "1.1.0",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-panorama/releases/download/v1.1.0/theme-panorama.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:392438c0a0fb650a3c0ffe5339436ea2d5b16a11636255d932f23c546de81135\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d1ca25e714da795fb770b5b4d19dafad984c616b843c861b33a6fc9ee9b91fa9\ndocs/readme/en.md:e559d6df68fd343af6b4612dd74c26742e33741ba4ce82058ff62c11367674ad\ni18n/en.json:f460c9d6b1cfbd7e087ed3c17e139d48b8b1c00239018121144ecf98b4ecfbd0\nplugin.json:995dcc620838796663808cc79a84503b0e0475ad935c019f43230dc11a0bf101\nresources/icon.svg:e8890976d944521790c0afffd339bd9169b2ca591a1da9f2a4aa254d8b7483c5\nresources/sailor-moon.jpg:858f0173d0ccc5926a5eaeed28b883b2f1e1b676a1ae3bcb48e6fe1f6a0ee8f7\nthemes/panorama.json:4e5e5602776f78bf2c2852ce532b2e51fed9ba90c18391733269c3839fece351",
+      "version": "1.1.1",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-panorama/releases/download/v1.1.1/theme-panorama.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:544e6dfaeb933c58f2fc32925eeb13b67bbc3a96ddb82aca5b6133c52e4c5ceb\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d1ca25e714da795fb770b5b4d19dafad984c616b843c861b33a6fc9ee9b91fa9\ndocs/readme/en.md:e559d6df68fd343af6b4612dd74c26742e33741ba4ce82058ff62c11367674ad\ni18n/en.json:f460c9d6b1cfbd7e087ed3c17e139d48b8b1c00239018121144ecf98b4ecfbd0\nplugin.json:65a7da279b43ea70cd6d3ace97bdcbee02b7e0b1978eed78663780ebf9a39bbc\nresources/icon.svg:e8890976d944521790c0afffd339bd9169b2ca591a1da9f2a4aa254d8b7483c5\nresources/sailor-moon.jpg:858f0173d0ccc5926a5eaeed28b883b2f1e1b676a1ae3bcb48e6fe1f6a0ee8f7\nthemes/panorama.json:eac42751a3b8d6f0cc558caadd1bd94b82982150c39cc7c5cf8d7c085b006d29",
       "seed": false
     },
     {
