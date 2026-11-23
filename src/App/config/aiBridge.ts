@@ -14,7 +14,7 @@
  *     数据源 ⛔ 不写死字符串。仅 `ai.scope.summary`：多行明细，且**没有可挂的主控件**
  *     ——⛔ 不为它新增枚举键，故仍独立成行）
  *   · 按钮 ×9（`renderHint:"action"` ＋ `actionCommand`；**按钮文案 = `description`**——action 行
- *     只有这一个字符串可承载文案，先例 `appearance.ts` 的 `app.mixReset`）
+ *     只有这一个字符串可承载文案，先例 `appearance.ts` 里的外观复位入口（2026-11-24 起改齿轮菜单））
  *
  * 🔴 设置行案 D4（2026-10-03 用户拍板 · 2026-10-04 落仓）：原本「开关一行 ＋ 状态一行」的四对
  *   **合并成一行**——开关键原地加 `statusCommand` 伴生声明；`ai.mcp.status` / `ai.cli.status` /
