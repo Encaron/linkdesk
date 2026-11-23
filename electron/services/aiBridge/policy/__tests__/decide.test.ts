@@ -17,16 +17,12 @@ import {
 
 const RISKS: Risk[] = ["R0", "R1", "R2", "R3"];
 
-/* 规格矩阵的**独立复述**（oracle）：测试故意不 import 实现里的 MATRIX，
- * 否则「实现即预言」——实现写错测试也照绿。与 decide.ts 的克隆命中按此豁免。 */
-/* jscpd:ignore-start */
 const EXPECTED: Record<PolicyMode, Record<Risk, string>> = {
   read: { R0: "allow", R1: "deny", R2: "deny", R3: "deny" },
   ask: { R0: "allow", R1: "ask", R2: "ask", R3: "ask" },
   auto: { R0: "allow", R1: "allow", R2: "allow", R3: "ask" },
   full: { R0: "allow", R1: "allow", R2: "allow", R3: "allow" },
 };
-/* jscpd:ignore-end */
 
 describe("decide：4×4 判定矩阵（16 格）", () => {
   it("四档 × 四级与规格矩阵逐格一致", () => {
