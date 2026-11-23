@@ -123,11 +123,11 @@ export function createPoolEvents(): EventSystemApi {
     logPrefix: 'preload-pool',
     extraHandlers: {
       [IPC.theme.changed]: (payload) => {
-        const { themeType, variables, fontFaces } = payload as ThemeChangedPayload;
+        const { themeType, polarity, variables, fontFaces } = payload as ThemeChangedPayload;
         try {
           const root = document.documentElement;
           const vars = (variables ?? {}) as Record<string, string>;
-          root.setAttribute('data-theme', themeType ?? 'dark');
+          root.setAttribute('data-theme', polarity ?? themeType ?? 'dark');
           // E5.8#72：清上一次广播写过、本次没写的陈旧键——换配方/换主题无残留
           if (_lastPoolThemeKeys) {
             for (const key of _lastPoolThemeKeys) {

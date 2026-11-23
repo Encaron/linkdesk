@@ -2,6 +2,12 @@
 
 ## v0.2.61（2026-11-23）
 
+### feat
+
+- 🧭 **主题极性归一化 · Phase 1**：`data-theme` / 图标反向光晕 / `theme:changed` / 启动快照改用**派生 polarity**——按生效 `text-primary` vs `bg-window-solid` 亮度判，不再照抄作者声明的 `type`。暗配方 + 亮配色等跨明暗场景，四处（CSS、图标、标签、后续编辑器）从同一条真相出发。
+  - 新增 `resolvePolarity(tokens, fallback)`；`theme:changed` 增 `polarity`（`themeType` 同值保留兼容），池侧优先读它写 `data-theme`。
+  - 快照升 `v2`（`ldk.theme.snapshot.v2`），旧快照静默弃用；单测 +5（跨色/玻璃/相等亮度/回退）。
+
 ### fix
 
 - 🎛️ **开关颜色改由「有效强调色」派生**（用户实机：金/紫配色 + 自定义蓝/绿强调时，开关两半撞色系）：旧实现 OFF 轨道吃 `--border`（带配色色相）、OFF 圆点吃 `--toggle-knob`（玫瑰窗/极光把它写成配色 accent）、ON 圆点吃主题的 `toggle-knob-on`——强调色一旦独立，三处各说各话。

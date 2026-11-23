@@ -10,8 +10,8 @@
  * 快照坏 / 版本不符 / 关键键缺失 → 读侧返回 null，一切按现状走：不重试、不写默认值、不刷日志。
  */
 
-const SNAPSHOT_KEY = "ldk.theme.snapshot.v1";
-const SNAPSHOT_VERSION = 1;
+const SNAPSHOT_KEY = "ldk.theme.snapshot.v2";
+const SNAPSHOT_VERSION = 2;
 /** 关键键——缺失 = 快照不完整（校验失败走现状兜底） */
 const REQUIRED_KEYS = ["--bg-window", "--text-primary"] as const;
 

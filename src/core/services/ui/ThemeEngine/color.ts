@@ -137,3 +137,27 @@ export function colorLuminance(color: string): number | null {
   };
   return 0.2126 * linear(parsed.r) + 0.7152 * linear(parsed.g) + 0.0722 * linear(parsed.b);
 }
+
+/** 明暗极性——主题/混搭的**唯一渲染真相**（`light` = 亮底深字；`dark` = 暗底亮字）。
+ *
+ *  判据：正文墨色 `text-primary` 与表面 `bg-window-solid`（退 `bg-card-solid` / `bg-window` / `bg-card`）
+ *  的相对亮度。表面优先取合成后的 `-solid`（已去 alpha、吸收玻璃/tint），所以玻璃、图片遮罩、跨明暗
+ *  配色都按“实际生效值”判，而不是作者声明的 type。
+ *
+ *  解析不出（`var()` / `color-mix()` / 缺键）→ 回落作者 hint；hint 也没有 → `light`（:root 兜底方向）。
+ *  相等亮度按 `dark`（亮字压暗面）处理，避免黑底纯黑字被误判成亮色。
+ */
+export function resolvePolarity(
+  tokens: Record<string, string>,
+  fallback: "light" | "dark" = "light",
+): "light" | "dark" {
+  const text = tokens["text-primary"];
+  const surface = tokens["bg-window-solid"]
+    ?? tokens["bg-card-solid"]
+    ?? tokens["bg-window"]
+    ?? tokens["bg-card"];
+  const textLum = text ? colorLuminance(text) : null;
+  const surfaceLum = surface ? colorLuminance(surface) : null;
+  if (textLum == null || surfaceLum == null) return fallback;
+  return textLum >= surfaceLum ? "dark" : "light";
+}

@@ -17,6 +17,7 @@ import {
 } from "./mix";
 import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces, synthesizeIconGlow } from "./tokens";
 import { resolveRecipeFonts } from "./fonts";
+import { resolvePolarity } from "./color";
 import { getAppearanceOverrides, getThemeGlassSurfaceSpec, getIconGlowSpec } from "./seeds";
 import { setActiveRecipe, setCurrentTheme } from "./state";
 
@@ -33,9 +34,11 @@ export function applyTheme(theme: Theme): void {
   // 2026-11-23：玻璃激活 = 用户配置 ∨ **主题声明**（跟随主题也合成）——表面 alpha 来自
   // 用户 glassOpacity（custom）或主题 glass.opacity（followTheme），不再依赖 rgba 写法。
   synthesizeGlassSurfaces(variables, getThemeGlassSurfaceSpec(theme.surface));
+  // 2026-11-24 极性归一化：渲染真相 = 生效 token 派生（type 只作 hint）。图标晕/提交/广播/快照共用。
+  const polarity = resolvePolarity(variables, theme.type);
   // 主题前景可读性 · 第 1 刀：图标反向光晕——挂底图时按墨色极性发 filter 串（同位置：覆盖后、提交前）
-  synthesizeIconGlow(variables, getIconGlowSpec(theme.type));
-  commitTokens(variables, theme.type, { recipeId: theme.name });
+  synthesizeIconGlow(variables, getIconGlowSpec(polarity));
+  commitTokens(variables, polarity, { recipeId: theme.name });
   setCurrentTheme(theme);
   // flat apply 清 recipe 态——两路径互斥（#50.18 IPC 接线后 flat 桥退役）
   setActiveRecipe(null, null);
@@ -91,11 +94,13 @@ export function applyRecipe(
     ? resolveMixDomainRecipe("glass", getMixProfile(), recipe, colorway).appearance?.glass
     : recipe.appearance?.glass;
   synthesizeGlassSurfaces(effective, getThemeGlassSurfaceSpec(glassSurface));
-  // 主题前景可读性 · 第 1 刀：图标反向光晕（同位置；配方 type 决定未显式 fontTone 时的极性）
-  synthesizeIconGlow(effective, getIconGlowSpec(recipe.type));
+  // 2026-11-24 极性归一化：派生值 = 渲染真相；声明 type 只作 token 解析失败的 hint。
+  const polarity = resolvePolarity(effective, recipe.type);
+  // 主题前景可读性 · 第 1 刀：图标反向光晕（同位置；未显式 fontTone 时回落派生极性）
+  synthesizeIconGlow(effective, getIconGlowSpec(polarity));
   commitTokens(
     effective,
-    recipe.type,
+    polarity,
     { recipeId: recipe.id, colorwayId: colorway.id, domains },
     fontFaces
   );

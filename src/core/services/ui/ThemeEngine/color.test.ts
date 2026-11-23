@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { capTintAlpha, opaqueColor, readableSurfaceBase } from "./color";
+import { capTintAlpha, opaqueColor, readableSurfaceBase, resolvePolarity } from "./color";
 
 describe("capTintAlpha — E5.8#151 tint 强制半透明", () => {
   /* ── hex ── */
@@ -73,5 +73,36 @@ describe("capTintAlpha — E5.8#151 tint 强制半透明", () => {
     expect(readableSurfaceBase("#FFFFFF", ["rgba(255,255,255,0.10)", "rgba(10,14,20,0.30)"])).toBe("rgb(10,14,20)");
     expect(readableSurfaceBase("#FFFFFF", ["#2D2D2D", "#1E1E1E"])).toBe("rgb(45,45,45)");
     expect(readableSurfaceBase("#2D2D2D", ["#F5F5F5", "#FFFFFF"])).toBe("rgb(245,245,245)");
+  });
+});
+
+describe("resolvePolarity — 2026-11-24 极性归一化（声明 type 只作 hint）", () => {
+  it("亮底深字 → light；暗底亮字 → dark", () => {
+    expect(resolvePolarity({ "text-primary": "#1F160D", "bg-window-solid": "rgb(255,255,255)" })).toBe("light");
+    expect(resolvePolarity({ "text-primary": "#FFF7E6", "bg-window-solid": "rgb(10,14,20)" })).toBe("dark");
+  });
+
+  it("跨明暗配色：声明 hint 与生效 token 冲突 ⇒ 以 token 为准", () => {
+    // 暗配方 + 亮色 colorway：hint=dark，但生效是亮底深字
+    expect(resolvePolarity({ "text-primary": "#1F160D", "bg-card-solid": "rgb(255,253,248)" }, "dark")).toBe("light");
+    // 亮配方 + 暗色 colorway
+    expect(resolvePolarity({ "text-primary": "#FFF7E6", "bg-window-solid": "rgb(16,16,20)" }, "light")).toBe("dark");
+  });
+
+  it("表面键优先级：-solid > bg-window > bg-card；玻璃合成后以 solid 为准", () => {
+    expect(resolvePolarity({
+      "text-primary": "#FFFFFF",
+      "bg-window-solid": "rgb(0,0,0)",
+      "bg-window": "rgba(255,255,255,0.9)",
+    })).toBe("dark");
+  });
+
+  it("解析不出 / 缺键 → 回落 hint； hint 也无 → light", () => {
+    expect(resolvePolarity({ "text-primary": "var(--text-primary)", "bg-window-solid": "color-mix(in srgb, #fff 40%, transparent)" }, "dark")).toBe("dark");
+    expect(resolvePolarity({})).toBe("light");
+  });
+
+  it("相等亮度按 dark（亮字压暗面）——避免黑底纯黑字被误判亮色", () => {
+    expect(resolvePolarity({ "text-primary": "#777777", "bg-window-solid": "rgb(119,119,119)" })).toBe("dark");
   });
 });

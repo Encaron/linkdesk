@@ -123,17 +123,18 @@ export function getThemeVariables(theme: Theme): Record<string, string> {
 /**
  * 提交生效 token 集到 :root + 广播 theme:changed + 事件。
  * 陈旧 token 清理：上一次 commit 写过、本次没写的键 removeProperty——换配方/换 flat 主题无残留。
- * （accent 三键经 applyAccentColor 单独写，不在提交集内，不受清理影响。）
+ * （accent 四键经 applyAccentColor 单独写，不在提交集内，不受清理影响。）
  */
 export function commitTokens(
   variables: Record<string, string>,
-  themeType: "light" | "dark",
+  /** 派生极性（2026-11-24）——不是作者声明 type；data-theme / 通知 / 快照 / 广播都用它 */
+  polarity: "light" | "dark",
   state: { recipeId: string; colorwayId?: string; domains?: ThemeDomain[] },
   fontFaces?: FontFaceSpec[]
 ): void {
   // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
   const linkdesk = window.linkdesk;
-  linkdesk?.events?.notifyTheme?.(themeType === "dark");
+  linkdesk?.events?.notifyTheme?.(polarity === "dark");
 
   const root = document.documentElement;
   // E2c #19h A1：清上一次提交的陈旧键——防止换配方残留
@@ -147,10 +148,10 @@ export function commitTokens(
     root.style.setProperty(`--${key}`, value);
   }
   setLastCommittedKeys(Object.keys(variables));
-  root.setAttribute("data-theme", themeType);
+  root.setAttribute("data-theme", polarity);
 
   // 04「启动过场」④A：权威应用完成 → 写快照（开机第一帧原样铺回去；镜像层零逻辑，见 snapshot.ts）
-  writeThemeSnapshot(themeType, variables);
+  writeThemeSnapshot(polarity, variables);
 
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
   // E5.8#50.17：fontFaces 随载荷带给池——池侧复刻 @font-face（独立文档，壳注册的不生效）
@@ -168,7 +169,8 @@ export function commitTokens(
     }
     linkdesk.bridge.broadcast("theme:changed", {
       themeId: state.recipeId,
-      themeType,
+      themeType: polarity, // 兼容旧消费方：同值
+      polarity,             // 新契约：派生极性（唯一渲染真相）
       variables: broadcastVars,
       ...(fontFaces?.length ? { fontFaces } : {}),
       ...(state.domains?.length

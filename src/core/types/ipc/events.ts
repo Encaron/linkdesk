@@ -29,6 +29,8 @@ export interface FontFaceSpec {
  *  flat applyTheme (legacy-format bridge) omits them—existing consumers (pool events.ts reads themeType/variables/fontFaces) need zero changes. */
 export interface ThemeChangedPayload {
   themeType: string;
+  /** 派生极性（2026-11-24）——渲染真相；与 themeType 同值保留兼容。池侧优先读它写 data-theme */
+  polarity?: "light" | "dark";
   variables: Record<string, string>;
   /** All @font-face involved in the current recipe—replicated and injected pool-side; a recipe without asset fonts → omitted (the pool clears the previous injection) */
   fontFaces?: FontFaceSpec[];
