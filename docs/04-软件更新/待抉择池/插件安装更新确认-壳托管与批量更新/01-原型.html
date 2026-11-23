@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LinkDesk · 插件安装/更新确认 · 设计原型</title>
+<title>LinkDesk · 插件安装/更新确认 · 设计原型 v2</title>
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   LinkDesk 设计原型 · 暗色玻璃 / 绿色强调 / 密度 8 / 动效 3
-   仅用于评审：不是产品代码，不接真实 IPC。
+   LinkDesk 设计原型 v2 · 对齐真实实现
+   - 完成态 = 轻 toast（TransientToast）+ 铃铛通知面板（同一 store 双呈现）
+   - 设置 = 通用组 → 更新 → 插件更新（两条独立 Toggle，非单选）
+   - 批量 = 混合来源只列需确认项 + 20+ 滚动
+   - 确认 UI = 可替换渲染槽（默认壳渲染器）；逻辑/token/队列在壳
    ═══════════════════════════════════════════════════════════════ */
 :root{
   --bg:#080c0b;
@@ -29,8 +32,8 @@
   --info:#60a5fa;
   --radius:14px;
   --radius-sm:9px;
-  --shadow:0 22px 60px rgba(0,0,0,.55);
-  --font:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,"Microsoft YaHei",sans-serif;
+  --shadow:0 14px 34px rgba(0,0,0,.45);
+  --font:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,"Microsoft YaHei",sans-serif;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -46,9 +49,14 @@ body{
   line-height:1.45;
   -webkit-font-smoothing:antialiased;
 }
-button,input{font:inherit;color:inherit}
+::selection{background:rgba(34,197,94,.30);color:#f2fff7}
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#2c3a34;border-radius:999px;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{background:#3b4d45;background-clip:content-box}
+button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
-button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 svg{display:block}
 .hidden{display:none!important}
 
@@ -59,14 +67,16 @@ svg{display:block}
   background:var(--bg-window);
   border:1px solid var(--border);
   border-radius:16px;
-  overflow:hidden;
+  overflow:visible;
   box-shadow:var(--shadow);
   display:flex;flex-direction:column;
-  min-height:calc(100vh - 28px);
+  height:calc(100vh - 28px);
+  min-height:620px;
 }
 .titlebar{
-  height:34px;flex:none;display:flex;align-items:center;gap:10px;
-  padding:0 12px;background:#0a100e;border-bottom:1px solid var(--border);
+  height:38px;flex:none;display:flex;align-items:center;gap:10px;
+  padding:4px 12px;background:#0a100e;border-bottom:1px solid var(--border);
+  border-radius:16px 16px 0 0;
   color:var(--muted);font-size:12px;user-select:none;
 }
 .dots{display:flex;gap:6px;margin-right:4px}
@@ -78,7 +88,7 @@ svg{display:block}
   padding:8px 12px;background:#0b1210;border-bottom:1px solid var(--border);
 }
 .proto-badge{
-  font-size:11px;letter-spacing:.04em;color:var(--accent);
+  font-size:12px;letter-spacing:.04em;color:var(--accent);
   border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);
   border-radius:999px;padding:3px 9px;margin-right:6px;white-space:nowrap;
 }
@@ -111,16 +121,36 @@ svg{display:block}
 }
 .tab.is-active{background:var(--panel);color:var(--text);border:1px solid var(--border);border-bottom-color:var(--panel)}
 .tab .mini{width:8px;height:8px;border-radius:2px;background:var(--accent)}
-.content{flex:1;min-height:0;overflow:auto;padding:18px 20px 30px}
+.content{flex:1;min-height:0;overflow:auto;padding:18px 20px 28px}
 .view{display:none}
 .view.is-active{display:block}
 
-/* ── 商店布局 ── */
-.store-shell{display:flex;gap:18px;align-items:flex-start}
-.store-rail{
-  width:156px;flex:none;display:flex;flex-direction:column;gap:3px;
-  position:sticky;top:0;
+/* ── 状态栏（真实完成态挂这里）── */
+.statusbar{
+  height:32px;flex:none;display:flex;align-items:center;gap:10px;
+  padding:4px 12px;background:#0a100e;border-top:1px solid var(--border);
+  border-radius:0 0 16px 16px;
+  color:var(--muted);font-size:12px;user-select:none;
 }
+.status-left{display:flex;align-items:center;gap:9px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.status-sep{width:1px;height:12px;background:var(--border)}
+.status-right{margin-left:auto;display:flex;align-items:center;gap:2px}
+.status-right button{
+  height:22px;padding:0 8px;border-radius:6px;color:var(--muted);font-size:12px;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.status-right button:hover{background:var(--panel);color:var(--text)}
+.bell{position:relative}
+.bell-badge{
+  min-width:16px;height:16px;border-radius:999px;background:#b91c1c;color:#fff;
+  font-size:12px;display:none;place-items:center;padding:0 4px;margin-left:2px;
+}
+.bell-badge.is-on{display:inline-grid}
+
+/* ── 商店 ── */
+.store-shell{display:flex;gap:18px;align-items:flex-start}
+.store-rail{width:156px;flex:none;display:flex;flex-direction:column;gap:3px;position:sticky;top:0}
 .store-rail .rail-home{
   display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;
   border:1px solid rgba(34,197,94,.35);background:var(--accent-soft);color:#c8f7d6;
@@ -132,7 +162,7 @@ svg{display:block}
 }
 .store-rail button:hover{background:var(--panel);color:var(--text)}
 .store-rail button.is-active{background:var(--panel-2);color:var(--text)}
-.store-rail .n{margin-left:auto;font-size:11px;color:var(--muted)}
+.store-rail .n{margin-left:auto;font-size:12px;color:var(--muted)}
 .store-rail .dot-g{width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:auto}
 .store-main{flex:1;min-width:0}
 
@@ -144,7 +174,7 @@ svg{display:block}
   display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);
   border-radius:10px;padding:8px 11px;min-width:230px;color:var(--muted);
 }
-.search input{background:none;border:0;outline:0;width:100%;color:var(--text)}
+.search input{background:none;border:0;outline:0;width:100%;color:var(--text);caret-color:var(--accent)}
 .search input::placeholder{color:var(--muted)}
 .btn{
   display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);
@@ -157,23 +187,24 @@ svg{display:block}
 .btn-primary:hover{background:#35d96f;border-color:#35d96f;color:#04140a}
 .btn-ghost{background:transparent}
 .btn-danger{color:#ffd4d4;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.12)}
-.btn-sm{padding:5px 9px;font-size:11px;border-radius:8px}
+.btn-sm{padding:5px 9px;font-size:12px;border-radius:8px}
 .count{
-  min-width:18px;height:18px;border-radius:999px;background:var(--danger);color:#fff;
-  font-size:11px;display:inline-grid;place-items:center;padding:0 5px;
+  min-width:18px;height:18px;border-radius:999px;background:#b91c1c;color:#fff;
+  font-size:12px;display:inline-grid;place-items:center;padding:0 5px;
 }
 .library-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 12px}
 .library-head h2{margin:0;font-size:19px}
 .library-head .meta{color:var(--muted);font-size:12px}
 .library-head .grow{flex:1}
+.policy-chip{
+  display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(34,197,94,.3);
+  background:rgba(34,197,94,.07);color:#a9e8bd;border-radius:999px;padding:3px 9px;font-size:12px;
+}
+.policy-chip:hover{background:rgba(34,197,94,.14)}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .filters .btn{background:var(--panel)}
-.filters .sel{color:var(--text)}
 .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
-.card{
-  position:relative;min-height:104px;border-radius:var(--radius);
-  outline:0;
-}
+.card{position:relative;min-height:104px;border-radius:var(--radius);outline:0}
 .card-surface{
   position:absolute;top:0;left:0;right:0;min-height:104px;padding:15px 16px;
   border-radius:var(--radius);border:1px solid transparent;background:var(--card);
@@ -182,7 +213,7 @@ svg{display:block}
 }
 .card:hover .card-surface,.card:focus-within .card-surface{
   left:-14px;right:-14px;background:rgba(32,44,39,.94);
-  border-color:var(--border-hi);box-shadow:0 18px 42px rgba(0,0,0,.45),0 0 0 1px rgba(34,197,94,.10);
+  border-color:var(--border-hi);box-shadow:0 14px 30px rgba(0,0,0,.40),0 0 0 1px rgba(34,197,94,.10);
   backdrop-filter:blur(16px) saturate(1.15);-webkit-backdrop-filter:blur(16px) saturate(1.15);
   z-index:20;transform:scale(1.015);
 }
@@ -197,31 +228,30 @@ svg{display:block}
 }
 .tile svg{width:22px;height:22px}
 .card-name{font-size:14px;font-weight:700;margin:1px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.card-meta{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;min-width:0}
+.card-meta{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;min-width:0}
 .badge{
   display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 8px;
-  font-size:10px;font-weight:700;letter-spacing:.02em;white-space:nowrap;flex:none;
+  font-size:12px;font-weight:700;letter-spacing:.02em;white-space:nowrap;flex:none;
 }
 .badge-update{background:rgba(245,158,11,.16);color:#ffd48a;border:1px solid rgba(245,158,11,.35)}
 .badge-installed{background:rgba(34,197,94,.10);color:#a9e8bd;border:1px solid rgba(34,197,94,.28)}
 .badge-free{background:rgba(96,165,250,.12);color:#b7d6ff;border:1px solid rgba(96,165,250,.3)}
-.card-stats{margin-top:10px;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.badge-third{background:rgba(96,165,250,.10);color:#b7d6ff;border:1px solid rgba(96,165,250,.25)}
+.card-stats{margin-top:10px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
 .card-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .18s cubic-bezier(.2,.7,.3,1);margin-top:0}
 .card-more-inner{overflow:hidden;min-height:0}
 .card:hover .card-more,.card:focus-within .card-more{grid-template-rows:1fr;margin-top:9px}
 .card-desc{color:var(--text-2);font-size:12px;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .card-actions{display:flex;align-items:center;gap:7px}
 .card-actions .btn{flex:none}
-.card-actions .icon-btn{
+.icon-btn{
   width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--border);
   border-radius:8px;background:var(--panel);color:var(--muted);
 }
-.card-actions .icon-btn:hover{color:var(--text);border-color:var(--border-hi);background:var(--panel-2)}
-.card-actions .spacer{flex:1}
-
+.icon-btn:hover{color:var(--text);border-color:var(--border-hi);background:var(--panel-2)}
 .event-line{
   margin-top:18px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;
-  color:var(--muted);font-size:11px;display:flex;gap:8px;align-items:center;
+  color:var(--muted);font-size:12px;display:flex;gap:8px;align-items:center;
 }
 .event-line .live{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(34,197,94,.12);flex:none}
 
@@ -231,9 +261,9 @@ svg{display:block}
   background:rgba(2,6,4,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);padding:20px;
 }
 .dialog{
-  width:min(660px,100%);max-height:calc(100vh - 40px);overflow:auto;
+  width:min(680px,100%);max-height:calc(100vh - 40px);overflow:auto;
   background:linear-gradient(180deg,rgba(26,37,32,.98),rgba(17,24,21,.99));
-  border:1px solid var(--border-hi);border-radius:18px;box-shadow:0 40px 100px rgba(0,0,0,.65);
+  border:1px solid var(--border-hi);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.55);
 }
 .dialog-head{display:flex;align-items:center;gap:12px;padding:20px 22px 0}
 .dialog-shield{
@@ -241,68 +271,167 @@ svg{display:block}
   background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:var(--accent);flex:none;
 }
 .dialog-head h2{margin:0;font-size:17px;letter-spacing:-.01em}
-.dialog-head .sub{color:var(--muted);font-size:11px;margin-top:2px}
+.dialog-head .sub{color:var(--muted);font-size:12px;margin-top:2px}
 .dialog-head .x{margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
 .dialog-head .x:hover{background:var(--panel);color:var(--text)}
 .dialog-body{padding:14px 22px 0}
 .dialog-note{color:var(--text-2);font-size:12px;margin:0 0 12px}
-.batch-list{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}
-.batch-row{
-  display:grid;grid-template-columns:38px 1fr auto;gap:11px;align-items:center;
-  padding:10px 11px;border:1px solid var(--border);border-radius:11px;background:rgba(10,16,14,.45);
-}
-.batch-row .tile{width:34px;height:34px;border-radius:9px}
-.batch-row .tile svg{width:18px;height:18px}
-.batch-name{font-weight:700;font-size:13px}
-.batch-sub{color:var(--muted);font-size:11px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.batch-sub .src{color:#a9e8bd;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:999px;padding:1px 7px;font-size:10px}
-.batch-ver{color:var(--text-2);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.batch-ver b{color:var(--accent);font-weight:700}
-.dialog-checks{display:flex;flex-direction:column;gap:7px;margin:6px 0 4px;color:var(--text-2);font-size:12px}
+.dialog-foot{display:flex;justify-content:flex-end;gap:9px;padding:18px 22px 20px}
+.dialog-checks{display:flex;flex-direction:column;gap:7px;margin:12px 0 4px;color:var(--text-2);font-size:12px}
 .check{display:flex;align-items:center;gap:8px;cursor:pointer}
 .check input{accent-color:var(--accent);width:15px;height:15px}
-.dialog-foot{display:flex;justify-content:flex-end;gap:9px;padding:18px 22px 20px}
 .kv{display:grid;grid-template-columns:92px 1fr;gap:7px 12px;margin:12px 0 6px;font-size:12px}
 .kv .k{color:var(--muted)}
 .kv .v{color:var(--text-2);min-width:0;overflow-wrap:anywhere}
 .kv .v b{color:var(--text)}
-.hash{font-family:"Cascadia Code",Consolas,monospace;font-size:11px;color:#a9e8bd;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:7px;padding:2px 6px}
+.hash{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;color:#a9e8bd;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:7px;padding:2px 6px}
 .warn-box{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);border-radius:11px;padding:10px 12px;color:#ffe1af;font-size:12px;margin:10px 0 2px}
-.danger-box{border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);border-radius:11px;padding:10px 12px;color:#ffd1d1;font-size:12px;margin:10px 0 2px}
-.arrow-down{display:flex;justify-content:center;color:var(--muted);margin:2px 0}
 
-/* ── 进度坞 ── */
-.dock{
-  position:fixed;right:22px;bottom:22px;width:min(390px,calc(100vw - 44px));z-index:110;
-  background:linear-gradient(180deg,rgba(26,37,32,.98),rgba(15,22,19,.99));
-  border:1px solid var(--border-hi);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;
+/* 批量 */
+.batch-summary{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 12px;
 }
-.dock-head{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid var(--border)}
-.dock-head h3{margin:0;font-size:13px}
-.dock-head .n{color:var(--muted);font-size:11px;margin-left:auto}
-.dock-head .close{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--muted)}
-.dock-head .close:hover{background:var(--panel);color:var(--text)}
-.dock-rows{padding:8px 12px 10px;display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
-.job{display:grid;grid-template-columns:28px 1fr auto;gap:9px;align-items:center;padding:7px 8px;border-radius:9px;background:rgba(10,16,14,.35)}
-.job .jicon{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:var(--panel);color:var(--muted)}
-.job.is-running .jicon{color:var(--accent)}
-.job.is-done .jicon{color:var(--accent);background:rgba(34,197,94,.12)}
-.job.is-failed .jicon{color:var(--danger);background:rgba(239,68,68,.10)}
-.job-name{font-size:12px;font-weight:600}
-.job-sub{color:var(--muted);font-size:10px;margin-top:1px}
-.bar{height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:5px}
-.bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width .2s}
-.job.is-failed .bar i{background:var(--danger)}
-.job-state{font-size:10px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-.job.is-running .job-state{color:var(--accent)}
-.job.is-done .job-state{color:#a9e8bd}
-.job.is-failed .job-state{color:#ff9d9d}
-.dock-foot{padding:9px 15px 12px;border-top:1px solid var(--border);color:var(--muted);font-size:10px;display:flex;align-items:center;gap:7px}
-.dock-foot .ok{color:var(--accent)}
+.batch-stat{border:1px solid var(--border);border-radius:10px;background:rgba(10,16,14,.4);padding:9px 10px}
+.batch-stat .n{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.batch-stat .l{color:var(--muted);font-size:12px;margin-top:2px}
+.batch-stat.is-ask .n{color:var(--accent)}
+.batch-stat.is-silent .n{color:var(--text-2)}
+.batch-scroll{max-height:330px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:rgba(10,16,14,.28)}
+.batch-group-head{
+  position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;
+  padding:8px 11px;background:rgba(21,30,26,.98);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+.batch-group-head .gname{font-size:12px;font-weight:700;color:var(--text-2)}
+.batch-group-head .gcount{margin-left:auto;font-size:12px;color:var(--muted)}
+.batch-row{
+  display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;
+  padding:9px 11px;border-bottom:1px solid var(--border);
+}
+.batch-row:last-child{border-bottom:0}
+.batch-row .tile{width:30px;height:30px;border-radius:8px}
+.batch-row .tile svg{width:16px;height:16px}
+.batch-name{font-weight:700;font-size:12px}
+.batch-sub{color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:1px}
+.batch-sub .src{color:#a9e8bd;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:999px;padding:1px 6px;font-size:12px}
+.batch-ver{color:var(--text-2);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.batch-ver b{color:var(--accent);font-weight:700}
+.batch-silent{
+  display:flex;align-items:center;gap:9px;border:1px dashed rgba(34,197,94,.35);
+  background:rgba(34,197,94,.06);border-radius:10px;padding:9px 11px;margin-top:10px;
+  color:#b9e8c9;font-size:12px;
+}
+.batch-silent .grow{flex:1}
+.batch-silent button{font-size:12px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.batch-foot-note{color:var(--muted);font-size:12px;margin-top:8px}
+
+/* ── 设置（真实形态：组导航 + 行）── */
+.settings-shell{display:flex;gap:22px;align-items:flex-start;max-width:1040px}
+.settings-nav{width:178px;flex:none;position:sticky;top:0}
+.settings-nav .h{font-size:12px;letter-spacing:.06em;color:var(--muted);padding:0 10px 8px}
+.settings-nav button{
+  display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:8px;
+  color:var(--text-2);font-size:12px;text-align:left;
+}
+.settings-nav button:hover{background:var(--panel);color:var(--text)}
+.settings-nav button.is-active{background:var(--panel-2);color:var(--text);border:1px solid var(--border)}
+.settings-main{flex:1;min-width:0}
+.settings-head{margin-bottom:16px}
+.settings-head h1{margin:0 0 3px;font-size:22px;letter-spacing:-.02em}
+.settings-head p{margin:0;color:var(--muted);font-size:12px}
+.settings-section{padding:14px 0 6px;border-top:1px solid var(--border)}
+.settings-section:first-of-type{border-top:0;padding-top:0}
+.settings-section h2{margin:0 0 2px;font-size:13px;letter-spacing:.01em}
+.settings-section .section-sub{color:var(--muted);font-size:12px;margin:0 0 6px}
+.setting-row{display:flex;align-items:center;gap:16px;padding:11px 0;border-top:1px solid var(--border)}
+.setting-row:first-of-type{border-top:0}
+.setting-row .grow{flex:1;min-width:0}
+.setting-row .t{font-size:12px;font-weight:600}
+.setting-row .d{color:var(--muted);font-size:12px;margin-top:2px;line-height:1.5}
+.setting-row.is-locked .t{color:var(--text-2)}
+.locked-pill{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.setting-effect{
+  display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px;padding:9px 11px;
+  border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.05);border-radius:10px;
+  color:#b9e8c9;font-size:12px;
+}
+.setting-effect b{color:var(--accent)}
+.trust-block{border:1px solid var(--border);border-radius:12px;background:rgba(10,16,14,.3);overflow:hidden}
+.trust-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700}
+.trust-head span{font-weight:400;color:var(--muted);font-size:12px}
+.trust-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.trust-row:last-child{border-bottom:0}
+.trust-row .grow{flex:1;min-width:0}
+.trust-row .name{font-size:12px;font-weight:600}
+.trust-row .sub{color:var(--muted);font-size:12px;margin-top:1px}
+.trust-row .state{font-size:12px;margin-top:3px}
+.trust-row .state.on{color:#a9e8bd}
+.trust-row .state.off{color:var(--muted)}
+.toggle{
+  width:36px;height:20px;border-radius:999px;background:#28342f;border:1px solid var(--border-hi);
+  position:relative;transition:.15s;flex:none;padding:0;
+}
+.toggle::after{
+  content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:#83988e;transition:.15s;
+}
+.toggle.is-on{background:rgba(34,197,94,.35);border-color:rgba(34,197,94,.6)}
+.toggle.is-on::after{left:18px;background:var(--accent)}
+.toggle:disabled{opacity:.55;cursor:not-allowed}
+.ai-note{
+  margin-top:14px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;
+  color:var(--muted);font-size:12px;line-height:1.6;
+}
+.ai-note code{color:#b9e8c9;font-family:"Cascadia Code",Consolas,monospace;font-size:12px}
+.select{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 9px;
+  color:var(--text-2);font-size:12px;min-width:190px;
+}
+
+/* ── 通知面板（真实完成态）── */
+.notif-panel{
+  position:fixed;right:18px;bottom:38px;width:min(390px,calc(100vw - 36px));
+  max-height:min(64vh,580px);z-index:90;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(26,37,32,.99),rgba(15,22,19,.99));
+  border:1px solid var(--border-hi);border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.50);
+  overflow:hidden;
+}
+.notif-head{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--border)}
+.notif-title{font-size:12px;font-weight:700}
+.notif-summary{color:var(--muted);font-size:12px;margin-left:7px}
+.notif-actions{margin-left:auto;display:flex;align-items:center;gap:2px}
+.notif-actions button{height:24px;padding:0 7px;border-radius:6px;color:var(--muted);font-size:12px}
+.notif-actions button:hover{background:var(--panel);color:var(--text)}
+.notif-list{overflow:auto;padding:7px 9px 9px;display:flex;flex-direction:column;gap:5px}
+.notif-section-h{
+  display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);
+  letter-spacing:.05em;padding:4px 4px 2px;
+}
+.notif-section-h::after{content:"";height:1px;flex:1;background:var(--border)}
+.notif-item{
+  display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;
+  padding:7px 7px;border-radius:8px;background:rgba(10,16,14,.35);
+}
+.notif-item .ico{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;background:var(--panel);color:var(--muted)}
+.notif-item.is-running .ico{color:var(--accent)}
+.notif-item.is-done .ico{color:var(--accent);background:rgba(34,197,94,.12)}
+.notif-item.is-failed .ico{color:var(--danger);background:rgba(239,68,68,.10)}
+.notif-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-sub{color:var(--muted);font-size:12px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-bar{height:4px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:4px}
+.notif-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width .2s}
+.notif-item.is-failed .notif-bar i{background:var(--danger)}
+.notif-state{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.notif-item.is-running .notif-state{color:var(--accent)}
+.notif-item.is-done .notif-state{color:#a9e8bd}
+.notif-item.is-failed .notif-state{color:#ff9d9d}
+.notif-item button{height:22px;padding:0 6px;border-radius:6px;border:1px solid var(--border);color:var(--muted);font-size:12px}
+.notif-item button:hover{color:var(--text);border-color:var(--border-hi)}
+.notif-foot{padding:7px 12px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center}
 
 /* ── Toast ── */
 .toast{
-  position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(10px);
+  position:fixed;left:50%;bottom:52px;transform:translateX(-50%) translateY(10px);
   z-index:200;max-width:min(640px,calc(100vw - 40px));
   background:rgba(20,30,25,.97);border:1px solid var(--border-hi);border-radius:12px;
   padding:11px 15px;color:var(--text);font-size:12px;box-shadow:var(--shadow);
@@ -315,82 +444,59 @@ svg{display:block}
 .toast.is-danger{border-color:rgba(239,68,68,.5)}
 .toast.is-danger .ico{color:var(--danger)}
 
-/* ── 设置 / Bug / 逻辑 / 完成 视图 ── */
-.page-head{max-width:820px;margin-bottom:16px}
+/* ── Bug / 逻辑 ── */
+.page-head{max-width:900px;margin-bottom:16px}
 .page-head h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
 .page-head p{margin:0;color:var(--muted);font-size:12px}
-.panel{
-  max-width:820px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-  padding:16px 18px;margin-bottom:14px;
-}
-.panel h2{margin:0 0 4px;font-size:15px}
-.panel .hint{color:var(--muted);font-size:11px;margin:0 0 12px}
-.radio-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:rgba(10,16,14,.35)}
-.radio-row:has(input:checked){border-color:rgba(34,197,94,.5);background:var(--accent-soft)}
-.radio-row input{margin-top:2px;accent-color:var(--accent)}
-.radio-row>span{display:block;flex:1;min-width:0}
-.radio-row .t{display:block;font-weight:700;font-size:12px}
-.radio-row .d{display:block;color:var(--muted);font-size:11px;margin-top:2px}
-.trust-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;background:rgba(10,16,14,.35)}
-.trust-row .grow{flex:1}
-.trust-row .name{font-size:12px;font-weight:600}
-.trust-row .sub{color:var(--muted);font-size:10px}
-.switch{width:38px;height:21px;border-radius:999px;background:#2a3732;border:1px solid var(--border-hi);position:relative;transition:.15s;flex:none}
-.switch::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:.15s}
-.switch.is-on{background:rgba(34,197,94,.35);border-color:rgba(34,197,94,.6)}
-.switch.is-on::after{left:19px;background:var(--accent)}
-.bug-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:980px}
+.bug-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1000px}
 .bug-pane{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:var(--panel)}
-.bug-label{font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:7px}
-.bug-label .tag{font-size:9px;border-radius:999px;padding:2px 7px;border:1px solid var(--border-hi);color:var(--muted)}
-.bug-card{position:relative;min-height:104px;border-radius:12px;background:var(--card);border:1px solid var(--border);padding:14px;overflow:hidden}
+.bug-label{font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.bug-label .tag{font-size:12px;border-radius:999px;padding:2px 7px;border:1px solid var(--border-hi);color:var(--muted)}
+.bug-card{position:relative;min-height:104px;border-radius:12px;background:var(--card);border:1px solid var(--border);padding:14px;overflow:visible}
 .bug-card .surface{transition:transform .2s,box-shadow .2s;position:relative}
-.bug-card.is-shifted .surface{transform:translateY(80px);box-shadow:0 20px 40px rgba(239,68,68,.18)}
-.bug-card .shift-hint{position:absolute;left:0;right:0;top:calc(100% - 4px);text-align:center;color:var(--danger);font-size:10px;opacity:0;transition:.2s}
+.bug-card.is-shifted .surface{transform:translateY(80px);box-shadow:0 14px 30px rgba(0,0,0,.4);outline:2px solid rgba(239,68,68,.45);outline-offset:-2px}
+.bug-card .shift-hint{position:absolute;left:0;right:0;top:calc(100% - 4px);text-align:center;color:var(--danger);font-size:12px;opacity:0;transition:.2s}
 .bug-card.is-shifted .shift-hint{opacity:1}
-.bug-note{color:var(--muted);font-size:11px;margin:12px 0 0;line-height:1.55}
-.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;max-width:1100px;margin-bottom:16px}
+.bug-note{color:var(--muted);font-size:12px;margin:12px 0 0;line-height:1.55}
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;max-width:1180px;margin-bottom:16px}
+.logic-h2{margin:16px 0 8px;font-size:14px;letter-spacing:.01em}
 .flow-col{flex:1;min-width:150px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px}
 .flow-col h3{margin:0 0 5px;font-size:12px;color:var(--accent)}
-.flow-col p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+.flow-col p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
 .flow-arrow{display:grid;place-items:center;color:var(--muted);font-size:16px;flex:none}
-.policy{width:100%;border-collapse:collapse;max-width:1100px;font-size:12px}
+.policy{width:100%;border-collapse:collapse;max-width:1180px;font-size:12px}
 .policy th,.policy td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
-.policy th{background:var(--panel-2);color:var(--text-2);font-size:11px;letter-spacing:.02em}
+.policy th{background:var(--panel-2);color:var(--text-2);font-size:12px;letter-spacing:.02em}
 .policy td{color:var(--text-2)}
 .policy tr:nth-child(even) td{background:rgba(255,255,255,.012)}
 .policy .yes{color:var(--accent);font-weight:700}
 .policy .no{color:var(--muted)}
 .policy .hard{color:#ff9d9d;font-weight:700}
-.logic-note{max-width:1100px;margin-top:14px;padding:12px 14px;border:1px solid rgba(34,197,94,.3);background:var(--accent-soft);border-radius:12px;color:#c9f6d8;font-size:12px}
-.done-card{max-width:820px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
-.done-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.4);color:var(--accent);margin-bottom:12px}
-.done-card h2{margin:0 0 4px;font-size:20px}
-.done-card .sub{color:var(--muted);font-size:12px;margin:0 0 16px}
-.done-list{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
-.done-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(10,16,14,.35);font-size:12px}
-.done-row .grow{flex:1}
-.done-row .st{font-size:10px}
-.done-row .st.ok{color:#a9e8bd}
-.done-row .st.bad{color:#ff9d9d}
-.done-actions{display:flex;gap:8px;flex-wrap:wrap}
+.logic-note{max-width:1180px;margin-top:14px;padding:12px 14px;border:1px solid rgba(34,197,94,.3);background:var(--accent-soft);border-radius:12px;color:#c9f6d8;font-size:12px}
+.codeblock{
+  max-width:1180px;margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;
+  background:rgba(8,12,11,.6);color:#b9e8c9;font-family:"Cascadia Code",Consolas,monospace;
+  font-size:12px;line-height:1.65;white-space:pre;overflow:auto;
+}
 
 /* ── 响应式 ── */
 @media (max-width:1100px){
   .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   .store-rail{display:none}
   .bug-grid{grid-template-columns:1fr}
+  .settings-nav{display:none}
 }
 @media (max-width:720px){
-  .app{width:100vw;margin:0;border-radius:0;min-height:100vh}
+  .app{width:100vw;margin:0;border-radius:0;height:100vh;min-height:0}
   .cards{grid-template-columns:1fr}
   .content{padding:14px}
   .store-head{flex-direction:column}
   .store-tools{justify-content:flex-start}
   .search{min-width:0;width:100%}
-  .dock{right:10px;bottom:10px;width:calc(100vw - 20px)}
+  .notif-panel{right:8px;bottom:34px;width:calc(100vw - 16px)}
   .flow{flex-direction:column}
   .flow-arrow{transform:rotate(90deg)}
+  .batch-summary{grid-template-columns:1fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important;animation:none!important}
@@ -416,14 +522,15 @@ svg{display:block}
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="4" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="14" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-author" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 <div class="app">
   <div class="titlebar">
     <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-    <b>LinkDesk</b><span>·</span><span>设计原型 — 插件安装/更新确认</span>
-    <span style="margin-left:auto;color:#5f746b">不是产品代码 · 按钮只演示逻辑</span>
+    <b>LinkDesk</b><span>·</span><span>设计原型 v2 — 插件安装/更新确认</span>
+    <span style="margin-left:auto;color:#5f746b">对齐真实实现 · 完成态 = 通知面板</span>
   </div>
 
   <div class="proto-bar" id="protoBar">
@@ -431,7 +538,7 @@ svg{display:block}
     <button class="pill is-active" data-scenario="library">我的库</button>
     <button class="pill" data-scenario="batch">批量确认</button>
     <button class="pill" data-scenario="progress">更新中</button>
-    <button class="pill" data-scenario="done">完成</button>
+    <button class="pill" data-scenario="done">完成（toast + 铃铛）</button>
     <button class="pill" data-scenario="install">首装确认</button>
     <button class="pill" data-scenario="source">来源变更</button>
     <button class="pill" data-scenario="settings">设置</button>
@@ -463,7 +570,7 @@ svg{display:block}
             <aside class="store-rail">
               <div class="rail-home"><svg width="17" height="17"><use href="#i-home"/></svg>Home</div>
               <button data-mode="browse"><svg width="15" height="15"><use href="#i-search"/></svg>Browse</button>
-              <button data-mode="library" class="is-active"><svg width="15" height="15"><use href="#i-plugin"/></svg>Library<span class="n">15</span></button>
+              <button data-mode="library" class="is-active"><svg width="15" height="15"><use href="#i-plugin"/></svg>Library<span class="n" id="railCount">15</span></button>
               <button data-rail="Development">Development<span class="n">3</span></button>
               <button data-rail="Documents">Documents<span class="n">2</span></button>
               <button data-rail="Hardware">Hardware<span class="n">1</span></button>
@@ -482,15 +589,16 @@ svg{display:block}
                 <div class="store-tools">
                   <label class="search"><svg width="14" height="14"><use href="#i-search"/></svg><input id="storeSearch" placeholder="Search plugins from all sources…" aria-label="搜索插件"></label>
                   <button class="btn" id="refreshBtn"><svg width="14" height="14"><use href="#i-refresh"/></svg>Refresh content</button>
-                  <button class="btn" id="checkBtn"><svg width="14" height="14"><use href="#i-check"/></svg>Check for Updates <span class="count" id="updateCount">4</span></button>
+                  <button class="btn" id="checkBtn"><svg width="14" height="14"><use href="#i-check"/></svg>Check for Updates <span class="count" id="updateCount">5</span></button>
                 </div>
               </div>
 
               <div class="library-head">
                 <h2 id="libraryTitle">My library</h2>
-                <span class="meta" id="libraryMeta">15 installed · 4 updatable · 0 disabled</span>
+                <span class="meta" id="libraryMeta">15 installed · 5 updatable · 0 disabled</span>
+                <button class="policy-chip" id="policyChip" title="打开设置">策略：官方免问</button>
                 <span class="grow"></span>
-                <button class="btn btn-sm" id="check2">Check for Updates · 4</button>
+                <button class="btn btn-sm" id="check2">Check for Updates · 5</button>
                 <button class="btn btn-primary btn-sm" id="updateAll">Update all</button>
                 <button class="btn btn-sm" id="editBtn">Edit</button>
                 <button class="btn btn-sm" id="readBtn">Mark all read</button>
@@ -498,14 +606,14 @@ svg{display:block}
 
               <div class="filters">
                 <label class="search" style="min-width:210px;padding:6px 10px"><svg width="13" height="13"><use href="#i-search"/></svg><input placeholder="Search library…" aria-label="搜索库"></label>
-                <button class="btn btn-sm sel">All statuses <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
-                <button class="btn btn-sm sel">All sources <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
-                <button class="btn btn-sm sel">All authors <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
-                <button class="btn btn-sm sel">All repos <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
-                <button class="btn btn-sm sel">Sort <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
-                <span class="grow" style="flex:1"></span>
-                <button class="icon-btn btn btn-sm" style="width:30px;padding:0;justify-content:center" aria-label="网格视图"><svg width="14" height="14"><use href="#i-grid"/></svg></button>
-                <button class="icon-btn btn btn-sm" style="width:30px;padding:0;justify-content:center" aria-label="列表视图"><svg width="14" height="14"><use href="#i-list"/></svg></button>
+                <button class="btn btn-sm">All statuses <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
+                <button class="btn btn-sm">All sources <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
+                <button class="btn btn-sm">All authors <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
+                <button class="btn btn-sm">All repos <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
+                <button class="btn btn-sm">Sort <svg width="12" height="12"><use href="#i-chevron"/></svg></button>
+                <span style="flex:1"></span>
+                <button class="icon-btn" aria-label="网格视图"><svg width="14" height="14"><use href="#i-grid"/></svg></button>
+                <button class="icon-btn" aria-label="列表视图"><svg width="14" height="14"><use href="#i-list"/></svg></button>
               </div>
 
               <div id="cards" class="cards"></div>
@@ -514,26 +622,105 @@ svg{display:block}
           </div>
         </section>
 
-        <!-- ═══ 设置 ═══ -->
+        <!-- ═══ 设置（真实形态）═══ -->
         <section id="view-settings" class="view">
-          <div class="page-head">
-            <h1>Settings</h1>
-            <p>安装/更新确认的策略归壳；市场只负责浏览与发起。以下开关只影响更新，首次安装始终确认。</p>
+          <div class="settings-shell">
+            <aside class="settings-nav">
+              <div class="h">SETTINGS</div>
+              <button class="is-active">通用</button>
+              <button data-nav="主题">主题</button>
+              <button data-nav="AI 接入">AI 接入</button>
+              <button data-nav="存储">存储</button>
+              <button data-nav="打开方式">打开方式</button>
+              <button data-nav="快捷键">快捷键</button>
+            </aside>
+            <div class="settings-main">
+              <div class="settings-head">
+                <h1>通用</h1>
+                <p>界面 / 系统集成 / 更新 / <b style="color:var(--text-2)">插件更新</b>。设置页本身是普通插件，可整套替换；本页只演示真实配置组结构。</p>
+              </div>
+
+              <section class="settings-section">
+                <h2>更新</h2>
+                <p class="section-sub">现有「软件更新」两组键；插件更新接在它下面。</p>
+                <div class="setting-row">
+                  <div class="grow"><div class="t">更新方式</div><div class="d">自动——启动后检查一次，此后每 4 小时检查一次</div></div>
+                  <select class="select" aria-label="更新方式"><option>自动</option><option>手动</option></select>
+                </div>
+                <div class="setting-row">
+                  <div class="grow"><div class="t">自动打开发行说明</div><div class="d">更新到新版本后，首次启动时自动打开发行说明</div></div>
+                  <button class="toggle is-on" role="switch" aria-checked="true" aria-label="自动打开发行说明"></button>
+                </div>
+              </section>
+
+              <section class="settings-section">
+                <h2>插件更新</h2>
+                <p class="section-sub">两条开关可以同时开；首装与来源变更始终确认，不受开关影响。</p>
+
+                <div class="setting-row">
+                  <div class="grow">
+                    <div class="t">官方目录更新不询问</div>
+                    <div class="d">官方目录的<b>同源更新</b>直接入队；首次安装仍确认；来源/发布者变更仍确认。</div>
+                  </div>
+                  <button class="toggle is-on" id="silentOfficial" role="switch" aria-checked="true" aria-label="官方目录更新不询问"></button>
+                </div>
+
+                <div class="setting-row">
+                  <div class="grow">
+                    <div class="t">信任来源的更新不询问</div>
+                    <div class="d">只对下方「信任中」的来源生效；未信任来源的更新仍逐项确认；首装仍确认。</div>
+                  </div>
+                  <button class="toggle" id="silentTrusted" role="switch" aria-checked="false" aria-label="信任来源的更新不询问"></button>
+                </div>
+
+                <div class="setting-row is-locked">
+                  <div class="grow"><div class="t">首次安装始终确认</div><div class="d">第一次信任决定不能省；不受上面两个开关影响。</div></div>
+                  <span class="locked-pill">不可关</span>
+                </div>
+
+                <div class="setting-row is-locked">
+                  <div class="grow"><div class="t">来源 / 发布者变更始终确认</div><div class="d">代码提供方变了，按新装处理；信任开关不豁免。</div></div>
+                  <span class="locked-pill">不可关</span>
+                </div>
+
+                <div class="setting-effect" id="policyEffect">当前效果：官方 3 个免问 · 第三方 2 个需确认</div>
+
+                <div class="trust-block">
+                  <div class="trust-head">来源信任<span>只覆盖同源更新 · 首装仍确认 · 来源变更自动失效</span></div>
+                  <div class="trust-row">
+                    <div class="grow">
+                      <div class="name">Official catalog</div>
+                      <div class="sub">github.com/Encaron/linkdesk-marketplace</div>
+                      <div class="state on">信任中 · 同源更新免问（由上面的官方开关控制）</div>
+                    </div>
+                    <button class="toggle is-on" role="switch" aria-checked="true" disabled aria-label="官方目录信任"></button>
+                  </div>
+                  <div class="trust-row">
+                    <div class="grow">
+                      <div class="name">Third-party sample</div>
+                      <div class="sub">example.dev/lab-sample</div>
+                      <div class="state off" id="thirdState">未信任 · 更新时需确认</div>
+                    </div>
+                    <button class="toggle" id="trustThird" role="switch" aria-checked="false" aria-label="信任第三方示例源"></button>
+                  </div>
+                  <div class="trust-row">
+                    <div class="grow">
+                      <div class="name">Bulk lab</div>
+                      <div class="sub">example.dev/bulk-lab（20+ 溢出演示源）</div>
+                      <div class="state off" id="bulkState">未信任 · 更新时需确认</div>
+                    </div>
+                    <button class="toggle" id="trustBulk" role="switch" aria-checked="false" aria-label="信任 Bulk lab"></button>
+                  </div>
+                </div>
+
+                <div class="ai-note">
+                  <b>AI / 命令面（与 UI 同源）</b><br>
+                  配置键：<code>app.pluginUpdate.silentOfficial</code> · <code>app.pluginUpdate.silentTrustedSources</code><br>
+                  命令：<code>plugins.getUpdatePolicy</code> · <code>plugins.setUpdatePolicy</code> · <code>plugins.trustSource</code> · <code>plugins.untrustSource</code> · <code>plugins.requestUpdateBatch</code>
+                </div>
+              </section>
+            </div>
           </div>
-          <div class="panel">
-            <h2>更新确认</h2>
-            <p class="hint">来源/发布者变更、降级、完整性校验失败始终单独处理，不受本设置影响。</p>
-            <label class="radio-row"><input type="radio" name="policy" value="always"><span><span class="t">每次更新都确认</span><span class="d">现状，最保守；每项更新弹一张卡。</span></span></label>
-            <label class="radio-row"><input type="radio" name="policy" value="official-silent"><span><span class="t">官方源更新不逐项询问（推荐）</span><span class="d">官方目录的同源更新直接入队；批量仍有一张汇总卡；第三方源按来源确认。</span></span></label>
-            <label class="radio-row"><input type="radio" name="policy" value="trusted-silent"><span><span class="t">信任来源的更新不询问</span><span class="d">你显式信任过的来源，其同源更新免问；首装仍确认；来源/发布者变更自动失效。</span></span></label>
-          </div>
-          <div class="panel">
-            <h2>来源信任</h2>
-            <p class="hint">信任只覆盖「同源更新」；不是对所有来源的安装免检。</p>
-            <div class="trust-row"><div class="grow"><div class="name">Official catalog</div><div class="sub">Encaron · github.com/Encaron/linkdesk-marketplace</div></div><button class="switch is-on" data-trust="official" aria-label="信任官方来源"></button></div>
-            <div class="trust-row"><div class="grow"><div class="name">Third-party source</div><div class="sub">added 2026-11-20 · 首次安装已确认</div></div><button class="switch" data-trust="third" aria-label="信任第三方来源"></button></div>
-          </div>
-          <div class="logic-note">首装始终确认；来源/发布者变更、降级、哈希不符始终拦截或单独确认——这些不由「信任来源」豁免。</div>
         </section>
 
         <!-- ═══ Bug 对照 ═══ -->
@@ -557,7 +744,7 @@ svg{display:block}
                   <div class="card-more" style="grid-template-rows:1fr;margin-top:10px">
                     <div class="card-more-inner">
                       <p class="card-desc">点击 Update：按钮获得焦点，展开面按完整高度重算，整面向下跳最多 80px。</p>
-                      <div class="card-actions"><button class="btn btn-primary btn-sm" id="bugBeforeBtn">Update</button><span class="spacer"></span><button class="icon-btn" aria-label="更多"><svg width="14" height="14"><use href="#i-more"/></svg></button></div>
+                      <div class="card-actions"><button class="btn btn-primary btn-sm" id="bugBeforeBtn">Update</button><span style="flex:1"></span><button class="icon-btn" aria-label="更多"><svg width="14" height="14"><use href="#i-more"/></svg></button></div>
                     </div>
                   </div>
                 </div>
@@ -579,7 +766,7 @@ svg{display:block}
                   <div class="card-more" style="grid-template-rows:1fr;margin-top:10px">
                     <div class="card-more-inner">
                       <p class="card-desc">pointerenter 时按完整展开高度算一次 --x-shift，focus/blur 不再重算；按钮不动。</p>
-                      <div class="card-actions"><button class="btn btn-primary btn-sm" id="bugAfterBtn">Update</button><span class="spacer"></span><button class="icon-btn" aria-label="更多"><svg width="14" height="14"><use href="#i-more"/></svg></button></div>
+                      <div class="card-actions"><button class="btn btn-primary btn-sm" id="bugAfterBtn">Update</button><span style="flex:1"></span><button class="icon-btn" aria-label="更多"><svg width="14" height="14"><use href="#i-more"/></svg></button></div>
                     </div>
                   </div>
                 </div>
@@ -589,7 +776,7 @@ svg{display:block}
           </div>
           <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn" id="bugReplay"><svg width="14" height="14"><use href="#i-refresh"/></svg>重放对照</button>
-            <span style="color:var(--muted);font-size:11px;align-self:center">提示：修复前会故意在点击时把面下移 80px，模拟真实 bug 的点击落点。</span>
+            <span style="color:var(--muted);font-size:12px;align-self:center">提示：修复前会故意在点击时把面下移 80px，模拟真实 bug 的点击落点。</span>
           </div>
         </section>
 
@@ -597,91 +784,120 @@ svg{display:block}
         <section id="view-logic" class="view">
           <div class="page-head">
             <h1>确认与执行逻辑</h1>
-            <p>一句话：市场只发起；壳决定要不要问、问什么、能不能执行；执行必须带一次性 token。</p>
+            <p>市场只发起；壳决定谁要问、能不能执行；确认 UI 是可替换渲染槽；完成态复用通知面板。</p>
           </div>
+          <h2 class="logic-h2">流程</h2>
           <div class="flow">
             <div class="flow-col"><h3>① 入口</h3><p>首装 / 单项更新 / Update all / 自动更新。市场只传结构化请求。</p></div>
             <div class="flow-arrow">→</div>
-            <div class="flow-col"><h3>② 壳判定</h3><p>首装？来源/发布者变？降级？minApp？哈希？→ 决定问/免问/直接拒。</p></div>
+            <div class="flow-col"><h3>② 壳计划</h3><p>policy 计算 silent / ask：首装、来源变更、降级、minApp、哈希全在这里裁决。</p></div>
             <div class="flow-arrow">→</div>
-            <div class="flow-col"><h3>③ 确认</h3><p>壳画富卡 / 批量汇总卡 / 来源变更卡；市场不能传 HTML/CSS。</p></div>
+            <div class="flow-col"><h3>③ 确认渲染槽</h3><p>默认壳渲染器；第三方可整套替换。渲染体只吃 DTO，⛔ 不碰 token/策略。</p></div>
             <div class="flow-arrow">→</div>
-            <div class="flow-col"><h3>④ token</h3><p>确认后签发一次性 token，绑定 pluginId + version + source + sha256 + 60s。</p></div>
+            <div class="flow-col"><h3>④ token</h3><p>一次性绑定 pluginId + version + source + sha256 + 60s；原始 API 无 token 即拒。</p></div>
             <div class="flow-arrow">→</div>
             <div class="flow-col"><h3>⑤ job</h3><p>3 并发槽 → 下载/校验/解压/原子替换；进度走 plugin:installJobs。</p></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-col"><h3>⑥ 通知面板</h3><p>轻 toast 即时汇总 + 铃铛通知面板（现有 notificationPanel 槽）留结果/重试；完成不新开页面、不弹新模态。</p></div>
           </div>
+
+          <h2 class="logic-h2">确认策略矩阵</h2>
           <table class="policy">
             <thead><tr><th>动作</th><th>确认？</th><th>形态 / 理由</th></tr></thead>
             <tbody>
               <tr><td>新装插件（任何来源）</td><td class="yes">是</td><td>壳富卡：来源/发布者/版本/大小/哈希；第一次信任决定不能省。</td></tr>
-              <tr><td>同源更新 · 官方源（official-silent）</td><td class="no">否</td><td>直接入队；行内进度 + 完成 toast。用户装它时已做过信任决定。</td></tr>
-              <tr><td>同源更新 · 第三方（按源信任）</td><td class="yes">按设置</td><td>首次按源确认；信任后免问；来源/发布者变更自动失效。</td></tr>
-              <tr><td>批量 Update all</td><td class="yes">一张汇总</td><td>N 个、旧→新、来源、大小、风险标记；确认后全部入队。</td></tr>
-              <tr><td>来源 / 仓库 / 发布者变更</td><td class="hard">是（硬确认）</td><td>按新装处理，展示旧→新；不能当普通更新。</td></tr>
+              <tr><td>同源更新 · 官方（silentOfficial 开）</td><td class="no">否</td><td>直接入队；通知面板行内进度。用户装它时已做过信任决定。</td></tr>
+              <tr><td>同源更新 · 信任来源（silentTrustedSources 开）</td><td class="no">否</td><td>只对信任清单里的来源；首装仍确认；来源变更自动失效。</td></tr>
+              <tr><td>同源更新 · 未信任第三方</td><td class="yes">是</td><td>一张确认卡；确认后可选记住此来源（只影响更新）。</td></tr>
+              <tr><td>批量 Update all · 混合来源</td><td class="yes">只对 ask</td><td>一张汇总卡只列需确认项；silent 项摘要；取消 = 整批取消。</td></tr>
+              <tr><td>来源 / 仓库 / 发布者变更</td><td class="hard">是（硬确认）</td><td>按新装处理，展示旧→新；信任开关不豁免。</td></tr>
               <tr><td>降级 / 选旧版</td><td class="yes">是</td><td>显式意图 + 数据/schema 风险；确认卡明示。</td></tr>
               <tr><td>minAppVersion 不满足</td><td class="hard">直接拦</td><td>装了也跑不了；不进入确认。</td></tr>
               <tr><td>哈希 / ID / zip-slip 失败</td><td class="hard">直接拒</td><td>技术攻击/损坏；征求同意没有意义；清理暂存。</td></tr>
               <tr><td>自动更新（opt-in）</td><td class="no">否</td><td>开关本身即授权；结束后汇总通知；默认只对官方源开。</td></tr>
+              <tr><td>完成反馈</td><td class="no">不新开</td><td>轻 Toast（TransientToast，底部居中）即时汇总 + 铃铛通知面板留结果/重试；同一 store 双呈现；⛔ 无新完成页、无第三面。</td></tr>
               <tr><td>内置 core（市场自身）</td><td class="yes">单更</td><td>不进批量；更新后提示重启，避免队列中途重启。</td></tr>
             </tbody>
           </table>
-          <div class="logic-note"><b>关键不变量：</b>原始 <code>pluginManager.install/update</code> 没有一次性 token 一律拒绝；任何市场（含第三方）都必须走壳的 <code>requestInstall / requestUpdateBatch</code>。这样「不调 API 就不能成为插件市场」才是真的，而不是一句契约口号。</div>
-          <div class="panel" style="margin-top:14px">
-            <h2>状态机</h2>
-            <p class="hint">Queued → Downloading → Verifying → Extracting → Committing → Done；任一步失败 → Failed / 回滚；目录占用 → Deferred（重启补提交）；用户取消 → Cancelled。</p>
-            <div class="flow" style="margin-bottom:0">
-              <div class="flow-col"><h3>Queued</h3><p>等 3 个并发槽之一；可取消。</p></div>
-              <div class="flow-arrow">→</div>
-              <div class="flow-col"><h3>Downloading</h3><p>HTTPS；进度/大小；可取消。</p></div>
-              <div class="flow-arrow">→</div>
-              <div class="flow-col"><h3>Verifying</h3><p>sha256 + id + 版本方向；不符直接拒。</p></div>
-              <div class="flow-arrow">→</div>
-              <div class="flow-col"><h3>Committing</h3><p>原子 rename；失败回滚旧版。</p></div>
-              <div class="flow-arrow">→</div>
-              <div class="flow-col"><h3>Done</h3><p>账本更新；提示重启；不自动开详情。</p></div>
-            </div>
-          </div>
-        </section>
 
-        <!-- ═══ 完成 ═══ -->
-        <section id="view-done" class="view">
-          <div class="page-head"><h1>更新完成</h1><p>一条汇总，不逐项弹；失败项保留重试；不自动打开详情页。</p></div>
-          <div class="done-card">
-            <div class="done-icon"><svg width="26" height="26"><use href="#i-check"/></svg></div>
-            <h2 id="doneTitle">已更新 4 个插件</h2>
-            <p class="sub" id="doneSub">完成于刚刚 · 0 个失败 · 用时约 12 秒（原型模拟）</p>
-            <div class="done-list" id="doneList"></div>
-            <div class="done-actions">
-              <button class="btn btn-primary" data-scenario="library">返回我的库</button>
-              <button class="btn" id="doneRetry">重试失败项</button>
-              <button class="btn" data-scenario="logic">查看逻辑</button>
-            </div>
-          </div>
+          <div class="logic-note"><b>关键不变量：</b>原始 <code>pluginManager.install/update</code> 没有一次性 token 一律拒绝；任何市场（含第三方）都必须走壳的 <code>requestInstall / requestUpdateBatch</code>。确认 UI 可被第三方渲染器替换，但 <b>token、策略、来源身份、队列</b>永远在壳。</div>
+
+          <h2 class="logic-h2">落点与目录</h2>
+          <div class="codeblock">src/core/services/plugins/install/          ← 壳功能域（feature-folder，⛔ 不往 services/ 根平铺）
+  index.ts            // 门面：requestInstall / requestUpdateBatch / ConfirmPlan
+  types.ts            // InstallRequest / ConfirmPlan / InstallConfirmationToken
+  policy.ts           // silent/ask 分组（纯函数，可单测）
+  trust.ts            // 来源信任清单 + 失效规则
+  token.ts            // 一次性 token 签发/核销
+  batch.ts            // 批量编排、分组计数、20+ 溢出
+  ledger.ts           // 来源身份（sourceUrl/repo/publisher/sha256）
+  confirm-service.ts  // DialogHost 编排：画卡 → 确认 → 签 token → 执行
+src/pool/shared/plugin-install-confirm/     ← 默认渲染器（可被 renderer slot 替换）
+  InstallConfirmView.tsx
+  BatchConfirmView.tsx
+src/App/config/pluginUpdate.ts              ← 「通用 → 插件更新」配置节
+src/pool/zones/status-bar/                  ← 完成态：现有 notif 面板（notificationPanel 槽）</div>
+
+          <div class="logic-note" style="margin-top:12px">🔴 <b>现状差异：</b>我查了全部 <code>scripts/check-*.mjs</code>，目前<b>没有「禁止平铺」的机械腿</b>（壳目录规范只有 feature-folder 判据，<code>check-file-size</code> 只限单文件行数）。建议本笔新增 <code>check-feature-folder</code>：新功能域必须「同名夹 + 门面 index.ts」，白名单例外登记；⛔ 不靠 AI 自觉。</div>
         </section>
       </div>
     </div>
   </div>
+
+  <!-- 状态栏：真实完成态挂这里 -->
+  <div class="statusbar">
+    <div class="status-left"><span class="status-dot"></span><span>Ready</span><span class="status-sep"></span><span id="statusPlugins">15 plugins</span><span class="status-sep"></span><span id="statusJobs">无更新任务</span></div>
+    <div class="status-right">
+      <button>lang</button>
+      <button>theme</button>
+      <button class="bell" id="bellBtn" aria-label="通知">
+        <svg width="13" height="13"><use href="#i-bell"/></svg>
+        <span class="bell-badge" id="bellBadge">0</span>
+      </button>
+    </div>
+  </div>
 </div>
+
+<!-- ═══ 通知面板（完成态，不新增页面/模态）═══ -->
+<aside class="notif-panel hidden" id="notifPanel" role="dialog" aria-label="通知">
+  <div class="notif-head">
+    <span class="notif-title">通知</span>
+    <span class="notif-summary" id="notifSummary">插件更新</span>
+    <div class="notif-actions">
+      <button id="notifClear">清除</button>
+      <button id="notifFold" aria-label="折叠">▾</button>
+    </div>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+  <div class="notif-foot"><svg width="11" height="11" style="color:var(--accent)"><use href="#i-bell"/></svg><span>轻 toast 做即时汇总 · 铃铛保留结果与重试 · 完成不打开详情页</span></div>
+</aside>
 
 <!-- ═══ 批量确认 ═══ -->
 <div class="overlay hidden" id="overlayBatch">
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="batchTitle">
     <div class="dialog-head">
       <div class="dialog-shield"><svg width="20" height="20"><use href="#i-shield"/></svg></div>
-      <div><h2 id="batchTitle">更新 4 个插件</h2><div class="sub">壳托管确认 · 一张汇总卡 · 确认后连续执行</div></div>
+      <div><h2 id="batchTitle">更新插件</h2><div class="sub" id="batchSub">壳托管确认 · 只列需要确认的项</div></div>
       <button class="x" data-close aria-label="关闭"><svg width="16" height="16"><use href="#i-x"/></svg></button>
     </div>
     <div class="dialog-body">
-      <p class="dialog-note">以下插件来自<b>官方目录</b>且为同源更新。首次安装始终确认；来源/发布者变更会再次询问。</p>
-      <div class="batch-list" id="batchList"></div>
+      <div class="batch-summary">
+        <div class="batch-stat"><div class="n" id="statTotal">0</div><div class="l">本批总数</div></div>
+        <div class="batch-stat is-ask"><div class="n" id="statAsk">0</div><div class="l">需要确认</div></div>
+        <div class="batch-stat is-silent"><div class="n" id="statSilent">0</div><div class="l">按设置免问</div></div>
+      </div>
+      <div class="batch-scroll" id="batchScroll"><div id="batchGroups"></div></div>
+      <div class="batch-silent" id="batchSilent" style="display:none"></div>
       <div class="dialog-checks">
-        <label class="check"><input type="checkbox" id="silentCheck"> 以后官方源更新不再询问（可在设置里改回）</label>
+        <label class="check"><input type="checkbox" id="silentCheck"> 以后官方源更新不再询问（设置）</label>
+        <label class="check"><input type="checkbox" id="overflowCheck"> 模拟 22 条（20+ 溢出演示）</label>
         <label class="check"><input type="checkbox" id="failCheck"> 模拟一个失败（演示错误路径）</label>
       </div>
+      <div class="batch-foot-note">取消 = 整批取消；免问项也随本批一起执行。⛔ 不在市场里做来源信任判定。</div>
     </div>
     <div class="dialog-foot">
       <button class="btn" data-close>取消</button>
-      <button class="btn btn-primary" id="batchConfirm">更新 4 个</button>
+      <button class="btn btn-primary" id="batchConfirm">确认更新</button>
     </div>
   </div>
 </div>
@@ -706,7 +922,7 @@ svg{display:block}
       </div>
       <div class="warn-box" id="iWarn" style="display:none"></div>
       <div class="dialog-checks">
-        <label class="check"><input type="checkbox" id="rememberSource"> 以后此来源的<b>更新</b>不再询问（首装仍会确认）</label>
+        <label class="check"><input type="checkbox" id="rememberSource"> 以后此来源的更新不再询问（首装仍会确认）</label>
       </div>
     </div>
     <div class="dialog-foot">
@@ -742,18 +958,6 @@ svg{display:block}
   </div>
 </div>
 
-<!-- ═══ 进度坞 ═══ -->
-<aside class="dock hidden" id="dock" aria-live="polite">
-  <div class="dock-head">
-    <svg width="16" height="16" style="color:var(--accent)"><use href="#i-download"/></svg>
-    <h3 id="dockTitle">更新中</h3>
-    <span class="n" id="dockCount">0/0</span>
-    <button class="close" id="dockClose" aria-label="收起"><svg width="15" height="15"><use href="#i-x"/></svg></button>
-  </div>
-  <div class="dock-rows" id="dockRows"></div>
-  <div class="dock-foot"><span class="ok">✓</span><span id="dockFoot">完成后不会自动打开详情页；可随时取消排队项。</span></div>
-</aside>
-
 <!-- ═══ Toast ═══ -->
 <div class="toast" id="toast" role="status" aria-live="polite">
   <span class="ico"><svg width="16" height="16"><use href="#i-check"/></svg></span>
@@ -764,12 +968,31 @@ svg{display:block}
 (function(){
   "use strict";
 
-  const UPDATES = [
-    { id:"serial-monitor", name:"Serial Monitor", author:"Encaron", from:"1.0.40", to:"1.0.41", source:"official", srcLabel:"Official", size:"1.8 MB", desc:"Serial data monitor — receive pane (CM6) + send bar (Monaco) + sidebar settings.", hue:145, icon:"i-terminal" },
-    { id:"full-window-hero", name:"Full-Window Hero", author:"Encaron", from:"1.3.0", to:"1.3.1", source:"official", srcLabel:"Official", size:"2.4 MB", desc:"Full-window hero layout with a big cover and a compact action bar.", hue:24, icon:"i-grid" },
-    { id:"theme-aurora-glass", name:"Aurora Glass", author:"Encaron", from:"1.0.9", to:"1.1.0", source:"official", srcLabel:"Official", size:"860 KB", desc:"Aurora glass theme with tint controls and high-contrast colorways.", hue:200, icon:"i-plugin" },
-    { id:"pastel-icon-set", name:"Pastel Icon Set", author:"Encaron", from:"1.1.2", to:"1.1.3", source:"official", srcLabel:"Official", size:"420 KB", desc:"Soft pastel icon theme for the file tree and tabs.", hue:300, icon:"i-folder" }
+  /* ═══ 数据 ═══ */
+  const OFFICIAL_UPDATES = [
+    { id:"serial-monitor", name:"Serial Monitor", author:"Encaron", from:"1.0.40", to:"1.0.41", source:"official", sourceId:"official", srcLabel:"Official", size:"1.8 MB", desc:"Serial data monitor — receive pane (CM6) + send bar (Monaco) + sidebar settings.", hue:145, icon:"i-terminal" },
+    { id:"full-window-hero", name:"Full-Window Hero", author:"Encaron", from:"1.3.0", to:"1.3.1", source:"official", sourceId:"official", srcLabel:"Official", size:"2.4 MB", desc:"Full-window hero layout with a big cover and a compact action bar.", hue:24, icon:"i-grid" },
+    { id:"theme-aurora-glass", name:"Aurora Glass", author:"Encaron", from:"1.0.9", to:"1.1.0", source:"official", sourceId:"official", srcLabel:"Official", size:"860 KB", desc:"Aurora glass theme with tint controls and high-contrast colorways.", hue:200, icon:"i-plugin" }
   ];
+  const THIRD_UPDATES = [
+    { id:"sample-focus", name:"Sample Focus", author:"Demo Author", from:"0.1.0", to:"0.2.0", source:"third", sourceId:"lab-sample", srcLabel:"Third-party", size:"1.1 MB", desc:"A demo focus timer from a third-party source.", hue:50, icon:"i-terminal" },
+    { id:"sample-graph", name:"Sample Graph", author:"Demo Author", from:"0.2.0", to:"0.3.0", source:"third", sourceId:"lab-sample", srcLabel:"Third-party", size:"2.2 MB", desc:"A demo graph view from the same third-party source.", hue:280, icon:"i-grid" }
+  ];
+  const BULK_UPDATES = Array.from({length:20}, (_, i) => ({
+    id:"bulk-" + (i + 1),
+    name:"Bulk Plugin " + (i + 1),
+    author:"Bulk Lab",
+    from:"1.0." + i,
+    to:"1.1." + i,
+    source:"third",
+    sourceId:"bulk-lab",
+    srcLabel:"Third-party",
+    size:(200 + i * 37) + " KB",
+    desc:"Bulk lab demo entry #" + (i + 1) + " used to show 20+ overflow.",
+    hue:(i * 37) % 360,
+    icon:"i-plugin"
+  }));
+  const UPDATES = OFFICIAL_UPDATES.concat(THIRD_UPDATES);
   const INSTALLED = [
     { id:"editor", name:"Editor", author:"Encaron", desc:"Code editor with Monaco and workspace integration.", hue:150, icon:"i-terminal" },
     { id:"official-language-pack", name:"Official Language Pack", author:"Encaron", desc:"Chinese/English UI dictionaries.", hue:220, icon:"i-plugin" },
@@ -780,46 +1003,37 @@ svg{display:block}
     { id:"file-tree", name:"File Tree", author:"Encaron", desc:"Workspace explorer.", hue:190, icon:"i-folder" },
     { id:"pdf-reader", name:"PDF Reader", author:"Encaron", desc:"Read PDFs in a tab.", hue:0, icon:"i-list" },
     { id:"theme-defaults", name:"Theme Defaults", author:"Encaron", desc:"Bundled light/dark theme recipes.", hue:210, icon:"i-grid" },
-    { id:"lang-defaults", name:"Language Defaults", author:"Encaron", desc:"Built-in UI dictionaries.", hue:260, icon:"i-plugin" },
-    { id:"marketplace", name:"Marketplace", author:"Encaron", desc:"This store — core plugin.", hue:150, icon:"i-plugin" }
+    { id:"lang-defaults", name:"Language Defaults", author:"Encaron", desc:"Built-in UI dictionaries.", hue:260, icon:"i-plugin" }
   ];
   const BROWSE = [
-    { id:"sample-focus", name:"Sample Focus", author:"Demo Author", version:"0.1.0", source:"third", srcLabel:"Third-party", size:"1.1 MB", desc:"A demo focus timer used to show the first-install confirmation.", hue:50, icon:"i-terminal" },
-    { id:"sample-graph", name:"Sample Graph", author:"Demo Author", version:"0.2.0", source:"third", srcLabel:"Third-party", size:"2.2 MB", desc:"A demo graph view; used to show another install path.", hue:280, icon:"i-grid" },
-    { id:"sample-notes", name:"Sample Notes", author:"Demo Author", version:"0.1.3", source:"official", srcLabel:"Official", size:"700 KB", desc:"A demo notes view from the official catalog.", hue:120, icon:"i-list" }
+    { id:"sample-notes", name:"Sample Notes", author:"Demo Author", version:"0.1.3", source:"official", sourceId:"official", srcLabel:"Official", size:"700 KB", desc:"A demo notes view from the official catalog.", hue:120, icon:"i-list" },
+    { id:"sample-focus", name:"Sample Focus", author:"Demo Author", version:"0.1.0", source:"third", sourceId:"lab-sample", srcLabel:"Third-party", size:"1.1 MB", desc:"A demo focus timer used to show the first-install confirmation.", hue:50, icon:"i-terminal" },
+    { id:"sample-graph", name:"Sample Graph", author:"Demo Author", version:"0.2.0", source:"third", sourceId:"lab-sample", srcLabel:"Third-party", size:"2.2 MB", desc:"A demo graph view; used to show another install path.", hue:280, icon:"i-grid" }
   ];
 
   const state = {
     mode:"library",
-    policy:"official-silent",
-    trusted:{ official:true, third:false },
-    pending:null,
+    silentOfficial:true,
+    silentTrustedSources:false,
+    trusted:new Set(["official"]),
+    overflow:false,
+    notifOpen:false,
     jobs:[],
     lastRun:null,
-    dockMode:"update",
-    scenario:"library",
-    // 库的展示态：更新项完成后会换成 installed 副本，不反向污染 UPDATES（批量弹窗永远用原始清单）
-    library: UPDATES.map((u) => Object.assign({}, u, { installed:false }))
-      .concat(INSTALLED.map((i) => Object.assign({}, i, { installed:true })))
+    pending:null,
+    jobMode:"update",
+    library: UPDATES.map((u) => Object.assign({}, u, {installed:false}))
+      .concat(INSTALLED.map((i) => Object.assign({}, i, {installed:true})))
   };
   let toastTimer = null;
   let jobTimer = null;
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
-  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const icon = (id, size) => `<svg width="${size||16}" height="${size||16}"><use href="#${id}"/></svg>`;
 
-  function resetLibrary(){
-    state.library = UPDATES.map((u) => Object.assign({}, u, { installed:false }))
-      .concat(INSTALLED.map((i) => Object.assign({}, i, { installed:true })));
-  }
-
-  function logEvent(text){
-    const el = $("#eventLine");
-    if (el) el.textContent = "最近动作：" + text;
-  }
-
+  function logEvent(text){ const el = $("#eventLine"); if (el) el.textContent = "最近动作：" + text; }
   function showToast(text, kind){
     const t = $("#toast");
     $("#toastText").textContent = text;
@@ -832,34 +1046,54 @@ svg{display:block}
     toastTimer = setTimeout(() => t.classList.remove("is-show"), 3600);
   }
 
-  /* ── 视图切换 ── */
-  function showView(id){
-    $$(".view").forEach((v) => v.classList.toggle("is-active", v.id === id));
+  /* ═══ 策略 ═══ */
+  function resetLibrary(){
+    state.library = UPDATES.map((u) => Object.assign({}, u, {installed:false}))
+      .concat(INSTALLED.map((i) => Object.assign({}, i, {installed:true})));
   }
+  function isSilent(e){
+    if (e.source === "official") return state.silentOfficial;
+    if (e.source === "third") return state.silentTrustedSources && state.trusted.has(e.sourceId);
+    return false;
+  }
+  function plan(entries){
+    const silent = entries.filter(isSilent);
+    const ask = entries.filter((e) => !isSilent(e));
+    const groups = [];
+    for (const e of ask) {
+      let g = groups.find((x) => x.sourceId === e.sourceId);
+      if (!g) { g = {sourceId:e.sourceId, label:e.source === "official" ? "官方目录" : (e.sourceId === "bulk-lab" ? "Bulk lab" : "第三方来源"), items:[]}; groups.push(g); }
+      g.items.push(e);
+    }
+    return {silent, ask, groups, total:entries.length};
+  }
+  function allUpdates(){ return UPDATES.concat(state.overflow ? BULK_UPDATES : []); }
+  function updatableCount(){ return state.library.filter((p) => !!p.from).length; }
+
+  /* ═══ 视图 ═══ */
+  function showView(id){ $$(".view").forEach((v) => v.classList.toggle("is-active", v.id === id)); }
   function setScenario(name){
-    state.scenario = name;
     $$("#protoBar .pill").forEach((b) => b.classList.toggle("is-active", b.dataset.scenario === name));
-    closeDialogs();
-    hideDock();
+    closeDialogs(); closeNotif();
     if (name === "settings") { showView("view-settings"); syncSettings(); return; }
     if (name === "bug") { showView("view-bug"); resetBug(); return; }
     if (name === "logic") { showView("view-logic"); return; }
-    if (name === "done") { showView("view-done"); renderDone(); return; }
     showView("view-library");
     if (name === "library") { state.mode = "library"; renderCards(); }
     if (name === "batch") {
-      if (state.library.filter((p) => !!p.from).length === 0) { resetLibrary(); showToast("演示数据已重置（原型）", "info"); }
-      state.mode = "library"; renderCards(); openDialog("overlayBatch");
+      if (updatableCount() === 0) { resetLibrary(); showToast("演示数据已重置（原型）", "info"); }
+      state.mode = "library"; renderCards(); openBatch();
     }
-    if (name === "install") { state.mode = "browse"; renderCards(); openInstall("install", BROWSE[0]); }
-    if (name === "source") { state.mode = "library"; renderCards(); openDialog("overlaySource"); }
     if (name === "progress") {
-      if (state.library.filter((p) => !!p.from).length === 0) { resetLibrary(); showToast("演示数据已重置（原型）", "info"); }
-      state.mode = "library"; renderCards(); startJobs(UPDATES, false, "update");
+      if (updatableCount() === 0) { resetLibrary(); showToast("演示数据已重置（原型）", "info"); }
+      state.mode = "library"; renderCards(); startJobs(allUpdates(), false);
     }
+    if (name === "done") { state.mode = "library"; renderCards(); openCompletion(); }
+    if (name === "install") { state.mode = "browse"; renderCards(); openInstall("install", BROWSE[1]); }
+    if (name === "source") { state.mode = "library"; renderCards(); openDialog("overlaySource"); }
   }
 
-  /* ── 卡片 ── */
+  /* ═══ 卡片 ═══ */
   function cardHTML(p){
     const upd = !!p.from;
     const installed = !!p.installed;
@@ -867,7 +1101,7 @@ svg{display:block}
       ? `<span class="badge badge-update">${icon("i-download",10)} Update available</span>`
       : installed
         ? `<span class="badge badge-installed">${icon("i-check",10)} Installed</span>`
-        : `<span class="badge badge-free">${icon("i-download",10)} ${p.source === "official" ? "Official" : "Third-party"}</span>`;
+        : `<span class="badge ${p.source === "official" ? "badge-free" : "badge-third"}">${icon("i-download",10)} ${p.srcLabel || (p.source === "official" ? "Official" : "Third-party")}</span>`;
     const action = upd
       ? `<button class="btn btn-primary btn-sm" data-action="update" data-id="${esc(p.id)}">Update</button>`
       : installed
@@ -890,7 +1124,7 @@ svg{display:block}
               <p class="card-desc">${esc(p.desc || "")}</p>
               <div class="card-actions">
                 ${action}
-                <span class="spacer"></span>
+                <span style="flex:1"></span>
                 <button class="icon-btn" data-action="more" data-id="${esc(p.id)}" aria-label="更多">${icon("i-more",14)}</button>
               </div>
             </div>
@@ -898,71 +1132,127 @@ svg{display:block}
         </div>
       </article>`;
   }
-
   function renderCards(){
-    const cards = $("#cards");
-    if (!cards) return;
-    let list;
-    if (state.mode === "browse") list = BROWSE.slice();
-    else list = state.library.slice();
+    const cards = $("#cards"); if (!cards) return;
+    const list = state.mode === "browse" ? BROWSE.slice() : state.library.slice();
     cards.innerHTML = list.map(cardHTML).join("");
     const isBrowse = state.mode === "browse";
-    const updatable = state.library.filter((p) => !!p.from).length;
+    const upd = updatableCount();
     $("#libraryTitle").textContent = isBrowse ? "Browse" : "My library";
-    $("#libraryMeta").textContent = isBrowse ? "Official catalog · 3 sample entries" : `${state.library.length} installed · ${updatable} updatable · 0 disabled`;
+    $("#libraryMeta").textContent = isBrowse ? "Official catalog · 3 sample entries" : `${state.library.length} installed · ${upd} updatable · 0 disabled`;
     $("#storeSub").textContent = isBrowse ? "Encaron · Official catalog · browse" : "Encaron · Official catalog · 15 plugins";
     $("#updateAll").classList.toggle("hidden", isBrowse);
     $("#check2").classList.toggle("hidden", isBrowse);
     $("#editBtn").classList.toggle("hidden", isBrowse);
     $("#readBtn").classList.toggle("hidden", isBrowse);
-    $("#updateCount").textContent = isBrowse ? "0" : String(updatable);
-    $("#check2").textContent = `Check for Updates · ${updatable}`;
+    $("#policyChip").classList.toggle("hidden", isBrowse);
+    $("#updateCount").textContent = isBrowse ? "0" : String(upd);
+    $("#check2").textContent = `Check for Updates · ${upd}`;
+    $("#railCount").textContent = String(state.library.length);
+    $("#statusPlugins").textContent = `${state.library.length} plugins`;
+    updatePolicyChip();
     $$(".store-rail button[data-mode]").forEach((b) => b.classList.toggle("is-active", b.dataset.mode === state.mode));
   }
-
-  function findEntry(id){
-    return UPDATES.find((x) => x.id === id) || INSTALLED.find((x) => x.id === id) || BROWSE.find((x) => x.id === id) || null;
+  function updatePolicyChip(){
+    const chip = $("#policyChip"); if (!chip) return;
+    const parts = [];
+    if (state.silentOfficial) parts.push("官方免问");
+    if (state.silentTrustedSources) parts.push("信任来源免问");
+    chip.textContent = "策略：" + (parts.length ? parts.join(" + ") : "全部询问");
   }
-
+  function findEntry(id){
+    return UPDATES.find((x) => x.id === id) || BULK_UPDATES.find((x) => x.id === id) ||
+      INSTALLED.find((x) => x.id === id) || BROWSE.find((x) => x.id === id) || null;
+  }
   function openDetail(id){
     const p = findEntry(id);
     logEvent(`打开详情页（原型）：${p ? p.name : id} —— 只有点卡片空白才会到这里`);
     showToast(`打开详情页：${p ? p.name : id}（原型）`, "info");
   }
 
-  /* ── 对话框 ── */
+  /* ═══ 对话框 ═══ */
   function openDialog(id){
     ["overlayBatch","overlayInstall","overlaySource"].forEach((x) => $("#" + x).classList.toggle("hidden", x !== id));
-    if (id === "overlayBatch") {
-      $("#silentCheck").checked = state.policy === "official-silent";
-      $("#failCheck").checked = false;
-    }
     const el = $("#" + id);
     const focusable = el.querySelector("button.btn-primary, button.btn-danger, button.btn");
     if (focusable) setTimeout(() => focusable.focus(), 20);
   }
-  function closeDialogs(){
-    ["overlayBatch","overlayInstall","overlaySource"].forEach((x) => $("#" + x).classList.add("hidden"));
+  function closeDialogs(){ ["overlayBatch","overlayInstall","overlaySource"].forEach((x) => $("#" + x).classList.add("hidden")); }
+
+  function renderBatch(){
+    const entries = allUpdates();
+    const p = plan(entries);
+    $("#statTotal").textContent = p.total;
+    $("#statAsk").textContent = p.ask.length;
+    $("#statSilent").textContent = p.silent.length;
+    $("#batchTitle").textContent = `更新 ${p.total} 个插件`;
+    $("#batchSub").textContent = `${p.ask.length} 个需要确认 · ${p.silent.length} 个按设置免问`;
+    $("#silentCheck").checked = state.silentOfficial;
+    $("#overflowCheck").checked = state.overflow;
+
+    const groups = $("#batchGroups");
+    if (p.groups.length === 0) {
+      groups.innerHTML = `<div style="padding:16px;color:var(--muted);font-size:12px">没有需要确认的项。按当前设置，这 ${p.total} 个更新将直接执行。</div>`;
+    } else {
+      groups.innerHTML = p.groups.map((g) => `
+        <div>
+          <div class="batch-group-head">
+            <span class="gname">${esc(g.label)}</span>
+            <span class="badge ${g.items[0].source === "official" ? "badge-free" : "badge-third"}">${g.items[0].source === "official" ? "Official" : "Third-party"}</span>
+            <span class="gcount">${g.items.length} 个需要确认</span>
+          </div>
+          ${g.items.map((u) => `
+            <div class="batch-row">
+              <div class="tile" style="--hue:${u.hue}">${icon(u.icon, 16)}</div>
+              <div style="min-width:0">
+                <div class="batch-name">${esc(u.name)}</div>
+                <div class="batch-sub"><span class="src">${esc(u.srcLabel)}</span><span>${esc(u.author)}</span><span>·</span><span>${esc(u.size)}</span></div>
+              </div>
+              <div class="batch-ver">v${esc(u.from)} → <b>v${esc(u.to)}</b></div>
+            </div>`).join("")}
+        </div>`).join("");
+    }
+
+    const silentBox = $("#batchSilent");
+    if (p.silent.length) {
+      silentBox.style.display = "";
+      const bySource = new Map();
+      for (const e of p.silent) {
+        const k = e.sourceId;
+        if (!bySource.has(k)) bySource.set(k, []);
+        bySource.get(k).push(e);
+      }
+      const desc = Array.from(bySource.entries()).map(([k, arr]) => `${k === "official" ? "官方目录" : k} ${arr.length} 个`).join(" · ");
+      silentBox.innerHTML = `<span>${icon("i-check",12)}</span><span class="grow">${esc(desc)}按设置免问，将随本批一起执行。</span><button data-act="unsilent">改为逐个确认</button>`;
+    } else {
+      silentBox.style.display = "none";
+      silentBox.innerHTML = "";
+    }
+
+    $("#batchConfirm").textContent = p.ask.length
+      ? `确认更新 ${p.total} 个`
+      : `直接更新 ${p.total} 个`;
   }
 
-  function renderBatchList(){
-    const box = $("#batchList");
-    if (!box) return;
-    box.innerHTML = UPDATES.map((u) => `
-      <div class="batch-row">
-        <div class="tile" style="--hue:${u.hue}">${icon(u.icon, 18)}</div>
-        <div style="min-width:0">
-          <div class="batch-name">${esc(u.name)}</div>
-          <div class="batch-sub"><span class="src">${esc(u.srcLabel)}</span><span>${esc(u.author)}</span><span>·</span><span>${esc(u.size)}</span></div>
-        </div>
-        <div class="batch-ver">v${esc(u.from)} → <b>v${esc(u.to)}</b></div>
-      </div>`).join("");
-    $("#batchConfirm").textContent = `更新 ${UPDATES.length} 个`;
-    $("#batchTitle").textContent = `更新 ${UPDATES.length} 个插件`;
+  function openBatch(){
+    if (updatableCount() === 0) {
+      showToast("所有插件已是最新（原型）", "success");
+      logEvent("Update all：0 个待更新");
+      return;
+    }
+    const entries = allUpdates();
+    const p = plan(entries);
+    if (p.ask.length === 0) {
+      showToast(`按当前设置：${p.total} 个更新将直接执行（无逐项确认）`, "success");
+      logEvent(`Update all：ask=0 → 直接入队 ${p.total} 个`);
+      startJobs(entries, false);
+      return;
+    }
+    state.mode = "library"; renderCards(); renderBatch(); openDialog("overlayBatch");
   }
 
   function openInstall(mode, entry){
-    state.pending = { mode, entry };
+    state.pending = {mode, entry};
     const isUpdate = mode === "update";
     $("#installTitle").textContent = isUpdate ? `更新 ${entry.name}` : `安装 ${entry.name}`;
     $("#installSub").textContent = isUpdate ? `v${entry.from} → v${entry.to} · 壳托管确认` : "首次安装 · 壳托管确认";
@@ -971,50 +1261,35 @@ svg{display:block}
       : "首次安装始终确认。请核对来源、发布者与版本；安装后插件可调用壳的公开 API。";
     $("#iName").textContent = entry.name;
     $("#iAuthor").textContent = entry.author;
-    $("#iSource").textContent = entry.source === "official" ? "Official catalog · Encaron" : "Third-party source";
+    $("#iSource").textContent = entry.source === "official" ? "Official catalog · Encaron" : `Third-party source · ${entry.sourceId}`;
     $("#iVersion").textContent = isUpdate ? `${entry.from} → ${entry.to}` : entry.version || "—";
     $("#iSize").textContent = entry.size || "—";
     $("#iHash").textContent = "sha256 9f2c…e81a · 已校验";
     const warn = $("#iWarn");
-    if (isUpdate && entry.source !== "official") {
-      warn.style.display = "";
-      warn.textContent = "此来源未在信任列表；更新前请确认发布者。";
-    } else {
-      warn.style.display = "none";
-    }
+    if (isUpdate && entry.source !== "official") { warn.style.display = ""; warn.textContent = "此来源未在信任列表；更新前请确认发布者。"; }
+    else warn.style.display = "none";
     $("#rememberSource").checked = false;
     $("#installConfirm").textContent = isUpdate ? "确认更新" : "确认安装";
     openDialog("overlayInstall");
   }
 
-  /* ── 进度 ── */
-  function showDock(){
-    const d = $("#dock");
-    d.classList.remove("hidden");
-  }
-  function hideDock(){
-    $("#dock").classList.add("hidden");
-    if (jobTimer) { clearInterval(jobTimer); jobTimer = null; }
-  }
+  /* ═══ 通知面板（进度 + 完成）═══ */
+  function openNotif(){ state.notifOpen = true; $("#notifPanel").classList.remove("hidden"); renderNotif(); }
+  function closeNotif(){ state.notifOpen = false; $("#notifPanel").classList.add("hidden"); }
+  function toggleNotif(){ state.notifOpen ? closeNotif() : openNotif(); }
 
   function startJobs(list, simulateFailure, mode){
     closeDialogs();
-    state.dockMode = mode || "update";
+    state.jobMode = mode || "update";
     state.lastRun = null;
-    state.jobs = list.map((j, i) => Object.assign({}, j, {
-      status: i < 3 ? "running" : "queued",
-      progress: 0,
-      failed: false
-    }));
-    $("#dockTitle").textContent = state.dockMode === "install" ? "安装中" : "更新中";
-    $("#dockFoot").textContent = state.dockMode === "install"
-      ? "安装完成后不会自动打开详情页；可随时取消排队项。"
-      : "完成后不会自动打开详情页；可随时取消排队项。";
-    showDock();
-    renderDock();
+    state.jobs = list.map((j, i) => Object.assign({}, j, {status: i < 3 ? "running" : "queued", progress: 0, failed: false}));
+    openNotif();
+    renderNotif();
     if (jobTimer) clearInterval(jobTimer);
     jobTimer = setInterval(() => tickJobs(simulateFailure), 180);
-    logEvent(`${state.dockMode === "install" ? "安装" : "更新"}开始：${state.jobs.length} 个入队（3 并发）`);
+    const verb = state.jobMode === "install" ? "安装" : "更新";
+    logEvent(`${verb}开始：${state.jobs.length} 个入队（3 并发）`);
+    $("#statusJobs").textContent = `${state.jobs.length} 个${verb}任务`;
   }
 
   function tickJobs(simulateFailure){
@@ -1023,61 +1298,67 @@ svg{display:block}
     while (running.length < 3) {
       const q = jobs.find((j) => j.status === "queued");
       if (!q) break;
-      q.status = "running";
-      running.push(q);
+      q.status = "running"; running.push(q);
     }
     running.forEach((j) => {
       j.progress = Math.min(100, j.progress + 9 + Math.random() * 10);
-      if (simulateFailure && j.id === "theme-aurora-glass" && j.progress >= 58) {
-        j.status = "failed"; j.failed = true; j.progress = 58;
-      } else if (j.progress >= 100) {
-        j.status = "done"; j.progress = 100;
-      }
+      if (simulateFailure && j.id === "theme-aurora-glass" && j.progress >= 58) { j.status = "failed"; j.failed = true; j.progress = 58; }
+      else if (j.progress >= 100) j.status = "done";
     });
-    renderDock();
+    renderNotif();
     if (jobs.every((j) => ["done","failed","cancelled"].includes(j.status))) {
-      clearInterval(jobTimer); jobTimer = null;
-      finishJobs();
+      clearInterval(jobTimer); jobTimer = null; finishJobs();
     }
   }
 
-  function renderDock(){
-    const rows = $("#dockRows");
-    if (!rows) return;
-    const total = state.jobs.length;
-    const done = state.jobs.filter((j) => ["done","failed","cancelled"].includes(j.status)).length;
-    $("#dockCount").textContent = `${done}/${total}`;
-    rows.innerHTML = state.jobs.map((j) => {
-      const statusText = j.status === "queued" ? "排队中" : j.status === "running" ? `${Math.round(j.progress)}%` : j.status === "done" ? "完成" : j.status === "failed" ? "失败" : "已取消";
-      const stateCls = j.status === "done" ? "is-done" : j.status === "failed" ? "is-failed" : j.status === "running" ? "is-running" : "";
-      const sub = `${j.from ? "v" + j.from + " → v" + j.to : "v" + (j.version || "—")} · ${j.size || ""}`;
-      return `
-        <div class="job ${stateCls}" data-job="${esc(j.id)}">
-          <div class="jicon">${icon(j.status === "done" ? "i-check" : j.status === "failed" ? "i-warn" : j.icon, 14)}</div>
-          <div style="min-width:0">
-            <div class="job-name">${esc(j.name)}</div>
-            <div class="job-sub">${esc(sub)}</div>
-            <div class="bar"><i style="width:${j.status === "queued" ? 0 : j.progress}%"></i></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span class="job-state">${statusText}</span>
-            ${j.status === "queued" || j.status === "running" ? `<button class="btn btn-sm btn-ghost" data-cancel="${esc(j.id)}" aria-label="取消">${icon("i-x",12)}</button>` : ""}
-          </div>
-        </div>`;
-    }).join("");
-    $$("[data-cancel]").forEach((b) => b.addEventListener("click", () => cancelJob(b.dataset.cancel)));
-  }
+  function renderNotif(){
+    const list = $("#notifList"); if (!list) return;
+    const jobs = state.jobs;
+    const running = jobs.filter((j) => j.status === "running");
+    const queued = jobs.filter((j) => j.status === "queued");
+    const results = jobs.filter((j) => ["done","failed","cancelled"].includes(j.status));
+    const done = jobs.filter((j) => j.status === "done").length;
+    const failed = jobs.filter((j) => j.status === "failed").length;
+    const active = running.length + queued.length;
 
-  function cancelJob(id){
-    const j = state.jobs.find((x) => x.id === id);
-    if (!j || (j.status !== "queued" && j.status !== "running")) return;
-    j.status = "cancelled";
-    logEvent(`已取消：${j.name}`);
-    renderDock();
-    if (state.jobs.every((x) => ["done","failed","cancelled"].includes(x.status))) {
-      if (jobTimer) { clearInterval(jobTimer); jobTimer = null; }
-      finishJobs();
+    if (!jobs.length) {
+      $("#notifSummary").textContent = state.lastRun ? "插件更新" : "暂无通知";
+      list.innerHTML = state.lastRun ? "" : `<div style="padding:18px;color:var(--muted);font-size:12px;text-align:center">暂无通知。点 Update all 或「更新中」开始演示。</div>`;
+    } else {
+      $("#notifSummary").textContent = active
+        ? `插件更新 · ${running.length} 进行中${queued.length ? ` · ${queued.length} 等待` : ""}`
+        : `插件更新 · 完成 ${done}${failed ? ` · 失败 ${failed}` : ""}`;
     }
+
+    const row = (j) => {
+      const st = j.status === "running" ? `${Math.round(j.progress)}%` : j.status === "queued" ? "等待" : j.status === "done" ? "完成" : j.status === "failed" ? "失败" : "取消";
+      const cls = j.status === "done" ? "is-done" : j.status === "failed" ? "is-failed" : j.status === "running" ? "is-running" : "";
+      const sub = j.from ? `v${j.from} → v${j.to}` : `v${j.version || "—"}`;
+      return `<div class="notif-item ${cls}">
+        <div class="ico">${icon(j.status === "done" ? "i-check" : j.status === "failed" ? "i-warn" : j.icon, 13)}</div>
+        <div style="min-width:0">
+          <div class="notif-name">${esc(j.name)}</div>
+          <div class="notif-sub">${esc(sub)} · ${esc(j.srcLabel || "")}</div>
+          <div class="notif-bar"><i style="width:${j.status === "queued" ? 0 : j.progress}%"></i></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="notif-state">${st}</span>
+          ${j.status === "running" || j.status === "queued" ? `<button data-cancel="${esc(j.id)}">取消</button>` : ""}
+          ${j.status === "failed" ? `<button data-retry="${esc(j.id)}">重试</button>` : ""}
+        </div>
+      </div>`;
+    };
+
+    let html = "";
+    if (running.length) html += `<div class="notif-section-h">进行中 ${running.length}</div>` + running.map(row).join("");
+    if (queued.length) html += `<div class="notif-section-h">等待中 ${queued.length}</div>` + queued.map(row).join("");
+    if (results.length) html += `<div class="notif-section-h">已完成 ${results.length}</div>` + results.map(row).join("");
+    list.innerHTML = html || `<div style="padding:18px;color:var(--muted);font-size:12px;text-align:center">没有在途任务。</div>`;
+
+    const badge = $("#bellBadge");
+    if (active > 0) { badge.textContent = String(active); badge.classList.add("is-on"); }
+    else if (failed > 0) { badge.textContent = String(failed); badge.classList.add("is-on"); }
+    else { badge.classList.remove("is-on"); }
   }
 
   function finishJobs(){
@@ -1085,68 +1366,91 @@ svg{display:block}
     const ok = jobs.filter((j) => j.status === "done").length;
     const failed = jobs.filter((j) => j.status === "failed").length;
     const cancelled = jobs.filter((j) => j.status === "cancelled").length;
-    state.lastRun = { jobs: jobs.map((j) => Object.assign({}, j)), ok, failed, cancelled, at: new Date() };
-    const verb = state.dockMode === "install" ? "安装" : "更新";
+    const verb = state.jobMode === "install" ? "安装" : "更新";
+    state.lastRun = {jobs: jobs.map((j) => Object.assign({}, j)), ok, failed, cancelled, at: new Date(), mode: state.jobMode};
     const parts = [`已${verb} ${ok} 个`];
     if (failed) parts.push(`${failed} 个失败`);
     if (cancelled) parts.push(`${cancelled} 个取消`);
     showToast(parts.join(" · ") + (failed ? "（失败项可重试）" : "") + " · 未打开详情页", failed ? "warn" : "success");
     logEvent(`${verb}结束：成功 ${ok} / 失败 ${failed} / 取消 ${cancelled}；不自动打开详情`);
-    $("#dockFoot").innerHTML = failed
-      ? `<span style="color:var(--warn)">有 ${failed} 个失败——在「完成」页可重试；失败不阻塞其余项。</span>`
-      : `<span class="ok">✓</span> 全部完成；未自动打开详情页。`;
-    if (state.dockMode !== "install") {
-      // 更新成功的项在「我的库」里转成 installed 副本（UPDATES 保持原始清单，供批量弹窗复用）
-      jobs.filter((j) => j.status === "done").forEach((j) => {
+    $("#statusJobs").textContent = ok ? `已${verb} ${ok} 个` : "无更新任务";
+    jobs.filter((j) => j.status === "done").forEach((j) => {
+      const idx = state.library.findIndex((p) => p.id === j.id);
+      if (idx >= 0) state.library[idx] = {id:j.id, name:j.name, author:j.author, desc:j.desc, hue:j.hue, icon:j.icon, installed:true};
+    });
+    renderCards(); renderNotif();
+  }
+
+  function openCompletion(){
+    if (!state.lastRun) {
+      // 示例完成态（不跑任务）：仍用通知面板，不造新页面
+      state.lastRun = {
+        ok:3, failed:1, cancelled:0, at:new Date(), mode:"update",
+        jobs: [
+          Object.assign({}, OFFICIAL_UPDATES[0], {status:"done", progress:100}),
+          Object.assign({}, OFFICIAL_UPDATES[1], {status:"done", progress:100}),
+          Object.assign({}, THIRD_UPDATES[0], {status:"done", progress:100}),
+          Object.assign({}, THIRD_UPDATES[1], {status:"failed", progress:58})
+        ]
+      };
+      state.jobs = state.lastRun.jobs;
+      state.jobMode = "update";
+      $("#statusJobs").textContent = "已更新 3 个";
+      state.jobs.filter((j) => j.status === "done").forEach((j) => {
         const idx = state.library.findIndex((p) => p.id === j.id);
-        if (idx >= 0) {
-          state.library[idx] = { id:j.id, name:j.name, author:j.author, desc:j.desc, hue:j.hue, icon:j.icon, installed:true };
-        }
+        if (idx >= 0) state.library[idx] = {id:j.id, name:j.name, author:j.author, desc:j.desc, hue:j.hue, icon:j.icon, installed:true};
       });
       renderCards();
+      showToast("已更新 3 个 · 1 个失败（铃铛面板可重试）· 未打开详情页", "warn");
+    }
+    openNotif();
+    renderNotif();
+  }
+
+  function cancelJob(id){
+    const j = state.jobs.find((x) => x.id === id);
+    if (!j || (j.status !== "queued" && j.status !== "running")) return;
+    j.status = "cancelled"; j.progress = 0;
+    logEvent(`已取消：${j.name}`);
+    renderNotif();
+    if (state.jobs.every((x) => ["done","failed","cancelled"].includes(x.status))) {
+      if (jobTimer) { clearInterval(jobTimer); jobTimer = null; }
+      finishJobs();
     }
   }
 
-  function renderDone(){
-    const run = state.lastRun;
-    const list = $("#doneList");
-    if (!run) {
-      $("#doneTitle").textContent = "已更新 4 个插件";
-      $("#doneSub").textContent = "示例数据（先到「更新中」跑一遍，这里会显示真实模拟结果）";
-      list.innerHTML = UPDATES.map((u) => `<div class="done-row"><div class="tile" style="--hue:${u.hue};width:30px;height:30px;border-radius:8px">${icon(u.icon,15)}</div><div class="grow"><b>${esc(u.name)}</b><div style="color:var(--muted);font-size:10px">v${esc(u.from)} → v${esc(u.to)}</div></div><span class="st ok">✓ 完成</span></div>`).join("");
-      return;
-    }
-    $("#doneTitle").textContent = `已${state.dockMode === "install" ? "安装" : "更新"} ${run.ok} 个插件`;
-    $("#doneSub").textContent = `完成于 ${run.at.toLocaleTimeString()} · ${run.failed} 个失败 · ${run.cancelled} 个取消（原型模拟）`;
-    list.innerHTML = run.jobs.map((j) => {
-      const st = j.status === "done" ? `<span class="st ok">✓ 完成</span>` : j.status === "failed" ? `<span class="st bad">✕ 失败</span> <button class="btn btn-sm" data-retry="${esc(j.id)}">重试</button>` : `<span class="st" style="color:var(--muted)">已取消</span>`;
-      return `<div class="done-row"><div class="tile" style="--hue:${j.hue || 150};width:30px;height:30px;border-radius:8px">${icon(j.icon || "i-plugin",15)}</div><div class="grow"><b>${esc(j.name)}</b><div style="color:var(--muted);font-size:10px">${j.from ? "v" + esc(j.from) + " → v" + esc(j.to) : "v" + esc(j.version || "—")}</div></div>${st}</div>`;
-    }).join("");
-    $$("[data-retry]").forEach((b) => b.addEventListener("click", () => {
-      const id = b.dataset.retry;
-      const j = run.jobs.find((x) => x.id === id);
-      if (j) { showToast(`重试：${j.name}（原型）`, "success"); logEvent(`重试：${j.name}`); }
-    }));
-  }
-
-  /* ── 设置 ── */
+  /* ═══ 设置 ═══ */
   function syncSettings(){
-    $$('input[name="policy"]').forEach((r) => { r.checked = r.value === state.policy; });
-    $$(".switch[data-trust]").forEach((s) => s.classList.toggle("is-on", !!state.trusted[s.dataset.trust]));
+    const so = $("#silentOfficial"), st = $("#silentTrusted");
+    if (so) { so.classList.toggle("is-on", state.silentOfficial); so.setAttribute("aria-checked", String(state.silentOfficial)); }
+    if (st) { st.classList.toggle("is-on", state.silentTrustedSources); st.setAttribute("aria-checked", String(state.silentTrustedSources)); }
+    const tt = $("#trustThird"), tb = $("#trustBulk");
+    if (tt) { tt.classList.toggle("is-on", state.trusted.has("lab-sample")); tt.setAttribute("aria-checked", String(state.trusted.has("lab-sample"))); }
+    if (tb) { tb.classList.toggle("is-on", state.trusted.has("bulk-lab")); tb.setAttribute("aria-checked", String(state.trusted.has("bulk-lab"))); }
+    const third = $("#thirdState"), bulk = $("#bulkState");
+    if (third) { const on = state.trusted.has("lab-sample"); third.className = "state " + (on ? "on" : "off"); third.textContent = on ? "信任中 · 同源更新免问" : "未信任 · 更新时需确认"; }
+    if (bulk) { const on = state.trusted.has("bulk-lab"); bulk.className = "state " + (on ? "on" : "off"); bulk.textContent = on ? "信任中 · 同源更新免问" : "未信任 · 更新时需确认"; }
+    const p = plan(state.library.filter((e) => !!e.from));
+    const officialSilent = p.silent.filter((e) => e.source === "official").length;
+    const officialAsk = p.ask.filter((e) => e.source === "official").length;
+    const thirdSilent = p.silent.filter((e) => e.source !== "official").length;
+    const thirdAsk = p.ask.filter((e) => e.source !== "official").length;
+    const eff = $("#policyEffect");
+    if (eff) eff.innerHTML = p.total
+      ? `当前待更新 <b>${p.total}</b> 个：官方 <b>${officialSilent}</b> 免问 / <b>${officialAsk}</b> 需确认 · 第三方 <b>${thirdSilent}</b> 免问 / <b>${thirdAsk}</b> 需确认`
+      : `当前没有待更新项（先到「我的库」跑一遍批量演示）`;
+    updatePolicyChip();
   }
 
-  /* ── Bug 对照 ── */
-  function resetBug(){
-    const before = $("#bugBefore");
-    if (before) before.classList.remove("is-shifted");
-  }
+  /* ═══ Bug ═══ */
+  function resetBug(){ const b = $("#bugBefore"); if (b) b.classList.remove("is-shifted"); }
 
-  /* ── 事件绑定 ── */
+  /* ═══ 事件 ═══ */
   $("#cards").addEventListener("click", (e) => {
     const actionEl = e.target.closest("[data-action]");
     if (actionEl) {
       e.stopPropagation();
-      const { action, id } = actionEl.dataset;
+      const {action, id} = actionEl.dataset;
       if (action === "update") startSingle(id);
       else if (action === "install") openInstall("install", findEntry(id));
       else if (action === "open") openDetail(id);
@@ -1160,118 +1464,121 @@ svg{display:block}
   function startSingle(id){
     const p = UPDATES.find((x) => x.id === id);
     if (!p) return;
-    const trusted = p.source === "official" ? state.trusted.official : state.trusted.third;
-    const silent = (state.policy === "official-silent" && p.source === "official") ||
-                   (state.policy === "trusted-silent" && trusted);
-    if (silent) {
-      showToast(`同源更新：${p.name} 直接开始（不逐项弹卡）`, "success");
-      logEvent(`单项更新 ${p.name}：策略 ${state.policy} → 免确认`);
-      startJobs([p], false, "update");
+    if (isSilent(p)) {
+      showToast(`按当前设置：${p.name} 同源更新免问，直接开始`, "success");
+      logEvent(`单项更新 ${p.name}：silent → 免确认`);
+      startJobs([p], false);
     } else {
       openInstall("update", p);
     }
   }
 
-  $("#updateAll").addEventListener("click", () => {
-    if (state.library.filter((p) => !!p.from).length === 0) {
-      showToast("所有插件已是最新（原型）", "success");
-      return;
-    }
-    renderBatchList();
-    $("#silentCheck").checked = state.policy === "official-silent";
-    openDialog("overlayBatch");
+  $("#updateAll").addEventListener("click", () => openBatch());
+  $("#checkBtn").addEventListener("click", () => {
+    const n = updatableCount();
+    showToast(n ? `检查更新：发现 ${n} 个可更新（原型）` : "所有插件已是最新（原型）", "success");
+    logEvent(`检查更新：${n} 个可更新`);
   });
-  $("#checkBtn").addEventListener("click", () => { showToast("检查更新：发现 4 个可更新（原型）", "success"); logEvent("检查更新：4 个可更新"); });
-  $("#check2").addEventListener("click", () => { showToast("检查更新：发现 4 个可更新（原型）", "success"); logEvent("检查更新：4 个可更新"); });
+  $("#check2").addEventListener("click", () => { const n = updatableCount(); showToast(n ? `检查更新：发现 ${n} 个可更新（原型）` : "所有插件已是最新（原型）", "success"); });
   $("#refreshBtn").addEventListener("click", () => { showToast("已刷新目录内容（原型）", "success"); logEvent("刷新目录内容"); });
-  $("#editBtn").addEventListener("click", () => showToast("编辑模式（原型）", "info"));
+  $("#editBtn").addEventListener("click", () => showToast("编辑模式（原型）——批量排除请走 Edit，不在确认卡里做二义选择", "info"));
   $("#readBtn").addEventListener("click", () => showToast("已全部标为已读（原型）", "success"));
+  $("#policyChip").addEventListener("click", () => setScenario("settings"));
 
   $("#batchConfirm").addEventListener("click", () => {
-    const silent = $("#silentCheck").checked;
-    if (silent) state.policy = "official-silent";
+    const entries = allUpdates();
     const fail = $("#failCheck").checked;
-    logEvent(`批量确认：${UPDATES.length} 个；silent=${silent}；模拟失败=${fail}`);
-    startJobs(UPDATES, fail, "update");
+    logEvent(`批量确认：${entries.length} 个；silentOfficial=${state.silentOfficial}；overflow=${state.overflow}；模拟失败=${fail}`);
+    startJobs(entries, fail);
+  });
+  $("#silentCheck").addEventListener("change", (e) => {
+    state.silentOfficial = e.target.checked;
+    syncSettings();
+    const p = plan(allUpdates());
+    if (p.ask.length === 0) { showToast("已无需要确认的项：直接开始更新", "success"); startJobs(allUpdates(), false); return; }
+    renderBatch();
+  });
+  $("#overflowCheck").addEventListener("change", (e) => { state.overflow = e.target.checked; renderBatch(); syncSettings(); });
+  $("#batchGroups").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act='unsilent']");
+    if (b) { state.silentOfficial = false; syncSettings(); renderBatch(); }
+  });
+  $("#batchSilent").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act='unsilent']");
+    if (b) { state.silentOfficial = false; syncSettings(); renderBatch(); }
   });
 
   $("#installConfirm").addEventListener("click", () => {
-    const pending = state.pending;
-    if (!pending) return;
+    const pending = state.pending; if (!pending) return;
     if ($("#rememberSource").checked) {
-      state.trusted[pending.entry.source === "official" ? "official" : "third"] = true;
+      state.trusted.add(pending.entry.sourceId);
       showToast("已记住此来源：以后它的更新不再询问（首装仍确认）", "success");
-      logEvent("记住来源信任");
+      logEvent("记住来源信任：" + pending.entry.sourceId);
+      syncSettings();
     }
-    if (pending.mode === "update") startJobs([pending.entry], false, "update");
-    else startJobs([pending.entry], false, "install");
+    startJobs([pending.entry], false, pending.mode === "install" ? "install" : "update");
   });
-
   $("#sourceConfirm").addEventListener("click", () => {
     closeDialogs();
     showToast("已按新来源更新（原型）——来源变更必须重新确认", "warn");
     logEvent("来源变更：用户仍要更新，重新签发 token");
   });
 
-  $("#dockClose").addEventListener("click", () => hideDock());
-
-  document.addEventListener("click", (e) => {
-    if (e.target.matches("[data-close]")) closeDialogs();
-    if (e.target.classList && e.target.classList.contains("overlay")) closeDialogs();
+  $("#bellBtn").addEventListener("click", () => toggleNotif());
+  $("#notifFold").addEventListener("click", () => closeNotif());
+  $("#notifClear").addEventListener("click", () => {
+    state.jobs = []; state.lastRun = null; closeNotif();
+    $("#statusJobs").textContent = "无更新任务";
+    logEvent("清除通知");
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialogs(); });
-
-  $$("#protoBar [data-scenario]").forEach((b) => b.addEventListener("click", () => setScenario(b.dataset.scenario)));
-  $$("[data-scenario]").forEach((b) => {
-    if (!b.closest("#protoBar")) b.addEventListener("click", () => setScenario(b.dataset.scenario));
+  $("#notifList").addEventListener("click", (e) => {
+    const cancel = e.target.closest("[data-cancel]");
+    const retry = e.target.closest("[data-retry]");
+    if (cancel) cancelJob(cancel.dataset.cancel);
+    if (retry) { showToast("重试：" + retry.dataset.retry + "（原型）", "success"); logEvent("重试：" + retry.dataset.retry); }
   });
 
-  $$(".store-rail button[data-mode]").forEach((b) => b.addEventListener("click", () => {
-    state.mode = b.dataset.mode; renderCards();
-  }));
-  $$(".store-rail button[data-rail]").forEach((b) => b.addEventListener("click", () => {
-    showToast(`分类页：${b.dataset.rail}（原型）`, "info");
-  }));
-
-  $$('input[name="policy"]').forEach((r) => r.addEventListener("change", () => {
-    state.policy = r.value;
-    syncSettings();
-    showToast(`更新确认策略：${r.value === "always" ? "每次更新都确认" : r.value === "official-silent" ? "官方源更新不逐项询问" : "信任来源的更新不询问"}`, "success");
-    logEvent(`设置：policy=${r.value}`);
-  }));
-  $$(".switch[data-trust]").forEach((s) => s.addEventListener("click", () => {
-    state.trusted[s.dataset.trust] = !state.trusted[s.dataset.trust];
-    syncSettings();
-    showToast(`来源信任：${s.dataset.trust} → ${state.trusted[s.dataset.trust] ? "已信任" : "未信任"}`, "success");
-  }));
+  $("#silentOfficial").addEventListener("click", () => { state.silentOfficial = !state.silentOfficial; syncSettings(); showToast("官方目录更新：" + (state.silentOfficial ? "不询问" : "逐项确认"), "success"); logEvent("设置 silentOfficial=" + state.silentOfficial); });
+  $("#silentTrusted").addEventListener("click", () => { state.silentTrustedSources = !state.silentTrustedSources; syncSettings(); showToast("信任来源更新：" + (state.silentTrustedSources ? "不询问" : "逐项确认"), "success"); logEvent("设置 silentTrustedSources=" + state.silentTrustedSources); });
+  $("#trustThird").addEventListener("click", () => { if (state.trusted.has("lab-sample")) state.trusted.delete("lab-sample"); else state.trusted.add("lab-sample"); syncSettings(); showToast("Third-party sample：" + (state.trusted.has("lab-sample") ? "已信任" : "未信任"), "success"); });
+  $("#trustBulk").addEventListener("click", () => { if (state.trusted.has("bulk-lab")) state.trusted.delete("bulk-lab"); else state.trusted.add("bulk-lab"); syncSettings(); showToast("Bulk lab：" + (state.trusted.has("bulk-lab") ? "已信任" : "未信任"), "success"); });
 
   $("#bugBeforeBtn").addEventListener("click", (e) => {
     e.stopPropagation();
     const card = $("#bugBefore");
     card.classList.add("is-shifted");
     logEvent("BUG：点击 Update → --x-shift 重算，按钮下移 80px");
-    setTimeout(() => {
-      showToast("BUG：点击落到卡片 → 打开了详情页（不是更新）", "danger");
-      logEvent("BUG 结果：打开详情页，更新未执行");
-    }, 260);
+    setTimeout(() => { showToast("BUG：点击落到卡片 → 打开了详情页（不是更新）", "danger"); logEvent("BUG 结果：打开详情页，更新未执行"); }, 260);
     setTimeout(() => card.classList.remove("is-shifted"), 1100);
   });
   $("#bugAfterBtn").addEventListener("click", (e) => {
     e.stopPropagation();
     showToast("修复后：按钮不动 → 进入更新流程（不打开详情）", "success");
     logEvent("修复后：几何冻结，点击命中 Update");
-    startJobs([UPDATES[0]], false, "update");
+    startJobs([OFFICIAL_UPDATES[0]], false);
   });
   $("#bugReplay").addEventListener("click", () => { resetBug(); showToast("已重放：点左边 Update 看 bug，点右边 Update 看修复", "info"); });
 
-  /* ── 初始 ── */
-  renderBatchList();
+  document.addEventListener("click", (e) => {
+    if (e.target.matches("[data-close]")) closeDialogs();
+    if (e.target.classList && e.target.classList.contains("overlay")) closeDialogs();
+    if (e.target.closest("[data-nav]")) { showToast(`设置组：${e.target.closest("[data-nav]").dataset.nav}（原型只演示通用组）`, "info"); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDialogs(); closeNotif(); } });
+
+  $$("#protoBar [data-scenario]").forEach((b) => b.addEventListener("click", () => setScenario(b.dataset.scenario)));
+  $$(".store-rail button[data-mode]").forEach((b) => b.addEventListener("click", () => { state.mode = b.dataset.mode; renderCards(); }));
+  $$(".store-rail button[data-rail]").forEach((b) => b.addEventListener("click", () => showToast(`分类页：${b.dataset.rail}（原型）`, "info")));
+
+  /* ═══ 初始 ═══ */
   renderCards();
   syncSettings();
+  renderNotif();
   const params = new URLSearchParams(location.search);
+  if (params.get("overflow") === "1") state.overflow = true;
   const initial = params.get("scenario") || location.hash.replace(/^#/, "");
   if (initial) setScenario(initial);
-  else logEvent("原型已加载：当前策略 official-silent（官方源更新不逐项询问）");
+  else logEvent("原型 v2 已加载：完成态 = 通知面板；设置 = 通用 → 插件更新（两条独立开关）");
 })();
 </script>
 </body>
