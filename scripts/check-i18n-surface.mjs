@@ -156,7 +156,12 @@ export function railLayoutGaps(css) {
   if (!/white-space:\s*nowrap/.test(compact)) gaps.push("compact 行缺 white-space: nowrap");
   const text = block(".marketplace-store-rail-item.is-compact .marketplace-store-rail-text");
   if (!/min-width:\s*0/.test(text)) gaps.push("rail 标签缺 min-width: 0");
-  if (!/text-overflow:\s*ellipsis/.test(text)) gaps.push("rail 标签缺 text-overflow: ellipsis");
+  // 2026-11-24：省略号不是解法——用户连续看到 Lib… / Aut…。标签必须完整显示，
+  // 宽度由下面的 rail width 不变量保证；仍写 ellipsis 视为回归。
+  if (/text-overflow:\s*ellipsis/.test(text)) gaps.push("rail 标签仍用省略号（应完整显示）");
+  if (!/text-overflow:\s*clip/.test(text)) gaps.push("rail 标签缺 text-overflow: clip");
+  const width = /@container \(max-width: 1080px\)[\s\S]*?\.marketplace-store-rail\s*\{\s*width:\s*(\d+)px/.exec(css);
+  if (!width || Number(width[1]) < 128) gaps.push("窄容器 rail 宽度 < 128px（Library/Author 会被截）");
   const dot = block(".marketplace-store-rail-item.is-compact .marketplace-store-rail-dot");
   if (!/position:\s*static/.test(dot)) gaps.push("compact 点未改成 static");
   if (!/flex:\s*none/.test(dot)) gaps.push("compact 点缺 flex: none");
@@ -305,8 +310,8 @@ function selfTest() {
   ok("负控：官方条目 zh+en 齐全 ⇒ 0", catalogLocaleGaps(cat, officialIds).length === 0);
   const cat2 = { plugins: [{ id: "official", name: "官方", description: "d", locales: { zh: { name: "官方" } } }], collections: [] };
   ok("正控：官方条目缺 en ⇒ 命中", catalogLocaleGaps(cat2, officialIds).length > 0);
-  const css = `.marketplace-store-rail-item.is-compact { flex-wrap: nowrap; white-space: nowrap; }\n.marketplace-store-rail-item.is-compact .marketplace-store-rail-text { min-width: 0; text-overflow: ellipsis; }\n.marketplace-store-rail-item.is-compact .marketplace-store-rail-dot { position: static; flex: none; }`;
-  ok("负控：rail 三不变量齐全 ⇒ 0", railLayoutGaps(css).length === 0);
+  const css = `@container (max-width: 1080px) { .marketplace-store-rail { width: 128px; } }\n.marketplace-store-rail-item.is-compact { flex-wrap: nowrap; white-space: nowrap; }\n.marketplace-store-rail-item.is-compact .marketplace-store-rail-text { min-width: 0; text-overflow: clip; }\n.marketplace-store-rail-item.is-compact .marketplace-store-rail-dot { position: static; flex: none; }`;
+  ok("负控：rail 不变量齐全（128px + clip）⇒ 0", railLayoutGaps(css).length === 0);
   ok("正控：rail 缺 nowrap ⇒ 命中", railLayoutGaps(".marketplace-store-rail-item.is-compact { }").length > 0);
   ok("负控：转义 key 反转义（E:\\\\tools ⇒ E:\\tools）", unescapeJs("E:\\\\tools") === "E:\\tools");
 
