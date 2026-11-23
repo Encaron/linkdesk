@@ -938,3 +938,18 @@ Four attributes, all written on your own DOM elements:
 | Sidebar list selection | `onMouseDown` (not `onClick`) | aligned with VS Code Explorer—prevents lost events when a fast click crosses elements |
 
 **Use these facilities when writing plugins; don't hand-roll. Even if you write one, it'll have to be torn out later—better to normalize from day one.**
+
+### 11.4 Manifest display text and multilingual READMEs (2026-11-24)
+
+- **Display text is i18n content.** Every human-readable string in `plugin.json` (name/description, `commands[].title/description/params[].description`, `menus[].label`, `views[].title`, `configuration.*`, `statusBar[].label`, theme/language labels) must have a translation in every declared `contributes.i18n` language. `npm run lint` and `publish` fail on a missing entry; if you do not want to translate, remove the language declaration.
+- **The host resolves it.** It reads the manifest with the plugin's own i18n namespace; marketplaces, the command palette, menus, and Settings render the resolved strings. Your own view code still calls `t()`.
+- **READMEs:** root `README.md` is the GitHub landing page and fallback. Other languages live in `docs/readme/<lang>.md` and are declared in `plugin.json`:
+
+```json
+"readme": {
+  "default": "README.md",
+  "locales": { "zh": "README.md", "en": "docs/readme/en.md" }
+}
+```
+
+- Shared images stay in `resources/` (one copy); a file under `docs/readme/` references them as `../../resources/...`. `publish` writes the catalog's `readmeLocales`; older shells keep using `readmeUrl`.
