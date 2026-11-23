@@ -265,3 +265,24 @@ describe("ThemeRegistry — registerRecipe / 查询 / 回滚", () => {
     expect(ThemeRegistry.getRecipe("demo-recipe")?.colorways[0].name).toBe("C");
   });
 });
+
+describe("parseThemeRecipe — traits 随配色进注册表（2026-11-24 高对比去重）", () => {
+  it("traits.contrast='high' 保留；无 traits 的配色不带该字段", () => {
+    const recipe = parseThemeRecipe(
+      {
+        id: "demo-traits",
+        name: "Demo Traits",
+        type: "dark",
+        colorways: [
+          { id: "base", name: "Base", colors: { "bg-window": "#101014" } },
+          { id: "hi", name: "High", colors: { "bg-window": "#000000" }, traits: { contrast: "high" } },
+        ],
+      },
+      FALLBACK
+    );
+    expect(recipe).not.toBeNull();
+    const [base, hi] = recipe!.colorways;
+    expect(base.traits).toBeUndefined();
+    expect(hi.traits).toEqual({ contrast: "high" });
+  });
+});

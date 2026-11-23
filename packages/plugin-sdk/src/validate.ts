@@ -446,6 +446,84 @@ function worstInkContrast(ink: RgbaColor, scrim: RgbaColor): number {
   return Math.min(contrastRatio(inkLum, over(0)), contrastRatio(inkLum, over(255)));
 }
 
+/** 主题配方的内容面可读性检查（2026-11-24 整窗主视觉「白字压白玻璃」实机案）——返回错误串（空 = 通过/无可判定值）。
+ *  规则：
+ *   ① 挂了全窗背景图（appearance.background.image）⇒ 内容面（bg-card/bg-input）必须是**实色基**
+ *      或 alpha ≥ 0.55——跟随主题模式下作者的低 alpha 提亮叠层会原样透到照片上，白字压白玻璃直接消失；
+ *   ② text-primary 对内容面合成色 ≥ 4.5:1、text-muted ≥ 3:1（底图不可知，取纯黑/纯白两端的最差值）。
+ *  解析不了的色值（var()/color-mix()/命名色）不猜，跳过——门禁只判能判的。 */
+const CONTENT_SURFACE_KEYS = ["bg-card", "bg-input"] as const;
+const CONTENT_SURFACE_FLOOR_ALPHA = 0.55;
+
+function collectContentContrastErrors(path: string, data: unknown): string[] {
+  if (data == null || typeof data !== "object") return [];
+  const root = data as { appearance?: { background?: { image?: unknown } }; colorways?: unknown };
+  const image = root.appearance?.background?.image;
+  const hasBackdropImage = typeof image === "string" && image.trim() !== "";
+  const colorways = root.colorways;
+  if (!Array.isArray(colorways)) return [];
+  const errors: string[] = [];
+  const overBlackOrWhite = (ink: RgbaColor, surface: RgbaColor): number => {
+    const inkLum = relativeLuminance(ink.r, ink.g, ink.b);
+    const over = (bg: number) => {
+      const mix = (c: number) => c * surface.a + bg * (1 - surface.a);
+      return relativeLuminance(mix(surface.r), mix(surface.g), mix(surface.b));
+    };
+    return Math.min(contrastRatio(inkLum, over(0)), contrastRatio(inkLum, over(255)));
+  };
+  const overColor = (ink: RgbaColor, surface: RgbaColor, base: RgbaColor): number => {
+    const inkLum = relativeLuminance(ink.r, ink.g, ink.b);
+    const mix = (c: number, b: number) => c * surface.a + b * (1 - surface.a);
+    return contrastRatio(inkLum, relativeLuminance(mix(surface.r, base.r), mix(surface.g, base.g), mix(surface.b, base.b)));
+  };
+  for (const cw of colorways) {
+    if (cw == null || typeof cw !== "object") continue;
+    const colors = (cw as { colors?: unknown }).colors;
+    if (colors == null || typeof colors !== "object") continue;
+    const map = colors as Record<string, unknown>;
+    const cwId = typeof (cw as { id?: unknown }).id === "string" ? ` colorway "${(cw as { id: string }).id}"` : "";
+    const inkPrimary = typeof map["text-primary"] === "string" ? parseColorLiteral(map["text-primary"] as string) : null;
+    const inkMuted = typeof map["text-muted"] === "string" ? parseColorLiteral(map["text-muted"] as string) : null;
+    // 无背景图时半透明面是合法玻璃——底算窗口基色（去 alpha）；有图则底图不可知，取黑/白两端最差
+    const windowRaw = map["bg-window"];
+    const windowBase = !hasBackdropImage && typeof windowRaw === "string" ? parseColorLiteral(windowRaw) : null;
+    const contrastOf = (ink: RgbaColor, surface: RgbaColor): number =>
+      windowBase ? overColor(ink, surface, { ...windowBase, a: 1 }) : overBlackOrWhite(ink, surface);
+    for (const key of CONTENT_SURFACE_KEYS) {
+      const raw = map[key];
+      if (typeof raw !== "string") continue;
+      const surface = parseColorLiteral(raw);
+      if (!surface) continue;
+      if (hasBackdropImage && surface.a < CONTENT_SURFACE_FLOOR_ALPHA) {
+        errors.push(
+          `${basename(path)}:${cwId} 的 ${key}（${raw}）是半透明提亮层（alpha ${surface.a}），但该主题挂了背景图`
+          + `——跟随主题模式下它会原样透到照片上，白字压白玻璃会看不见。`
+          + `内容面请写**实色基**（如 #23262C）或 alpha ≥ ${CONTENT_SURFACE_FLOOR_ALPHA}；环境面（bg-window/栏）才允许随图透。`,
+        );
+      }
+      if (inkPrimary) {
+        const ratio = contrastOf(inkPrimary, surface);
+        if (ratio < 4.5) {
+          errors.push(
+            `${basename(path)}:${cwId} 的 text-primary（${map["text-primary"] as string}）压 ${key}（${raw}）`
+            + `对比度仅 ${ratio.toFixed(1)}:1（< 4.5:1）——正文会看不清（底图按最亮/最暗两端取最差值）。`,
+          );
+        }
+      }
+      if (inkMuted) {
+        const ratio = contrastOf(inkMuted, surface);
+        if (ratio < 3) {
+          errors.push(
+            `${basename(path)}:${cwId} 的 text-muted（${map["text-muted"] as string}）压 ${key}（${raw}）`
+            + `对比度仅 ${ratio.toFixed(1)}:1（< 3:1）——次级文字会看不清。`,
+          );
+        }
+      }
+    }
+  }
+  return errors;
+}
+
 /** 主题配方的媒体墨色检查——返回错误串（空 = 通过/无可判定值） */
 function collectMediaInkErrors(path: string, data: unknown): string[] {
   if (data == null || typeof data !== "object") return [];
@@ -481,7 +559,9 @@ export function validateThemeJson(path: string): ValidationResult {
   const base = validateDataFile(path, getThemeValidator());
   if (!base.valid) return base;
   const read = readDataFileStrict(path);
-  const semantic = "data" in read ? collectMediaInkErrors(path, read.data) : [];
+  const semantic = "data" in read
+    ? [...collectMediaInkErrors(path, read.data), ...collectContentContrastErrors(path, read.data)]
+    : [];
   return semantic.length > 0 ? { valid: false, errors: semantic } : base;
 }
 

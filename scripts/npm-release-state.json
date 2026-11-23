@@ -12,8 +12,8 @@
     },
     {
       "name": "@linkdesk/plugin-sdk",
-      "version": "0.1.111",
-      "contentHash": "3c2ec8cf0f327e4ff79df73a65249b397665b2cc6d105fdfdfac17a45770750b",
+      "version": "0.1.112",
+      "contentHash": "1f6fe0f8cefb28a04b9df06aee7653dc23460d7b632ba998fbbb7ed23ec9cc84",
       "fileHashes": {
         "packages/plugin-sdk/README.md": "294092c09456064a",
         "packages/plugin-sdk/dev-host/dev-main.tsx": "49c59b28e17ca424",
@@ -100,9 +100,10 @@
         "packages/plugin-sdk/src/surface-chunk-guard.ts": "00220b9009e85031",
         "packages/plugin-sdk/src/svg-wellformed.test.ts": "f13678c6d6752a1c",
         "packages/plugin-sdk/src/types.ts": "ed009a0cae5843b1",
+        "packages/plugin-sdk/src/validate-theme-contrast.test.ts": "4ee830c5e5687175",
         "packages/plugin-sdk/src/validate-theme-media.test.ts": "737913cd9d7fe096",
         "packages/plugin-sdk/src/validate.test.ts": "02dd93ea6e312a87",
-        "packages/plugin-sdk/src/validate.ts": "e6c63c727f6d6285",
+        "packages/plugin-sdk/src/validate.ts": "e1873d2f48229c7d",
         "packages/plugin-sdk/src/vite-config.ts": "f7af6619bcdbe3a1",
         "packages/plugin-sdk/src/vitest-setup.test.ts": "bd55dc42017f41cf",
         "packages/plugin-sdk/src/vitest-setup.ts": "9a917591a9ce7616"

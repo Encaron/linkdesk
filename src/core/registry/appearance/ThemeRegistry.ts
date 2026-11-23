@@ -72,10 +72,15 @@ function parseColorways(
       if (!cw || typeof cw !== "object") continue;
       const colors = (cw as Record<string, unknown>).colors;
       if (!colors || typeof colors !== "object") continue;
+      // 2026-11-24：`traits`（contrast / colorVision）必须随配色一起进注册表——
+      // 否则 `userSelectableColorways` 过滤不出高对比配色、高对比开关也取不到作者配色。
+      const traitsRaw = (cw as Record<string, unknown>).traits;
+      const traits = traitsRaw && typeof traitsRaw === "object" ? (traitsRaw as ThemeColorway["traits"]) : undefined;
       list.push({
         id: String((cw as Record<string, unknown>).id ?? ""),
         name: String((cw as Record<string, unknown>).name ?? (cw as Record<string, unknown>).id ?? ""),
         colors: toColorMap(colors),
+        ...(traits ? { traits } : {}),
       });
     }
     return list;
