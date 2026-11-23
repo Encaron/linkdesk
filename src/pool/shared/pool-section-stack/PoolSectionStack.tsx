@@ -246,7 +246,7 @@ export default function PoolSectionStack({
   const renderSection = (view: SidebarViewMeta, draggable: boolean, onDragStart?: (e: React.DragEvent) => void, onDragEnd?: () => void) => {
     // E5.6#11g：空状态由插件内部自行判断——PluginComponent 始终挂载（防 E4V#44 死锁）
     const body = (
-      <ErrorBoundary pluginId={view.pluginId}>
+      <ErrorBoundary pluginId={view.pluginId} scale="panel">
         <PluginComponent
           pluginId={view.pluginId}
           renderPath={view.renderPath}

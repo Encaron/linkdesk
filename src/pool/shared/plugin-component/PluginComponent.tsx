@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { ViewSkeleton } from "../view-skeleton/ViewSkeleton"; // 04「启动过场」④C：内容加载骨架
 import i18n from "../../../i18n";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
+import FallbackFace from "../fallback/FallbackFace"; // 2026-11-24：降级脸家族（missing 中性变体）
 
 // ── E6#62b：源码 glob 双表（pluginModules/viewModules）已退役整删 ──
 // 池侧两表 mis-root 恒空（../../ 自 src/pool/shared/plugin-component/ 落 src/pool/plugins——不存在），
@@ -38,10 +39,14 @@ const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
  */
 function PluginUnavailable({ pluginId }: { pluginId: string }) {
   const { t } = useTranslation();
+  // 2026-11-24：裸文本占位 → 降级脸 missing 变体（中性：没有这只插件 ≠ 崩溃）
   return (
-    <div className="plugin-missing-view">
-      <p>{t('插件 "{{id}}" 不可用', { id: pluginId })}</p>
-    </div>
+    <FallbackFace
+      variant="missing"
+      title={t('插件 "{{id}}" 不可用', { id: pluginId })}
+      description={t("插件可能未安装或被移除；在插件市场重新安装后重开此视图。")}
+      detail={[{ label: t("插件 id"), value: pluginId }]}
+    />
   );
 }
 

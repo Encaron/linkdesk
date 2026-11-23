@@ -14,28 +14,33 @@
 
 import { Component, type ReactNode, type ErrorInfo } from "react";
 import i18n from "../../../i18n";
+import FallbackFace, { type FallbackScale } from "../fallback/FallbackFace";
 
 interface Props {
   children: ReactNode;
   /** 插件 ID——崩溃时用于显示 "「终端」已崩溃" */
   pluginId?: string;
-  /** 自定义 fallback UI。不传则用内置 crash 界面（pluginId + 重试按钮） */
+  /** 容器尺度（2026-11-24 降级脸家族）：侧栏 section 传 panel；缺省 full */
+  scale?: FallbackScale;
+  /** 自定义 fallback UI。不传则用内置 crash 脸（FallbackFace） */
   fallback?: ReactNode;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  /** 崩溃发生时间（诊断详情行） */
+  errorAt: string;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorAt: "" };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, errorAt: new Date().toISOString() };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -62,34 +67,20 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       const name = this.props.pluginId ?? i18n.t("应用名");
+      const error = this.state.error;
       return (
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          gap: 12,
-          color: "var(--text-muted)",
-          fontSize: "var(--font-size-md)", /* E5.8 Phase 12 #171：13→md */
-          userSelect: "none",
-        }}>
-          <span>{i18n.t("「{{name}}」已崩溃", { name })}</span>
-          <button
-            onClick={this.handleRetry}
-            style={{
-              padding: "4px 16px",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--bg-card)",
-              color: "var(--text-primary)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-sm)", /* E5.8 Phase 12 #171：12→sm */
-            }}
-          >
-            {i18n.t("重试")}
-          </button>
-        </div>
+        <FallbackFace
+          variant="crash"
+          scale={this.props.scale}
+          title={i18n.t("「{{name}}」已崩溃", { name })}
+          description={i18n.t("视图渲染出错，可以重试；反复出现请展开诊断信息反馈。")}
+          onRetry={this.handleRetry}
+          detail={[
+            { label: i18n.t("插件 id"), value: this.props.pluginId ?? "—" },
+            { label: i18n.t("错误消息"), value: error?.message ?? String(error) },
+            { label: i18n.t("发生时间"), value: new Date(this.state.errorAt).toLocaleString() },
+          ]}
+        />
       );
     }
     return this.props.children;

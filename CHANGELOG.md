@@ -2,6 +2,10 @@
 
 ## v0.2.62（2026-11-24）
 
+### feat
+
+- 🧯 **降级脸家族 `ldk-fallback`**（错误态与降级脸-UI化）：把「插件不可用 / 视图崩溃 / 空态」从裸文本与 28 行 inline style 收敛成一张脸——三变体（`crash` 图标点 `--error` / `missing` 中性 / `empty` 中性）× 两尺度（`full` 主区 / `panel` 侧栏 section）。落到 `src/pool/shared/fallback/`（`FallbackFace.tsx` ＋ 全 token CSS）：图标·标题·说明·动作区·诊断详情（`<details>` 默认收起、mono 键值）。换脸点：`ErrorBoundary`（机制零改动，加 `scale` prop）、`PluginComponent` 的 `PluginUnavailable`（裸 `div>p` → 中性 missing 脸）、`PoolSectionStack`（一行 `scale="panel"`）。词条 lang-defaults 1.0.73（中英）。jsdom 7 例（变体/尺度/动作/详情）。
+
 ### fix
 
 - 🔴 **插件商店标签页不再被预览替换**（用户实机：Plugins Store 标签页是斜体、极容易被下一次打开顶掉）：根因是标签创建默认 `pinned:false`（预览态=斜体）且 `reduceOpenOrFocus` 对「已存在」标签页只聚焦、不补 pin——插件入口即使传 `pinned:true`，也只能保证新开是正体。⇒ 与 `reduceCreateTab` Step 1 同口径：`createOpts.pinned === true` 时把已存在的目标标签页也转正；市场插件 1.4.24 的 `openStoreTab` 同笔传 `pinned:true`（新开即正体）。老会话里的斜体页点一次入口即转正。

@@ -1,0 +1,180 @@
+/**
+ * 降级脸家族样式（ldk-fallback-*）——2026-11-24 照 mockup 拍板稿搬入。
+ * 铁律：色 var(--x) / 字号 var(--font-size-*) / 尺寸 calc(*var(--ui-scale)) / 圆角 var(--radius-*)。
+ * ⛔ 不写裸 px / hex；微动效尊重 prefers-reduced-motion（旋转箭头为唯一动效）。
+ */
+.ldk-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: calc(12px * var(--ui-scale));
+  width: 100%;
+  height: 100%;
+  padding: calc(24px * var(--ui-scale));
+  user-select: none;
+}
+.ldk-fallback-icon {
+  font-size: calc(24px * var(--ui-scale));
+  line-height: 1;
+}
+.ldk-fallback-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.ldk-fallback-desc {
+  margin: 0;
+  max-width: calc(420px * var(--ui-scale));
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.ldk-fallback-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale));
+}
+.ldk-fallback-btn {
+  padding: calc(4px * var(--ui-scale)) calc(16px * var(--ui-scale));
+  font-size: var(--font-size-sm);
+  font-family: var(--font-ui);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 150ms ease-out, border-color 150ms ease-out;
+}
+.ldk-fallback-btn:hover {
+  background: var(--hover-overlay);
+}
+.ldk-fallback-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+.ldk-fallback-btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.ldk-fallback-detail {
+  max-width: calc(460px * var(--ui-scale));
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+.ldk-fallback-detail summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: calc(6px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+.ldk-fallback-detail summary::-webkit-details-marker {
+  display: none;
+}
+.ldk-fallback-detail summary .codicon {
+  font-size: var(--font-size-xs);
+  transition: transform 150ms ease-out;
+}
+.ldk-fallback-detail[open] summary .codicon {
+  transform: rotate(90deg);
+}
+.ldk-fallback-detail summary:hover {
+  color: var(--text-secondary);
+}
+.ldk-fallback-kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(3px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  padding: calc(4px * var(--ui-scale)) calc(12px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+.ldk-fallback-kv dt {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.ldk-fallback-kv dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+/* 变体语义：色只点在图标（克制，不大面积铺色） */
+.ldk-fallback--crash .ldk-fallback-icon {
+  color: var(--error);
+}
+.ldk-fallback--missing .ldk-fallback-icon,
+.ldk-fallback--empty .ldk-fallback-icon {
+  color: var(--text-muted);
+}
+
+/* 尺度：panel（侧栏 section 紧凑档） */
+.ldk-fallback--panel {
+  padding: calc(12px * var(--ui-scale));
+  gap: calc(8px * var(--ui-scale));
+}
+.ldk-fallback--panel .ldk-fallback-icon {
+  font-size: calc(16px * var(--ui-scale));
+}
+.ldk-fallback--panel .ldk-fallback-title {
+  font-size: var(--font-size-sm);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ldk-fallback--panel .ldk-fallback-desc {
+  max-width: 100%;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.ldk-fallback--panel .ldk-fallback-btn {
+  padding: calc(4px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  font-size: var(--font-size-xs);
+}
+
+/* 尺度：micro（状态栏条目/工具槽极窄档）——横排单行、无说明、小重试钮 */
+.ldk-fallback--micro {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: calc(6px * var(--ui-scale));
+  padding: calc(2px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  width: auto;
+  height: auto;
+}
+.ldk-fallback--micro .ldk-fallback-icon {
+  font-size: calc(12px * var(--ui-scale));
+}
+.ldk-fallback--micro .ldk-fallback-title {
+  font-size: var(--font-size-2xs);
+  font-weight: 400;
+  max-width: calc(140px * var(--ui-scale));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ldk-fallback--micro .ldk-fallback-desc {
+  display: none;
+}
+.ldk-fallback--micro .ldk-fallback-actions {
+  gap: calc(4px * var(--ui-scale));
+}
+.ldk-fallback--micro .ldk-fallback-btn {
+  padding: calc(1px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  font-size: var(--font-size-2xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldk-fallback-detail summary .codicon {
+    transition: none;
+  }
+}
