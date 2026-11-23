@@ -53,6 +53,13 @@ function fakeCtx(opts: {
 const executed = (calls: Call[]) => calls.filter((c) => c.channel === IPC.commands.execute);
 const dialogShown = (calls: Call[]) => calls.some((c) => c.channel === IPC.dialog.confirm);
 
+/** 断言「弹了框、用户没点头、一次都没执行」——S2/S8 共用同一组事实 */
+async function expectDialogDenied(ctx: unknown, calls: Call[], commandId = "core.closeTab"): Promise<void> {
+  await expect(OPS.exec!.run({ commandId }, ctx as never)).rejects.toMatchObject({ code: "EUSERDENIED" });
+  expect(dialogShown(calls)).toBe(true);
+  expect(executed(calls)).toHaveLength(0);
+}
+
 /** 每个用例一份临时 settings.json（策略每次现读） */
 let dir = "";
 let settingsFile = "";
@@ -118,11 +125,7 @@ describe("档位闸：read 档拒绝、ask 档弹框、auto 档静默", () => {
   it("S2：`ask` 档执行 R1 命令 ⇒ 弹唯一确认框；拒绝 ⇒ EUSERDENIED，不执行", async () => {
     setMode("ask");
     const { ctx, calls } = fakeCtx({ dialog: false });
-    await expect(OPS.exec!.run({ commandId: "core.closeTab" }, ctx as never)).rejects.toMatchObject({
-      code: "EUSERDENIED",
-    });
-    expect(dialogShown(calls)).toBe(true);
-    expect(executed(calls)).toHaveLength(0);
+    await expectDialogDenied(ctx, calls);
   });
 
   it("S3：`auto` 档执行 R1 命令 ⇒ 静默执行（无弹框）", async () => {

@@ -158,7 +158,7 @@ export async function openSensitiveManagerDialog(): Promise<void> {
       payload: {
         rows: [
           { label: "安装 / 卸载插件", value: installValue, tone: "fixed" },
-          { label: "修改权限设置", value: "只有你能改", tone: "protected" },
+          { label: "修改权限设置", value: "只有你能改；AI 连请求都没有入口", tone: "protected" },
           { label: "打开调试端口", value: "不在 AI 操作面", tone: "fixed" },
           {
             label: "其余操作（写文件 / 发数据等）",
