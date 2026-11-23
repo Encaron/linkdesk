@@ -62,6 +62,8 @@ export function wireInstallExecutor(api: PluginManagementAPI): void {
         displayName: req.display.name,
         ledgerSource: "marketplace",
         catalogUrl: req.catalogUrl,
+        // P1（spec §七）：确认时的 sha256 一路带到主进程——下载落盘后、解压前校验，不符即删包拒装
+        sha256: req.sha256,
       });
       // installPlugin/installWithProgress 的回执是窄投影（success/error）——版本与重启提示由 job 表/loader 报
       return { success: res.success, error: res.error };
@@ -86,6 +88,22 @@ export function wireInstallExecutor(api: PluginManagementAPI): void {
       return entry?.manifest?.version ?? null;
     },
   });
+}
+
+/**
+ * D8 渲染槽解析——扫已装 manifest 的 `contributes.renderers`（`installConfirm` / `updateBatch`），
+ * 命中即返回 { pluginId, viewId }；多个插件同时声明时取**列表顺序第一个**（确定性，⛔ 不自创优先级）。
+ * 未声明/视图缺失 ⇒ 宿主默认卡（默认卡永远在，⛔ 不许因第三方坏声明而装不了插件）。
+ */
+export function rendererContribution(kind: "install" | "batch"): { pluginId: string; viewId: string } | null {
+  const api = getPluginAPI();
+  if (!api) return null;
+  for (const row of api.getListPluginManifests()) {
+    const contributes = row.manifest.contributes as { renderers?: Record<string, unknown> } | undefined;
+    const viewId = kind === "install" ? contributes?.renderers?.installConfirm : contributes?.renderers?.updateBatch;
+    if (typeof viewId === "string" && viewId) return { pluginId: row.pluginId, viewId };
+  }
+  return null;
 }
 
 /** 池 → 壳：安装确认七方法 */

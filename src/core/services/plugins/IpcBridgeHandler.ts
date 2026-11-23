@@ -19,7 +19,7 @@
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70（仅 init 的 registerExternalGetter 保留）
 import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
-import { handleInstallMethod } from "./IpcBridgeHandler/install"; // P1：安装/更新确认域（requestInstall 七方法 + 执行端口接线）
+import { handleInstallMethod, rendererContribution } from "./IpcBridgeHandler/install"; // P1：安装/更新确认域（requestInstall 七方法 + 执行端口接线）
 import { registerInstallConfirmRenderer } from "./install"; // P1：默认确认渲染器（D8 渲染槽默认档）
 import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
 import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
@@ -170,7 +170,7 @@ export function initIpcBridgeHandler(): void {
 
   // P1：默认确认渲染器（D8 渲染槽的默认档）——把 ConfirmPlan 包成 DialogHost 富内容推池；
   // 第三方整套替换时只换注册体，判定/令牌/队列仍在 install/confirm-service。
-  registerInstallConfirmRenderer();
+  registerInstallConfirmRenderer(rendererContribution);
 
   console.log("[IpcBridgeHandler] 已注册 bridge 请求处理器（含 plugins:call）");
 

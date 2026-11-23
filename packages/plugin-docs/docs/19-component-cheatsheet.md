@@ -62,7 +62,8 @@ The version of `@linkdesk/ui` **moves on its own** (patch +1 per publish) and is
 | **0.2.52** | `CardRow`, `ColorField`, `ContestedRow`, `ManagerView`, `ObjectEditor` | `EXT_LABEL_MAX`, `SETTINGS_HIDDEN_HINTS`, `buildManagerModel`, `extLabelHead`, `extractDeclaredExtensions`, `filterRows`, `hitKindOf`, `isSettingsHiddenHint`, `normalizeExt`, `normalizeExtList`, `orderRows`, `overrideKeyOf`, `readOverride` | `BuildInput`, `CardModel`, `CardRowProps`, `ContestedRowModel`, `ContestedRowProps`, `DeclaredExtension`, `DeclaredPlugin`, `ExtRowModel`, `HandlerSnapshot`, `ManagerModel`, `ManagerViewProps`, `RowOption`, `RowSortMode`, `RowState` |
 | **0.2.53** | — | — | `SharedIconDefault` |
 | **0.2.60** | `formatColor`, `isCssVariableExpression`, `parseColor` | — | `Hsv`, `Rgba` |
-| **0.2.62** | `AiPolicyPicker` | — | `AiPolicyOption`, `AiPolicyPickerProps`, `AiPolicyValue` |
+| **0.2.62** | `AiPolicyPicker` | — | `AiPolicyOption`, `AiPolicyPickerProps` |
+| **0.2.63** | `AiPolicyRiskLegend`, `PLUGIN_CONFIRM_HOST_VIEWS`, `PluginInstallConfirm`, `PluginUpdateBatchSummary`, `buildBatchVM`, `buildInstallVM`, `default as AiPolicyRiskTable`, `format as formatConfirmText`, `formatBytes`, `shortHash` | — | `AiPolicyRiskTableProps`, `AiPolicyRiskTableRow`, `PluginConfirmBatchGroup`, `PluginConfirmBatchRow`, `PluginConfirmDialogPayload`, `PluginConfirmKvRow`, `PluginConfirmVM`, `PluginInstallConfirmLabels` |
 <!-- ui-since:end -->
 
 **How to use it**: look up every export you **import statically** and take the largest `since` — that is your `minAppVersion` floor (below it, the whole plugin **fails to load** on that older shell, it is not "one component missing"). You do not have to compute it yourself: `npm run lint` tells you the number to put in (see [04-distribution-format §minAppVersion](04-distribution-format.md)).

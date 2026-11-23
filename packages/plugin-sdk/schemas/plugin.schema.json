@@ -446,6 +446,21 @@
       "type": "object",
       "description": "Contribution point declarations — mirrors VS Code package.json contributes. A core mechanism.",
       "properties": {
+        "renderers": {
+          "type": "object",
+          "description": "Optional UI renderers a plugin provides INSTEAD of the host's defaults (2026-11-24 D8 renderer slot). Values are view ids this plugin declares in contributes.views; the host resolves them when it needs to draw that surface. Absent/crashed renderer ⇒ the host falls back to its own default renderer, then to a plain-text confirm — the decision (policy), the one-time token and the job queue always stay in the host.",
+          "additionalProperties": false,
+          "properties": {
+            "installConfirm": {
+              "type": "string",
+              "description": "View id used to confirm a single plugin install/update (payload = the host's confirm plan; read it via window.linkdesk.dialogHost.current().content.payload)."
+            },
+            "updateBatch": {
+              "type": "string",
+              "description": "View id used to confirm a batch of plugin updates (same payload shape as installConfirm)."
+            }
+          }
+        },
         "commands": {
           "type": "array",
           "description": "Registered commands — the source consumed by the Command Palette, context menus, and keybindings.",

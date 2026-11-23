@@ -80,10 +80,18 @@ function buildLabels(): PluginInstallConfirmLabels {
 }
 
 /**
- * 注册默认渲染器——壳启动期调用一次（`registerIpcBridgeHandler` 同批）。
- * 推 dialog 失败/无池环境时返回 false（= 用户取消，安全方向）；confirm-service 另有纯文字兜底。
+ * 第三方渲染器解析器——返回 { pluginId, viewId } = 该插件在 `contributes.renderers` 声明了整套替换
  */
-export function registerInstallConfirmRenderer(): void {
+export type RendererContributionResolver = (kind: "install" | "batch") => { pluginId: string; viewId: string } | null;
+
+let _resolveRenderer: RendererContributionResolver | null = null;
+
+/** 注册默认渲染器——壳启动期调用一次（`registerIpcBridgeHandler` 同批）。
+ *  `resolveRenderer` = D8 渲染槽：某插件声明了整套替换 ⇒ 推插件视图；未声明/Views 缺失 ⇒ 宿主默认卡；
+ *  默认卡也推不出去 ⇒ confirm-service 纯文字兜底。推失败/无池环境返回 false（= 取消，安全方向）。
+ */
+export function registerInstallConfirmRenderer(resolveRenderer?: RendererContributionResolver): void {
+  _resolveRenderer = resolveRenderer ?? null;
   setConfirmRenderer({
     async present(plan: PluginConfirmPlan, kind: "install" | "batch", info?: ConfirmPresentInfo) {
       const payload: PluginConfirmDialogPayload = {
@@ -94,14 +102,16 @@ export function registerInstallConfirmRenderer(): void {
         policy: getUpdatePolicy(),
         reqs: info?.reqs ?? [],
       };
+      // D8：第三方整套替换优先（它只吃同一份 payload——判定/令牌/队列仍在壳，⛔ token 不递给渲染体）；
+      // 未声明 ⇒ 宿主默认卡。
+      const override = _resolveRenderer?.(kind);
       return confirmContent({
         title: i18n.t("更新插件"),
         // 兜底正文（宿主视图缺席时 DialogHost 不会画 message；纯文字兜底在 confirm-service 里另有一路）
         message: "",
-        content: {
-          hostView: PLUGIN_CONFIRM_HOST_VIEWS[kind],
-          payload,
-        },
+        content: override
+          ? { pluginId: override.pluginId, viewId: override.viewId, payload }
+          : { hostView: PLUGIN_CONFIRM_HOST_VIEWS[kind], payload },
       });
     },
   });

@@ -208,5 +208,40 @@ The old §3.x per-namespace method list has been deleted (= a hand-written secon
 
 ---
 
+---
+
+## Plugin install/update confirmation (host-managed)
+
+Installing and updating are **owned by the host, not by the marketplace**: any marketplace (official or third-party) submits a structured
+request; the host draws the confirmation card, decides the policy, issues a one-time token and queues the work. Swapping marketplaces
+never swaps the security semantics.
+
+| Capability | API | Notes |
+|:--|:--|:--|
+| First install / single update | `linkdesk.plugins.requestInstall(req)` | Returns `{ confirmed, cancelled?, reason? }`; `confirmed:true` = the user confirmed and the work was queued — success/failure is read from `plugin:installJobs` |
+| Batch update | `linkdesk.plugins.requestUpdateBatch(reqs)` | One summary card; only items that need confirmation are listed, silenced ones appear as a summary line; cancel = 0 queued |
+| Read-only preview | `linkdesk.plugins.previewUpdatePlan(reqs, { forceAsk? })` | Computes the plan under the current settings (no state change, nothing queued) — good for "which ones would ask?" |
+| Two switches | `getUpdatePolicy()` / `setUpdatePolicy(patch)` | `silentOfficial` (official same-source updates) / `silentTrustedSources` (trusted third-party) — orthogonal, both can be on |
+| Source trust | `listSourceTrust()` / `trustSource(entry)` / `untrustSource(id)` | Only sources present in the ledger can be trusted; a source change always returns to "must ask" |
+
+Request shape (`PluginInstallRequest`): `mode` / `pluginId` / `version` / `downloadUrl` / `sha256?` / `source{id,url,repo?,publisher?}` /
+`display{name,icon?,description?,changelogUrl?,size?}` / `allowOlder?` / `catalogUrl?`. `display` accepts **plain text and icon names only** — never HTML/CSS.
+
+**Always asks** (no switch): first install, source/repo/publisher change, downgrade.
+**Rejected outright**: same version, downgrade without `allowOlder`, `http://` remote source, sha256 mismatch, unsatisfied `minAppVersion`.
+
+### What about existing install calls
+
+The legacy `pluginManager.install/update` chain is closed for **remote sources** (returns `no-token`) — it cannot carry the
+"exactly the version the user saw" binding. Local-path installs (plugin folder / `.linkdesk-plugin` file) are unaffected.
+
+### Replacing the confirmation UI entirely
+
+Declare `contributes.renderers.installConfirm` / `.updateBatch` in `plugin.json` pointing at your own views (declared in `contributes.views`).
+The host pushes your view and hands you the same confirmation plan (already localized) at `window.linkdesk.dialogHost.current().content.payload`.
+Policy, tokens and the queue **stay in the host**; a missing or crashing renderer falls back to the host default card, then to a plain-text confirm.
+
+---
+
 > **Next:** `02-plugin-lifecycle.md`
 > **Index:** `00-readme.md`

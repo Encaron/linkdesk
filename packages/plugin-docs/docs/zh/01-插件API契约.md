@@ -208,5 +208,39 @@ async function list(): Promise<FileEntry[]> {
 
 ---
 
+---
+
+## 插件安装/更新确认（壳托管）
+
+安装与更新**不归市场，归壳**：任何市场（官方/第三方）都只提交结构化请求，壳负责出确认卡、算策略、签一次性令牌、排队执行。
+这意味着「换一个市场」不会换掉安全语义。
+
+| 能力 | API | 说明 |
+|:--|:--|:--|
+| 首装 / 单项更新 | `linkdesk.plugins.requestInstall(req)` | 返回 `{ confirmed, cancelled?, reason? }`；`confirmed:true` = 用户确认且已交给执行队列，成败看 `plugin:installJobs` |
+| 批量更新 | `linkdesk.plugins.requestUpdateBatch(reqs)` | 一张汇总卡；只列需要确认的项，免问项以摘要行出现；取消 = 整批 0 个 |
+| 只读预览 | `linkdesk.plugins.previewUpdatePlan(reqs, { forceAsk? })` | 按当前设置算一遍计划（不改状态、不入队），适合先问「这次会弹哪几个」 |
+| 两条开关 | `getUpdatePolicy()` / `setUpdatePolicy(patch)` | `silentOfficial`（官方同源更新免问）/ `silentTrustedSources`（已信任第三方免问）——正交，可同时开 |
+| 来源信任 | `listSourceTrust()` / `trustSource(entry)` / `untrustSource(id)` | 只能信任账本里已知的来源；来源变更会自动回到「必问」 |
+
+请求形状（`PluginInstallRequest`）：`mode` / `pluginId` / `version` / `downloadUrl` / `sha256?` / `source{id,url,repo?,publisher?}` /
+`display{name,icon?,description?,changelogUrl?,size?}` / `allowOlder?` / `catalogUrl?`。`display` 只接受**纯文本与图标名**——⛔ 不传 HTML/CSS。
+
+**哪些永远会问**（不提供关闭开关）：首次安装、来源/仓库/发布者变更、降级。
+**哪些直接拒**：同版本、未放行降级、`http://` 远程源、sha256 不符、minAppVersion 不满足。
+
+### 已有安装调用怎么办
+
+旧链 `pluginManager.install/update` 对**远程来源**已关闭（返回 `no-token`）——它们装不下「确认时你看到的那一版」这个绑定。
+本地路径安装（插件文件夹 / `.linkdesk-plugin` 离线包）不受影响。
+
+### 想整套替换确认 UI
+
+在 `plugin.json` 声明 `contributes.renderers.installConfirm` / `.updateBatch` 指向你自己的视图（视图 id 在 `contributes.views` 声明）。
+壳会推插件视图并在 `window.linkdesk.dialogHost.current().content.payload` 里给你同一份确认计划（文案已本地化）。
+判定、令牌、队列**仍在壳**；渲染器缺席/崩溃时自动回落宿主默认卡，再退纯文字确认。
+
+---
+
 > **下一份：** `02-插件生命周期.md`
 > **索引：** `00-README.md`

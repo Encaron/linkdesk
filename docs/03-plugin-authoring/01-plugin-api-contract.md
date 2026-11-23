@@ -29,7 +29,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 | Fact | Explanation |
 |------|------|
-| **The contract has 49 namespaces** | The pool injects 47 (shell-only faces `bridge` and `storage` are not injected into the pool); the shell injects 27; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
+| **The contract has 51 namespaces** | The pool injects 50 (the only shell-only face is `bridge`; `storage` is a split face — the pool injects `getFilePath` only); the shell injects 27; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
 | **Pool = the plugin runtime source of truth** | Plugins run in the pool preload — namespaces injected by the pool are **required**; `bridge` is real-shell-only |
 | **"Shell-only" ≠ plugins can't call it** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` **are actually injected in the pool** — the older version's ❌ shell-only marking for those surfaces was wrong |
 | **Contract required-surface drift is now zero** | `env.get(pluginId)` forwarding, `clipboard.readText` shell completion, `dialog.openFile` shell completion — all three are implemented, with no `?` degradation |
@@ -44,7 +44,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 **Every method signature, parameter, return value, and payload type for `window.linkdesk.*` = [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts)** (auto-generated; do not hand-edit).
 
-- **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (17 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
+- **Generation sources:** `src/core/api/linkdesk-api.ts` + `linkdesk-api/` (19 domain interfaces) + `src/core/types/ipc/*` + `src/core/types/pool/*` (wire payload types)
 - **Generator:** `scripts/generate-contract.mjs` (Route C — the contract type file is the source; pure types bundled into a single file)
 - **Mechanical gate:** the preload on both sides `satisfies` the contract surface types → tsc drift gate; `contracts:check` byte-compares hashes inside `npm run check`
 - **Coverage matrix:** every namespace × pool/shell/mock coverage → [Namespace Matrix §2](../02-Electron架构/归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
@@ -205,6 +205,41 @@ The old §3.x per-namespace method list has been deleted (= a hand-written secon
 - **One physical port has a single consumer** — the OS driver is exclusive (a port opened by `serial-monitor` cannot be opened at the same time by another plugin or tab; multiple plugins coexisting = each opens its own port).
 
 > To confirm the ready-made `linkdesk.serial.*` capabilities → the `Serial` domain in [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts). For custom USB/native channels → raise it with the platform authors — that's the "add a channel" category (converged, enumerable, one-off), not doing bespoke work for one plugin.
+
+---
+
+---
+
+## Plugin install/update confirmation (host-managed)
+
+Installing and updating are **owned by the host, not by the marketplace**: any marketplace (official or third-party) submits a structured
+request; the host draws the confirmation card, decides the policy, issues a one-time token and queues the work. Swapping marketplaces
+never swaps the security semantics.
+
+| Capability | API | Notes |
+|:--|:--|:--|
+| First install / single update | `linkdesk.plugins.requestInstall(req)` | Returns `{ confirmed, cancelled?, reason? }`; `confirmed:true` = the user confirmed and the work was queued — success/failure is read from `plugin:installJobs` |
+| Batch update | `linkdesk.plugins.requestUpdateBatch(reqs)` | One summary card; only items that need confirmation are listed, silenced ones appear as a summary line; cancel = 0 queued |
+| Read-only preview | `linkdesk.plugins.previewUpdatePlan(reqs, { forceAsk? })` | Computes the plan under the current settings (no state change, nothing queued) — good for "which ones would ask?" |
+| Two switches | `getUpdatePolicy()` / `setUpdatePolicy(patch)` | `silentOfficial` (official same-source updates) / `silentTrustedSources` (trusted third-party) — orthogonal, both can be on |
+| Source trust | `listSourceTrust()` / `trustSource(entry)` / `untrustSource(id)` | Only sources present in the ledger can be trusted; a source change always returns to "must ask" |
+
+Request shape (`PluginInstallRequest`): `mode` / `pluginId` / `version` / `downloadUrl` / `sha256?` / `source{id,url,repo?,publisher?}` /
+`display{name,icon?,description?,changelogUrl?,size?}` / `allowOlder?` / `catalogUrl?`. `display` accepts **plain text and icon names only** — never HTML/CSS.
+
+**Always asks** (no switch): first install, source/repo/publisher change, downgrade.
+**Rejected outright**: same version, downgrade without `allowOlder`, `http://` remote source, sha256 mismatch, unsatisfied `minAppVersion`.
+
+### What about existing install calls
+
+The legacy `pluginManager.install/update` chain is closed for **remote sources** (returns `no-token`) — it cannot carry the
+"exactly the version the user saw" binding. Local-path installs (plugin folder / `.linkdesk-plugin` file) are unaffected.
+
+### Replacing the confirmation UI entirely
+
+Declare `contributes.renderers.installConfirm` / `.updateBatch` in `plugin.json` pointing at your own views (declared in `contributes.views`).
+The host pushes your view and hands you the same confirmation plan (already localized) at `window.linkdesk.dialogHost.current().content.payload`.
+Policy, tokens and the queue **stay in the host**; a missing or crashing renderer falls back to the host default card, then to a plain-text confirm.
 
 ---
 
