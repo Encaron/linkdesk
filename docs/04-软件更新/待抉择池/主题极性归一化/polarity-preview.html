@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主题极性归一化 · 设计预览</title>
+<style>
+  /* ══════════════════════════════════════════════════════════════════
+     主题极性归一化 · 可交互设计稿（2026-11-24）
+     演示：声明 type 只作 hint；data-theme / 图标墨色 / 标签 / 编辑器
+           统一读“派生 polarity”；高对比是正交 trait。
+     ⚠️ 本页是设计稿，不是产品源码。
+     ══════════════════════════════════════════════════════════════════ */
+  :root{
+    --page-bg:#08090b; --page-ink:#e9e5da; --page-dim:#9b9588; --page-line:rgba(255,255,255,.09);
+    --gold:#c9a96a; --gold-soft:rgba(201,169,106,.16);
+    --serif:"Iowan Old Style","Palatino Linotype","Source Han Serif SC","Songti SC",STSong,Georgia,serif;
+    --sans:"Segoe UI Variable","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    --mono:"Cascadia Code","JetBrains Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    background:
+      radial-gradient(900px 520px at 12% -10%, rgba(201,169,106,.10), transparent 60%),
+      radial-gradient(1100px 700px at 92% 0%, rgba(80,110,180,.12), transparent 62%),
+      var(--page-bg);
+    color:var(--page-ink); font-family:var(--sans); padding:30px 34px 40px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;max-width:1360px;margin:0 auto 22px}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+  h1{font-family:var(--serif);font-weight:500;font-size:40px;letter-spacing:.01em;margin:8px 0 10px}
+  .sub{color:var(--page-dim);font-size:13px;line-height:1.7;max-width:760px}
+  .sub b{color:var(--page-ink);font-weight:600}
+  .head-right{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .pill{font-family:var(--mono);font-size:10.5px;color:var(--page-dim);border:1px solid var(--page-line);
+    border-radius:999px;padding:5px 10px;background:rgba(255,255,255,.025)}
+  .pill b{color:var(--gold);font-weight:600}
+
+  .layout{display:grid;grid-template-columns:318px minmax(0,1fr);gap:22px;max-width:1360px;margin:0 auto}
+  @media (max-width:1080px){.layout{grid-template-columns:1fr}}
+
+  /* ── 左栏：主题库 ── */
+  .rail{border:1px solid var(--page-line);border-radius:16px;background:rgba(255,255,255,.025);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);padding:16px;align-self:start}
+  .rail h2,.panel h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--page-dim);margin:0 0 12px;font-weight:600}
+  .theme-card{border:1px solid var(--page-line);border-radius:12px;padding:12px;margin-bottom:9px;cursor:pointer;
+    background:rgba(255,255,255,.02);transition:border-color .16s,background .16s,transform .16s}
+  .theme-card:hover{border-color:rgba(201,169,106,.42);transform:translateY(-1px)}
+  .theme-card.active{border-color:var(--gold);background:var(--gold-soft)}
+  .theme-card .row1{display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .theme-card .name{font-size:13px;font-weight:600}
+  .dot{width:12px;height:12px;border-radius:999px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.18)}
+  .chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;border-radius:999px;padding:2px 7px;
+    border:1px solid var(--page-line);color:var(--page-dim)}
+  .chip.ok{color:#8fd1a8;border-color:rgba(143,209,168,.35)}
+  .chip.warn{color:#e8b750;border-color:rgba(232,183,80,.4)}
+  .chip.hc{color:#c9a96a;border-color:rgba(201,169,106,.45)}
+  .mini{font-size:10.5px;color:var(--page-dim);margin-top:7px;line-height:1.5}
+
+  .control{margin-top:14px;padding-top:14px;border-top:1px solid var(--page-line)}
+  .control label{display:block;font-size:11px;color:var(--page-dim);margin-bottom:6px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:rgba(255,255,255,.05);
+    border:1px solid var(--page-line);border-radius:10px;padding:3px}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--page-dim);font-family:var(--sans);
+    font-size:11.5px;padding:7px 6px;border-radius:7px;cursor:pointer}
+  .seg button.on{background:rgba(201,169,106,.18);color:var(--page-ink);box-shadow:inset 0 0 0 1px rgba(201,169,106,.32)}
+  .disabled-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--page-dim)}
+  .tag{font-family:var(--mono);font-size:9px;border:1px dashed var(--page-line);border-radius:999px;padding:2px 7px}
+
+  /* ── 右栏 ── */
+  .stage{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .app-frame{border:1px solid var(--page-line);border-radius:18px;background:rgba(255,255,255,.025);
+    box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  .app{min-height:520px;background:var(--app-bg);color:var(--app-text);font-size:12.5px;
+    position:relative;isolation:isolate}
+  .app[data-material="glass"]{background:var(--app-bg-image,var(--app-bg));}
+  .app::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--app-atmos,transparent);opacity:.95}
+  .titlebar{height:38px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--app-line);
+    background:var(--app-bar);backdrop-filter:blur(18px)}
+  .lights{display:flex;gap:6px}
+  .lights i{width:9px;height:9px;border-radius:999px;display:block;background:var(--app-lights)}
+  .win-title{font-size:11.5px;color:var(--app-dim);letter-spacing:.03em;flex:1;text-align:center;margin-right:52px}
+  .themebadge{font-family:var(--mono);font-size:9.5px;color:var(--app-dim);border:1px solid var(--app-line);
+    border-radius:999px;padding:2px 7px;white-space:nowrap}
+
+  .app-body{display:grid;grid-template-columns:190px minmax(0,1fr)}
+  @media (max-width:820px){.app-body{grid-template-columns:1fr}.sidebar{display:none}}
+  .sidebar{padding:14px 10px;border-right:1px solid var(--app-line);background:var(--app-side);backdrop-filter:blur(20px)}
+  .side-label{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--app-dim);padding:0 10px 8px}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav span{padding:8px 10px;border-radius:7px;color:var(--app-dim);font-size:12px}
+  .nav span.on{background:var(--app-active);color:var(--app-text)}
+  .main{padding:18px 20px;min-width:0}
+  .crumb{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--app-dim);margin-bottom:10px}
+  .h{font-size:19px;font-weight:600;margin:0 0 14px;letter-spacing:-.01em}
+  .field{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--app-line)}
+  .field:last-of-type{border-bottom:0}
+  .field .k{font-size:12px;color:var(--app-text)}
+  .field .v{display:flex;align-items:center;gap:8px;color:var(--app-dim);font-size:11.5px;min-width:0}
+  #themeName{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .selectbox{min-width:150px;padding:5px 9px;border-radius:7px;border:1px solid var(--app-line);
+    background:var(--app-input);color:var(--app-text);display:flex;justify-content:space-between;gap:10px;font-size:11.5px}
+  .selectbox i{color:var(--app-dim);font-style:normal}
+  .derived{font-family:var(--mono);font-size:9px;border-radius:999px;padding:2px 6px;border:1px solid var(--app-line);color:var(--app-dim)}
+  .derived.is-warn{color:#e8b750;border-color:rgba(232,183,80,.4)}
+
+  .toggle{width:36px;height:20px;border-radius:999px;position:relative;flex:none;cursor:pointer;
+    background:var(--toggle-off-track);transition:background .16s}
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;
+    background:var(--toggle-off-knob);transition:transform .16s,background .16s}
+  .toggle.on{background:var(--app-accent)}
+  .toggle.on::after{transform:translateX(16px);background:var(--app-on-accent)}
+
+  .editor{margin-top:14px;border:1px solid var(--app-line);border-radius:10px;overflow:hidden;background:var(--code-bg)}
+  .editor-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:1px solid var(--app-line);
+    font-family:var(--mono);font-size:9.5px;color:var(--app-dim);background:var(--app-bar)}
+  .code{margin:0;padding:10px 0;font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre;overflow:auto}
+  .code .ln{display:inline-block;width:32px;text-align:right;padding-right:12px;color:var(--app-dim);opacity:.7;user-select:none}
+  .tok-k{color:var(--code-keyword)} .tok-f{color:var(--code-fn)} .tok-s{color:var(--code-str)}
+  .tok-c{color:var(--code-comment)} .tok-n{color:var(--code-num)}
+
+  /* ── 数据条 ── */
+  .data{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  @media (max-width:880px){.data{grid-template-columns:1fr 1fr}}
+  .stat{border:1px solid var(--page-line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}
+  .stat .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--page-dim);text-transform:uppercase}
+  .stat .val{font-size:16px;margin-top:6px;font-weight:600;letter-spacing:.01em}
+  .stat .note{font-size:10.5px;color:var(--page-dim);margin-top:4px;line-height:1.5}
+  .stat.warn .val{color:#e8b750}
+
+  .explain{border:1px solid rgba(201,169,106,.25);background:rgba(201,169,106,.06);border-radius:14px;
+    padding:14px 16px;line-height:1.75;font-size:12px;color:#d9cfba}
+  .explain b{color:var(--gold)}
+  .explain code{font-family:var(--mono);font-size:11px;color:#efe6d2}
+  .foot{max-width:1360px;margin:18px auto 0;color:var(--page-dim);font-size:10.5px;line-height:1.7;font-family:var(--mono)}
+</style>
+</head>
+<body>
+  <header class="head">
+    <div>
+      <div class="eyebrow">LinkDesk · Theme Engine · Design Draft</div>
+      <h1>极性归一化</h1>
+      <p class="sub">把 <b>light / dark</b> 从“作者声明的渲染真相”降级为 hint；引擎按生效 token 派生 <b>polarity</b>。
+        高对比、色觉友好是正交 trait，不是第三种明暗。选主题、切对比度，看标签、开关与编辑器是否同一套颜色。</p>
+    </div>
+    <div class="head-right">
+      <span class="pill">规则 <b>POLARITY = f(text, surface)</b></span>
+      <span class="pill">状态 <b>设计稿 · 未实施</b></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="rail">
+      <h2>主题库</h2>
+      <div id="themeList"></div>
+
+      <div class="control">
+        <label>对比度（正交 · 不改 polarity）</label>
+        <div class="seg" id="contrastSeg">
+          <button data-contrast="standard" class="on">标准</button>
+          <button data-contrast="high">高对比</button>
+        </div>
+        <div class="disabled-row">
+          <span>色觉友好</span><span class="tag">trait · 预留</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="app-frame">
+        <section class="app" id="app" data-material="flat">
+          <div class="titlebar">
+            <span class="lights"><i></i><i></i><i></i></span>
+            <span class="win-title">设置 · 外观</span>
+            <span class="themebadge" id="appBadge">data-theme</span>
+          </div>
+          <div class="app-body">
+            <aside class="sidebar">
+              <div class="side-label">SETTINGS</div>
+              <div class="nav"><span>通用</span><span class="on">外观</span><span>编辑器</span><span>快捷键</span></div>
+            </aside>
+            <div class="main">
+              <div class="crumb">APPEARANCE / THEME</div>
+              <h2 class="h">外观</h2>
+
+              <div class="field">
+                <span class="k">主题配方</span>
+                <span class="v"><span id="themeName">官方主题 · 亮</span><span class="derived" id="derivedChip">派生 light</span></span>
+              </div>
+              <div class="field">
+                <span class="k">配色</span>
+                <span class="v">
+                  <span class="selectbox"><span id="cwName">默认配色</span><i>⌄</i></span>
+                </span>
+              </div>
+              <div class="field">
+                <span class="k">强调色</span>
+                <span class="v"><span class="dot" id="accentDot"></span><span id="accentHex">#0969DA</span></span>
+              </div>
+              <div class="field">
+                <span class="k">对比度</span>
+                <span class="v"><span class="derived" id="traitChip">standard</span></span>
+              </div>
+              <div class="field">
+                <span class="k">材质</span>
+                <span class="v"><span class="derived" id="matChip">flat</span></span>
+              </div>
+              <div class="field">
+                <span class="k">减少动态</span>
+                <span class="v"><span class="toggle" id="tgMotion"></span></span>
+              </div>
+
+              <div class="editor">
+                <div class="editor-head"><span>editor.ts — Monaco</span><span>跟随主题 tokens</span></div>
+                <pre class="code"><span class="ln">1</span><span class="tok-k">export</span> <span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">open</span>(file: FileRef) {
+<span class="ln">2</span>  <span class="tok-k">const</span> editor = <span class="tok-k">await</span> <span class="tok-f">openEditor</span>(file);
+<span class="ln">3</span>
+<span class="ln">4</span>  editor.<span class="tok-f">setLanguage</span>(<span class="tok-f">detectLanguage</span>(file));
+<span class="ln">5</span>  editor.<span class="tok-f">onDidChange</span>((e) =&gt; <span class="tok-f">autosave</span>(e));
+<span class="ln">6</span>
+<span class="ln">7</span>  <span class="tok-k">return</span> editor;
+<span class="ln">8</span>}</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="data">
+        <div class="stat"><div class="lab">声明的 type</div><div class="val" id="statDeclared">light</div><div class="note">作者 hint，只作兜底</div></div>
+        <div class="stat" id="statPolarityBox"><div class="lab">派生的 polarity</div><div class="val" id="statPolarity">light</div><div class="note" id="statPolarityNote">text &gt; surface？</div></div>
+        <div class="stat"><div class="lab">材质 / traits</div><div class="val" id="statMaterial">flat</div><div class="note" id="statTraits">standard · default</div></div>
+        <div class="stat"><div class="lab">正文对比度</div><div class="val" id="statContrast">—</div><div class="note">text-primary / surface</div></div>
+      </div>
+
+      <div class="explain" id="explain"></div>
+    </main>
+  </div>
+
+  <p class="foot">HTML 即最终呈现 · 面板尺寸/比例按真实控件 · JS 只做演示状态切换，不引入任何产品依赖<br>
+     键点：声明与实际不一致时，引擎/标签/编辑器全部以“派生 polarity”为准；对比度只换 token 组，不改 polarity 公式。</p>
+
+<script>
+/* ── 主题数据（mock）：所有值代表“生效 token”，不是 CSS 硬编码产品值 ── */
+const THEMES = {
+  light: {
+    name: "官方主题 · 亮", declared: "light", material: "flat", cw: "默认配色",
+    accent: "#0969DA", bg: "#F7F8FA", bar: "#FFFFFF", side: "#F1F3F5", input: "#FFFFFF",
+    surface: "#FFFFFF", text: "#1F2328", dim: "#57606A", line: "#D8DEE4",
+    active: "rgba(9,105,218,.10)", lights: "#D0D5DA",
+    codeBg: "#FFFFFF", keyword: "#0969DA", fn: "#8250DF", str: "#0A7D4F", comment: "#6E7781",
+    high: { surface:"#FFFFFF", text:"#000000", dim:"#1F2328", line:"#000000", accent:"#004E8C", bar:"#FFFFFF", side:"#FFFFFF", input:"#FFFFFF", codeBg:"#FFFFFF" }
+  },
+  dark: {
+    name: "官方主题 · 暗", declared: "dark", material: "flat", cw: "默认配色",
+    accent: "#2F81F7", bg: "#16181D", bar: "#1B1E24", side: "#1A1D22", input: "#22262D",
+    surface: "#1C1F26", text: "#E6EDF3", dim: "#9DA7B3", line: "#30363D",
+    active: "rgba(47,129,247,.16)", lights: "#3A3F47",
+    codeBg: "#1C1F26", keyword: "#79C0FF", fn: "#D2A8FF", str: "#7EE787", comment: "#8B949E",
+    high: { surface:"#000000", text:"#FFFFFF", dim:"#E6EDF3", line:"#FFFFFF", accent:"#7CC4FF", bar:"#000000", side:"#000000", input:"#000000", codeBg:"#000000" }
+  },
+  aurora: {
+    name: "极光玻璃", declared: "dark", material: "glass", cw: "极光 · 夜蓝",
+    accent: "#A78BFA", bg: "rgba(11,16,32,.55)", bar: "rgba(17,24,46,.62)", side: "rgba(14,20,38,.55)",
+    input: "rgba(30,40,72,.55)", surface: "rgba(17,24,46,.72)", text: "#F1F5FF", dim: "#B9C6E4",
+    line: "rgba(255,255,255,.14)", active: "rgba(167,139,250,.18)", lights: "#3B4260",
+    codeBg: "rgba(10,14,26,.88)", keyword: "#C4B5FD", fn: "#93C5FD", str: "#86EFAC", comment: "#9AA9C7",
+    atmos: "radial-gradient(700px 340px at 18% 8%, rgba(124,58,237,.38), transparent 62%), radial-gradient(620px 300px at 88% 100%, rgba(34,211,238,.22), transparent 62%)",
+    high: { surface:"#0B1020", text:"#FFFFFF", dim:"#DCE6FF", line:"rgba(255,255,255,.45)", accent:"#C4B5FD", bar:"#0B1020", side:"#0B1020", input:"#11182B", codeBg:"#0B1020" }
+  },
+  panorama: {
+    name: "整窗主视觉", declared: "dark", material: "panorama", cw: "月光金",
+    accent: "#FFB85C", bg: "#14100C", bar: "rgba(20,16,12,.55)", side: "rgba(20,16,12,.45)",
+    input: "rgba(28,22,16,.55)", surface: "rgba(20,14,10,.62)", text: "#FFF7E6", dim: "#D8C7A8",
+    line: "rgba(255,247,230,.16)", active: "rgba(255,184,92,.18)", lights: "#5A4A36",
+    codeBg: "rgba(14,11,8,.86)", keyword: "#FFD08A", fn: "#F5E6C4", str: "#B7D8A8", comment: "#C8B8A8",
+    atmos: "radial-gradient(820px 500px at 78% 18%, rgba(255,184,92,.28), transparent 60%), radial-gradient(900px 600px at 20% 92%, rgba(120,90,150,.35), transparent 62%), linear-gradient(160deg,#1B1712,#0B0907)",
+    high: { surface:"#0B0A08", text:"#FFFFFF", dim:"#F0E2C8", line:"rgba(255,255,255,.5)", accent:"#FFD08A", bar:"#0B0A08", side:"#0B0A08", input:"#14100C", codeBg:"#0B0A08" }
+  },
+  mixed: {
+    name: "混搭 · 暗配方 + 亮配色", declared: "dark", material: "flat", cw: "亮色 colorway",
+    accent: "#2F5D9E", bg: "#FBF7F0", bar: "#FFFDF8", side: "#F4EEE3", input: "#FFFDF8",
+    surface: "#FFFDF8", text: "#1F160D", dim: "#6B5A45", line: "#D9CBB6",
+    active: "rgba(47,93,158,.12)", lights: "#CDBFA9",
+    codeBg: "#FFFDF8", keyword: "#2F5D9E", fn: "#6B3F8E", str: "#2F6B46", comment: "#8A7A63",
+    high: { surface:"#FFFFFF", text:"#000000", dim:"#1F160D", line:"#000000", accent:"#1E4E8C", bar:"#FFFFFF", side:"#FFFFFF", input:"#FFFFFF", codeBg:"#FFFFFF" }
+  }
+};
+
+const state = { id: "light", contrast: "standard", glass: true, image: false, motion: false };
+const qp = new URLSearchParams(location.search);
+if (qp.get("theme") && THEMES[qp.get("theme")]) state.id = qp.get("theme");
+if (qp.get("contrast") === "high") state.contrast = "high";
+
+const $ = (id) => document.getElementById(id);
+const hexToRgb = (hex) => {
+  const h = hex.replace("#","").trim();
+  return [0,2,4].map(i => parseInt(h.slice(i,i+2),16));
+};
+const luminance = (c) => {
+  if (!c) return 0;
+  if (c.startsWith("#")) {
+    const [r,g,b] = hexToRgb(c).map(v => {
+      const s = v/255; return s <= .04045 ? s/12.92 : Math.pow((s+.055)/1.055,2.4);
+    });
+    return .2126*r + .7152*g + .0722*b;
+  }
+  const m = c.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    const p = m[1].split(",").map(x => parseFloat(x));
+    const a = p[3] == null ? 1 : p[3];
+    return luminance(`#${p.slice(0,3).map(v=>Math.round(v).toString(16).padStart(2,"0")).join("")}`) * a + (1-a)*0.5;
+  }
+  return 0.5;
+};
+const ratio = (a,b) => { const [hi,lo] = a>b?[a,b]:[b,a]; return (hi+.05)/(lo+.05); };
+const onAccent = (accent) => luminance(accent) > .45 ? "#000" : "#fff";
+
+function effective(t) {
+  return state.contrast === "high" ? Object.assign({}, t, t.high) : t;
+}
+function derivedPolarity(t) {
+  const e = effective(t);
+  return luminance(e.text) >= luminance(e.surface) ? "dark" : "light";
+}
+
+function renderThemeList() {
+  $("themeList").innerHTML = Object.entries(THEMES).map(([id,t]) => {
+    const p = derivedPolarity(t);
+    const mismatch = p !== t.declared;
+    return `<div class="theme-card ${id===state.id?"active":""}" data-id="${id}">
+      <div class="row1"><span class="name">${t.name}</span><span class="dot" style="background:${t.accent}"></span></div>
+      <div class="chips">
+        <span class="chip">声明 ${t.declared}</span>
+        <span class="chip ${mismatch?"warn":"ok"}">派生 ${p}</span>
+        <span class="chip">${t.material}</span>
+      </div>
+      <div class="mini">${t.cw}${mismatch ? " · 声明与派生不一致，以派生为准" : ""}</div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".theme-card").forEach(el => el.onclick = () => {
+    state.id = el.dataset.id; render();
+  });
+}
+
+function applyVars(t) {
+  const e = effective(t);
+  const app = $("app");
+  const vars = {
+    "--app-bg": e.bg, "--app-bar": e.bar, "--app-side": e.side, "--app-input": e.input,
+    "--app-text": e.text, "--app-dim": e.dim, "--app-line": e.line, "--app-active": e.active,
+    "--app-accent": e.accent, "--app-on-accent": onAccent(e.accent),
+    "--app-lights": e.lights,
+    "--code-bg": e.codeBg, "--code-keyword": e.keyword, "--code-fn": e.fn,
+    "--code-str": e.str, "--code-comment": e.comment, "--code-num": e.num || e.text,
+    "--toggle-off-track": `color-mix(in srgb, ${e.text} 18%, transparent)`,
+    "--toggle-off-knob": `color-mix(in srgb, ${e.accent} 72%, ${e.dim})`,
+    "--app-bg-image": t.atmos ? "transparent" : e.bg,
+    "--app-atmos": t.atmos || "transparent"
+  };
+  Object.entries(vars).forEach(([k,v]) => app.style.setProperty(k,v));
+  app.style.background = t.material === "panorama" ? "#0B0907" : e.bg;
+  app.dataset.material = t.material;
+  document.documentElement.style.setProperty("--gold", t.accent);
+}
+
+function render() {
+  const t = THEMES[state.id];
+  const e = effective(t);
+  const p = derivedPolarity(t);
+  applyVars(t);
+
+  $("themeName").textContent = t.name;
+  $("cwName").textContent = t.cw;
+  $("accentHex").textContent = e.accent;
+  $("accentDot").style.background = e.accent;
+  $("derivedChip").textContent = `派生 ${p}`;
+  $("derivedChip").className = "derived" + (p !== t.declared ? " is-warn" : "");
+  $("traitChip").textContent = state.contrast === "high" ? "high contrast" : "standard";
+  $("appBadge").textContent = `data-theme="${p}"`;
+
+  $("statDeclared").textContent = t.declared;
+  $("statPolarity").textContent = p;
+  $("statPolarityNote").textContent = `text ${luminance(e.text).toFixed(3)} · surface ${luminance(e.surface).toFixed(3)}`;
+  $("statMaterial").textContent = `${t.material} / ${state.contrast}`;
+  $("statTraits").textContent = `contrast=${state.contrast} · colorVision=default`;
+  const cr = ratio(luminance(e.text), luminance(e.surface));
+  $("statContrast").textContent = cr.toFixed(2) + ":1";
+  $("statPolarityBox").classList.toggle("warn", p !== t.declared);
+
+  const mismatch = p !== t.declared;
+  $("explain").innerHTML = mismatch
+    ? `<b>这里就是旧模型的病：</b>配方声明 <code>type = ${t.declared}</code>，但生效 token 的正文/表面亮度算出 <code>polarity = ${p}</code>。
+       旧引擎会按声明把 <code>data-theme</code>、图标光晕、选择器标签、编辑器全设成 ${t.declared} —— 四处一起说谎。
+       新模型只认派生值；<code>type</code> 退为 hint。当前对比度 <code>${state.contrast}</code>，正文对比度 <code>${cr.toFixed(2)}:1</code>。`
+    : `<b>声明与派生一致：</b><code>type = ${t.declared}</code> → <code>polarity = ${p}</code>。
+       选择器标签、开关、编辑器、图标光晕都读这一个值。高对比只换 token 组（当前 <code>${state.contrast}</code>），
+       不改 polarity 公式；正文对比度 <code>${cr.toFixed(2)}:1</code>。`;
+
+  document.querySelectorAll("#contrastSeg button").forEach(b => b.classList.toggle("on", b.dataset.contrast === state.contrast));
+  $("matChip").textContent = t.material;
+  $("tgMotion").classList.toggle("on", state.motion);
+}
+
+$("contrastSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.contrast = b.dataset.contrast; render();
+});
+$("tgMotion").onclick = () => { state.motion = !state.motion; render(); };
+
+renderThemeList();
+render();
+</script>
+</body>
+</html>
