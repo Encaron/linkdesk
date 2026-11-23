@@ -23,9 +23,14 @@ export interface CatalogVersion {
   changelog?: string;
 }
 
+type LocaleText = Record<string, string | undefined>;
+type Locales = Record<string, LocaleText>;
+
 /** 目录条目（marketplace.json plugins[]，schema $defs.pluginEntry） */
 export interface CatalogEntry {
   id: string;
+  /** 语言槽位（name/description；base 字段兜底） */
+  locales?: Locales;
   name: string;
   version: string;
   description?: string;
@@ -73,6 +78,8 @@ export interface SourceDecl {
 /** 合集声明（R4-4.1 起含 glow/more——市场侧板块级/合集级「两处都认」） */
 export interface CollectionDecl {
   id: string;
+  /** 语言槽位（title/subtitle/hint；base 字段兜底） */
+  locales?: Locales;
   title: string;
   subtitle?: string;
   hint?: string;
@@ -104,22 +111,25 @@ export interface HeroSlide {
 
 /** 作者主页板块声明——type 封闭四件（hero/collection/grid/rank）；「按分类浏览」渲染器硬保留、不可声明 */
 export type SectionDecl =
-  | { type: "hero"; slides: HeroSlide[]; title?: string; hint?: string; glow?: boolean; more?: SectionMore }
+  | { type: "hero"; slides: HeroSlide[]; locales?: Locales; title?: string; hint?: string; glow?: boolean; more?: SectionMore }
   | {
       type: "collection";
       collection: string;
+      locales?: Locales;
       layout?: "small" | "mega" | "duo" | "split" | "wall";
       title?: string;
       hint?: string;
       glow?: boolean;
       more?: SectionMore;
     }
-  | { type: "grid"; title: string; hint?: string; glow?: boolean; more?: SectionMore }
-  | { type: "rank"; top?: number; scope?: "self"; title?: string; hint?: string; glow?: boolean; more?: SectionMore };
+  | { type: "grid"; locales?: Locales; title: string; hint?: string; glow?: boolean; more?: SectionMore }
+  | { type: "rank"; top?: number; scope?: "self"; locales?: Locales; title?: string; hint?: string; glow?: boolean; more?: SectionMore };
 
 /** 作者块内单个仓段（同 authorId 跨仓聚合） */
 export interface AuthorRepo {
   id: string;
+  /** 语言槽位（name/intro；base 字段兜底） */
+  locales?: Locales;
   name: string;
   intro?: string;
   image?: string;
@@ -131,6 +141,8 @@ export interface AuthorFile {
   /** $schema 引用（init 写入——编辑器补全；键合法性 R4-4.3 落地时同笔进 schema） */
   $schema?: string;
   authorId: string;
+  /** 语言槽位（intro/storeTitle；base 字段兜底） */
+  locales?: Locales;
   name: string;
   avatar?: string;
   introImage?: string;
@@ -139,7 +151,7 @@ export interface AuthorFile {
   /** Ed25519 公钥（kit keygen 生成——裸 32 字节 base64） */
   publicKey?: string;
   repos: AuthorRepo[];
-  homepage?: { sections?: SectionDecl[] };
+  homepage?: { locales?: Locales; sections?: SectionDecl[] };
 }
 
 /** marketplace.json 根文件（schema 根 properties） */

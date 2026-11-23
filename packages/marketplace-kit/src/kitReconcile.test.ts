@@ -47,7 +47,7 @@ describe("K2 对账腿①——kit schema ↔ SDK schema 字节相等", () => {
 
   it("authors.schema.json = SDK $defs(authorBlock+传递依赖) 的机械派生（深比较）", () => {
     const sdk = JSON.parse(readFileSync(SDK_SCHEMA, "utf8")) as { $defs: Record<string, object> };
-    const needed = ["authorBlock", "authorRepo", "homepageSection", "heroSlide", "moreLink"];
+    const needed = ["authorBlock", "authorRepo", "homepageSection", "heroSlide", "moreLink", "localeTexts"];
     const defs: Record<string, object> = {};
     for (const k of needed) defs[k] = sdk.$defs[k]!;
     const expected = {
@@ -84,6 +84,7 @@ const TS_ROOT_KEYS: Record<keyof MarketplaceFile, true> = {
 
 const TS_ENTRY_KEYS: Record<keyof CatalogEntry, true> = {
   id: true,
+  locales: true,
   name: true,
   version: true,
   description: true,
@@ -114,6 +115,7 @@ const TS_SOURCE_KEYS: Record<keyof SourceDecl, true> = { url: true, authorId: tr
 
 const TS_COLLECTION_KEYS: Record<keyof CollectionDecl, true> = {
   id: true,
+  locales: true,
   title: true,
   subtitle: true,
   hint: true,
@@ -132,6 +134,7 @@ const TS_HERO_SLIDE_KEYS: Record<keyof HeroSlide, true> = { plugin: true, tag: t
 const TS_AUTHOR_KEYS: Record<keyof AuthorFile, true> = {
   "$schema": true,
   authorId: true,
+  locales: true,
   name: true,
   avatar: true,
   introImage: true,
@@ -147,6 +150,7 @@ const TS_AUTHOR_KEYS: Record<keyof AuthorFile, true> = {
 type UnionKeys<T> = T extends unknown ? keyof T : never;
 const TS_SECTION_UNION_KEYS: Record<Exclude<UnionKeys<SectionDecl>, "type">, true> = {
   slides: true,
+  locales: true,
   collection: true,
   layout: true,
   title: true,

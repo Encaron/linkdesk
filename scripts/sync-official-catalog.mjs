@@ -50,7 +50,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 // 官方目录坐标与插件仓命名规则**同源于一处**（E6#101：`sync:bundled` 与新鲜度门禁读同一份；
 // 两处各写一遍 owner/prefix 迟早漂移——漂移那天的表现是「一个工具认为这批是我们的、另一个不认」）
-import { OFFICIAL_REPO, PLUGIN_REPO } from "./lib/official-catalog.mjs";
+import { OFFICIAL_REPO, PLUGIN_REPO, readOfficialCatalog } from "./lib/official-catalog.mjs";
 // 🔴 G5（插件最低壳版本门禁）收录链黄灯的判定本体 → scripts/lib/plugin-shell-ahead.mjs
 //    （与 G5 主腿、check-npm-release 的 npm 轴护栏同一份，⛔ 不在这里另写第二套）。
 import { judgeShellAhead, latestPublishedShell } from "./lib/plugin-shell-ahead.mjs";
@@ -59,7 +59,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 /** 官方目录仓库（本脚本**只读它**——写它要用户点头） */
-const OFFICIAL_RAW = `https://raw.githubusercontent.com/${OFFICIAL_REPO.owner}/${OFFICIAL_REPO.repo}/main/marketplace.json`;
+
 
 /* ── 清单来源（数据，不是代码字面量）────────────────────────────────── */
 
@@ -184,7 +184,13 @@ export function mergeCatalogs(official, ours, { repoForId }) {
       keptForeign.push({ id: entry.id, existingVersion: existing.version, oursVersion: entry.version });
       continue;
     }
-    const better = pickHigher(existing, entry);
+    const betterRaw = pickHigher(existing, entry);
+    // 🔴 语言槽位是**目录维护数据**（可能只在官方目录里回填、源仓条目没有）：新版本条目缺 locales 时
+    //    保留官方目录已有的 locales，⛔ 不让一次版本追新把翻译抹掉。
+    const better =
+      betterRaw === entry && !entry.locales && existing.locales
+        ? { ...entry, locales: existing.locales }
+        : betterRaw;
     if (better === existing) {
       /* E6#106：**同版本但内容有变 ⇒ 采用**（此前的「版本比高者胜」会把这类更新整条跳过）。
        *
@@ -293,7 +299,7 @@ async function main() {
 
   const official = o.offlineDir && existsSync(join(o.offlineDir, "official.marketplace.json"))
     ? JSON.parse(readFileSync(join(o.offlineDir, "official.marketplace.json"), "utf8"))
-    : await fetchJson(OFFICIAL_RAW);
+    : await readOfficialCatalog();
   console.log(`[sync-official-catalog] 官方目录现状：${official.plugins?.length ?? 0} 条`);
 
   const ours = [];

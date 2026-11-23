@@ -593,6 +593,27 @@ When authors build their own settings UI or manage their own saves (without goin
 
 ---
 
+### 11.3 Multilingual catalog data (locales)—authors can ship any language
+
+- **UI strings** go through `t()` (the key is the Chinese source text); every language declared in `plugin.json` `contributes.i18n` must have the same key set. Official plugins = red gate; third-party = WARN guidance.
+- **Catalog data** (plugin name / description, collection `title`/`hint`, author `storeTitle`/`intro`, repo `name`/`intro`, section `title`/`hint`) is not UI-dictionary text; use the `locales` slot (base fields stay as the required fallback):
+
+```json
+{
+  "name": "Official Themes",
+  "locales": {
+    "zh": { "name": "官方主题", "description": "出厂暗色/亮色主题" },
+    "ja": { "name": "公式テーマ" }
+  }
+}
+```
+
+`plugin.json` locales are copied into the catalog entry by publish; `marketplace.json` entries/collections and `authors/<id>.json` blocks/repos/sections use the same shape. Locale keys may be `en` / `zh` / `fr` / `de` / `pt-BR`.
+
+- **Resolution**: exact language (`fr-CA`) → base language (`fr`) → base field. Base is required; locales are optional and a missing language falls back—never blank.
+- **Example**: a German author declares `de` / `en` / `fr`; a French user switching to French sees `fr`, and falls back to `en` or base when `fr` is absent.
+- **Official vs third-party**: the official catalog requires zh + en by default; a Chinese-only official plugin must be registered in the shell repo's `scripts/i18n-surface-exempt.json` (explicit exception with reason/owner/until). Third-party plugins are not forced.
+
 ## 12. CSS Class Names—Prefix Your Own Elements; Don't "Borrow" Reserved Names
 
 **One thing to remember first: the plugin view's stylesheet is not yours alone.** The same window loads the

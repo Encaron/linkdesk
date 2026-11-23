@@ -314,6 +314,7 @@ describe("marketplace.schema.json——负例", () => {
 
 const TS_ENTRY_KEYS: Record<keyof CatalogPluginEntry, true> = {
   id: true,
+  locales: true,
   name: true,
   version: true,
   description: true,

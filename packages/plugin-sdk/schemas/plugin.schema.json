@@ -4,7 +4,10 @@
   "title": "Plugin metadata",
   "description": "JSON Schema for plugin.json — IDE autocompletion + JSON validation",
   "type": "object",
-  "required": ["name", "version"],
+  "required": [
+    "name",
+    "version"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -37,16 +40,39 @@
       "type": "object",
       "description": "Where the plugin's UI appears — declarative. Replaces iconLocation + viewRole + keepSidebarOnFocus.",
       "properties": {
-        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "Icon Bar position; omitted = no icon shown" },
-        "sidePanel": { "type": "boolean", "description": "Has a Sidebar view container. Default false." },
-        "tabBar": { "type": "boolean", "description": "Can be opened as a tab. Default false." },
-        "standaloneOpenable": { "type": "boolean", "default": false, "description": "Has a standalone surface worth opening on its own — declaring true is what admits the plugin to the Welcome page's Start card and the [+] create menu (both render the same filtered list). ⚠️ This gates those two menus ONLY: absent or false hides the plugin from them, but it does not make the plugin unopenable — commands, recents, session restore, and a floating panel's open-in action all still key off appearsIn.tabBar. Declare it when the plugin has content of its own to show; leave it off for plugins whose tab form is a per-resource editor (opening one with no resource has nothing to display). Default false." },
-        "statusBar": { "type": "string", "description": "File path of a self-drawn (code) Status Bar component, relative to the plugin root, .tsx, e.g. \"src/components/statusBar.tsx\" — the pool renders it from the declared URL, replacing static statusBar contributions; omit it when you only contribute static entries." }
+        "iconBar": {
+          "type": "string",
+          "enum": [
+            "top",
+            "bottom"
+          ],
+          "description": "Icon Bar position; omitted = no icon shown"
+        },
+        "sidePanel": {
+          "type": "boolean",
+          "description": "Has a Sidebar view container. Default false."
+        },
+        "tabBar": {
+          "type": "boolean",
+          "description": "Can be opened as a tab. Default false."
+        },
+        "standaloneOpenable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Has a standalone surface worth opening on its own — declaring true is what admits the plugin to the Welcome page's Start card and the [+] create menu (both render the same filtered list). ⚠️ This gates those two menus ONLY: absent or false hides the plugin from them, but it does not make the plugin unopenable — commands, recents, session restore, and a floating panel's open-in action all still key off appearsIn.tabBar. Declare it when the plugin has content of its own to show; leave it off for plugins whose tab form is a per-resource editor (opening one with no resource has nothing to display). Default false."
+        },
+        "statusBar": {
+          "type": "string",
+          "description": "File path of a self-drawn (code) Status Bar component, relative to the plugin root, .tsx, e.g. \"src/components/statusBar.tsx\" — the pool renders it from the declared URL, replacing static statusBar contributions; omit it when you only contribute static entries."
+        }
       }
     },
     "distribution": {
       "type": "string",
-      "enum": ["builtin", "user"],
+      "enum": [
+        "builtin",
+        "user"
+      ],
       "default": "user",
       "description": "⚠️ Legacy field — after the single-root flattening there is no longer any plugins/builtin vs. plugins/user distinction, so this field maps to no directory and is always normalized to user on install. Whether a plugin ships built-in is declared by `core`, not by this field. Third-party plugins should not set it."
     },
@@ -67,7 +93,13 @@
     "iconSource": {
       "type": "string",
       "description": "Icon source",
-      "enum": ["codicon", "svg", "url", "lucide", "shared"],
+      "enum": [
+        "codicon",
+        "svg",
+        "url",
+        "lucide",
+        "shared"
+      ],
       "default": "codicon"
     },
     "marketIcon": {
@@ -77,7 +109,12 @@
     "marketIconSource": {
       "type": "string",
       "description": "Identity image source — same enum as iconSource; the value is a path relative to a bundled svg asset, and when source is omitted it is inferred from the path (an explicit svg treats the path as a bare URL, which breaks already-installed plugins).",
-      "enum": ["codicon", "svg", "url", "lucide"],
+      "enum": [
+        "codicon",
+        "svg",
+        "url",
+        "lucide"
+      ],
       "default": "codicon"
     },
     "description": {
@@ -96,7 +133,10 @@
     "categories": {
       "type": "array",
       "description": "Secondary category slugs (sub-category chips/tags) — feed search and sub-category chips; the primary drawer is decided by `category` alone so an entry never appears twice in the grid. Closed whitelist per primary category (2026-11-20; unknown slugs are declaration warnings, not errors): development: code-editing · terminal · vcs · runtime · i18n · debug · snippets; documents: viewer · convert · markdown · files · office-doc · notebook; hardware: serial · flash · probe · smart-control · home-automation · sensor · iot · can-bus; network: browser · chat · cloud · download · packet-capture · proxy · remote; productivity: clipboard · notes · ai · color · todo · timer · launcher · calculator; themes: color-scheme · icon-pack · font-pack · wallpaper · cursor-set · sound-pack; entertainment: player · game · music · comic · novel · stream. Omitted → no chips; the plugin stays in the All list.",
-      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
     },
     "entry": {
       "type": "string",
@@ -141,14 +181,39 @@
       "description": "Status Bar contribution entries",
       "items": {
         "type": "object",
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "properties": {
-          "id": { "type": "string", "description": "Unique identifier" },
-          "icon": { "type": "string", "description": "codicon name or SVG path" },
-          "label": { "type": "string", "description": "Display text" },
-          "align": { "type": "string", "enum": ["left", "right"], "default": "left" },
-          "onClick": { "type": "string", "description": "Click behavior — command name" },
-          "configurable": { "type": "boolean", "description": "Declaring true → the shell auto-registers a configuration entry and injects the visible prop. The plugin author writes one line of JSON, zero code.", "default": false }
+          "id": {
+            "type": "string",
+            "description": "Unique identifier"
+          },
+          "icon": {
+            "type": "string",
+            "description": "codicon name or SVG path"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display text"
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ],
+            "default": "left"
+          },
+          "onClick": {
+            "type": "string",
+            "description": "Click behavior — command name"
+          },
+          "configurable": {
+            "type": "boolean",
+            "description": "Declaring true → the shell auto-registers a configuration entry and injects the visible prop. The plugin author writes one line of JSON, zero code.",
+            "default": false
+          }
         },
         "additionalProperties": false
       }
@@ -162,11 +227,21 @@
       "description": "Array of multiple themes; only for the theme type.",
       "items": {
         "type": "object",
-        "required": ["id", "name", "file"],
+        "required": [
+          "id",
+          "name",
+          "file"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "file": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -176,11 +251,21 @@
       "description": "Array of multiple languages; only for the language type.",
       "items": {
         "type": "object",
-        "required": ["code", "name", "file"],
+        "required": [
+          "code",
+          "name",
+          "file"
+        ],
         "properties": {
-          "code": { "type": "string" },
-          "name": { "type": "string" },
-          "file": { "type": "string" }
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -188,23 +273,35 @@
     "mode": {
       "type": "string",
       "description": "Protocol mode. text = plain-text protocol; binary = WASM binary protocol (not available yet).",
-      "enum": ["text", "binary"],
+      "enum": [
+        "text",
+        "binary"
+      ],
       "default": "text"
     },
     "resources": {
       "type": "array",
       "description": "Resource file list; only for the resource type.",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "recommends": {
       "type": "array",
       "description": "Plugins recommended to install alongside.",
       "items": {
         "type": "object",
-        "required": ["plugin", "reason"],
+        "required": [
+          "plugin",
+          "reason"
+        ],
         "properties": {
-          "plugin": { "type": "string" },
-          "reason": { "type": "string" }
+          "plugin": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -214,10 +311,17 @@
       "description": "Optional related plugins.",
       "items": {
         "type": "object",
-        "required": ["plugin", "reason"],
+        "required": [
+          "plugin",
+          "reason"
+        ],
         "properties": {
-          "plugin": { "type": "string" },
-          "reason": { "type": "string" }
+          "plugin": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
@@ -225,14 +329,18 @@
     "requires": {
       "type": "array",
       "description": "Plugin-level activation order dependency — declared by pluginId; dependencies load before this plugin. No version constraint. A missing dependency suspends the plugin (PENDING), which then loads automatically once the dependency is ready.",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "uniqueItems": true
     },
     "screenshots": {
       "type": "array",
       "description": "Array of screenshot URLs.",
       "$comment": "Reserved for future PluginDetailView enhancements",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "minAppVersion": {
       "type": "string",
@@ -247,12 +355,16 @@
       "type": "object",
       "description": "Card ID → documentation anchor mapping",
       "$comment": "Card documentation mapping",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "i18n": {
       "type": "object",
       "description": "@deprecated Use contributes.i18n instead — translation file declarations moved under contributes. Kept only for backward compatibility.",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "cssVars": {
       "type": "object",
@@ -261,8 +373,12 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
-          "dark": { "type": "string" },
-          "light": { "type": "string" }
+          "dark": {
+            "type": "string"
+          },
+          "light": {
+            "type": "string"
+          }
         }
       }
     },
@@ -277,13 +393,19 @@
     "iconLocation": {
       "type": "string",
       "description": "Icon position in the Icon Bar. top (default, upper draggable area) or bottom (fixed bottom area).",
-      "enum": ["top", "bottom"],
+      "enum": [
+        "top",
+        "bottom"
+      ],
       "default": "top"
     },
     "viewRole": {
       "type": "string",
       "description": "Interaction role of the view in the shell. sidebarPrimary = Sidebar first (clicking toggles the Sidebar; tabs are opened from within the Sidebar; default), tabOnly = tab-only view (opens a tab directly). tabPrimary was removed — all plugins use sidebarPrimary.",
-      "enum": ["sidebarPrimary", "tabOnly"],
+      "enum": [
+        "sidebarPrimary",
+        "tabOnly"
+      ],
       "default": "sidebarPrimary"
     },
     "shellRendered": {
@@ -305,12 +427,27 @@
           "description": "Registered commands — the source consumed by the Command Palette, context menus, and keybindings.",
           "items": {
             "type": "object",
-            "required": ["id", "title"],
+            "required": [
+              "id",
+              "title"
+            ],
             "properties": {
-              "id": { "type": "string", "description": "Command ID — e.g. terminal.clear" },
-              "title": { "type": "string", "description": "Display name" },
-              "category": { "type": "string", "description": "Command palette group" },
-              "when": { "type": "string", "description": "context key when condition — e.g. activeEditor == 'terminal'" },
+              "id": {
+                "type": "string",
+                "description": "Command ID — e.g. terminal.clear"
+              },
+              "title": {
+                "type": "string",
+                "description": "Display name"
+              },
+              "category": {
+                "type": "string",
+                "description": "Command palette group"
+              },
+              "when": {
+                "type": "string",
+                "description": "context key when condition — e.g. activeEditor == 'terminal'"
+              },
               "description": {
                 "type": "string",
                 "description": "What this command does — the intent from the user/AI perspective. Do not restate the command id."
@@ -320,12 +457,33 @@
                 "description": "Parameter structure — items correspond positionally to the handler's arguments.",
                 "items": {
                   "type": "object",
-                  "required": ["name", "type"],
+                  "required": [
+                    "name",
+                    "type"
+                  ],
                   "properties": {
-                    "name": { "type": "string", "description": "Parameter name — must match the handler's parameter name (e.g. tabId / settingKey / groupId)" },
-                    "type": { "type": "string", "enum": ["string", "number", "boolean", "object"], "description": "Parameter type — object = structured payload (document its fields in description)" },
-                    "required": { "type": "boolean", "description": "Whether the parameter is required. Defaults to false." },
-                    "description": { "type": "string", "description": "One sentence on what this parameter is" }
+                    "name": {
+                      "type": "string",
+                      "description": "Parameter name — must match the handler's parameter name (e.g. tabId / settingKey / groupId)"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "object"
+                      ],
+                      "description": "Parameter type — object = structured payload (document its fields in description)"
+                    },
+                    "required": {
+                      "type": "boolean",
+                      "description": "Whether the parameter is required. Defaults to false."
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "One sentence on what this parameter is"
+                    }
                   },
                   "additionalProperties": false
                 }
@@ -341,8 +499,13 @@
             "type": "array",
             "items": {
               "oneOf": [
-                { "type": "string", "description": "Command ID (shorthand)" },
-                { "$ref": "#/$defs/menuItem" }
+                {
+                  "type": "string",
+                  "description": "Command ID (shorthand)"
+                },
+                {
+                  "$ref": "#/$defs/menuItem"
+                }
               ]
             }
           }
@@ -352,11 +515,22 @@
           "description": "Keybinding.",
           "items": {
             "type": "object",
-            "required": ["command", "key"],
+            "required": [
+              "command",
+              "key"
+            ],
             "properties": {
-              "command": { "type": "string" },
-              "key": { "type": "string", "description": "e.g. ctrl+k" },
-              "when": { "type": "string", "description": "context key when condition" }
+              "command": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string",
+                "description": "e.g. ctrl+k"
+              },
+              "when": {
+                "type": "string",
+                "description": "context key when condition"
+              }
             },
             "additionalProperties": false
           }
@@ -364,38 +538,132 @@
         "configuration": {
           "type": "object",
           "description": "Configuration declarations — rendered automatically by the Settings Editor.",
-          "required": ["title", "properties"],
+          "required": [
+            "title",
+            "properties"
+          ],
           "properties": {
-            "title": { "type": "string", "description": "Settings group name" },
-            "subtitle": { "type": "string", "description": "One-line subtitle under the group title (optional — omitted = nothing is rendered)" },
-            "groupDescriptions": { "type": "object", "description": "Per-section one-line description — key = the group's exact text, value = the line shown under that section heading (optional)", "additionalProperties": { "type": "string" } },
+            "title": {
+              "type": "string",
+              "description": "Settings group name"
+            },
+            "subtitle": {
+              "type": "string",
+              "description": "One-line subtitle under the group title (optional — omitted = nothing is rendered)"
+            },
+            "groupDescriptions": {
+              "type": "object",
+              "description": "Per-section one-line description — key = the group's exact text, value = the line shown under that section heading (optional)",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
             "properties": {
               "type": "object",
               "description": "Configuration mapping — key → { type, default, enum?, description }",
               "additionalProperties": {
                 "type": "object",
-                "required": ["type", "default", "description"],
+                "required": [
+                  "type",
+                  "default",
+                  "description"
+                ],
                 "properties": {
-                  "type": { "type": "string", "enum": ["string", "number", "boolean", "object", "array"] },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "object",
+                      "array"
+                    ]
+                  },
                   "default": {},
-                  "enum": { "type": "array" },
-                  "enumDescriptions": { "type": "object", "description": "enum value → display name mapping" },
-                  "description": { "type": "string" },
-                  "title": { "type": "string", "description": "Row display name — the short human-readable label shown as the settings row name and on the marketplace features tab (optional — omitted = the settings row falls back to showing the configuration key). Value convention matches description: the Chinese source text IS the i18n key; English translations go in your plugin's i18n/en.json. Keep it a noun phrase (≤12 characters, drop the plugin-name prefix); rows with renderHint \"action\" take a verb-phrase name instead (it reads as a button label)." },
-                  "uiHint": { "type": "string", "description": "Settings editor rendering hint — SettingsView picks the control from the hint. Known hints: slider, fontSize, color, fontFamily, file, directory, image, segmented, fontTone, accentSource, themePicker, select, stringList, fileAssociationsManager. A hint the installed renderer does not know is shown read-only — the current value plus a tooltip saying the declared control is unsupported (no editable fallback control, no error thrown). The value is an open string, so third parties may declare new hint names." },
-                  "allowAlpha": { "type": "boolean", "description": "Color control capability — true = the color picker may edit alpha and emit rgba (e.g. glass tints); false/omitted = opaque only, emits hex (accents). Only meaningful for renderHint \"color\"." },
-                  "renderHint": { "type": "string", "description": "Rendering hint for special rows — \"action\" renders a button (its text comes from description, clicking runs actionCommand); \"readonly\" renders a read-only status line whose value comes from executing statusCommand; \"color\" renders a read-only color row (swatch + value). \"readonly\"/\"action\" are shorthands meaning the row's primary control IS the status line/button: statusCommand and actionCommand may also be declared alongside any primary control, rendering as companions to its right ([primary control][companion button][companion readonly]). Known hints: readonly, action, color. An unknown hint is shown read-only (current value + explanatory tooltip). Open string." },
-                  "actionCommand": { "type": "string", "description": "Command executed when an \"action\" button is clicked — a shell command id or one of your own (resolved when clicked). May be declared alongside any primary control: it then renders as a companion button to the right of that control, with its text taken from description." },
-                  "actionDisabledAll": { "type": "array", "description": "Disable the \"action\" button while every entry matches the current configuration value (omit the field entirely — or pass an empty list — to keep the button always enabled)", "items": { "type": "object", "required": ["key", "value"], "properties": { "key": { "type": "string" }, "value": {} }, "additionalProperties": false } },
-                  "statusCommand": { "type": "string", "description": "Command whose return value (a string) is shown by a \"readonly\" status line — the value comes from the command, not from configuration storage, so a status row can show live runtime state. The settings view polls it (every 3s by default; polling pauses while the window is hidden). Shell command id or one of your own. The command must be cheap, idempotent and side-effect free — it may be called repeatedly in the background. May be declared alongside any primary control: it then renders as a companion read-only line to the right of that control. Without a primary control, declare renderHint \"readonly\" so the status line becomes the row's main control." },
-                  "monoOnly": { "type": "boolean", "description": "Monospace only — meaningful only with uiHint \"fontFamily\". true/omitted = list monospace families only (editor fonts); false = all families (UI fonts)." },
-                  "minimum": { "type": "number", "description": "Numeric lower bound — applies when type is number (range of the slider/numeric control)" },
-                  "maximum": { "type": "number", "description": "Numeric upper bound — applies when type is number (range of the slider/numeric control)" },
-                  "step": { "type": "number", "description": "Slider step — meaningful only with uiHint \"slider\". Defaults are derived by SettingsView from the range (0.01 for floating-point ranges)." },
-                  "unit": { "type": "string", "description": "Value label unit for uiHint \"slider\" — shown with the current value (e.g. \"px\", \"ms\", \"×\" for multipliers). Declaring unit turns the value label on; omitting it keeps a bare slider. An empty string means a label showing the bare value with no unit." },
-                  "unitPosition": { "type": "string", "description": "Value label position for uiHint \"slider\" — \"before\" | \"after\" (default) place the label outside the stepper buttons on the same row; \"above\" | \"below\" center it over/under the track (intended for custom plugin layouts — keep the default for configuration rows, which have a fixed row height)." },
-                  "stepper": { "type": "boolean", "description": "Fine-tune stepper for uiHint \"slider\" — renders persistent −/+ buttons on both sides of the track (one step per click, clamped to min/max, disabled at the bounds and when the slider is disabled). Omit for a bare slider." },
-                  "group": { "type": "string", "description": "Second-level heading within a group — keys sharing a group are rendered under a subheading on the settings page; without a group they stay flat (zero intrusion for third parties)" }
+                  "enum": {
+                    "type": "array"
+                  },
+                  "enumDescriptions": {
+                    "type": "object",
+                    "description": "enum value → display name mapping"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Row display name — the short human-readable label shown as the settings row name and on the marketplace features tab (optional — omitted = the settings row falls back to showing the configuration key). Value convention matches description: the Chinese source text IS the i18n key; English translations go in your plugin's i18n/en.json. Keep it a noun phrase (≤12 characters, drop the plugin-name prefix); rows with renderHint \"action\" take a verb-phrase name instead (it reads as a button label)."
+                  },
+                  "uiHint": {
+                    "type": "string",
+                    "description": "Settings editor rendering hint — SettingsView picks the control from the hint. Known hints: slider, fontSize, color, fontFamily, file, directory, image, segmented, fontTone, accentSource, themePicker, select, stringList, fileAssociationsManager. A hint the installed renderer does not know is shown read-only — the current value plus a tooltip saying the declared control is unsupported (no editable fallback control, no error thrown). The value is an open string, so third parties may declare new hint names."
+                  },
+                  "allowAlpha": {
+                    "type": "boolean",
+                    "description": "Color control capability — true = the color picker may edit alpha and emit rgba (e.g. glass tints); false/omitted = opaque only, emits hex (accents). Only meaningful for renderHint \"color\"."
+                  },
+                  "renderHint": {
+                    "type": "string",
+                    "description": "Rendering hint for special rows — \"action\" renders a button (its text comes from description, clicking runs actionCommand); \"readonly\" renders a read-only status line whose value comes from executing statusCommand; \"color\" renders a read-only color row (swatch + value). \"readonly\"/\"action\" are shorthands meaning the row's primary control IS the status line/button: statusCommand and actionCommand may also be declared alongside any primary control, rendering as companions to its right ([primary control][companion button][companion readonly]). Known hints: readonly, action, color. An unknown hint is shown read-only (current value + explanatory tooltip). Open string."
+                  },
+                  "actionCommand": {
+                    "type": "string",
+                    "description": "Command executed when an \"action\" button is clicked — a shell command id or one of your own (resolved when clicked). May be declared alongside any primary control: it then renders as a companion button to the right of that control, with its text taken from description."
+                  },
+                  "actionDisabledAll": {
+                    "type": "array",
+                    "description": "Disable the \"action\" button while every entry matches the current configuration value (omit the field entirely — or pass an empty list — to keep the button always enabled)",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "key",
+                        "value"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "value": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "statusCommand": {
+                    "type": "string",
+                    "description": "Command whose return value (a string) is shown by a \"readonly\" status line — the value comes from the command, not from configuration storage, so a status row can show live runtime state. The settings view polls it (every 3s by default; polling pauses while the window is hidden). Shell command id or one of your own. The command must be cheap, idempotent and side-effect free — it may be called repeatedly in the background. May be declared alongside any primary control: it then renders as a companion read-only line to the right of that control. Without a primary control, declare renderHint \"readonly\" so the status line becomes the row's main control."
+                  },
+                  "monoOnly": {
+                    "type": "boolean",
+                    "description": "Monospace only — meaningful only with uiHint \"fontFamily\". true/omitted = list monospace families only (editor fonts); false = all families (UI fonts)."
+                  },
+                  "minimum": {
+                    "type": "number",
+                    "description": "Numeric lower bound — applies when type is number (range of the slider/numeric control)"
+                  },
+                  "maximum": {
+                    "type": "number",
+                    "description": "Numeric upper bound — applies when type is number (range of the slider/numeric control)"
+                  },
+                  "step": {
+                    "type": "number",
+                    "description": "Slider step — meaningful only with uiHint \"slider\". Defaults are derived by SettingsView from the range (0.01 for floating-point ranges)."
+                  },
+                  "unit": {
+                    "type": "string",
+                    "description": "Value label unit for uiHint \"slider\" — shown with the current value (e.g. \"px\", \"ms\", \"×\" for multipliers). Declaring unit turns the value label on; omitting it keeps a bare slider. An empty string means a label showing the bare value with no unit."
+                  },
+                  "unitPosition": {
+                    "type": "string",
+                    "description": "Value label position for uiHint \"slider\" — \"before\" | \"after\" (default) place the label outside the stepper buttons on the same row; \"above\" | \"below\" center it over/under the track (intended for custom plugin layouts — keep the default for configuration rows, which have a fixed row height)."
+                  },
+                  "stepper": {
+                    "type": "boolean",
+                    "description": "Fine-tune stepper for uiHint \"slider\" — renders persistent −/+ buttons on both sides of the track (one step per click, clamped to min/max, disabled at the bounds and when the slider is disabled). Omit for a bare slider."
+                  },
+                  "group": {
+                    "type": "string",
+                    "description": "Second-level heading within a group — keys sharing a group are rendered under a subheading on the settings page; without a group they stay flat (zero intrusion for third parties)"
+                  }
                 },
                 "additionalProperties": false
               }
@@ -413,12 +681,34 @@
           "description": "Theme declarations — mirrors VS Code contributes.themes. Plugins contribute themes that users can switch in the theme browser / appearance settings.",
           "items": {
             "type": "object",
-            "required": ["id", "label", "uiTheme", "path"],
+            "required": [
+              "id",
+              "label",
+              "uiTheme",
+              "path"
+            ],
             "properties": {
-              "id": { "type": "string", "description": "Theme ID — e.g. my-theme-dark" },
-              "label": { "type": "string", "description": "Display name — e.g. My Theme Dark" },
-              "uiTheme": { "type": "string", "enum": ["dark", "light", "highContrast"], "description": "Base UI theme — dark / light / high contrast" },
-              "path": { "type": "string", "description": "Path to the theme definition JSON file" }
+              "id": {
+                "type": "string",
+                "description": "Theme ID — e.g. my-theme-dark"
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name — e.g. My Theme Dark"
+              },
+              "uiTheme": {
+                "type": "string",
+                "enum": [
+                  "dark",
+                  "light",
+                  "highContrast"
+                ],
+                "description": "Base UI theme — dark / light / high contrast"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path to the theme definition JSON file"
+              }
             },
             "additionalProperties": false
           }
@@ -428,11 +718,24 @@
           "description": "Product icon themes — mirrors VS Code productIconThemes. Plugins declare icon sets that users can switch.",
           "items": {
             "type": "object",
-            "required": ["id", "label", "path"],
+            "required": [
+              "id",
+              "label",
+              "path"
+            ],
             "properties": {
-              "id": { "type": "string", "description": "Icon theme ID — e.g. codicon" },
-              "label": { "type": "string", "description": "Display name — e.g. Codicon" },
-              "path": { "type": "string", "description": "Path to the icon definition JSON file" }
+              "id": {
+                "type": "string",
+                "description": "Icon theme ID — e.g. codicon"
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name — e.g. Codicon"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path to the icon definition JSON file"
+              }
             },
             "additionalProperties": false
           }
@@ -442,15 +745,30 @@
           "description": "Shared icons — a plugin contributes icons that other plugins reference via iconSource:shared. Mirrors the VS Code icon extension point.",
           "additionalProperties": {
             "type": "object",
-            "required": ["description", "default"],
+            "required": [
+              "description",
+              "default"
+            ],
             "properties": {
-              "description": { "type": "string", "description": "Icon description" },
+              "description": {
+                "type": "string",
+                "description": "Icon description"
+              },
               "default": {
                 "type": "object",
                 "properties": {
-                  "fontPath": { "type": "string", "description": "Font file path" },
-                  "fontCharacter": { "type": "string", "description": "Font character code — e.g. \\e001" },
-                  "url": { "type": "string", "description": "Image asset default (2026-11-18, case 04) — resolved to an absolute URL; rendered as an ink silhouette (mask + --icon-ink, following the theme text ink). Colorful identity art belongs in icon/marketIcon, not here." }
+                  "fontPath": {
+                    "type": "string",
+                    "description": "Font file path"
+                  },
+                  "fontCharacter": {
+                    "type": "string",
+                    "description": "Font character code — e.g. \\e001"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Image asset default (2026-11-18, case 04) — resolved to an absolute URL; rendered as an ink silhouette (mask + --icon-ink, following the theme text ink). Colorful identity art belongs in icon/marketIcon, not here."
+                  }
                 },
                 "additionalProperties": false
               }
@@ -463,24 +781,53 @@
           "description": "Language definitions — mirrors VS Code contributes.languages. Declares a new language's ID/extensions/syntax highlighting/LSP support.",
           "items": {
             "type": "object",
-            "required": ["id", "extensions"],
+            "required": [
+              "id",
+              "extensions"
+            ],
             "properties": {
-              "id": { "type": "string", "description": "Language ID — e.g. cpp / python / rust" },
-              "extensions": { "type": "array", "items": { "type": "string" }, "description": "Extension list — e.g. ['.cpp', '.cxx', '.h']" },
-              "aliases": { "type": "array", "items": { "type": "string" }, "description": "Aliases — e.g. ['C++', 'C']" },
+              "id": {
+                "type": "string",
+                "description": "Language ID — e.g. cpp / python / rust"
+              },
+              "extensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Extension list — e.g. ['.cpp', '.cxx', '.h']"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Aliases — e.g. ['C++', 'C']"
+              },
               "monarch": {
                 "type": "object",
                 "description": "Optional — Monarch tokenizer definition (Monaco's built-in syntax highlighting)",
                 "properties": {
-                  "tokenizer": { "type": "object" }
+                  "tokenizer": {
+                    "type": "object"
+                  }
                 }
               },
               "lsp": {
                 "type": "object",
                 "description": "Optional — LSP language server configuration",
                 "properties": {
-                  "command": { "type": "string", "description": "Launch command — an interpreter or executable name (an interpreter such as node; a PATH binary such as clangd; or an absolute path). The python plugin uses command='node' plus args carrying the script path." },
-                  "args": { "type": "array", "items": { "type": "string" }, "description": "Launch arguments. Relative-path arguments resolve against the plugin root (made absolute once at registration) — e.g. 'node_modules/pyright/dist/pyright-langserver.js' → <plugin root>/node_modules/pyright/dist/pyright-langserver.js; flags such as '--stdio' are passed through verbatim. LSP binaries ship with the plugin: the SDK packaging bundles the referenced node_modules packages into the .linkdesk-plugin file (the shell no longer ships LSPs)." }
+                  "command": {
+                    "type": "string",
+                    "description": "Launch command — an interpreter or executable name (an interpreter such as node; a PATH binary such as clangd; or an absolute path). The python plugin uses command='node' plus args carrying the script path."
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Launch arguments. Relative-path arguments resolve against the plugin root (made absolute once at registration) — e.g. 'node_modules/pyright/dist/pyright-langserver.js' → <plugin root>/node_modules/pyright/dist/pyright-langserver.js; flags such as '--stdio' are passed through verbatim. LSP binaries ship with the plugin: the SDK packaging bundles the referenced node_modules packages into the .linkdesk-plugin file (the shell no longer ships LSPs)."
+                  }
                 }
               }
             },
@@ -492,12 +839,29 @@
           "description": "File associations — file extension → plugin routing (consumed by the main-process plugin-manifest-loader). Declare only the extension plus an optional open command or role; this plugin's own pluginId comes from the top-level `pluginId` field (see the top-level pluginId description for the directory-name fallback).",
           "items": {
             "type": "object",
-            "required": ["extension"],
+            "required": [
+              "extension"
+            ],
             "properties": {
-              "extension": { "type": "string", "description": "File extension — without the dot, e.g. dxf / stl / step" },
-              "command": { "type": "string", "description": "Optional — command ID to run when opening a file with this extension" },
-              "displayName": { "type": "string", "description": "Optional — display name in the 'Open with…' picker" },
-              "role": { "type": "string", "enum": ["text-fallback"], "description": "Optional — role declaration, attached to this specific entry. \"text-fallback\": this plugin is a candidate for the shell's default text editor fallback (used when no plugin declares the file's extension). The shell picks the active holder; installing a second holder never silently drifts the current default. First version defines only \"text-fallback\"." }
+              "extension": {
+                "type": "string",
+                "description": "File extension — without the dot, e.g. dxf / stl / step"
+              },
+              "command": {
+                "type": "string",
+                "description": "Optional — command ID to run when opening a file with this extension"
+              },
+              "displayName": {
+                "type": "string",
+                "description": "Optional — display name in the 'Open with…' picker"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "text-fallback"
+                ],
+                "description": "Optional — role declaration, attached to this specific entry. \"text-fallback\": this plugin is a candidate for the shell's default text editor fallback (used when no plugin declares the file's extension). The shell picks the active holder; installing a second holder never silently drifts the current default. First version defines only \"text-fallback\"."
+              }
             },
             "additionalProperties": false
           }
@@ -507,11 +871,24 @@
           "description": "Language packs — mirrors the VS Code language extension point. A collection language pack declares multiple entries in one plugin.json.",
           "items": {
             "type": "object",
-            "required": ["id", "label", "path"],
+            "required": [
+              "id",
+              "label",
+              "path"
+            ],
             "properties": {
-              "id": { "type": "string", "description": "Language code — e.g. zh / en / ja" },
-              "label": { "type": "string", "description": "Display name — e.g. English / Japanese / Chinese" },
-              "path": { "type": "string", "description": "Path to the i18n JSON translation file" }
+              "id": {
+                "type": "string",
+                "description": "Language code — e.g. zh / en / ja"
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name — e.g. English / Japanese / Chinese"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path to the i18n JSON translation file"
+              }
             },
             "additionalProperties": false
           }
@@ -525,12 +902,26 @@
               "description": "Left Title Bar buttons",
               "items": {
                 "type": "object",
-                "required": ["command"],
+                "required": [
+                  "command"
+                ],
                 "properties": {
-                  "command": { "type": "string", "description": "Command ID to run on click" },
-                  "icon": { "type": "string", "description": "codicon name (e.g. codicon-settings) or image path" },
-                  "label": { "type": "string", "description": "Button text — when set, the icon is not rendered. '$keyName' takes the value of that context key as the text (e.g. $updateButtonLabel); otherwise the value is treated as an i18n key (in this repository an i18n key is the original Chinese string)." },
-                  "when": { "type": "string", "description": "context key when condition — the button is hidden while unmet" }
+                  "command": {
+                    "type": "string",
+                    "description": "Command ID to run on click"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "description": "codicon name (e.g. codicon-settings) or image path"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "Button text — when set, the icon is not rendered. '$keyName' takes the value of that context key as the text (e.g. $updateButtonLabel); otherwise the value is treated as an i18n key (in this repository an i18n key is the original Chinese string)."
+                  },
+                  "when": {
+                    "type": "string",
+                    "description": "context key when condition — the button is hidden while unmet"
+                  }
                 },
                 "additionalProperties": false
               }
@@ -540,12 +931,26 @@
               "description": "Right Title Bar buttons",
               "items": {
                 "type": "object",
-                "required": ["command"],
+                "required": [
+                  "command"
+                ],
                 "properties": {
-                  "command": { "type": "string", "description": "Command ID to run on click" },
-                  "icon": { "type": "string", "description": "codicon name (e.g. codicon-settings) or image path" },
-                  "label": { "type": "string", "description": "Button text — when set, the icon is not rendered. '$keyName' takes the value of that context key as the text (e.g. $updateButtonLabel); otherwise the value is treated as an i18n key (in this repository an i18n key is the original Chinese string)." },
-                  "when": { "type": "string", "description": "context key when condition — the button is hidden while unmet" }
+                  "command": {
+                    "type": "string",
+                    "description": "Command ID to run on click"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "description": "codicon name (e.g. codicon-settings) or image path"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "Button text — when set, the icon is not rendered. '$keyName' takes the value of that context key as the text (e.g. $updateButtonLabel); otherwise the value is treated as an i18n key (in this repository an i18n key is the original Chinese string)."
+                  },
+                  "when": {
+                    "type": "string",
+                    "description": "context key when condition — the button is hidden while unmet"
+                  }
                 },
                 "additionalProperties": false
               }
@@ -559,13 +964,26 @@
           "patternProperties": {
             "^[a-z][a-z0-9-]*$": {
               "type": "object",
-              "required": ["title"],
+              "required": [
+                "title"
+              ],
               "properties": {
-                "title": { "type": "string", "description": "Container title — shown in the Sidebar header" },
-                "icon": { "type": "string", "description": "Container icon — overrides the plugin's own icon" },
+                "title": {
+                  "type": "string",
+                  "description": "Container title — shown in the Sidebar header"
+                },
+                "icon": {
+                  "type": "string",
+                  "description": "Container icon — overrides the plugin's own icon"
+                },
                 "location": {
                   "type": "string",
-                  "enum": ["sidebar", "panel", "auxiliarybar", "main"],
+                  "enum": [
+                    "sidebar",
+                    "panel",
+                    "auxiliarybar",
+                    "main"
+                  ],
                   "default": "sidebar",
                   "description": "Container location — sidebar = Sidebar, panel = Bottom Panel, auxiliarybar = auxiliary sidebar (⚠ not wired in the shell yet: auxiliarybar containers/views are not rendered), main = Main Area tab render surface (contributed by the active factoryRole plugin via views.main[] and consumed by the shell's ShellViewRenderer when it resolves the plugin-detail tab; third-party plugins that are not marketplace-like should use sidebar/panel)"
                 },
@@ -601,54 +1019,145 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["id", "render"],
+                "required": [
+                  "id",
+                  "render"
+                ],
                 "properties": {
-                  "id": { "type": "string", "description": "Unique view ID — e.g. folders / sessions / settings" },
-                  "title": { "type": "string", "description": "Display title — the header text of the SidebarSection. An empty string hides the collapsible header" },
-                  "render": { "type": "string", "description": "Module path of the view component — relative to the plugin root" },
-                  "when": { "type": "string", "description": "Context key when condition" },
-                  "order": { "type": "number", "description": "Sort weight within the container. Lower values on top" },
-                  "role": { "type": "string", "enum": ["toolbar", "section"], "default": "section", "description": "Container role — toolbar sticks to the top and is not overridden; section has a collapsible header and is replaced at the same level" },
-                  "collapsed": { "type": "boolean", "default": false, "description": "Initial collapsed state" },
-                  "canToggleVisibility": { "type": "boolean", "default": true, "description": "Users can toggle visibility from the Views submenu" },
-                  "canMoveView": { "type": "boolean", "default": true, "description": "Users can move this view to another container" },      "minHeight": {
-        "type": "number",
-        "description": "Declared minimum view height — the Sidebar pane PaneSash effectiveMinHeight (mirrors the VS Code view size)"
-      },
-
-                  "hideByDefault": { "type": "boolean", "default": false, "description": "Hidden by default — users must enable it manually from the Views menu" },
-                  "singleViewPaneContainerTitle": { "type": "string", "description": "Replaces the container title when there is a single view and the container has mergeHeaderWhenSingle" },
-                  "titleDescription": { "type": "string", "description": "Secondary text next to the title — e.g. (5 files)" },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique view ID — e.g. folders / sessions / settings"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Display title — the header text of the SidebarSection. An empty string hides the collapsible header"
+                  },
+                  "render": {
+                    "type": "string",
+                    "description": "Module path of the view component — relative to the plugin root"
+                  },
+                  "when": {
+                    "type": "string",
+                    "description": "Context key when condition"
+                  },
+                  "order": {
+                    "type": "number",
+                    "description": "Sort weight within the container. Lower values on top"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "toolbar",
+                      "section"
+                    ],
+                    "default": "section",
+                    "description": "Container role — toolbar sticks to the top and is not overridden; section has a collapsible header and is replaced at the same level"
+                  },
+                  "collapsed": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Initial collapsed state"
+                  },
+                  "canToggleVisibility": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Users can toggle visibility from the Views submenu"
+                  },
+                  "canMoveView": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Users can move this view to another container"
+                  },
+                  "minHeight": {
+                    "type": "number",
+                    "description": "Declared minimum view height — the Sidebar pane PaneSash effectiveMinHeight (mirrors the VS Code view size)"
+                  },
+                  "hideByDefault": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Hidden by default — users must enable it manually from the Views menu"
+                  },
+                  "singleViewPaneContainerTitle": {
+                    "type": "string",
+                    "description": "Replaces the container title when there is a single view and the container has mergeHeaderWhenSingle"
+                  },
+                  "titleDescription": {
+                    "type": "string",
+                    "description": "Secondary text next to the title — e.g. (5 files)"
+                  },
                   "showActions": {
                     "type": "string",
-                    "enum": ["always", "whenExpanded", "default"],
+                    "enum": [
+                      "always",
+                      "whenExpanded",
+                      "default"
+                    ],
                     "default": "default",
                     "description": "When actions are shown — always, whenExpanded, or default (on hover)"
                   },
-                  "titleTooltip": { "type": "string", "description": "Title hover tooltip — shows the full text when the title is truncated" },
+                  "titleTooltip": {
+                    "type": "string",
+                    "description": "Title hover tooltip — shows the full text when the title is truncated"
+                  },
                   "titleActions": {
                     "type": "array",
                     "description": "View action area declaration — the widget list on the right of the Panel tab bar / Sidebar header, carried along with the view when it moves. Three forms: icon button, dropdown menu, and split (primary button + dropdown, like the VS Code terminal's [+] New and [▾] profile list). An action is command + args; label/title are i18n keys (the original Chinese strings).",
                     "items": {
                       "type": "object",
-                      "required": ["type", "id"],
+                      "required": [
+                        "type",
+                        "id"
+                      ],
                       "properties": {
-                        "type": { "type": "string", "enum": ["icon", "dropdown", "split"], "description": "Widget form" },
-                        "id": { "type": "string", "description": "Unique widget ID — React key / dropdown open-state anchor" },
-                        "command": { "type": "string", "description": "Command ID to run on click (split = default action of the primary button; required for icon)" },
-                        "icon": { "type": "string", "description": "codicon class name (e.g. codicon-add) — the icon/split primary button icon" },
-                        "title": { "type": "string", "description": "tooltip / aria-label — an i18n key (used as a text button when a split has no icon)" },
-                        "args": { "description": "Command arguments — passed through as the single positional argument of executeCommand(command, args) (JSON-serializable)" },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "icon",
+                            "dropdown",
+                            "split"
+                          ],
+                          "description": "Widget form"
+                        },
+                        "id": {
+                          "type": "string",
+                          "description": "Unique widget ID — React key / dropdown open-state anchor"
+                        },
+                        "command": {
+                          "type": "string",
+                          "description": "Command ID to run on click (split = default action of the primary button; required for icon)"
+                        },
+                        "icon": {
+                          "type": "string",
+                          "description": "codicon class name (e.g. codicon-add) — the icon/split primary button icon"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "tooltip / aria-label — an i18n key (used as a text button when a split has no icon)"
+                        },
+                        "args": {
+                          "description": "Command arguments — passed through as the single positional argument of executeCommand(command, args) (JSON-serializable)"
+                        },
                         "items": {
                           "type": "array",
                           "description": "dropdown / split menu entries",
                           "items": {
                             "type": "object",
-                            "required": ["label", "command"],
+                            "required": [
+                              "label",
+                              "command"
+                            ],
                             "properties": {
-                              "label": { "type": "string", "description": "Display text — an i18n key (the original Chinese string)" },
-                              "command": { "type": "string", "description": "Command ID to run on click" },
-                              "args": { "description": "Command arguments — passed through as a single positional argument" }
+                              "label": {
+                                "type": "string",
+                                "description": "Display text — an i18n key (the original Chinese string)"
+                              },
+                              "command": {
+                                "type": "string",
+                                "description": "Command ID to run on click"
+                              },
+                              "args": {
+                                "description": "Command arguments — passed through as a single positional argument"
+                              }
                             }
                           }
                         }
@@ -665,39 +1174,101 @@
         "floatingPanel": {
           "type": "object",
           "description": "Floating Panel declaration — declares that a view in contributes.views can be shown in a Floating Panel inside the shell. viewId must reference an already registered view: the declaration is resolved into pluginId/renderPath/title. Without it there is no 'Open in Floating Panel' context menu entry. The first declarer is settings (Ctrl+, opens the panel).",
-          "required": ["viewId"],
+          "required": [
+            "viewId"
+          ],
           "properties": {
-            "viewId": { "type": "string", "description": "View ID — a view registered in contributes.views" },
-            "defaultForm": { "enum": ["floatingPanel", "tab"], "description": "Form used the FIRST time this view is opened — 'floatingPanel' (Floating Panel inside the shell) or 'tab'. Author-fixed: the user gets no Settings entry. Omit to keep the previous behaviour (a declaring plugin opens as a Floating Panel). Mutually exclusive with formKey." },
-            "formKey": { "type": "string", "description": "Configuration key that lets the USER choose the first-open form. Must be declared in this same plugin's contributes.configuration: its default is the author's default form, and its value must be 'floatingPanel' or 'tab' (any other value falls back to the author-fixed form). Declaring it makes the item appear in the Settings editor. Mutually exclusive with defaultForm." }
+            "viewId": {
+              "type": "string",
+              "description": "View ID — a view registered in contributes.views"
+            },
+            "defaultForm": {
+              "enum": [
+                "floatingPanel",
+                "tab"
+              ],
+              "description": "Form used the FIRST time this view is opened — 'floatingPanel' (Floating Panel inside the shell) or 'tab'. Author-fixed: the user gets no Settings entry. Omit to keep the previous behaviour (a declaring plugin opens as a Floating Panel). Mutually exclusive with formKey."
+            },
+            "formKey": {
+              "type": "string",
+              "description": "Configuration key that lets the USER choose the first-open form. Must be declared in this same plugin's contributes.configuration: its default is the author's default form, and its value must be 'floatingPanel' or 'tab' (any other value falls back to the author-fixed form). Declaring it makes the item appear in the Settings editor. Mutually exclusive with defaultForm."
+            }
           },
           "additionalProperties": false,
-          "not": { "required": ["defaultForm", "formKey"] }
+          "not": {
+            "required": [
+              "defaultForm",
+              "formKey"
+            ]
+          }
         },
         "i18n": {
           "type": "object",
           "description": "Plugin-bundled translations — key = language code, value = JSON file path relative to the plugin root, e.g. { \"en\": \"i18n/en.json\" }. No zh.json is needed — Chinese keys are the built-in fallback.",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false
+    },
+    "locales": {
+      "type": "object",
+      "description": "Optional localized plugin name/description keyed by app language code (en / zh / zh-CN / fr …). Base name/description stay required; the marketplace resolver falls back exact → language → base. Publish copies this into the catalog entry.",
+      "propertyNames": {
+        "pattern": "^[a-z]{2,3}(-[a-z0-9]{2,8})*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          }
+        }
+      }
     }
   },
   "$defs": {
     "menuItem": {
       "type": "object",
-      "required": ["command"],
+      "required": [
+        "command"
+      ],
       "description": "Menu item — aligned with the runtime ManifestMenuItem (MenuRegistry); label/order/children are recursively self-referencing. children recurses to any depth and maps one-to-one onto the runtime normalization.",
       "properties": {
-        "command": { "type": "string", "description": "Command ID (may be empty with children — a parent menu item runs no command and expands a submenu)" },
-        "label": { "type": "string", "description": "Display label — overrides the command title (getCommand(id).title) when present; required for a parent menu item (no command)" },
-        "group": { "type": "string", "description": "Group — navigation/edit/terminal/delete/split" },
-        "when": { "type": "string", "description": "context key when condition" },
-        "order": { "type": "number", "description": "Sort weight — lower values come first within the same group" },
+        "command": {
+          "type": "string",
+          "description": "Command ID (may be empty with children — a parent menu item runs no command and expands a submenu)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label — overrides the command title (getCommand(id).title) when present; required for a parent menu item (no command)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Group — navigation/edit/terminal/delete/split"
+        },
+        "when": {
+          "type": "string",
+          "description": "context key when condition"
+        },
+        "order": {
+          "type": "number",
+          "description": "Sort weight — lower values come first within the same group"
+        },
         "children": {
           "type": "array",
           "description": "Nested submenus — recurses to any depth (mirrors the VS Code SubmenuAction); command may be empty when children is present",
-          "items": { "$ref": "#/$defs/menuItem" }
+          "items": {
+            "$ref": "#/$defs/menuItem"
+          }
         }
       },
       "additionalProperties": false
@@ -707,29 +1278,53 @@
     {
       "$comment": "entry condition (deprecated type family) — the if clause must include required:[\"type\"], otherwise it is vacuously true for data plugins such as theme/language that have no type (properties only validate properties that are present), which would wrongly require entry. entry is required only when type is present and matches the const.",
       "if": {
-        "required": ["type"],
-        "properties": { "type": { "const": "view" } }
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "view"
+          }
+        }
       },
       "then": {
-        "required": ["entry"]
+        "required": [
+          "entry"
+        ]
       }
     },
     {
       "if": {
-        "required": ["type"],
-        "properties": { "type": { "const": "card" } }
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "card"
+          }
+        }
       },
       "then": {
-        "required": ["entry"]
+        "required": [
+          "entry"
+        ]
       }
     },
     {
       "if": {
-        "required": ["type"],
-        "properties": { "type": { "const": "protocol" } }
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "protocol"
+          }
+        }
       },
       "then": {
-        "required": ["entry"]
+        "required": [
+          "entry"
+        ]
       }
     }
   ],

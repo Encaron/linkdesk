@@ -68,8 +68,14 @@
                 "$ref": "#/$defs/homepageSection"
               },
               "description": "Author store-front section declarations, rendered in declared order. Omitted ⇒ the default front (category browse + all-plugins grid). \"Browse by category\" is renderer-hardwired and NOT declarable — it always closes the list. No limits on which/how many sections an author declares; unknown types become warnings, not crashes."
+            },
+            "locales": {
+              "$ref": "#/$defs/localeTexts"
             }
           }
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
         }
       }
     },
@@ -100,6 +106,9 @@
         "sourceUrl": {
           "type": "string",
           "description": "This repo's marketplace.json URL — what repo switching pulls."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
         }
       }
     },
@@ -168,6 +177,9 @@
             "self"
           ],
           "description": "rank only — omitted = all merged sources; \"self\" = only the store owner's own plugins."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
         }
       },
       "oneOf": [
@@ -249,6 +261,52 @@
           "type": "string",
           "pattern": "^(category:[a-z][a-z0-9-]*|rank|repo:[A-Za-z0-9][A-Za-z0-9._-]*)$",
           "description": "Closed set, no exceptions: `category:<slug>` (category page; in an author store it lands on the global category page pre-filtered by the author, with a persistent show-all switch), `rank` (full rank page — no store-scope variant by design), `repo:<id>` (switch repo, author stores only). No arbitrary URLs, no invented pages."
+        }
+      }
+    },
+    "localeTexts": {
+      "type": "object",
+      "description": "Localized overrides keyed by app language code (en / zh / zh-CN / fr …). Resolver order: exact language → base language → base field. Optional; base fields stay required and remain the fallback.",
+      "propertyNames": {
+        "pattern": "^[a-z]{2,3}(-[a-z0-9]{2,8})*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "hint": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "intro": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "storeTitle": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 1200
+          }
         }
       }
     }

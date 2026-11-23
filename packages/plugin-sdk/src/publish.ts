@@ -73,9 +73,13 @@ export interface CatalogVersion {
 /** marketplace.json 插件条目——对齐规范 §三/§3.2 字段（作者条目=纯增量，缺字段不崩）。
  *  🔴 本类型与 `schemas/marketplace.schema.json` 是同一契约的两面（E6#135）：类型加/删字段必须
  *  同笔改 schema——对账测试 marketplace-schema.test.ts 用「真实产出过 schema」钉住。 */
+export type LocaleOverrides = Record<string, Record<string, string>>;
+
 export interface CatalogPluginEntry {
   id: string;
   name: string;
+  /** 语言槽位（en/zh/… → {name,description}）；base 字段兜底。schema 同笔声明。 */
+  locales?: LocaleOverrides;
   /** 顶层 version/downloadUrl = 最新（兼容旧条目） */
   version: string;
   description?: string;
@@ -161,6 +165,8 @@ export interface SourceLink {
 /** 合集声明（06 §二·3；作者数据直显不走 t()——先例：目录条目标题/作者/来源仓库名） */
 export interface CollectionDecl {
   id: string;
+  /** 语言槽位（title/subtitle/hint；base 字段兜底） */
+  locales?: LocaleOverrides;
   title: string;
   subtitle?: string;
   /** 板块副题说明字——不声明不渲染（09 §五） */
@@ -186,6 +192,8 @@ export interface CategoryRailDecl {
 /** 作者块内单个仓段——多仓归属（同 authorId 跨仓聚合；intro/image 仅显示于店内仓卡） */
 export interface AuthorRepo {
   id: string;
+  /** 语言槽位（name/intro；base 字段兜底） */
+  locales?: LocaleOverrides;
   name: string;
   intro?: string;
   image?: string;
@@ -208,10 +216,11 @@ export interface HeroSlide {
 /** 作者主页板块声明——「UI 界面必须有对应的指令」（09 §二）。type 封闭四件；标题/副题/跳转字全归作者，
  *  ⛔ 渲染器不自动造任何板块名与「更多」；「按分类浏览」渲染器硬保留、不在可声明清单。 */
 export type HomepageSection =
-  | { type: "hero"; slides: HeroSlide[]; title?: string; hint?: string; glow?: boolean; more?: SectionMore }
+  | { type: "hero"; slides: HeroSlide[]; locales?: LocaleOverrides; title?: string; hint?: string; glow?: boolean; more?: SectionMore }
   | {
       type: "collection";
       collection: string;
+      locales?: LocaleOverrides;
       /** 卡片原型（整块统一，⛔ 卡级混排——想混 = 拆两个板块） */
       layout?: "small" | "mega" | "duo" | "split" | "wall";
       title?: string;
@@ -219,12 +228,14 @@ export type HomepageSection =
       glow?: boolean;
       more?: SectionMore;
     }
-  | { type: "grid"; title: string; hint?: string; glow?: boolean; more?: SectionMore }
-  | { type: "rank"; top?: number; scope?: "self"; title?: string; hint?: string; glow?: boolean; more?: SectionMore };
+  | { type: "grid"; locales?: LocaleOverrides; title: string; hint?: string; glow?: boolean; more?: SectionMore }
+  | { type: "rank"; top?: number; scope?: "self"; locales?: LocaleOverrides; title?: string; hint?: string; glow?: boolean; more?: SectionMore };
 
 /** 作者块（authors/<authorId>.json）——authorId 去中心化聚合键（推荐 GitHub 用户名＝身份正典） */
 export interface AuthorBlock {
   authorId: string;
+  /** 语言槽位（intro/storeTitle；base 字段兜底） */
+  locales?: LocaleOverrides;
   name: string;
   /** 非 GitHub 作者兜底（GitHub 正典可解时优先取 GitHub） */
   avatar?: string;
@@ -235,7 +246,7 @@ export interface AuthorBlock {
   /** Ed25519 公钥（kit keygen 生成）——壳离线验签许可密钥 */
   publicKey?: string;
   repos: AuthorRepo[];
-  homepage?: { sections?: HomepageSection[] };
+  homepage?: { locales?: LocaleOverrides; sections?: HomepageSection[] };
 }
 
 /** 厂商注册表条目（vendors.json 独立文件，官方目录仓根；判定链唯一：authorId 命中 ⇒ 官方 ✓） */
@@ -531,6 +542,8 @@ async function assertPublishReady(root: string, token: string, remote: GitHubRem
 export interface ManifestView {
   id: string;
   name: string;
+  /** plugin.json 的可选 locales（只收 name/description；publish 原样带进目录条目） */
+  locales?: LocaleOverrides;
   version: string;
   description?: string;
   author?: string;
@@ -559,6 +572,21 @@ export interface ManifestView {
   categories?: string[];
 }
 
+function parseLocaleOverrides(raw: unknown): LocaleOverrides | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: LocaleOverrides = {};
+  for (const [lang, fields] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(lang.toLowerCase())) continue;
+    if (!fields || typeof fields !== "object" || Array.isArray(fields)) continue;
+    const clean: Record<string, string> = {};
+    for (const [k, v] of Object.entries(fields as Record<string, unknown>)) {
+      if (typeof v === "string" && v.trim()) clean[k] = v.trim();
+    }
+    if (Object.keys(clean).length) out[lang.toLowerCase()] = clean;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 export function collectManifestView(manifest: unknown, sourceDirName: string): ManifestView {
   const id = derivePluginId(manifest, sourceDirName);
   const m = (manifest ?? {}) as Record<string, unknown>;
@@ -570,6 +598,7 @@ export function collectManifestView(manifest: unknown, sourceDirName: string): M
     id,
     name,
     version,
+    locales: parseLocaleOverrides(m.locales),
     description: str(m.description),
     author: str(m.author),
     icon: str(m.icon),
@@ -606,6 +635,7 @@ export function buildCatalogEntry(
   return {
     id: v.id,
     name: v.name,
+    ...(v.locales ? { locales: v.locales } : {}),
     version: v.version,
     ...(v.description !== undefined ? { description: v.description } : {}),
     author: { name: v.author ?? owner },
@@ -666,6 +696,7 @@ export function upsertCatalogEntry(catalog: MarketplaceCatalog, entry: CatalogPl
       marketIcon: entry.marketIcon ?? existing.marketIcon,
       marketIconSource: entry.marketIconSource ?? existing.marketIconSource,
       description: entry.description ?? existing.description,
+      locales: entry.locales ?? existing.locales,
       category: entry.category ?? existing.category,
       // R4-0.2：分类副标签同待遇（作者漏写 categories 时不抹掉历史值）
       categories: entry.categories ?? existing.categories,
@@ -1127,11 +1158,12 @@ export interface MarketplacePublishConfig {
   intro?: string;
   storeTitle?: string;
   publicKey?: string;
+  locales?: LocaleOverrides;
   homepage?: AuthorBlock["homepage"];
   collections?: CollectionDecl[];
 }
 
-const PUBLISH_CONFIG_KEYS = new Set<string>(["authorId", "name", "avatar", "introImage", "intro", "storeTitle", "publicKey", "homepage", "collections"]);
+const PUBLISH_CONFIG_KEYS = new Set<string>(["authorId", "name", "avatar", "introImage", "intro", "storeTitle", "publicKey", "locales", "homepage", "collections"]);
 const PUBLISH_CONFIG_STRINGS = ["authorId", "name", "avatar", "introImage", "intro", "storeTitle", "publicKey"] as const;
 
 export interface ReadPublishConfigResult {
@@ -1197,6 +1229,7 @@ export function buildAuthorBlockFromConfig(config: MarketplacePublishConfig, rem
     ...(config.introImage ? { introImage: config.introImage } : {}),
     ...(config.intro ? { intro: config.intro } : {}),
     ...(config.storeTitle ? { storeTitle: config.storeTitle } : {}),
+    ...(config.locales ? { locales: config.locales } : {}),
     ...(config.publicKey ? { publicKey: config.publicKey } : {}),
     repos: [{ id: "main", name: remote.repo, sourceUrl: catalogRawUrl(remote) }],
     ...(config.homepage ? { homepage: config.homepage } : {}),

@@ -4,7 +4,9 @@
   "title": "Marketplace catalog",
   "description": "JSON Schema for the marketplace.json file at the root of a plugin repository — the catalog that LinkDesk reads when the user adds your repository as a marketplace source. Publish (`linkdesk-plugin-sdk publish`) maintains this file for you via the GitHub Contents API (read sha → merge entry → PUT); hand-editing is for review/setup only. Field set mirrors the TS contract `CatalogPluginEntry` / `MarketplaceCatalog` in @linkdesk/plugin-sdk (spec §三/§3.2) — the code is the single source of truth; missing fields never crash the publisher (entries merge additively).\n\nMarketplace-Store v2 extensions (2026-11, all optional — old flat catalogs stay valid): root-level `sources` (officially reviewed third-party sources), `collections` (curated lists) and `categoryRail` (category display order); entry-level `pricing` / `screenshots` (video first item) / `authorId`. The shapes of the two sibling files that complete a v2 source folder are defined here as `$defs` too: `authors/<authorId>.json` → `$defs.authorBlock`, `vendors.json` → an array of `$defs.vendor`. The publisher never writes those files; they are maintained by their owners (author / catalog operator).",
   "type": "object",
-  "required": ["plugins"],
+  "required": [
+    "plugins"
+  ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -21,19 +23,25 @@
     },
     "plugins": {
       "type": "array",
-      "items": { "$ref": "#/$defs/pluginEntry" },
+      "items": {
+        "$ref": "#/$defs/pluginEntry"
+      },
       "description": "One entry per plugin in this repository. The publisher upserts by `id`: new id appends, existing id merges (your new version/history in, description/icon falling back to previous values). Root-level fields other than version/updatedAt (sources, collections, categoryRail) are carried through untouched by the publisher — they are not the publisher's to manage."
     },
     "sources": {
       "type": "array",
-      "items": { "$ref": "#/$defs/sourceLink" },
+      "items": {
+        "$ref": "#/$defs/sourceLink"
+      },
       "description": "Officially reviewed third-party marketplace sources (official catalog root only — only the catalog operator may write it). Endorsement, not a copy: the store auto-merges these sources, entries stay in the author's own repo. Merge order: official → this list → user-added; same id → highest semver wins. A PR may only add/remove the author's own line; CI validates reachability and id collisions."
     },
     "collections": {
       "type": "array",
       "items": {
         "oneOf": [
-          { "$ref": "#/$defs/collectionDecl" },
+          {
+            "$ref": "#/$defs/collectionDecl"
+          },
           {
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$",
@@ -51,7 +59,13 @@
   "$defs": {
     "pluginEntry": {
       "type": "object",
-      "required": ["id", "name", "version", "downloadUrl", "versions"],
+      "required": [
+        "id",
+        "name",
+        "version",
+        "downloadUrl",
+        "versions"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -72,11 +86,18 @@
         },
         "author": {
           "type": "object",
-          "required": ["name"],
+          "required": [
+            "name"
+          ],
           "additionalProperties": false,
           "properties": {
-            "name": { "type": "string" },
-            "url": { "type": "string", "description": "Author profile/homepage URL." }
+            "name": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string",
+              "description": "Author profile/homepage URL."
+            }
           }
         },
         "authorId": {
@@ -107,7 +128,10 @@
         "categories": {
           "type": "array",
           "description": "Secondary category slugs (tags) — feed search and sub-category chips; never duplicated into the drawer (primary is `category` alone). Shape-checked only, no whitelist.",
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
         },
         "downloadUrl": {
           "type": "string",
@@ -133,8 +157,13 @@
           "prefixItems": [
             {
               "anyOf": [
-                { "type": "string", "description": "Image URL (legacy shape, unchanged)." },
-                { "$ref": "#/$defs/screenshotVideo" }
+                {
+                  "type": "string",
+                  "description": "Image URL (legacy shape, unchanged)."
+                },
+                {
+                  "$ref": "#/$defs/screenshotVideo"
+                }
               ]
             }
           ],
@@ -164,19 +193,36 @@
         "versions": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/catalogVersion" },
+          "items": {
+            "$ref": "#/$defs/catalogVersion"
+          },
           "description": "Version history, NEWEST FIRST — the update mechanism's data source. The publisher appends; do not reorder by hand."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
         }
       }
     },
     "catalogVersion": {
       "type": "object",
-      "required": ["version", "downloadUrl", "publishedAt"],
+      "required": [
+        "version",
+        "downloadUrl",
+        "publishedAt"
+      ],
       "additionalProperties": false,
       "properties": {
-        "version": { "type": "string" },
-        "downloadUrl": { "type": "string", "description": "Direct download URL of this version's asset." },
-        "publishedAt": { "type": "string", "description": "ISO 8601 timestamp." },
+        "version": {
+          "type": "string"
+        },
+        "downloadUrl": {
+          "type": "string",
+          "description": "Direct download URL of this version's asset."
+        },
+        "publishedAt": {
+          "type": "string",
+          "description": "ISO 8601 timestamp."
+        },
         "changelog": {
           "type": "string",
           "description": "Release notes for this version (sliced from the repository CHANGELOG.md's matching section at publish time; rendered in the uninstalled 'Changelog' tab)."
@@ -185,67 +231,157 @@
     },
     "screenshotVideo": {
       "type": "object",
-      "required": ["type", "url"],
+      "required": [
+        "type",
+        "url"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "const": "video" },
-        "url": { "type": "string", "description": "Direct video URL (author-hosted; the store never re-hosts)." },
-        "poster": { "type": "string", "description": "Cover frame shown before playback; preferred over the first video frame." }
+        "type": {
+          "const": "video"
+        },
+        "url": {
+          "type": "string",
+          "description": "Direct video URL (author-hosted; the store never re-hosts)."
+        },
+        "poster": {
+          "type": "string",
+          "description": "Cover frame shown before playback; preferred over the first video frame."
+        }
       }
     },
     "pricingDecl": {
       "type": "object",
-      "required": ["model"],
+      "required": [
+        "model"
+      ],
       "additionalProperties": false,
       "properties": {
         "model": {
-          "enum": ["paid", "subscription"],
+          "enum": [
+            "paid",
+            "subscription"
+          ],
           "description": "\"paid\" = one-time purchase + license key (v1 mainline); \"subscription\" = reserved enum slot (serverless renewal checks are a B3 topic — declaring it today just renders the badge, nothing verifies it)."
         },
-        "price": { "type": "number", "description": "Display price; currency semantics belong to the author's sale page." },
-        "currency": { "type": "string", "description": "ISO 4217 code, display only." },
-        "period": { "type": "string", "description": "Billing period for subscription display (e.g. monthly/yearly)." },
+        "price": {
+          "type": "number",
+          "description": "Display price; currency semantics belong to the author's sale page."
+        },
+        "currency": {
+          "type": "string",
+          "description": "ISO 4217 code, display only."
+        },
+        "period": {
+          "type": "string",
+          "description": "Billing period for subscription display (e.g. monthly/yearly)."
+        },
         "licenseUrl": {
           "type": "string",
           "description": "Author's sale page — the buy flow opens this in the external browser (shell openExternal gate). Required when model is \"paid\"."
         },
-        "refundUrl": { "type": "string", "description": "Refund policy page (refunds are the author's channel's responsibility; the store only displays the link)." },
-        "trialDays": { "type": "integer", "minimum": 1, "description": "Trial length shown as static copy. The actual trial gate lives in the author's plugin code — the shell does not enforce it." },
+        "refundUrl": {
+          "type": "string",
+          "description": "Refund policy page (refunds are the author's channel's responsibility; the store only displays the link)."
+        },
+        "trialDays": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Trial length shown as static copy. The actual trial gate lives in the author's plugin code — the shell does not enforce it."
+        },
         "channel": {
-          "enum": ["self", "managed"],
+          "enum": [
+            "self",
+            "managed"
+          ],
           "description": "Reserved for the B3 dual-track: \"self\" = author sells with offline-signed licenses (0% cut), \"managed\" = hosted licensing/payments on our side. Pure enum slot in v1 — no behavior attached."
         }
       },
-      "if": { "properties": { "model": { "const": "paid" } }, "required": ["model"] },
-      "then": { "required": ["licenseUrl"] }
+      "if": {
+        "properties": {
+          "model": {
+            "const": "paid"
+          }
+        },
+        "required": [
+          "model"
+        ]
+      },
+      "then": {
+        "required": [
+          "licenseUrl"
+        ]
+      }
     },
     "sourceLink": {
       "type": "object",
-      "required": ["url", "authorId", "addedAt"],
+      "required": [
+        "url",
+        "authorId",
+        "addedAt"
+      ],
       "additionalProperties": false,
       "properties": {
-        "url": { "type": "string", "description": "The source repo (or raw marketplace.json) URL — what the store merges." },
-        "authorId": { "type": "string", "description": "Author identity the endorsement belongs to (aggregation key into the author domain)." },
-        "addedAt": { "type": "string", "description": "ISO 8601 date of the review/endorsement." }
+        "url": {
+          "type": "string",
+          "description": "The source repo (or raw marketplace.json) URL — what the store merges."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Author identity the endorsement belongs to (aggregation key into the author domain)."
+        },
+        "addedAt": {
+          "type": "string",
+          "description": "ISO 8601 date of the review/endorsement."
+        }
       }
     },
     "collectionDecl": {
       "type": "object",
-      "required": ["id", "title", "items"],
+      "required": [
+        "id",
+        "title",
+        "items"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "Stable id (reference/dedup key — author store sections reference it)." },
-        "title": { "type": "string", "description": "Shown as-is (author data, no t() pipeline)." },
-        "subtitle": { "type": "string" },
-        "hint": { "type": "string", "description": "Section sub-caption under the title — declared ⇒ rendered, undeclared ⇒ nothing (renderers never invent copy)." },
-        "cover": { "type": "string", "description": "Optional cover image URL." },
+        "id": {
+          "type": "string",
+          "description": "Stable id (reference/dedup key — author store sections reference it)."
+        },
+        "title": {
+          "type": "string",
+          "description": "Shown as-is (author data, no t() pipeline)."
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "hint": {
+          "type": "string",
+          "description": "Section sub-caption under the title — declared ⇒ rendered, undeclared ⇒ nothing (renderers never invent copy)."
+        },
+        "cover": {
+          "type": "string",
+          "description": "Optional cover image URL."
+        },
         "layout": {
-          "enum": ["banner", "strip", "duo", "grid", "mega", "small", "split", "wall"],
+          "enum": [
+            "banner",
+            "strip",
+            "duo",
+            "grid",
+            "mega",
+            "small",
+            "split",
+            "wall"
+          ],
           "description": "Collection shape → card variant mapping (banner→hero, strip→small row, duo→large pair, grid→medium grid, mega→theme strip, small→compact row, split→full-width split card, wall→cover wall). One prototype per collection — no per-card mixing."
         },
         "items": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Member pluginIds in display order; missing ids are skipped silently."
         },
         "glow": {
@@ -256,22 +392,35 @@
           "$ref": "#/$defs/moreLink",
           "description": "Optional jump link on the collection heading — declared ⇒ rendered, undeclared ⇒ no link (renderers never auto-add \"More\"). Same closed target set as homepage sections."
         },
-        "order": { "type": "integer", "description": "Sort weight among collections." }
+        "order": {
+          "type": "integer",
+          "description": "Sort weight among collections."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
+        }
       }
     },
     "categoryRailDecl": {
       "type": "object",
-      "required": ["order"],
+      "required": [
+        "order"
+      ],
       "additionalProperties": false,
       "properties": {
         "order": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
           "description": "Category slug display order. Unregistered slugs land in the Other bucket (rail hides empty entries; the rail itself stays the full registry)."
         },
         "icons": {
           "type": "object",
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "slug → icon (lucide name or bundled asset); optional per-slug."
         }
       }
@@ -280,7 +429,11 @@
       "type": "object",
       "title": "Author block (authors/<authorId>.json)",
       "description": "The v2 author-block file living at `authors/<authorId>.json` inside a marketplace source root. One file per authorId; the same id placed in every repo of a multi-repo author is what aggregates them into one author domain (decentralized — no central registry). authorId canon: the author's GitHub username (avatar/name/intro come from GitHub; the local fields below are the non-GitHub fallback). Catalog operators may host author blocks too. Bad JSON / missing authorId → the whole block is skipped (fatal); non-fatal issues become declaration warnings on the sources page.",
-      "required": ["authorId", "name", "repos"],
+      "required": [
+        "authorId",
+        "name",
+        "repos"
+      ],
       "additionalProperties": false,
       "properties": {
         "$schema": {
@@ -297,9 +450,18 @@
           "minLength": 1,
           "description": "Display name (required here as the non-GitHub fallback; GitHub authors may still override)."
         },
-        "avatar": { "type": "string", "description": "Fallback avatar URL (GitHub canon takes precedence when resolvable)." },
-        "introImage": { "type": "string", "description": "Author intro image URL." },
-        "intro": { "type": "string", "description": "Author intro text (fallback chain: author intro → repo intro → render nothing)." },
+        "avatar": {
+          "type": "string",
+          "description": "Fallback avatar URL (GitHub canon takes precedence when resolvable)."
+        },
+        "introImage": {
+          "type": "string",
+          "description": "Author intro image URL."
+        },
+        "intro": {
+          "type": "string",
+          "description": "Author intro text (fallback chain: author intro → repo intro → render nothing)."
+        },
         "storeTitle": {
           "type": "string",
           "description": "Author store name — default \"<name>'s Plugin Store\"; declare to rename."
@@ -311,7 +473,9 @@
         "repos": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/authorRepo" },
+          "items": {
+            "$ref": "#/$defs/authorRepo"
+          },
           "description": "Multi-repo ownership — one segment per repo (≥1). Same authorId across repos aggregates; each segment can carry its own intro/image (shown only on the in-store repo card)."
         },
         "homepage": {
@@ -320,40 +484,93 @@
           "properties": {
             "sections": {
               "type": "array",
-              "items": { "$ref": "#/$defs/homepageSection" },
+              "items": {
+                "$ref": "#/$defs/homepageSection"
+              },
               "description": "Author store-front section declarations, rendered in declared order. Omitted ⇒ the default front (category browse + all-plugins grid). \"Browse by category\" is renderer-hardwired and NOT declarable — it always closes the list. No limits on which/how many sections an author declares; unknown types become warnings, not crashes."
+            },
+            "locales": {
+              "$ref": "#/$defs/localeTexts"
             }
           }
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
         }
       }
     },
     "authorRepo": {
       "type": "object",
-      "required": ["id", "name", "sourceUrl"],
+      "required": [
+        "id",
+        "name",
+        "sourceUrl"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "Repo segment id (referenced by `repo:<id>` jump targets)." },
-        "name": { "type": "string" },
-        "intro": { "type": "string", "description": "Repo intro — the per-repo voice of a multi-repo author (shown on the in-store repo card only)." },
-        "image": { "type": "string", "description": "Repo-level banner image URL." },
-        "sourceUrl": { "type": "string", "description": "This repo's marketplace.json URL — what repo switching pulls." }
+        "id": {
+          "type": "string",
+          "description": "Repo segment id (referenced by `repo:<id>` jump targets)."
+        },
+        "name": {
+          "type": "string"
+        },
+        "intro": {
+          "type": "string",
+          "description": "Repo intro — the per-repo voice of a multi-repo author (shown on the in-store repo card only)."
+        },
+        "image": {
+          "type": "string",
+          "description": "Repo-level banner image URL."
+        },
+        "sourceUrl": {
+          "type": "string",
+          "description": "This repo's marketplace.json URL — what repo switching pulls."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
+        }
       }
     },
     "homepageSection": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "enum": ["hero", "collection", "grid", "rank"], "description": "Closed set — renderers recognize exactly these four; anything else is a declaration warning." },
-        "title": { "type": "string", "description": "Section heading — fully author-owned (\"Editor's picks\" is as legal as anything else); never invented by the renderer." },
-        "hint": { "type": "string", "description": "Section sub-caption — declared ⇒ rendered, undeclared ⇒ nothing." },
-        "glow": { "type": "boolean", "description": "Ambient glow switch for the whole section: default on (glow color follows the cover art — part of the design language, not authorable); false → neutral shadow fallback. No custom glow color, no per-card mixing." },
-        "more": { "$ref": "#/$defs/moreLink", "description": "Optional jump link on the section heading — declared ⇒ rendered, undeclared ⇒ no link (renderers never auto-add \"More\")." },
+        "type": {
+          "enum": [
+            "hero",
+            "collection",
+            "grid",
+            "rank"
+          ],
+          "description": "Closed set — renderers recognize exactly these four; anything else is a declaration warning."
+        },
+        "title": {
+          "type": "string",
+          "description": "Section heading — fully author-owned (\"Editor's picks\" is as legal as anything else); never invented by the renderer."
+        },
+        "hint": {
+          "type": "string",
+          "description": "Section sub-caption — declared ⇒ rendered, undeclared ⇒ nothing."
+        },
+        "glow": {
+          "type": "boolean",
+          "description": "Ambient glow switch for the whole section: default on (glow color follows the cover art — part of the design language, not authorable); false → neutral shadow fallback. No custom glow color, no per-card mixing."
+        },
+        "more": {
+          "$ref": "#/$defs/moreLink",
+          "description": "Optional jump link on the section heading — declared ⇒ rendered, undeclared ⇒ no link (renderers never auto-add \"More\")."
+        },
         "slides": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "items": { "$ref": "#/$defs/heroSlide" },
+          "items": {
+            "$ref": "#/$defs/heroSlide"
+          },
           "description": "hero only — carousel slides; the author picks which plugins make the big screen (3–5 like the official store)."
         },
         "collection": {
@@ -361,49 +578,105 @@
           "description": "collection only — the CollectionDecl id to render."
         },
         "layout": {
-          "enum": ["small", "mega", "duo", "split", "wall"],
+          "enum": [
+            "small",
+            "mega",
+            "duo",
+            "split",
+            "wall"
+          ],
           "description": "collection only — card prototype for the whole section (one per section; to mix, split into two sections)."
         },
-        "top": { "type": "integer", "minimum": 1, "description": "rank only — how many rows to show (computed slot; the author may omit it)." },
+        "top": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "rank only — how many rows to show (computed slot; the author may omit it)."
+        },
         "scope": {
-          "enum": ["self"],
+          "enum": [
+            "self"
+          ],
           "description": "rank only — omitted = all merged sources; \"self\" = only the store owner's own plugins."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts"
         }
       },
       "oneOf": [
         {
-          "properties": { "type": { "const": "hero" } },
-          "required": ["type", "slides"]
+          "properties": {
+            "type": {
+              "const": "hero"
+            }
+          },
+          "required": [
+            "type",
+            "slides"
+          ]
         },
         {
-          "properties": { "type": { "const": "collection" } },
-          "required": ["type", "collection"]
+          "properties": {
+            "type": {
+              "const": "collection"
+            }
+          },
+          "required": [
+            "type",
+            "collection"
+          ]
         },
         {
-          "properties": { "type": { "const": "grid" } },
-          "required": ["type", "title"]
+          "properties": {
+            "type": {
+              "const": "grid"
+            }
+          },
+          "required": [
+            "type",
+            "title"
+          ]
         },
         {
-          "properties": { "type": { "const": "rank" } },
-          "required": ["type"]
+          "properties": {
+            "type": {
+              "const": "rank"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },
     "heroSlide": {
       "type": "object",
-      "required": ["plugin"],
+      "required": [
+        "plugin"
+      ],
       "additionalProperties": false,
       "properties": {
-        "plugin": { "type": "string", "description": "pluginId featured on the big screen." },
-        "tag": { "type": "string", "description": "Corner tag copy (author data, shown as-is)." }
+        "plugin": {
+          "type": "string",
+          "description": "pluginId featured on the big screen."
+        },
+        "tag": {
+          "type": "string",
+          "description": "Corner tag copy (author data, shown as-is)."
+        }
       }
     },
     "moreLink": {
       "type": "object",
-      "required": ["label", "target"],
+      "required": [
+        "label",
+        "target"
+      ],
       "additionalProperties": false,
       "properties": {
-        "label": { "type": "string", "description": "Link copy — fully author-owned (\"More\", \"Choose more themes\", anything)." },
+        "label": {
+          "type": "string",
+          "description": "Link copy — fully author-owned (\"More\", \"Choose more themes\", anything)."
+        },
         "target": {
           "type": "string",
           "pattern": "^(category:[a-z][a-z0-9-]*|rank|repo:[A-Za-z0-9][A-Za-z0-9._-]*)$",
@@ -415,26 +688,94 @@
       "type": "object",
       "title": "Vendor registry entry (vendors.json)",
       "description": "One row of the vendor registry — the `vendors.json` file at the root of the official catalog repo (array of these objects; only the catalog operator writes it; applications go through PR + CI). \"Official ✓\" = this entity's own official publishing, search-engine semantics — the badge decision chain is entry.authorId → registry hit ⇒ official, miss ⇒ community, local ⇒ local. Vendor display names are never used for matching (collisions legal); unregistered vendors claiming an id get no badge, and near-name matches show an honest \"similar name, unverified\" notice.",
-      "required": ["vendorId", "name", "verifiedBy"],
+      "required": [
+        "vendorId",
+        "name",
+        "verifiedBy"
+      ],
       "additionalProperties": false,
       "properties": {
-        "vendorId": { "type": "string", "minLength": 1, "description": "Registry key — matched against entry.authorId." },
-        "name": { "type": "string", "minLength": 1 },
+        "vendorId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Registry key — matched against entry.authorId."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
         "domains": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Domain self-verification candidates: https://<domain>/.well-known/linkdesk-vendor.txt must contain the vendorId (\"domain\" tier)."
         },
         "githubOrgs": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "GitHub org membership verified manually (\"github-org\" tier)."
         },
         "verifiedBy": {
-          "enum": ["domain", "github-org", "manual"],
+          "enum": [
+            "domain",
+            "github-org",
+            "manual"
+          ],
           "description": "Certification tier: \"domain\" = automatic self-proof via the well-known file; \"github-org\" = manual org check; \"manual\" = operator-verified (highest trust)."
         },
-        "verifiedAt": { "type": "string", "description": "ISO 8601 date of the last verification." }
+        "verifiedAt": {
+          "type": "string",
+          "description": "ISO 8601 date of the last verification."
+        }
+      }
+    },
+    "localeTexts": {
+      "type": "object",
+      "description": "Localized overrides keyed by app language code (en / zh / zh-CN / fr …). Resolver order: exact language → base language → base field. Optional; base fields stay required and remain the fallback.",
+      "propertyNames": {
+        "pattern": "^[a-z]{2,3}(-[a-z0-9]{2,8})*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "hint": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "intro": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "storeTitle": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 1200
+          }
+        }
       }
     }
   }

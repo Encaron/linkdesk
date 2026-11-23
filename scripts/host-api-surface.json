@@ -873,6 +873,7 @@
     "languages[].code": [],
     "languages[].file": [],
     "languages[].name": [],
+    "locales": [],
     "marketIcon": [],
     "marketIconSource": [
       "codicon",

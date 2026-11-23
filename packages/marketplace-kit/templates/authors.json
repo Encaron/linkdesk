@@ -8,5 +8,11 @@
       "name": "__AUTHOR_ID__'s marketplace",
       "sourceUrl": "https://github.com/__AUTHOR_ID__/your-marketplace-repo"
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "intro": "Independent plugin author.",
+      "storeTitle": "__AUTHOR_ID__'s Plugin Store"
+    }
+  }
 }
