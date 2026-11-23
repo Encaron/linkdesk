@@ -65,6 +65,8 @@ export interface ColorwayMeta {
   name: string;
   /** Preview colors — accent + window background (used to color card badges; the default colorway lacks this token → empty string) */
   preview: { accent: string; bgWindow: string };
+  /** 派生极性（2026-11-24）——该配色生效 token 算出的 light/dark；跨明暗标签读它，不读配方声明 */
+  polarity: "light" | "dark";
 }
 
 /** E5.8#50.18: recipe metadata — returned by theme.listRecipes() (all available recipes + colorways + preview colors, spec 06 §2).
@@ -73,6 +75,8 @@ export interface RecipeMeta {
   id: string;
   name: string;
   type: "light" | "dark";
+  /** 派生极性（首配色）——`type` 为作者 hint；UI 分组/标签一律读它 */
+  polarity: "light" | "dark";
   colorways: ColorwayMeta[];
   domains: ThemeDomain[];
 }

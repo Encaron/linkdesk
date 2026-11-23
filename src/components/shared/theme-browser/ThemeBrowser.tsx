@@ -24,6 +24,7 @@ import {
   recipeDisplayName,
   colorwayDisplayName,
 } from "../../../core/services/ui/ThemeEngine";
+import { resolvePolarity } from "../../../core/services/ui/ThemeEngine/color";
 import { ThemeRegistry } from "../../../core/registry/appearance/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../../../core/services/configuration/ConfigurationService";
 import { QuickPickService } from "../../../core/services/ui/QuickPickService"; // E5.5#7-p15
@@ -132,7 +133,7 @@ export function showThemePicker(pluginId?: string): void {
       checked: originalActive?.recipeId === r.id,
       // detail = 明暗类别 · 配色数（多配色）——清单面只报这两条（⛔ 不加来源行，用户 2026-09-30 否掉）
       detail: [
-        typeLabelOf(r.type),
+        typeLabelOf(resolvePolarity(r.colorways[0]?.colors ?? {}, r.type)),
         r.colorways.length > 1 ? i18n.t("{{count}} 配色", { count: r.colorways.length }) : "",
       ].filter(Boolean).join(" · "),
     }),

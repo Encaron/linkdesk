@@ -4,7 +4,7 @@
   "title": "LinkDesk theme definition (ThemeRecipe)",
   "description": "Contract for the theme JSON file referenced by contributes.themes (modeled on plugin.schema.json; format errors are rejected on the spot). Mirrors the ThemeRecipe type in src/core/types/theme.ts; parsing semantics live in parseThemeRecipe. The new format requires colorways[] (the engine reads only the new format); appearance domains are sparse, and an omitted domain inherits the shell's :root default. Validated by scripts/check-theme-schema.mjs (part of the npm run check chain).",
   "type": "object",
-  "required": ["id", "name", "type", "colorways"],
+  "required": ["id", "name", "colorways"],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -22,7 +22,7 @@
     "type": {
       "type": "string",
       "enum": ["light", "dark"],
-      "description": "Base light/dark mode — dark is the :root base, light is the data-theme override layer"
+      "description": "Author hint only (optional): light/dark fallback when tokens cannot be resolved. Rendering truth = derived polarity from text-primary vs surface luminance; do not treat this as the render guarantee."
     },
     "appearance": {
       "type": "object",
@@ -98,6 +98,15 @@
         "properties": {
           "id": { "type": "string", "description": "Colorway id — globally unique (stored in the dynamic app.themeColor enum)" },
           "name": { "type": "string", "description": "Colorway display name" },
+          "traits": {
+            "type": "object",
+            "description": "Optional accessibility traits — orthogonal to light/dark (a high-contrast colorway exists for light and for dark).",
+            "additionalProperties": false,
+            "properties": {
+              "contrast": { "type": "string", "enum": ["standard", "high"], "description": "Contrast tier this colorway is designed for" },
+              "colorVision": { "type": "string", "enum": ["default", "deuteranopia", "protanopia", "tritanopia"], "description": "Color-vision-safe variant tag" }
+            }
+          },
           "colors": {
             "type": "object",
             "description": "Color token set (key = contract token name without the -- prefix; value = a color string)",

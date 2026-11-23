@@ -269,6 +269,8 @@ export interface ColorwayMeta {
         accent: string;
         bgWindow: string;
     };
+    /** 派生极性（2026-11-24）——该配色生效 token 算出的 light/dark；跨明暗标签读它，不读配方声明 */
+    polarity: "light" | "dark";
 }
 /** recipe metadata — returned by theme.listRecipes() (all available recipes + colorways + preview colors, spec 06 §2).
  *  domains = which domains the recipe contributes (basis for mash-up source filtering, spec 10 §2); type = light/dark category. */
@@ -276,6 +278,8 @@ export interface RecipeMeta {
     id: string;
     name: string;
     type: "light" | "dark";
+    /** 派生极性（首配色）——`type` 为作者 hint；UI 分组/标签一律读它 */
+    polarity: "light" | "dark";
     colorways: ColorwayMeta[];
     domains: ThemeDomain[];
 }

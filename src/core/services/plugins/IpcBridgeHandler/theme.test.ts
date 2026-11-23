@@ -48,13 +48,15 @@ describe("IpcBridgeHandler/theme — 配方/配色 API（E5.8#50.18）", () => {
     expect(meta.type).toBe("dark");
     // domains——colorways 恒贡献 colors + appearance 有 font/radius
     expect(meta.domains).toEqual(["colors", "radius", "font"]);
-    const colorways = meta.colorways as Array<{ id: string; name: string; preview: { accent: string; bgWindow: string } }>;
+    const colorways = meta.colorways as Array<{ id: string; name: string; preview: { accent: string; bgWindow: string }; polarity: string }>;
     expect(colorways).toHaveLength(2);
     expect(colorways[0]).toEqual({
       id: "demo-dark",
       name: "Demo Dark",
       preview: { accent: "#123456", bgWindow: "#0a0a0a" },
+      polarity: "dark",
     });
+    expect(meta.polarity).toBe("dark");
     expect(colorways[1].preview.accent).toBe("#00aa88");
   });
 

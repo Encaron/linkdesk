@@ -35,6 +35,9 @@ function chkThemeChangedPayload(v: unknown, p: string, errs: string[]): void {
   else {
     const _t1 = v as Record<string, unknown>;
     if (typeof _t1.themeType !== "string") errs.push(((p) + ".themeType") + ": 期望 string，实收 " + typeof _t1.themeType);
+    if (_t1.polarity !== undefined) {
+    if (!(_t1.polarity === "light" || _t1.polarity === "dark")) errs.push(((p) + ".polarity") + ": 期望 light|dark");
+    }
     if (_t1.variables === null || typeof _t1.variables !== "object" || Array.isArray(_t1.variables)) errs.push(((p) + ".variables") + ": 期望 object");
     else {
       const _t2 = _t1.variables as Record<string, unknown>;

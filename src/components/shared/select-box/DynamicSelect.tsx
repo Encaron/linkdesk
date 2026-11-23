@@ -79,14 +79,19 @@ function DynamicSelect({ value, onChange, optionsFrom, domain, disabled, placeho
           // 自定义模式下给**来源主题明暗类型 ≠ 当前主题明暗类型**的选项追「（亮色主题）/（暗色主题）」标签。
           const getCfg = window.linkdesk?.configuration?.get;
           const recipeId = getCfg ? await getCfg<string>("app.theme") : "";
-          const baseType = recipes.find((r) => r.id === recipeId)?.type;
+          const colorwayId = getCfg ? await getCfg<string>("app.themeColor") : "";
+          // 2026-11-24 极性归一化：跨明暗标签读**派生 polarity**（生效 token），不读配方声明 type。
+          const basePolarity = recipes.flatMap((r) => r.colorways).find((cw) => cw.id === colorwayId)?.polarity
+            ?? recipes.find((r) => r.id === recipeId)?.polarity;
           setOptions([
             { value: FOLLOW_THEME, label: t("跟随主题") },
             ...recipes.flatMap((r) =>
               r.colorways.map((cw) => ({
                 value: cw.id,
                 label: `${r.name}·${cw.name}${
-                  baseType && r.type !== baseType ? `（${t(r.type === "light" ? "亮色主题" : "暗色主题")}）` : ""
+                  basePolarity && cw.polarity !== basePolarity
+                    ? `（${t(cw.polarity === "light" ? "亮色主题" : "暗色主题")}）`
+                    : ""
                 }`,
                 preview: cw.preview?.accent || undefined,
               }))

@@ -8,6 +8,7 @@
  */
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
+import { resolvePolarity } from "../../ui/ThemeEngine/color";
 import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, normalizeThemeColorValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS, recipeDisplayName, colorwayDisplayName } from "../../ui/ThemeEngine";
 import { getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
@@ -25,11 +26,13 @@ function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
       accent: cw.colors?.accent ?? "",
       bgWindow: cw.colors?.["bg-window"] ?? "",
     },
+    polarity: resolvePolarity(cw.colors ?? {}, recipe.type),
   }));
   return {
     id: recipe.id,
     name: recipeDisplayName(recipe),
     type: recipe.type,
+    polarity: colorways[0]?.polarity ?? recipe.type,
     colorways,
     domains: recipeDomains(recipe),
   };

@@ -13,9 +13,10 @@ export const MINT: RecipeMeta = {
   id: "demo-mint",
   name: "Demo Mint",
   type: "light",
+  polarity: "light",
   colorways: [
-    { id: "dew", name: "Alpha", preview: { accent: "#3E9E8C", bgWindow: "#F7FBF8" } },
-    { id: "tea", name: "Beta", preview: { accent: "#A5D8E8", bgWindow: "#F7FBF8" } },
+    { id: "dew", name: "Alpha", preview: { accent: "#3E9E8C", bgWindow: "#F7FBF8" }, polarity: "light" },
+    { id: "tea", name: "Beta", preview: { accent: "#A5D8E8", bgWindow: "#F7FBF8" }, polarity: "light" },
   ],
   domains: ["colors", "glass"],
 };
@@ -25,7 +26,8 @@ export const FOREST: RecipeMeta = {
   id: "demo-forest",
   name: "Demo Forest",
   type: "dark",
-  colorways: [{ id: "pine", name: "Gamma", preview: { accent: "#4C8C6A", bgWindow: "#1B2A23" } }],
+  polarity: "dark",
+  colorways: [{ id: "pine", name: "Gamma", preview: { accent: "#4C8C6A", bgWindow: "#1B2A23" }, polarity: "dark" }],
   domains: ["colors"],
 };
 
@@ -34,7 +36,8 @@ export const SERIF: RecipeMeta = {
   id: "demo-serif",
   name: "Demo Serif",
   type: "light",
-  colorways: [{ id: "ink", name: "Ink", preview: { accent: "#222222", bgWindow: "#FAFAFA" } }],
+  polarity: "light",
+  colorways: [{ id: "ink", name: "Ink", preview: { accent: "#222222", bgWindow: "#FAFAFA" }, polarity: "light" }],
   domains: ["font"],
 };
 

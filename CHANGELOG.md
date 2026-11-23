@@ -7,6 +7,8 @@
 - 🧭 **主题极性归一化 · Phase 1**：`data-theme` / 图标反向光晕 / `theme:changed` / 启动快照改用**派生 polarity**——按生效 `text-primary` vs `bg-window-solid` 亮度判，不再照抄作者声明的 `type`。暗配方 + 亮配色等跨明暗场景，四处（CSS、图标、标签、后续编辑器）从同一条真相出发。
   - 新增 `resolvePolarity(tokens, fallback)`；`theme:changed` 增 `polarity`（`themeType` 同值保留兼容），池侧优先读它写 `data-theme`。
   - 快照升 `v2`（`ldk.theme.snapshot.v2`），旧快照静默弃用；单测 +5（跨色/玻璃/相等亮度/回退）。
+- 🧭 **主题极性归一化 · Phase 3**：`RecipeMeta` / `ColorwayMeta` 增派生 `polarity`；主题选择器 detail、DynamicSelect 的「（亮色主题/暗色主题）」跨明暗标签改读它——暗配方 + 亮配色不再按声明 type 贴错标签。
+- 🧭 **主题极性归一化 · Phase 4**：`theme.schema` 的 `type` 改为**可选 hint**（不写则由 `uiTheme`/token 派生兜底）；colorway 新增可选 `traits`（`contrast` / `colorVision`），高对比/色觉友好作为正交维度进数据面，不再扩 `type` 枚举。
 
 ### fix
 

@@ -104,6 +104,11 @@ export interface ThemeColorway {
   name: string;
   /** Color token set (--bg-* / --text-* / --accent etc., keys minus the -- prefix) */
   colors?: ThemeColors;
+  /** 可访问性 traits（2026-11-24）——与明暗极性正交；高对比有亮/暗两版，色觉友好同理 */
+  traits?: {
+    contrast?: "standard" | "high";
+    colorVision?: "default" | "deuteranopia" | "protanopia" | "tritanopia";
+  };
 }
 
 /**
