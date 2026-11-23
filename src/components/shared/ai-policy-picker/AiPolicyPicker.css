@@ -27,7 +27,7 @@
 .ldk-ai-policy-segbtn {
   appearance: none;
   min-width: 0;
-  padding: 7px 4px;
+  padding: 8px 4px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -81,7 +81,7 @@
 
 /* 完全访问的常驻提示条——危险语气，但颜色仍走 token */
 .ldk-ai-policy-note {
-  padding: 8px 10px;
+  padding: 8px;
   border: 1px solid var(--danger);
   border-radius: var(--radius-sm);
   background: var(--warning-bg);

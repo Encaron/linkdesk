@@ -143,7 +143,7 @@
 /* ── 警告框 ── */
 
 .ldk-pic-warn {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--warning);
   background: var(--warning-bg);
@@ -280,7 +280,7 @@
 .ldk-pic-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 6px 12px;
 }
 
@@ -290,8 +290,8 @@
 
 .ldk-pic-row-icon {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -300,8 +300,8 @@
 }
 
 .ldk-pic-row-icon-inner {
-  width: 20px;
-  height: 20px;
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
 }
 
 .ldk-pic-row-text {
@@ -383,7 +383,7 @@
 }
 
 .ldk-pic-btn {
-  min-height: 32px;
+  min-height: var(--size-control-lg);
   padding: 6px 16px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);

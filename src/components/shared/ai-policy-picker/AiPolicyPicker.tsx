@@ -107,7 +107,7 @@ export default function AiPolicyPicker({
               className="ldk-ai-policy-segbtn"
               disabled={disabled}
               onClick={() => select(i)}
-              title={o.summary}
+              data-hint={o.summary}
             >
               {o.label}
             </button>

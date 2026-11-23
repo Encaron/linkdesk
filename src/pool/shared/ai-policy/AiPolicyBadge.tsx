@@ -68,7 +68,7 @@ export default function AiPolicyBadge() {
     <button
       type="button"
       className={`ldk-ai-badge ldk-ai-badge-${view.tone}${full ? " ldk-ai-badge-live" : ""}`}
-      title={i18n.t(view.hint)}
+      data-hint={i18n.t(view.hint)}
       aria-live="polite"
       onClick={() => executePoolCommand("aiPolicy.openSettings")}
     >

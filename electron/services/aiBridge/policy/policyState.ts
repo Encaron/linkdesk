@@ -75,6 +75,20 @@ export function setPolicySettingsFile(filePath: string | null): void {
   settingsFile = filePath;
 }
 
+/**
+ * AI 通道是否开着（`ai.mcp.enabled` / `ai.cli.enabled` 任一 true）——徽标显示条件。
+ * 读不动 = false（没门可管；隐藏徽标比显示一个不知道状态的锁安全）。
+ */
+export function getChannelsEnabled(): boolean {
+  if (!settingsFile) return false;
+  try {
+    const s = JSON.parse(fs.readFileSync(settingsFile, "utf8")) as Record<string, unknown>;
+    return s["ai.mcp.enabled"] === true || s["ai.cli.enabled"] === true;
+  } catch {
+    return false;
+  }
+}
+
 /** 当前策略快照（每次现读） */
 export function getPolicySnapshot(): PolicySnapshot {
   if (!settingsFile) return policyModeFromSettings(null);
