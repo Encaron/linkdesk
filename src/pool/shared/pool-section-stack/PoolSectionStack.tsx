@@ -251,6 +251,7 @@ export default function PoolSectionStack({
           pluginId={view.pluginId}
           renderPath={view.renderPath}
           isActive={true}
+          scale="panel"
         />
       </ErrorBoundary>
     );

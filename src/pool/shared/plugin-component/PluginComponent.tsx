@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { ViewSkeleton } from "../view-skeleton/ViewSkeleton"; // 04「启动过场」④C：内容加载骨架
 import i18n from "../../../i18n";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
-import FallbackFace from "../fallback/FallbackFace"; // 2026-11-24：降级脸家族（missing 中性变体）
+import FallbackFace, { type FallbackScale } from "../fallback/FallbackFace"; // 2026-11-24：降级脸家族（missing 中性变体）
 
 // ── E6#62b：源码 glob 双表（pluginModules/viewModules）已退役整删 ──
 // 池侧两表 mis-root 恒空（../../ 自 src/pool/shared/plugin-component/ 落 src/pool/plugins——不存在），
@@ -147,9 +147,11 @@ interface PluginComponentProps {
   sourceId?: string;
   /** E5.6#11e：侧栏/主区 view 的 renderPath——归一化 URL（/@fs | linkdesk://，parseContributions 拼）。提供时直动态 import 此 URL。 */
   renderPath?: string;
+  /** 2026-11-24 降级脸：崩溃脸尺度（侧栏 section 传 panel）；缺省 full */
+  scale?: FallbackScale;
 }
 
-export default function PluginComponent({ pluginId, isActive, tabId, sourceId, renderPath }: PluginComponentProps) {
+export default function PluginComponent({ pluginId, isActive, tabId, sourceId, renderPath, scale }: PluginComponentProps) {
   // React.lazy 必须稳定引用——useMemo 按 pluginId + renderPath 缓存，防止每次渲染 new → unmount → flicker
   // E6#62b：renderPath URL 轨直 import（侧栏/主区 contributes.views）；无 renderPath → resolveEntry 拼入口 URL（主区 tab）
   // E5.6#11-fix7：_lazyCache 跨 mount 持久化 lazy 组件类型——React.lazy _payload._status 不随 unmount 丢失。
@@ -232,7 +234,7 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
   }
 
   return (
-    <ErrorBoundary pluginId={pluginId}>
+    <ErrorBoundary pluginId={pluginId} scale={scale}>
       <Suspense
         fallback={
           // 04「启动过场」④C：纯文字 → 呼吸骨架（100ms 延迟出现；aria-label 复用「加载中...」零新 i18n）
