@@ -17,11 +17,15 @@
 |:--|:--:|:--|
 | `id` | ✅ | Recipe id (globally unique; matches `contributes.themes[].id` in `plugin.json`) |
 | `name` | ✅ | Display name (the theme picker's title) |
-| `type` | ✅ | `"dark"` \| `"light"` — the dark/light baseline |
-| `colorways` | ✅ | **The colorway variant array** (a single colorway still goes in as 1 item) — each item is `{ id, name, colors }` |
+| `type` | ❌ | `"dark"` \| `"light"` — **hint only** (fallback when tokens cannot be resolved). Rendering truth = the engine's **derived polarity** from `text-primary` vs surface luminance (2026-11-24) |
+| `colorways` | ✅ | **The colorway variant array** (a single colorway still goes in as 1 item) — each item is `{ id, name, colors, traits? }` |
 | `appearance` | ❌ | The style domain (single value, sparse) — missing domains/keys inherit the shell default |
 
 > These are the only 5 top-level fields. The type/enum/description of each field is defined by `theme.schema.json`.
+>
+> 🔴 **`type` is no longer a rendering guarantee** (2026-11-24): a dark recipe with a light colorway, glass, or a full-window photo can render the opposite of its declaration. The engine, `data-theme`, icon glow, editor, and picker labels all read the **derived polarity**; omitting `type` is legal (falls back to `uiTheme`).
+>
+> 🎛️ **High contrast is a global user setting** (Settings → Appearance → Contrast: standard/high), not a per-theme config key. Authors may tag a colorway with `traits.contrast = "high"` to supply a dedicated high-contrast set; when absent the engine derives a safe one (push text/surface apart, strengthen borders, keep the accent). `traits.colorVision` is reserved for color-vision-safe variants.
 
 ---
 

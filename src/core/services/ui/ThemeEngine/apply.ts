@@ -18,6 +18,7 @@ import {
 import { getThemeVariables, commitTokens, applyOverrides, synthesizeGlassSurfaces, synthesizeIconGlow } from "./tokens";
 import { resolveRecipeFonts } from "./fonts";
 import { resolvePolarity } from "./color";
+import { applyHighContrast, highContrastEnabled } from "./contrast";
 import { getAppearanceOverrides, getThemeGlassSurfaceSpec, getIconGlowSpec } from "./seeds";
 import { setActiveRecipe, setCurrentTheme } from "./state";
 
@@ -35,7 +36,11 @@ export function applyTheme(theme: Theme): void {
   // 用户 glassOpacity（custom）或主题 glass.opacity（followTheme），不再依赖 rgba 写法。
   synthesizeGlassSurfaces(variables, getThemeGlassSurfaceSpec(theme.surface));
   // 2026-11-24 极性归一化：渲染真相 = 生效 token 派生（type 只作 hint）。图标晕/提交/广播/快照共用。
-  const polarity = resolvePolarity(variables, theme.type);
+  let polarity = resolvePolarity(variables, theme.type);
+  // 2026-11-24 高对比（用户级 · 正交）：没有作者 HC colorway 时派生安全 token；accent 身份保留。
+  if (highContrastEnabled()) {
+    applyHighContrast(variables, polarity); // 派生值与极性同向，无需重算（named 色不在 luminance 解析面）
+  }
   // 主题前景可读性 · 第 1 刀：图标反向光晕——挂底图时按墨色极性发 filter 串（同位置：覆盖后、提交前）
   synthesizeIconGlow(variables, getIconGlowSpec(polarity));
   commitTokens(variables, polarity, { recipeId: theme.name });
@@ -95,7 +100,11 @@ export function applyRecipe(
     : recipe.appearance?.glass;
   synthesizeGlassSurfaces(effective, getThemeGlassSurfaceSpec(glassSurface));
   // 2026-11-24 极性归一化：派生值 = 渲染真相；声明 type 只作 token 解析失败的 hint。
-  const polarity = resolvePolarity(effective, recipe.type);
+  let polarity = resolvePolarity(effective, recipe.type);
+  // 2026-11-24 高对比（用户级 · 正交）：作者已提供 high 档 colorway 时尊重作者；否则派生安全 token。
+  if (highContrastEnabled() && colorway.traits?.contrast !== "high") {
+    applyHighContrast(effective, polarity);
+  }
   // 主题前景可读性 · 第 1 刀：图标反向光晕（同位置；未显式 fontTone 时回落派生极性）
   synthesizeIconGlow(effective, getIconGlowSpec(polarity));
   commitTokens(

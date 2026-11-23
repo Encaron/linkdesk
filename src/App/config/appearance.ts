@@ -127,6 +127,20 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         optionsFromDomain: "colors",
         onApply: () => debouncedApplyThemeIfReady(),
       },
+      // 2026-11-24 极性归一化 Phase 6：对比度 = 全局可访问性偏好（与明暗极性正交）。
+      // 高对比优先用作者 traits.contrast="high" 的 colorway；没有则由引擎派生安全 token
+      //（推远正文/表面、强化边框，保留 accent 与材质语义）。⛔ 不是每只主题各写一个配置键。
+      "app.contrastMode": {
+        type: "string",
+        group: t("整体配方"),
+        default: "standard",
+        enum: ["standard", "high"],
+        enumDescriptions: [t("标准"), t("高对比")],
+        title: t("对比度"),
+        description: t("对比度——标准 / 高对比；与明暗极性正交，主题未提供高对比配色时由系统派生"),
+        uiHint: "segmented",
+        onApply: () => debouncedApplyThemeIfReady(),
+      },
       // E5.8#98：强调色独立轴——app.accentSource（跟随主题配方/自定义）从外观主开关解耦
       // （14-档案 §十二，用户拍板「把强调色的跟随主题配置加回来」）。
       // #90 曾并入 appearanceMode 单一轴（app.accentMode 删），现用户可独立于外观主开关只调强调色：

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-11-23T17:04:58.088Z",
+  "syncedAt": "2026-11-23T17:10:18.469Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.67",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.67/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:f97375d08c2245940ed4f5f3d98d56d2589595b04921ce1e465295bb27e67e76\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\ndocs/readme/en.md:76ab8f2d27627003b24c0ea185f4d754cb53730f1b608289d35089a471543abb\nen.json:3c0761019a45416b7049d11b76ac5a380deaa4db400f992a64842d673c1b8469\nplugin.json:d227bcda3b9f43a43201272e3831d090464cc5fdec7f372e5a43aa18119babb6\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:b693316c841b4766351576d7817db01a31096fa1bdc8d69330362fa87a61458f",
+      "version": "1.0.68",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.68/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:5c7fc6177365a33fe158368492d180b421a08164c410fb171c6f267b25b3ef6b\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\ndocs/readme/en.md:76ab8f2d27627003b24c0ea185f4d754cb53730f1b608289d35089a471543abb\nen.json:dadff687c8f9ff1f4ba83e0d9d1c85024fde65de3605e224c90ba1098251093c\nplugin.json:846788a74b1fe804c8d750ff2616595f640a5e857163be7077c8d13718ebe827\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:b693316c841b4766351576d7817db01a31096fa1bdc8d69330362fa87a61458f",
       "seed": true
     },
     {
@@ -62,17 +62,17 @@
     {
       "id": "theme-aurora-glass",
       "repo": "Encaron/linkdesk-plugin-theme-aurora-glass",
-      "version": "1.0.16",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-aurora-glass/releases/download/v1.0.16/theme-aurora-glass.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:33533ef1f3cb1b0c7c4ce09485485d9370b7703717b9be35463e491d9c776291\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d34f4486e0477704f0e1da87e7a891a410cb62ea84cc8d37e1456eb59074842f\ndocs/readme/en.md:59ff85c41a604e07202357fef9a6d7b620bdf91c0c49953ae6103ba545c03a79\ni18n/en.json:927e4037c022a6ff13c8603b4008fd56af94164f36974dccf939e13da09a2264\nplugin.json:b7de75a40c44b2ce90ce9c239fbb96cbbbce3fc6bd66cb18ccc99dc4e332e26a\nresources/aurora-bg.svg:1c5144ff5cfb368ee9c5c38492b93c9d1dcbae486763a9c040164ad063062d68\nresources/cover.svg:7c92af9f83b1ab47305af697b77bfa0c1dbeb58bec79c481a0cf03d1f6baf96c\nresources/icon.svg:dab676f3a55b54ec995ea9dde8314a3cd3849c7189b48490baca215da427ca8d\nthemes/aurora-glass.json:2d8e7c8d57ce6bc31a21eddd831a5b367dc271a0ce802a88172a682731eb9f6d",
+      "version": "1.1.0",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-aurora-glass/releases/download/v1.1.0/theme-aurora-glass.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:66810acf5893c472d7b47082b158af5df39bcedf402e78bd62ad3c49bddcf7c5\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d34f4486e0477704f0e1da87e7a891a410cb62ea84cc8d37e1456eb59074842f\ndocs/readme/en.md:59ff85c41a604e07202357fef9a6d7b620bdf91c0c49953ae6103ba545c03a79\ni18n/en.json:a9362d08c6dbdcb772bec4c3395757af948ada15914ed9b6f25ae1c023b25f8e\nplugin.json:a9d63c5e75daca97a59e2bea5526d9f8fd8d8660ab4314bc9e31ccd1ad450778\nresources/aurora-bg.svg:1c5144ff5cfb368ee9c5c38492b93c9d1dcbae486763a9c040164ad063062d68\nresources/cover.svg:7c92af9f83b1ab47305af697b77bfa0c1dbeb58bec79c481a0cf03d1f6baf96c\nresources/icon.svg:dab676f3a55b54ec995ea9dde8314a3cd3849c7189b48490baca215da427ca8d\nthemes/aurora-glass.json:f4fb36179329ef6d158262fd9468678a3566bc624f78706d86d132e6fe648ddb",
       "seed": false
     },
     {
       "id": "theme-defaults",
       "repo": "Encaron/linkdesk-plugin-theme-defaults",
-      "version": "1.0.17",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-defaults/releases/download/v1.0.17/theme-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:7218baa9574774353b047875a94c97751420c1ce89bb72a1c9b20a88a1151654\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:b5511370edd279250dc492644d0157a620257ec0c2acf035d526522732dcb6e4\ndocs/readme/en.md:fba2486e504f5cc7dac2169cb1943072682e21da89670521c646bb1a6fd0e62c\ni18n/en.json:eedb3466179aa06d50065b0819b7caa385f0049f5f2b15afadc9e2d36628b21d\nplugin.json:a1b9bd0274e211273b84bfbbdd9aaddbf1fa6a75373f284d9f8015de4f7d9279\nresources/icon.svg:a5f74acf260e697dc17311e2e675f3ac32f977dc84895d2bdd3eb36efc3d7609\nthemes/defaults.json:dbe0926ccc3e5fb57813c0d565b5480c5179adaabb5c922bf0b4a82ea6cf3821",
+      "version": "1.1.0",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-defaults/releases/download/v1.1.0/theme-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:e3af93f06fcfdb668c707438bf43f33e2eb3bffad20ea889e8f05965cb648d40\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:b5511370edd279250dc492644d0157a620257ec0c2acf035d526522732dcb6e4\ndocs/readme/en.md:fba2486e504f5cc7dac2169cb1943072682e21da89670521c646bb1a6fd0e62c\ni18n/en.json:1fab73f9d0d6053d8dbae366a12c15996963ba73d5b0777bba0e65fdda89d90a\nplugin.json:216e15a9b72bff7f41bf9a63139d3ffa2c66a4e0637a65ee4bfd580c8856cc68\nresources/icon.svg:a5f74acf260e697dc17311e2e675f3ac32f977dc84895d2bdd3eb36efc3d7609\nthemes/defaults.json:08aba2e317dbea2b5b36be8d580368f3bf2269d086beb1d5b768b7c825ade723",
       "seed": true
     },
     {
@@ -86,9 +86,9 @@
     {
       "id": "theme-panorama",
       "repo": "Encaron/linkdesk-plugin-theme-panorama",
-      "version": "1.0.13",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-panorama/releases/download/v1.0.13/theme-panorama.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:f71e89415fa80f5dc0727858f68202f6afc9ffbb941f3b68e1cceaeaedbc2cea\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d1ca25e714da795fb770b5b4d19dafad984c616b843c861b33a6fc9ee9b91fa9\ndocs/readme/en.md:e559d6df68fd343af6b4612dd74c26742e33741ba4ce82058ff62c11367674ad\ni18n/en.json:8c32bdd89527df9ccfe7e9e757297816c3ba0d1c840b4e2ec2b0ec73f5c62709\nplugin.json:badd21e6136feadc0acbcd0d70cf62878078361b8b6173dd224125893c9766ee\nresources/icon.svg:e8890976d944521790c0afffd339bd9169b2ca591a1da9f2a4aa254d8b7483c5\nresources/sailor-moon.jpg:858f0173d0ccc5926a5eaeed28b883b2f1e1b676a1ae3bcb48e6fe1f6a0ee8f7\nthemes/panorama.json:4719087c0c7da5a58915c05cb18d8f2613a8db8422c837061ee4e68a480d2d34",
+      "version": "1.1.0",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-panorama/releases/download/v1.1.0/theme-panorama.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:392438c0a0fb650a3c0ffe5339436ea2d5b16a11636255d932f23c546de81135\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:d1ca25e714da795fb770b5b4d19dafad984c616b843c861b33a6fc9ee9b91fa9\ndocs/readme/en.md:e559d6df68fd343af6b4612dd74c26742e33741ba4ce82058ff62c11367674ad\ni18n/en.json:f460c9d6b1cfbd7e087ed3c17e139d48b8b1c00239018121144ecf98b4ecfbd0\nplugin.json:995dcc620838796663808cc79a84503b0e0475ad935c019f43230dc11a0bf101\nresources/icon.svg:e8890976d944521790c0afffd339bd9169b2ca591a1da9f2a4aa254d8b7483c5\nresources/sailor-moon.jpg:858f0173d0ccc5926a5eaeed28b883b2f1e1b676a1ae3bcb48e6fe1f6a0ee8f7\nthemes/panorama.json:4e5e5602776f78bf2c2852ce532b2e51fed9ba90c18391733269c3839fece351",
       "seed": false
     },
     {

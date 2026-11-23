@@ -9,6 +9,8 @@
   - 快照升 `v2`（`ldk.theme.snapshot.v2`），旧快照静默弃用；单测 +5（跨色/玻璃/相等亮度/回退）。
 - 🧭 **主题极性归一化 · Phase 3**：`RecipeMeta` / `ColorwayMeta` 增派生 `polarity`；主题选择器 detail、DynamicSelect 的「（亮色主题/暗色主题）」跨明暗标签改读它——暗配方 + 亮配色不再按声明 type 贴错标签。
 - 🧭 **主题极性归一化 · Phase 4**：`theme.schema` 的 `type` 改为**可选 hint**（不写则由 `uiTheme`/token 派生兜底）；colorway 新增可选 `traits`（`contrast` / `colorVision`），高对比/色觉友好作为正交维度进数据面，不再扩 `type` 枚举。
+- 🧭 **主题极性归一化 · Phase 5（编辑器 1.0.29）**：Monaco 主题从工作区 tokens 生成——背景/前景/行号/光标/选区/行高亮/悬浮件随主题与强调色走，玻璃/整窗主题不再只有 vs/vs-dark 两套固定色。旧 bug 防线原样保留（`loadThemes:true`、define→set→每 editor update 双路径、DiffEditor 单独登记同批更新、`var()/color-mix()` 先解析成 hex 再回落、字体不塞主题）。
+- 🧭 **主题极性归一化 · Phase 6（高对比 + 四套主题）**：新增全局设置 `app.contrastMode`（标准/高对比）——优先用作者 `traits.contrast="high"` colorway，没有则由引擎派生安全高对比（推远正文/表面、强化边框，保留 accent）。官方主题 1.1.0 增亮/暗高对比 colorway；极光 1.1.0 `tintOpacity`＋阅读面 0.66/0.78＋「极光·青」；整窗 1.1.0 `maskColor`＋`mask` 0.22＋「冷月银」。语言包 1.0.68 补对比度词条。
 
 ### fix
 
