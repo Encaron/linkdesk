@@ -203,3 +203,12 @@
 
 **遗留（未修，登记）**：custom 模式下**切主题**的重播种仍会写入玻璃键 → 无玻璃主题会被「凭空开玻璃」；
 同 `resetToTheme` 的修法（无 glass 主题不写玻璃键）应推广到 `deriveReseedPlan`/`seedAppearanceOverrides`。
+## 十二、复位入口二次修（2026-11-24 · 用户实机「按钮字太长、两行被图标主题隔开」）
+
+- **根因**：settings 插件的 `ActionButton` 只取 `description` 当按钮文字 ⇒ 长说明全进了按钮；行下说明与按钮共用同一串，
+  「短标签 + 长说明」无法同时成立。且两行动作按声明顺序被 `图标主题` 隔开。
+- **处置**：`ActionButton` 改「`title` 优先、无 title 回退 `description`」（settings **1.0.49**）；行名下移到短标签
+  （「重置为当前主题」「分区来源改回主题」），`description` 专做行下说明；`app.mixReset` 声明移到 `app.appearanceReset`
+  之后 ⇒ 两行相邻、图标主题随后。词条 lang-defaults **1.0.70**。
+- **同批收掉 §十一 遗留**：`seedAppearanceOverrides` / `reseedAppearanceOnThemeSwitch` 在活动主题无 `appearance.glass`
+  时不写并摘除玻璃四键——切自定义/切主题不再凭空开启玻璃（单测同步）。
