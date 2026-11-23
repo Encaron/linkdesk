@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>外观模式入口 · 方案对比（2026-11-24）</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: rgba(20, 26, 36, 0.72);
+    --panel-solid: #161c26;
+    --text: #ffffff;
+    --text-2: rgba(255,255,255,.78);
+    --text-3: rgba(255,255,255,.52);
+    --border: rgba(255,255,255,.14);
+    --accent: #ffb85c;
+    --accent-ink: #10161f;
+    --danger: #f87171;
+    --ok: #4ec9b0;
+    --radius: 10px;
+    --mono: "JetBrains Mono", Consolas, monospace;
+    --ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 48px;
+    font-family: var(--ui); color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 15% 10%, #2a3350 0%, transparent 60%),
+      radial-gradient(900px 500px at 85% 30%, #3a2c46 0%, transparent 55%),
+      linear-gradient(160deg, #0b1018 0%, #0a0e14 55%, #0d1119 100%);
+    min-height: 100vh;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; letter-spacing: .2px; }
+  .sub { color: var(--text-3); font-size: 13px; margin: 0 0 26px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 20px 20px; backdrop-filter: blur(10px);
+  }
+  .card h2 { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  .card .tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-2); margin-left: 8px; vertical-align: 2px;
+  }
+  .tag.rec { border-color: rgba(255,184,92,.55); color: var(--accent); }
+  .card .note { color: var(--text-3); font-size: 12px; margin: 6px 0 16px; line-height: 1.55; }
+  .divider { height: 1px; background: rgba(255,255,255,.08); margin: 16px 0; }
+
+  /* 设置行（对齐真实设置页的版式：左标签+说明，右控件） */
+  .row { display: flex; align-items: flex-start; gap: 14px; padding: 10px 0; }
+  .row .info { flex: 1 1 auto; min-width: 0; }
+  .row .label { font-size: 13.5px; font-weight: 600; }
+  .row .desc { font-size: 12px; color: var(--text-3); margin-top: 4px; line-height: 1.5; }
+  .row .control { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+
+  .select {
+    min-width: 196px; display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 7px 11px; font-size: 13px; color: var(--text);
+    background: rgba(255,255,255,.08); border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; user-select: none;
+  }
+  .select .chev::after { content: "▾"; color: var(--text-3); }
+  .menu {
+    position: absolute; margin-top: 44px; min-width: 236px; padding: 6px;
+    background: var(--panel-solid); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 18px 48px rgba(0,0,0,.55); display: none; z-index: 20;
+  }
+  .menu.open { display: block; }
+  .menu .opt { padding: 8px 10px; border-radius: 7px; font-size: 12.5px; cursor: pointer; color: var(--text-2); }
+  .menu .opt:hover { background: rgba(255,255,255,.08); color: var(--text); }
+  .menu .opt .hint { display: block; color: var(--text-3); font-size: 11px; margin-top: 3px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px;
+    font-size: 12.5px; border-radius: 8px; cursor: pointer; user-select: none;
+    color: var(--text); background: rgba(255,255,255,.06); border: 1px solid var(--border);
+  }
+  .btn:hover { background: rgba(255,255,255,.11); }
+  .btn.accent { background: rgba(255,184,92,.14); border-color: rgba(255,184,92,.45); color: var(--accent); }
+  .btn.ghost { color: var(--text-2); }
+  .btn[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
+
+  .toast {
+    margin-top: 14px; font-size: 12px; color: var(--text-2);
+    background: rgba(0,0,0,.28); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; min-height: 34px; line-height: 1.45;
+  }
+  .toast b { color: var(--accent); font-weight: 600; }
+
+  /* 迷你外观预览：玻璃/圆角变化可视化 */
+  .preview {
+    margin-top: 12px; height: 92px; border-radius: 10px; position: relative; overflow: hidden;
+    border: 1px solid var(--border);
+    background: linear-gradient(135deg, #5b6a8f 0%, #8a6f7a 45%, #3d4a63 100%);
+  }
+  .preview .pane {
+    position: absolute; inset: 14px 18px; border-radius: 8px;
+    background: rgba(35,38,44,.55); border: 1px solid rgba(255,255,255,.18);
+    transition: background .25s ease, border-radius .25s ease, inset .25s ease;
+  }
+  .preview .pane .bars { position: absolute; left: 12px; top: 12px; right: 12px; }
+  .preview .pane .bars i {
+    display: block; height: 7px; border-radius: 4px; background: rgba(255,255,255,.72); margin-bottom: 7px;
+  }
+  .preview .pane .bars i:nth-child(1) { width: 44%; }
+  .preview .pane .bars i:nth-child(2) { width: 72%; background: rgba(255,255,255,.5); }
+  .preview .pane .bars i:nth-child(3) { width: 58%; background: rgba(255,255,255,.32); }
+
+  .chips { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11.5px; color: var(--text-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 9px; background: rgba(255,255,255,.04);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; color: var(--text-3); margin-top: 10px; }
+  .kv b { color: var(--text-2); font-weight: 500; }
+  .warn { color: var(--danger); }
+  .ok { color: var(--ok); }
+</style>
+</head>
+<body>
+  <h1>外观模式入口 · 方案对比</h1>
+  <p class="sub">2026-11-24 · 用真实设置页的版式对比三种落法。点按钮/选项看提示与迷你外观变化。方案只是原型，不动正式代码。</p>
+
+  <div class="grid">
+
+    <!-- 现状 -->
+    <div class="card">
+      <h2>现状（已落地）<span class="tag">两行动作</span></h2>
+      <p class="note">下拉框下面挂两行动作按钮。功能对，但「点完自定义再往下找」不符合直觉；且「分区来源」只对混搭用户有意义。</p>
+
+      <div class="row">
+        <div class="info">
+          <div class="label">外观模式</div>
+          <div class="desc">跟随主题——外观/配色由主题配方决定 / 自定义——逐项指定</div>
+        </div>
+        <div class="control"><div class="select" data-static>自定义 <span class="chev"></span></div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="row">
+        <div class="info"><div class="label">重置为当前主题</div></div>
+        <div class="control"><div class="btn accent" data-toast="（现状）已按当前主题重置覆盖；仍留在自定义">⟲ 重置为当前主题</div></div>
+      </div>
+      <div class="row">
+        <div class="info"><div class="label">分区来源改回主题</div></div>
+        <div class="control"><div class="btn" aria-disabled="true">分区来源改回主题</div></div>
+      </div>
+      <div class="toast" id="t0">点上面两个按钮试试（第二个默认置灰）。</div>
+    </div>
+
+    <!-- 方案 A：同一行两个入口（推荐） -->
+    <div class="card">
+      <h2>方案 A：同一行两个入口<span class="tag rec">推荐</span></h2>
+      <p class="note">下拉框保持两个状态；「用主题样式重来」是按钮，一直在同一行、点之前就看得见。点哪个就是哪个意图，没有二次寻找、没有回弹。</p>
+
+      <div class="row">
+        <div class="info">
+          <div class="label">外观模式</div>
+          <div class="desc">跟随主题——外观/配色由主题配方决定 / 自定义——逐项指定</div>
+        </div>
+        <div class="control">
+          <div class="select" id="selA" data-select="A">自定义 <span class="chev"></span></div>
+          <div class="btn accent" id="btnA">⟲ 用主题样式重来</div>
+        </div>
+      </div>
+      <div class="toast" id="tA">点「自定义」= 恢复上次；点「⟲ 用主题样式重来」= 从当前主题原样开始。</div>
+
+      <div class="preview">
+        <div class="pane" id="paneA"></div>
+      </div>
+      <div class="chips" id="chipsA">
+        <span class="chip">玻璃 <b>0.37</b></span>
+        <span class="chip">圆角 <b>20px</b></span>
+        <span class="chip">壁纸 <b>我的</b></span>
+      </div>
+      <div class="kv">
+        <b>动作语义</b><span>「自定义」= 恢复上次自定义（没有改动则按主题播种）；「用主题样式重来」= 清覆盖 + 按主题播种，仍留自定义。</span>
+      </div>
+    </div>
+
+    <!-- 方案 B：三选项下拉（用户的提案） -->
+    <div class="card">
+      <h2>方案 B：三选项下拉<span class="tag">你的提案</span></h2>
+      <p class="note">两个「自定义」入口都放进下拉。看效果：选完「从主题开始」，下拉会跳回「自定义」——因为状态只有一个；而且再选同一个选项不会触发第二次。</p>
+
+      <div class="row">
+        <div class="info">
+          <div class="label">外观模式</div>
+          <div class="desc">跟随主题 / 自定义（从主题开始）/ 自定义（恢复上次）</div>
+        </div>
+        <div class="control" style="position:relative">
+          <div class="select" id="selB">自定义 <span class="chev"></span></div>
+          <div class="menu" id="menuB">
+            <div class="opt" data-act="follow">跟随主题<span class="hint">外观/配色完全跟配方</span></div>
+            <div class="opt" data-act="theme">自定义 · 从主题开始<span class="hint">一次性：选完回弹到「自定义」</span></div>
+            <div class="opt" data-act="restore">自定义 · 恢复上次<span class="hint">恢复你上次调好的值</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="toast" id="tB">打开下拉选一项，观察下拉的显示。</div>
+
+      <div class="preview">
+        <div class="pane" id="paneB"></div>
+      </div>
+      <div class="chips" id="chipsB">
+        <span class="chip">玻璃 <b>0.37</b></span>
+        <span class="chip">圆角 <b>20px</b></span>
+        <span class="chip">壁纸 <b>我的</b></span>
+      </div>
+      <div class="kv">
+        <b>坑 1</b><span class="warn">回弹：选「从主题开始」后，下拉必须跳回「自定义」（状态没变），像没生效。</span>
+        <b>坑 2</b><span class="warn">不能复点：同一个选项再点一次不会触发；想重置要先选别的再选回来。</span>
+        <b>坑 3</b><span class="warn">如果强行保留第三态：切到跟随再切回它 → 又重置一遍，刚才的微调被冲掉。</span>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const state = { mode: "custom", glass: 0.37, radius: 20, wallpaper: "我的" };
+
+  function paint(paneId, chipsId) {
+    const pane = $(paneId), chips = $(chipsId);
+    if (!pane) return;
+    pane.style.background = state.mode === "follow"
+      ? "rgba(10,14,20,.30)"
+      : `rgba(35,38,44,${0.30 + state.glass * 0.5})`;
+    pane.style.borderRadius = (state.radius / 2) + "px";
+    if (!chips) return;
+    chips.innerHTML =
+      `<span class="chip">玻璃 <b>${state.glass.toFixed(2)}</b></span>` +
+      `<span class="chip">圆角 <b>${state.radius}px</b></span>` +
+      `<span class="chip">壁纸 <b>${state.wallpaper}</b></span>`;
+  }
+  function toast(id, html) { $(id).innerHTML = html; }
+
+  // 现状卡：按钮提示
+  document.querySelectorAll('[data-toast]').forEach((el) => {
+    el.addEventListener('click', () => toast('t0', el.dataset.toast));
+  });
+
+  // 方案 A
+  $('btnA').addEventListener('click', () => {
+    state.mode = "custom"; state.glass = 0.5; state.radius = 0; state.wallpaper = "主题";
+    paint('paneA', 'chipsA');
+    toast('tA', '<b>已按当前主题重置</b>：覆盖清空、按主题基线重新播种，仍留在自定义。可继续微调。');
+  });
+  $('selA').addEventListener('click', () => {
+    state.mode = "custom"; state.glass = 0.37; state.radius = 20; state.wallpaper = "我的";
+    paint('paneA', 'chipsA');
+    toast('tA', '<b>已恢复上次自定义</b>：玻璃 0.37 / 圆角 20px / 我的壁纸。（没有改动过则按主题播种）');
+  });
+
+  // 方案 B
+  const selB = $('selB'), menuB = $('menuB');
+  selB.addEventListener('click', (e) => { e.stopPropagation(); menuB.classList.toggle('open'); });
+  document.addEventListener('click', () => menuB.classList.remove('open'));
+  menuB.querySelectorAll('.opt').forEach((opt) => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const act = opt.dataset.act;
+      menuB.classList.remove('open');
+      if (act === 'follow') {
+        state.mode = "follow"; state.glass = 0.5; state.radius = 0; state.wallpaper = "主题";
+        selB.innerHTML = '跟随主题 <span class="chev"></span>';
+        toast('tB', '切到「跟随主题」：覆盖被 stash，跟随配方。');
+      } else if (act === 'theme') {
+        state.mode = "custom"; state.glass = 0.5; state.radius = 0; state.wallpaper = "主题";
+        // 关键：状态只有一个 custom，选完必须回弹
+        selB.innerHTML = '自定义 <span class="chev"></span>';
+        toast('tB', '<b>回弹了</b>：已按主题重置，但下拉只能显示「自定义」——你也选不回「从主题开始」这一项（再点它不会触发）。');
+      } else {
+        state.mode = "custom"; state.glass = 0.37; state.radius = 20; state.wallpaper = "我的";
+        selB.innerHTML = '自定义 <span class="chev"></span>';
+        toast('tB', '已恢复上次自定义；下拉同样显示「自定义」。');
+      }
+      paint('paneB', 'chipsB');
+    });
+  });
+
+  // 初始
+  paint('paneA', 'chipsA');
+  paint('paneB', 'chipsB');
+</script>
+</body>
+</html>
