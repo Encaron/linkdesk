@@ -84,14 +84,6 @@
       "seed": false
     },
     {
-      "id": "theme-mint-soda",
-      "repo": "Encaron/linkdesk-plugin-theme-mint-soda",
-      "version": "1.0.12",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-mint-soda/releases/download/v1.0.12/theme-mint-soda.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:0f71b3dbbd6c97d35c630e527944b7b0b09290719f47ecfb18b8166e42d19a56\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:1fbe9d480b6b3c0b8b55a27034e71aa6c5ef68a022ca672586afad86d6bbe9d8\ni18n/en.json:23b3401a53692703d6d49efa95f3ffd817d68bf750ab6bfa313d0718cdb25e62\nplugin.json:a7843ebbcec38b372a64d68b9b2a2ac9aa639a151a6b79a38fdcea5f9bdc55e0\nresources/icon.svg:6234428090a65476c44b16ca310f071f301bb212f90548ecc5c591f765ff3b99\nthemes/mint-soda.json:8b85c0ca73adb18e3ef9f12ec5c7d8cb0016880f818356bee45cb93188692c05",
-      "seed": false
-    },
-    {
       "id": "theme-panorama",
       "repo": "Encaron/linkdesk-plugin-theme-panorama",
       "version": "1.0.12",
