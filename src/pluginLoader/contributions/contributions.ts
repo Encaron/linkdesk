@@ -25,7 +25,6 @@ import { registerMenuItems, registerTitleBarContribution } from "../../core/regi
 import { registerCommand } from "../../core/registry/commands/CommandRegistry";
 import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
-import { resolvePluginManifestForDisplay } from "../display/displayService";
 import i18n from "../../i18n";
 import { errMsg } from "../resolution/state";
 
@@ -100,10 +99,8 @@ function contribObject<T extends object>(pluginId: string, key: string, v: unkno
  * Phase 6 加 contributes.themes / contributes.languages 时此处只需加一个 if——不崩。
  */
 export async function parseContributions(pluginId: string, c: Record<string, unknown>, pluginRoot?: string): Promise<void> {
-  // 显示文本归宿主解析（2026-11-24）：命令/菜单/视图/配置/主题 label 在注册前统一按
-  // 插件命名空间解析成当前语言；下游 Registry 只存显示值，UI 不再 t() 插件数据。
-  // 机器字段（id/command/path/when/icon）原样保留——解析器只碰显示清单。
-  c = resolvePluginManifestForDisplay(pluginId, { contributes: c }).contributes ?? c;
+  // 注意：这里**不**把显示文本解析成快照——Registry 存原文，壳侧消费点用 t()/插件命名空间
+  // 动态解析（语言切换即时生效）。市场侧另走 pluginManager.list() 的 resolved 视图（宿主边界）。
 
   // contributes.configuration → ConfigurationRegistry
   if (c.configuration) {
