@@ -176,6 +176,13 @@
   .btn[disabled] { opacity: .4; cursor: not-allowed; transform: none; }
   .btn .ico { font-size: 13px; line-height: 1; }
 
+  .gear {
+    display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+    border: 0; background: transparent; color: var(--text-3); border-radius: 6px; cursor: pointer;
+    transition: color var(--dur) ease, background var(--dur) ease;
+  }
+  .gear:hover { color: var(--text); background: rgba(255,255,255,.08); }
+  .gear svg { width: 14px; height: 14px; }
   .seg { display: inline-flex; background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
   .seg button { border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: rgba(255,255,255,.1); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
@@ -498,6 +505,24 @@
       action.innerHTML = '<span class="ico">⟲</span>用主题样式重来';
       action.addEventListener("click", enterCustomFromTheme);
       box.appendChild(action);
+
+      // 本行齿轮：两个重置入口（壳注册菜单项，按 settingKey 门控）
+      const gear = document.createElement("button");
+      gear.className = "gear";
+      gear.setAttribute("aria-label", "更多操作");
+      gear.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.89a1.7 1.7 0 0 0-.34-1.88l-.06-.06A2 2 0 1 1 7.03 4.12l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9c.14.61.66 1.05 1.28 1.05H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>';
+      const gmenu = document.createElement("div");
+      gmenu.className = "menu";
+      gmenu.style.left = "auto"; gmenu.style.right = "0"; gmenu.style.minWidth = "220px";
+      gmenu.innerHTML = line("fromThemeA2", "用主题样式重来", "清覆盖 + 分区来源，按主题播种") + line("mixReset", "分区来源改回主题", "颜色/玻璃/背景/字体回来源");
+      gear.addEventListener("click", (e) => { e.stopPropagation(); const open = gmenu.classList.toggle("open"); gear.setAttribute("aria-expanded", String(open)); });
+      gmenu.addEventListener("click", (e) => {
+        const opt = e.target.closest(".opt"); if (!opt) return; e.stopPropagation();
+        gmenu.classList.remove("open");
+        if (opt.dataset.act === "fromThemeA2") enterCustomFromTheme();
+        else toast("", "（分区来源改回主题）只把四个域来源改回「跟随主题」，外观覆盖不动。");
+      });
+      box.appendChild(gear); box.appendChild(gmenu);
     } else {
       // 方案 B：三选项，两个自定义入口共用同一个状态值
       makeSelect(
