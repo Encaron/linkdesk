@@ -65,6 +65,7 @@ import * as net from 'node:net';
 import * as path from 'node:path';
 import { IPC } from '../../ipc/channels.js';
 import { OPS, coded, type BridgeOpContext, type BridgePhase, type LedgerEntry } from './whitelist.js';
+import { setPolicySettingsFile } from './policy/index.js';
 
 /** 通道记录文件名（userData 下）。客户端（cli/linkdeskctl/lib/bridge-client.mjs）按同名找它——改名两处同笔 */
 const RECORD_NAME = 'ai-bridge.json';
@@ -509,6 +510,9 @@ export function initAiBridge(deps: AiBridgeDeps): void {
   recordFile = path.join(userData, RECORD_NAME);
   tokenFile = path.join(userData, TOKEN_NAME);
   logFile = path.join(userData, LOG_NAME);
+  // AI 权限档位真源（`ai.policy.mode`）——与通道开关同一个 settings.json；
+  // 每次判定现读（见 policy/policyState.ts），这里只交代路径。
+  setPolicySettingsFile(path.join(userData, 'settings.json'));
   const config = resolveBridgeConfig(process.env, path.join(userData, 'settings.json'));
   auditLogEnabled = config.auditLog;
 

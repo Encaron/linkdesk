@@ -30,8 +30,20 @@
 
 import { IPC } from '../../ipc/channels.js';
 import { pickPendingCommands, settleCommandSurface, type DeclaredCommandSource, type PendingCommand } from './commandSurface.js';
-import { coded } from './errors.js';
-import { askFirstCatalog, askFirstRuleForCommand, askFirstRuleForOp, askUser } from './sensitive.js';
+import { coded, POLICY_DENIED, PROTECTED } from './errors.js';
+import { askUser } from './sensitive.js';
+import {
+  askFirstCatalog,
+  askTextForCommand,
+  askTextForOp,
+  decide,
+  getPolicySnapshot,
+  isUserOnlyCommand,
+  POLICY_MODE_LABEL,
+  requestElevationFlow,
+  riskOfCommand,
+  riskOfOp,
+} from './policy/index.js';
 
 /** 带 code 的操作错误——构造器本体现在住 `errors.ts`（与 `sensitive.ts` 共用，避免循环 import）。
  *  仍从这里**再导出**：既有调用方（`index.ts` / 单测）认的是这个出口，⛔ 不为搬家改一圈调用方。 */
@@ -135,16 +147,59 @@ function findNotifItem(layout: unknown, notificationId: string): { actions: Arra
 }
 
 /**
- * 执行壳命令的**唯一出口**（AI#29）——`exec` 与 `notifyAction` 两条路都从这里过。
+ * 敏感动作的确认正文——从**风险登记表**取（⛔ 不手抄第二份；R3 的 what/why 住 `policy/risk.ts`）。
+ * `what/why` 缺失时退回命令 id（未登记却被判 R3 的极端情形）。
+ */
+function askSubjectForCommand(commandId: string): { what: string; subject: string } {
+  const text = askTextForCommand(commandId);
+  return {
+    what: `执行敏感命令「${commandId}」`,
+    subject: `${text.what ?? commandId}${text.why ? `\n（问一声的原因：${text.why}）` : ''}`,
+  };
+}
+
+/** 档位不允许时的统一话术——告诉 AI「可请求提权」，⛔ 别让它原样重试 */
+function policyDenied(mode: string, risk: string, target: string): Error & { code: string } {
+  return coded(
+    POLICY_DENIED,
+    `当前权限「${POLICY_MODE_LABEL[mode as keyof typeof POLICY_MODE_LABEL] ?? mode}」不允许${target}（风险 ${risk}）`
+      + '——可调 requestElevation 说明理由请求用户提高权限；⛔ 不要原样重试',
+  );
+}
+
+/**
+ * 执行壳命令的**唯一出口**（AI#29 ＋ 档位策略闸）——`exec` 与 `notifyAction` 两条路都从这里过。
  *
  * 🔴 收口的原因（此前是两条各写一遍的 `ctx.shellRequest(IPC.commands.execute, …)`）：
  *   敏感动作的确认**按目标命令判**，而「谁在执行命令」有两处 ⇒ 只给其中一处加门 =
  *   另一处是敞开的（实测：`exec update.openUpdateFlow` 曾可无声重启并装新版本）。
- *   收成一个函数后，「有没有门」不再取决于将来谁又写了一个执行入口。
+ *
+ * 判序（⛔ 顺序本身是判据）：
+ *   ① **L2 命令锁**：`userOnly` ⇒ `EPROTECTED`（元数据为准；AI 正门永远够不着）；
+ *   ② **档位**：`decide(mode, risk)` ⇒ `deny` 抛 `EPOLICYDENIED` / `ask` 弹唯一确认框 / `allow` 直通；
+ *   ③ 执行。
  */
-async function runShellCommand(ctx: BridgeOpContext, commandId: string, args: unknown[]): Promise<unknown> {
-  const rule = askFirstRuleForCommand(commandId);
-  if (rule) await askUser(ctx, `执行敏感命令「${rule.id}」`, `${rule.what}\n（问一声的原因：${rule.why}）`);
+async function runShellCommand(
+  ctx: BridgeOpContext,
+  commandId: string,
+  args: unknown[],
+  knownCommands?: readonly { id?: unknown; userOnly?: unknown }[],
+): Promise<unknown> {
+  const commands = knownCommands ?? (await listShellCommands(ctx));
+  if (isUserOnlyCommand(commands, commandId)) {
+    throw coded(
+      PROTECTED,
+      `命令「${commandId}」只允许用户操作（userOnly）——AI 永远不可调；请提示用户去设置页操作，⛔ 不要重试`,
+    );
+  }
+  const risk = riskOfCommand(commandId);
+  const snapshot = getPolicySnapshot();
+  const decision = decide(snapshot.mode, risk);
+  if (decision === 'deny') throw policyDenied(snapshot.mode, risk, `执行「${commandId}」`);
+  if (decision === 'ask') {
+    const { what, subject } = askSubjectForCommand(commandId);
+    await askUser(ctx, what, subject);
+  }
   return ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...args]);
 }
 
@@ -169,6 +224,11 @@ export const OPS: Record<string, BridgeOp> = {
         commandsPending: await listPendingCommands(ctx, commands),
         // AI#29：哪些动作会先停下等人点头——**自述面**（AI 动手前就知道，客户端据此定等待预算）
         askFirst: askFirstCatalog(),
+        // AI 权限档位（只读自述）：AI 动手前就知道自己现在能做什么
+        policy: (() => {
+          const s = getPolicySnapshot();
+          return { mode: s.mode, degraded: s.degraded };
+        })(),
       };
     },
   },
@@ -218,7 +278,7 @@ export const OPS: Record<string, BridgeOp> = {
   exec: {
     name: 'exec',
     kind: 'write',
-    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
+    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（可调 requestElevation 说明理由，⛔ 别原样重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
       { name: 'args', type: 'array', required: false, description: '透传给命令的实参（逐位平铺，或一个具名对象——键名照该命令的 params[].name）' },
@@ -243,9 +303,22 @@ export const OPS: Record<string, BridgeOp> = {
       // 缺口① 右半：壳侧严格执行出口回传真结果（未注册/抛错都会以 {error} 信封回来）。
       // 🔴 存在性查过**之后**才问一声：对一条不存在的命令弹确认框只是骚扰。
       // AI#29：敏感命令由 runShellCommand 统一拦下问用户——⛔ 别绕开它直接 shellRequest。
-      const result = await runShellCommand(ctx, commandId, extra);
+      // 命令面刚取过 → 传进去复用（userOnly 判定与存在性检查同一份数据，不付第二次 IPC）。
+      const result = await runShellCommand(ctx, commandId, extra, commands);
       return { commandId, result: result === undefined ? null : result };
     },
+  },
+
+  requestElevation: {
+    name: 'requestElevation',
+    kind: 'write',
+    help: '请求用户提高 AI 权限档位（只是**请求**：软件里弹提权框，用户点「允许」才生效、且常驻到用户自己改回；⛔ AI 没有任何「自己批准」的通道）。被 EPOLICYDENIED 拒绝后用它说明理由，⛔ 不要原样重试',
+    params: [
+      { name: 'mode', type: 'string', required: true, description: '目标档（read|ask|auto|full；只能比当前档高）' },
+      { name: 'reason', type: 'string', required: true, description: '为什么需要更高权限（这句话会显示给用户）' },
+      { name: 'scope', type: 'object', required: false, description: '预留：命令/风险级范围（本版不解释）' },
+    ],
+    run: async (req, ctx) => requestElevationFlow(ctx, { mode: req.mode, reason: req.reason, scope: req.scope }),
   },
 
   install: {
@@ -258,12 +331,20 @@ export const OPS: Record<string, BridgeOp> = {
     run: async (req, ctx) => {
       const source = req.source;
       if (typeof source !== 'string' || !source) throw coded('EARGS', 'install 需要 source（URL 或本地路径）');
-      // 问一声：走**统一确认回路**（`sensitive.ts` 的 askUser——AI 侧唯一弹框出口），
-      // 文案取自名单表本身（⛔ 不在此手抄第二份 what/why）。
-      // 用户可能在走开，等 10 分钟不算长；没点头 ⇒ EUSERDENIED 上抛（⛔ 不再返回
-      // `{installed:false}` 那种「账面无错、其实没装」的形状——AI#29 把会话 8 记下的瑕疵一并修掉）。
-      const askRule = askFirstRuleForOp('install');
-      if (askRule) await askUser(ctx, askRule.what, `${source}\n（问一声的原因：${askRule.why}）`);
+      // 档位闸（与 exec / notifyAction 同一个 `decide`）：R3 ⇒ `ask` 档与 `auto` 档都要问（D9），
+      // `read` 档直接拒，`full` 档不问但账本照记。
+      const snapshot = getPolicySnapshot();
+      const risk = riskOfOp('install', 'write');
+      const decision = decide(snapshot.mode, risk);
+      if (decision === 'deny') throw policyDenied(snapshot.mode, risk, '安装插件');
+      if (decision === 'ask') {
+        // 问一声：走**统一确认回路**（`sensitive.ts` 的 askUser——AI 侧唯一弹框出口），
+        // 文案取自风险登记表本身（⛔ 不在此手抄第二份 what/why）。
+        // 用户可能在走开，等 10 分钟不算长；没点头 ⇒ EUSERDENIED 上抛（⛔ 不再返回
+        // `{installed:false}` 那种「账面无错、其实没装」的形状——AI#29 把会话 8 记下的瑕疵一并修掉）。
+        const text = askTextForOp('install');
+        await askUser(ctx, text.what ?? '安装插件', `${source}${text.why ? `\n（问一声的原因：${text.why}）` : ''}`);
+      }
       // installWithProgress = 下载→解压→加载的完整 job（时长由网络决定）——同样放宽超时
       const job = await ctx.shellRequest(
         IPC.plugins.call,

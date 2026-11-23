@@ -1,29 +1,19 @@
 /**
- * 敏感动作确认回路单测——M4 `AI#29`。
+ * 敏感动作确认回路单测——M4 `AI#29`（档位策略化后，2026-11-24 重写）。
  *
- * 钉的是四件**可机械查的事实**（真机读数在交接条里）：
- *   ① 名单与自述面**同一份**（`askFirstCatalog` 派生自名单，⛔ 不手抄）；
+ * 钉的是四件**可机械查的事实**：
+ *   ① `askUser` 是**唯一弹框出口**，且只认布尔 `true`（fail-closed）；
  *   ② **门开在动作上**，不是开在入口上——`exec` / `notifyAction` 两条执行路都拦敏感命令，
  *      且都在**执行之前**拦（负控：没点头就绝不去碰命令面）；
- *   ③ 未点头 = `EUSERDENIED`（机读 code）且**动作不执行**（fail-closed）；
- *   ④ ⛔ **确认面不可被 AI 代答**：操作表里没有任何「应答/取消」面（AI 自己点同意 = 这道门白修）。
+ *   ③ 未点头 = `EUSERDENIED`（机读 code）且**动作不执行**；
+ *   ④ ⛔ **确认面不可被 AI 代答**：操作表里没有任何「应答/取消」面。
  *
+ * 风险表 / 判定矩阵 / `userOnly` 的测在 `policy/__tests__/`（同源真值，别在这里抄第二份）。
  * 桩只用到 `ctx.shellRequest`（结构型 `AskContext`），不碰 electron / net；fixture 全虚构（硬约束 21）。
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  ASK_FIRST_COMMANDS,
-  ASK_FIRST_OPS,
-  ASK_TIMEOUT_MS,
-  USER_DENIED,
-  askFirstCatalog,
-  askFirstRuleForCommand,
-  askFirstRuleForOp,
-  askUser,
-  confirmPrompt,
-  userDenied,
-} from "./sensitive.js";
+import { ASK_TIMEOUT_MS, USER_DENIED, askUser, confirmPrompt, userDenied } from "./sensitive.js";
 import { OPS, coded } from "./whitelist.js";
 import { IPC } from "../../ipc/channels.js";
 
@@ -54,33 +44,7 @@ function fakeCtx(answers: Record<string, unknown>) {
 const CONFIRM_OK = { [IPC.dialog.confirm]: true };
 const CONFIRM_NO = { [IPC.dialog.confirm]: false };
 
-describe("敏感名单与自述面（AI#29）", () => {
-  it("自述面从名单派生：ops/commands 逐条一致（改名单即改自述，⛔ 不可能漂移）", () => {
-    const catalog = askFirstCatalog();
-    expect(catalog.ops).toEqual(ASK_FIRST_OPS);
-    expect(catalog.commands).toEqual(ASK_FIRST_COMMANDS);
-    expect(catalog.note.length).toBeGreaterThan(0);
-  });
-
-  it("名单非空（⚠️ 空名单会让本尺恒绿——存量真有一条不可回退的动作）", () => {
-    expect(ASK_FIRST_COMMANDS.length).toBeGreaterThan(0);
-    expect(ASK_FIRST_OPS.map((r) => r.id)).toContain("install");
-  });
-
-  it("每条名单都写清了 what/why（确认框正文靠它，⛔ 不是裸 id）", () => {
-    for (const r of [...ASK_FIRST_COMMANDS, ...ASK_FIRST_OPS]) {
-      expect(r.what.length).toBeGreaterThan(0);
-      expect(r.why.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("名单表外一律不问（⛔ 别把确认框撒成噪音——那会训练用户闭眼点同意）", () => {
-    expect(askFirstRuleForCommand("core.closeTab")).toBeNull();
-    expect(askFirstRuleForCommand("app.openAiManual")).toBeNull();
-    expect(askFirstRuleForOp("exec")).toBeNull(); // exec 的敏感性看**目标命令**，不看 op 本身
-    expect(askFirstRuleForCommand("update.openUpdateFlow")?.id).toBe("update.openUpdateFlow");
-  });
-
+describe("确认回路与话术（AI#29）", () => {
   it("确认框正文统一形状：what + subject + 「不点 = 不执行」", () => {
     const text = confirmPrompt("安装插件", "E:/tmp/demo.linkdesk-plugin");
     expect(text).toContain("AI 请求安装插件");
@@ -178,6 +142,7 @@ describe("门开在动作上：exec / notifyAction 的执行出口（AI#29）", 
           if (channel === IPC.plugins.call && args[0] === "listNotifications") {
             return { groups: [{ items: [{ id: "n1", actions: [{ label: "重启并更新", command: "update.openUpdateFlow" }] }] }] };
           }
+          if (channel === IPC.plugins.call && args[0] === "getCommands") return commandList;
           if (channel === IPC.dialog.confirm) return answer;
           return { ok: true };
         },

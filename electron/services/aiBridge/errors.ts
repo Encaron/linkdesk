@@ -15,3 +15,13 @@ export function coded(code: string, message: string): Error & { code: string } {
   e.code = code;
   return e;
 }
+
+/* ── AI 权限档位（`01-设计/02-执行闸与防自提权.md` §六）──
+ * 与 `EUSERDENIED` 分开：「用户点否」与「策略不允许」必须可分辨——
+ * 否则 AI 会误判该重试（用户拒绝）还是该请求提权（策略拒绝）。 */
+
+/** 当前档位不允许（可调 `requestElevation` 带理由；⛔ 不要原样重试） */
+export const POLICY_DENIED = "EPOLICYDENIED";
+
+/** 命令被标 `userOnly`，AI 永远不可调（提示用户去设置页；⛔ 不要重试） */
+export const PROTECTED = "EPROTECTED";

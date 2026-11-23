@@ -109,9 +109,9 @@ describe("OPS 白名单（AI#33：自省面从同一张表派生）", () => {
     expect(catalog.every((e) => e.params.every((p) => typeof p.name === "string" && typeof p.type === "string"))).toBe(true);
   });
 
-  it("白名单面 = 本棒九条语义操作（两张皮共账）", () => {
+  it("白名单面 = 本棒语义操作（两张皮共账；2026-11-24 新增 requestElevation = 只请求、不批准）", () => {
     expect(Object.keys(OPS).sort()).toEqual(
-      ["describe", "exec", "install", "log", "notifications", "notifyAction", "openTab", "ping", "tabs"].sort(),
+      ["describe", "exec", "install", "log", "notifications", "notifyAction", "openTab", "ping", "requestElevation", "tabs"].sort(),
     );
     expect(WHITELIST_VERSION).toBe(1);
   });

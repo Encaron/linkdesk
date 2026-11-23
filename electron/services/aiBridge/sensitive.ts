@@ -1,26 +1,14 @@
 /**
  * 敏感动作统一确认回路（M4 `AI#29`）——「AI 能发起，但**敏感动作要用户点头**」的**一道门**。
  *
- * ## 判据（出处：`docs/04-软件更新/已落地/AI友好化-全自动操作/AI-执行清单.md` `AI#29`）
+ * 判据（出处：`docs/04-软件更新/已落地/AI友好化-全自动操作/AI-执行清单.md` `AI#29`）
  *
  *   「把『AI 能发起、但敏感动作要用户点头』落成**一致机制**」＋既有先例 =「**装 = 问一声**」
  *   （[01-设计.md §八 追问场景②]：装插件 = 运行陌生代码 ⇒ AI 可发起、用户点头才落地）。
  *
- * ## 🔴 为什么必须是**一道门**，而不是各操作各弹一个框
- *
- *   本格之前：`install` 一直在弹（`AI#32` 起），`exec` **一次都不弹**——而 `exec` 是**任意壳命令
- *   的总门**：经它调 `update.openUpdateFlow`，状态是「已下载」时**直接重启并装**新版本程序本体，
- *   全程没有一声询问。⇒ 同一个语义（换掉正在跑的代码），从甲门进来问、从乙门进来不问——
- *   这不是「策略不同」，是**漏门**。收成一条腿：**凡到得了敏感动作的入口，都从 `askUser()` 过**。
- *
- * ## 谁在名单上（静态、可在 `describe` 自述里读到）
- *
- *   · 入选判据：① **不可回退 / 动程序本体**（装更新 = 换掉正在跑的代码）；
- *     ② **跑陌生代码**（装插件）。
- *   · ⛔ **不入选**：可撤销的界面动作（关标签 / 切布局 / 改设置）——把确认框撒得到处都是，
- *     只会训练用户闭眼点「同意」，真正要紧的那一两次就被淹没。**门要稀，才有人抬头看。**
- *   · 粒度 = **首版「一个总开关 ＋ 白名单整组」，不逐项设闸**（2026-09-16 用户拍板，
- *     [01-设计.md]:243）⇒ 本名单**不配设置项**，改名单 = 改代码。
+ * 🔴 本文件只负责**问**（`askUser`）；**哪些动作要问**归 `policy/risk.ts` 的 R3 登记，
+ *   **要不要放行**归 `policy/decide.ts`。三道口以前是两张静态名单（`ASK_FIRST_*`），
+ *   现已并入风险表——⛔ 不要再建第二份名单（判红见 `scripts/check-ai-policy.mjs` P1）。
  *
  * ## ⛔ 三条边界（越了这道门就白修）
  *
@@ -49,60 +37,7 @@ export const ASK_TIMEOUT_MS = 600_000;
 export const USER_DENIED = 'EUSERDENIED';
 
 /**
- * 「要问一声」的壳命令——按**命令 id** 判（不按调用方、不按参数）。
- * `what` / `why` 都进确认框正文：用户看到的是「AI 想干什么、为什么要问」，不是一个裸 id。
- */
-export interface AskFirstRule {
-  /** 命令 id 或操作名——即键 */
-  id: string;
-  /** 这是什么动作（人读，进确认框） */
-  what: string;
-  /** 为什么要问一声（人读，进确认框） */
-  why: string;
-}
-
-/** 名单：要问一声的**壳命令**（`exec` / `notifyAction` 两条路都按它判） */
-export const ASK_FIRST_COMMANDS: AskFirstRule[] = [
-  {
-    id: 'update.openUpdateFlow',
-    what: '处理主软件更新（有新版本会先下载，下载完**重启并装**）',
-    why: '装更新 = 换掉正在跑的程序本体，不可回退',
-  },
-];
-
-/** 名单：要问一声的**内核操作**（`install` 装的是陌生代码） */
-export const ASK_FIRST_OPS: AskFirstRule[] = [
-  {
-    id: 'install',
-    what: '安装插件',
-    why: '插件 = 陌生代码，装上就会运行',
-  },
-];
-
-/** 命令要不要先问一声——`null` = 不用问（普通命令，行为与从前一致） */
-export function askFirstRuleForCommand(commandId: string): AskFirstRule | null {
-  return ASK_FIRST_COMMANDS.find((r) => r.id === commandId) ?? null;
-}
-
-/** 操作要不要先问一声（op 粒度；`exec`/`notifyAction` 的敏感性由**目标命令**决定，不在这里） */
-export function askFirstRuleForOp(op: string): AskFirstRule | null {
-  return ASK_FIRST_OPS.find((r) => r.id === op) ?? null;
-}
-
-/**
- * `describe` 的自述字段——**从上面两张表派生**（⛔ 不手抄第二份）。
- * 用途：AI 在**动手之前**就知道哪些动作会停下来等人；客户端据此决定等待预算。
- */
-export function askFirstCatalog(): { note: string; ops: AskFirstRule[]; commands: AskFirstRule[] } {
-  return {
-    note: '以下动作会先在软件里弹确认框、等用户点头；用户不点头 = EUSERDENIED，动作不执行（装 = 问一声，AI#29）',
-    ops: ASK_FIRST_OPS.map((r) => ({ ...r })),
-    commands: ASK_FIRST_COMMANDS.map((r) => ({ ...r })),
-  };
-}
-
-/**
- * 确认框正文——**统一话术**（三个入口问出来的是同一个形状）。
+ * 确认框正文——**统一话术**（所有入口问出来的是同一个形状）。
  * 纯函数：自测直接打它，不必起对话框。
  */
 export function confirmPrompt(what: string, subject: string): string {
