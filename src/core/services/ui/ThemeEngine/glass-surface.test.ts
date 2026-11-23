@@ -55,6 +55,18 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(tokens["bg-mask"]).toBe("0.3");
   });
 
+  it("提亮叠层（白色 10%）→ solid 压到窗口基色，不再是纯白（2026-11-24 实机）", () => {
+    const tokens: Record<string, string> = {
+      "bg-window": "rgba(10, 14, 20, 0.30)",
+      "bg-card": "rgba(255, 255, 255, 0.10)",
+      "bg-input": "rgba(255, 255, 255, 0.14)",
+    };
+    synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.3 });
+    expect(tokens["bg-window-solid"]).toBe("rgb(10,14,20)"); // 锚色自合成 → 原值
+    expect(tokens["bg-card-solid"]).toBe("rgb(35,38,44)"); // 白 10% 压在月夜深底上
+    expect(tokens["bg-input-solid"]).toBe("rgb(44,48,53)"); // 白 14%
+  });
+
   it("未激活 → 表面键原值（零变化回主题原生）+ solid 恒写 + alpha 缺省 0.5", () => {
     const tokens: Record<string, string> = { "bg-window": "#FBF8F2", "bg-card": "#FFF0F5" };
     synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });

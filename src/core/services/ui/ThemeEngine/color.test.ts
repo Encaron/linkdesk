@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { capTintAlpha, opaqueColor, readableSurfaceBase, resolvePolarity } from "./color";
+import { capTintAlpha, compositeColor, opaqueColor, readableSurfaceBase, resolvePolarity } from "./color";
 
 describe("capTintAlpha — E5.8#151 tint 强制半透明", () => {
   /* ── hex ── */
@@ -67,6 +67,14 @@ describe("capTintAlpha — E5.8#151 tint 强制半透明", () => {
     expect(opaqueColor("rgba(22, 32, 62, 0.55)")).toBe("rgb(22,32,62)");
     expect(opaqueColor("#1B1B20")).toBe("rgb(27,27,32)");
     expect(opaqueColor("var(--x)")).toBeNull();
+  });
+
+  it("compositeColor：半透面压到基色上（solid 真值）；实色同 opaqueColor；不可解析 → null", () => {
+    // 整窗主视觉「白色 10% 提亮层」压到月夜深底 —— 结果必须是深的，不是纯白
+    expect(compositeColor("rgba(255,255,255,0.10)", "rgb(10,14,20)")).toBe("rgb(35,38,44)");
+    expect(compositeColor("#1B1813", "rgb(10,14,20)")).toBe("rgb(27,24,19)");
+    expect(compositeColor("rgba(10,14,20,0.30)", "rgb(10,14,20)")).toBe("rgb(10,14,20)");
+    expect(compositeColor("var(--x)", "rgb(0,0,0)")).toBeNull();
   });
 
   it("readableSurfaceBase：白字遇白色高亮卡片 → 退深窗底；白字遇深卡 → 保留卡片色", () => {

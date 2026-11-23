@@ -71,6 +71,22 @@ export function opaqueColor(color: string): string | null {
   return `rgb(${parsed.r},${parsed.g},${parsed.b})`;
 }
 
+/**
+ * 合成实色：把带 alpha 的面色压到基色上——`*-solid` 的真义是「这层玻璃若变成实色会是什么」。
+ * 2026-11-24 实机：整窗主视觉的 `bg-card` 是 `rgba(255,255,255,0.10)`（提亮叠层），
+ * 旧实现只去 alpha → solid = 纯白，暗色玻璃主题下补全框/悬浮框变白块。
+ * 解析不出 → null（调用方回退去 alpha 的旧语义）；基色不可解析 → 同 opaqueColor。
+ */
+export function compositeColor(color: string, backing: string): string | null {
+  const fg = parseColor(color);
+  if (!fg) return null;
+  const bg = parseColor(backing);
+  if (!bg) return `rgb(${fg.r},${fg.g},${fg.b})`;
+  const a = Math.min(1, Math.max(0, fg.alpha));
+  const mix = (f: number, b: number) => Math.round(f * a + b * (1 - a));
+  return `rgb(${mix(fg.r, bg.r)},${mix(fg.g, bg.g)},${mix(fg.b, bg.b)})`;
+}
+
 function contrastRatio(a: number, b: number): number {
   const hi = Math.max(a, b);
   const lo = Math.min(a, b);

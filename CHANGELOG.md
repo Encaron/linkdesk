@@ -14,6 +14,8 @@
 
 ### fix
 
+- 🔴 **玻璃面 `*-solid` 改为「压到窗口基色上」合成**（用户实机，整窗主视觉「月夜」）：实测池里 `--bg-card-solid` / `--bg-input-solid` = `rgb(255,255,255)`——旧实现只去 alpha，把 `rgba(255,255,255,0.10)` 这类**提亮叠层**当纯白实色。⇒ 暗色玻璃主题里任何拿 `*-solid` 当实色用的表面（Monaco 补全框/悬浮件、内容面兜底、引擎派生阅读面候选）全成白块。
+  - 新增 `compositeColor(color, backing)`：solid = 面色的 alpha 压在锚面（`bg-window` 去 alpha 基色）上；锚色自合成 = 原值，纯实色主题零变化。单测 +2（合成真值；白光 10% 压深夜底 → `rgb(35,38,44)`）。
 - 🎛️ **开关颜色改由「有效强调色」派生**（用户实机：金/紫配色 + 自定义蓝/绿强调时，开关两半撞色系）：旧实现 OFF 轨道吃 `--border`（带配色色相）、OFF 圆点吃 `--toggle-knob`（玫瑰窗/极光把它写成配色 accent）、ON 圆点吃主题的 `toggle-knob-on`——强调色一旦独立，三处各说各话。
   - 新契约：OFF 轨道 = 中性墨色 alpha；OFF 圆点 = **有效 accent** 柔化色；ON 轨道 = 有效 accent；ON 圆点 = `text-on-accent`。
   - 引擎：`text-on-accent` 并入 accent 组（`accent:changed` 单源），自定义强调色时按亮度重算（浅→黑、中/深→白），跟随主题时尊重主题声明；`theme:changed` 载荷继续剔除 accent 组防跨帧振荡。

@@ -19,7 +19,7 @@ import {
 } from "./constants";
 // E5.8#151：tint 强制半透明——配方 tint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
 // 9.4：图标光晕极性改读生效 text-primary 亮度（解析不出回落档位）——颜色串解析与 capTintAlpha 同源
-import { capTintAlpha, colorLuminance, opaqueColor, readableSurfaceBase } from "./color";
+import { capTintAlpha, colorLuminance, compositeColor, opaqueColor, readableSurfaceBase } from "./color";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
 import type { GlassSurfaceSpec } from "./seeds";
@@ -359,6 +359,11 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
   });
   const anchorRaw = anchorKey ? tokens[anchorKey] : undefined;
   const anchorValue = anchorRaw === undefined ? undefined : opaqueColor(anchorRaw) ?? anchorRaw;
+  // 2026-11-24 实机：solid = 「这层若变实色的真值」= 把面色的 alpha 压到窗口基色上。
+  // 只去 alpha 会让 `rgba(255,255,255,0.10)`（整窗主视觉的提亮叠层）变成纯白——
+  // 暗色玻璃主题下 Monaco 补全框/悬浮框、内容面兜底全成白块。锚色本身自合成 → 原值不变。
+  const solidFor = (value: string): string =>
+    (anchorValue === undefined ? undefined : compositeColor(value, anchorValue)) ?? opaqueColor(value) ?? value;
   for (const key of SURFACE_COLOR_KEYS) {
     const value = tokens[key];
     if (value == null || value.trim() === "") {
@@ -369,7 +374,7 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
       }
       continue;
     }
-    tokens[`${key}-solid`] = opaqueColor(value) ?? value;
+    tokens[`${key}-solid`] = solidFor(value);
     if (spec.active) {
       tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;
     }
