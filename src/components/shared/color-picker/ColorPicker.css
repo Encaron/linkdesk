@@ -1,6 +1,6 @@
 /* E3f #59e：ColorPicker 归一化调色器样式——对标 VS Code ColorPicker。
    2026-11-23 ColorPicker 2：SV + 色相 + **alpha** + 小预览 + 取消/应用；几何与交互稿
-   `docs/04-软件更新/待抉择池/色彩选择器-RGBA/color-picker-preview.html` **逐项对齐**
+   `docs/04-软件更新/已落地/色彩选择器-RGBA/color-picker-preview.html` **逐项对齐**
    （面板 260 宽、实测 329/307 高、滑杆 1fr+40 数值列、输入 30 高、预设 22、按钮 24）。
    颜色/尺寸一律 token；alpha 棋盘格用 color-mix 由 --text-primary 派生（零硬编码色）。 */
 

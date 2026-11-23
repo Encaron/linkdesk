@@ -1,7 +1,7 @@
 /**
  * ColorPicker 归一化调色器——对标 VS Code ColorPicker。
  * 2026-11-23 ColorPicker 2：SV + 色相 + **alpha** + 小预览 + 文本输入 + 预设；hex/rgb(a)/hsl(a) 通吃。
- * 几何与交互稿 `docs/04-软件更新/待抉择池/色彩选择器-RGBA/color-picker-preview.html` 逐项对齐
+ * 几何与交互稿 `docs/04-软件更新/已落地/色彩选择器-RGBA/color-picker-preview.html` 逐项对齐
  * （260 宽、滑杆 1fr+40 数值列、输入 30 高、预设 22、取消/应用 24 右对齐）。
  *
  * 能力档 `allowAlpha`（默认 false）：
