@@ -12,7 +12,7 @@ import {
 } from "../../services/configuration/ConfigurationService"; // E5.8#50.24：复位命令单一写入点；inspectConfiguration = AI#66 写入回执（写前/写后都在这一条链上读）；AI#68 加 resetConfigurationValue（清覆盖）＋ getUserSettings/diffUserSettings（顺带变更比对）
 import { getMergedSchema, type ConfigurationProperty } from "../../registry/ConfigurationRegistry"; // AI#66：写入前按声明面校验（键是否声明／类型／枚举／上下界）
 import { pickStringArg } from "./readCommands"; // AI#68：键名实参「两形等价」（`{"key":"…"}` / 逐位）——读面已归一，⛔ 不在这里抄第二份
-import { MIX_SOURCE_KEYS } from "../../services/ui/ThemeEngine"; // E5.8#90：混搭来源 key 全集——theme.resetMix 批复位用（单一来源）
+import { MIX_SOURCE_KEYS, resetAppearanceToThemeValues } from "../../services/ui/ThemeEngine"; // E5.8#90：混搭来源 key 全集——theme.resetMix 批复位用（单一来源）
 import { getCallbacks } from "../infra/CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
 import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegistry";
@@ -321,6 +321,17 @@ export function registerSettingsCommands(): void {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_THEME_BROWSER
         const { showThemePicker } = await import("../../../components/shared/theme-browser/ThemeBrowser");
         showThemePicker(ctx?.pluginId);
+      },
+    },
+    {
+      // 2026-11-24「以当前主题为起点」：清覆盖 + 分区来源，按主题基线重新播种，**保持自定义模式**。
+      // 与 theme.resetAppearance（退出自定义）分工：这个留在自定义，方便「从主题原样开始微调」。
+      id: "theme.resetToTheme",
+      title: "以当前主题为起点",
+      category: "首选项",
+      description: "清除自定义外观覆盖与分区来源，按当前主题重新播种（保持自定义模式）",
+      handler: async () => {
+        resetAppearanceToThemeValues();
       },
     },
     {

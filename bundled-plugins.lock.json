@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-11-23T19:03:04.393Z",
+  "syncedAt": "2026-11-23T19:51:49.192Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -22,9 +22,9 @@
     {
       "id": "lang-defaults",
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
-      "version": "1.0.68",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.68/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:5c7fc6177365a33fe158368492d180b421a08164c410fb171c6f267b25b3ef6b\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\ndocs/readme/en.md:76ab8f2d27627003b24c0ea185f4d754cb53730f1b608289d35089a471543abb\nen.json:dadff687c8f9ff1f4ba83e0d9d1c85024fde65de3605e224c90ba1098251093c\nplugin.json:846788a74b1fe804c8d750ff2616595f640a5e857163be7077c8d13718ebe827\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:b693316c841b4766351576d7817db01a31096fa1bdc8d69330362fa87a61458f",
+      "version": "1.0.69",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.69/lang-defaults.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:f7039317ed954ccdf15ffc82e8c804b635f97b30a122536d857b14605abb62a5\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\ndocs/readme/en.md:76ab8f2d27627003b24c0ea185f4d754cb53730f1b608289d35089a471543abb\nen.json:5c397df4451ffc9980714939d18105616e26385c226e7e3e8f2108f4b331cf76\nplugin.json:90b1ff9c2f3c1feff4755c457e03f3efc1d6040ec7baefb5033f20aa6c900b7e\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:b693316c841b4766351576d7817db01a31096fa1bdc8d69330362fa87a61458f",
       "seed": true
     },
     {

@@ -59,5 +59,5 @@ export type { AppearanceSeedValues, GlassSurfaceSpec } from "./ThemeEngine/seeds
 // E5.8 Phase 11.15 3b：getGlassSurfaceSpec 仅内部消费（apply.ts 直引 ./seeds）——从门面撤出不暴露
 export {
   APPEARANCE_OVERRIDE_KEYS, deriveAppearanceSeeds, deriveAppearanceSeedMap,
-  deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides,
+  deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides, resetAppearanceToThemeValues,
 } from "./ThemeEngine/seeds";

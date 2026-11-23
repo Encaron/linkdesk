@@ -6,10 +6,10 @@
  */
 
 import { resolveBackgroundImageUrl } from "../../../utils/path/userDataImagePath";
-import { getConfigurationValue, hasConfigurationValue } from "../../configuration/ConfigurationService";
+import { getConfigurationValue, hasConfigurationValue, setConfigurationValueBatch, resetConfigurationValueBatch } from "../../configuration/ConfigurationService";
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import {
-  RADIUS_SCALE_KEYS, clampRadiusPx, CONFIG_NONE_SENTINEL, SYSTEM_FONT_STACK, SYSTEM_MONO_FONT_STACK,
+  RADIUS_SCALE_KEYS, clampRadiusPx, CONFIG_NONE_SENTINEL, SYSTEM_FONT_STACK, SYSTEM_MONO_FONT_STACK, MIX_SOURCE_KEYS,
   FONT_TONE_LIGHT_TEXT, FONT_TONE_DARK_TEXT, GLASS_SURFACE_DEFAULT_ALPHA, type IconGlowSpec,
 } from "./constants";
 import { getActiveRecipe } from "./state";
@@ -174,12 +174,29 @@ export function getThemeBaseTokens(): Record<string, string> {
   if (!active) return {};
   const recipe = ThemeRegistry.getRecipe(active.recipeId);
   if (!recipe) return {};
-  const colorway = resolveColorway(recipe, active.colorwayId || undefined);
-  // E5.8#90：外观模型合并——app.mixMode 删，外观主开关 appearanceMode=custom 即「按域混搭」。
+  const colorway = resolveColorway(recipe, active.colorwayId || undefined);  // E5.8#90：外观模型合并——app.mixMode 删，外观主开关 appearanceMode=custom 即「按域混搭」。
   if (getConfigurationValue<string>("app.appearanceMode") === "custom") {
     return mergeMixDomains(recipe, colorway, getMixProfile(), {});
   }
   return mergeDomains(recipe, colorway.id, {});
+}
+
+/**
+ * 2026-11-24：「以当前主题为起点」——清掉自定义覆盖与分区来源，按**主题基线**重新播种（保持 custom 模式）。
+ * 与 seedAppearanceOverrides（读生效态、用于首次进入自定义）不同：这里必须用 getThemeBaseTokens，
+ * 否则会把用户当前的覆盖当基线再播一遍，等于没复位。
+ * 无 `appearance.glass` 的主题：玻璃四键一并摘除、不写种子——否则「进入自定义」会凭空激活玻璃面
+ * （presence 门控：写过 0/0.5/1 都算显式），视觉与跟随主题不一致。
+ */
+export function resetAppearanceToThemeValues(): void {
+  const active = getActiveRecipe();
+  const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
+  const hasThemeGlass = !!recipe?.appearance?.glass;
+  const seedMap = deriveAppearanceSeedMap(getThemeBaseTokens()) as Record<string, unknown>;
+  const glassKeys = ["app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate"];
+  const writeKeys = APPEARANCE_OVERRIDE_KEYS.filter((key) => hasThemeGlass || !glassKeys.includes(key));
+  setConfigurationValueBatch(writeKeys.map((key) => ({ key, value: seedMap[key] })), "user");
+  resetConfigurationValueBatch([...MIX_SOURCE_KEYS, ...(hasThemeGlass ? [] : glassKeys)], "user");
 }
 
 /** E5.8 Phase 11.16：玻璃系统标尺化——表面合成规格（apply 层在 applyOverrides 后消费）。

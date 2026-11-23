@@ -223,6 +223,19 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
           // applyThemeIfReady 避免二次广播（原 6 连写 + 尾部补调 = 7 次 theme:changed）
         },
       },
+      // 2026-11-24：就近的「回到主题原样」入口——外观模式切换旁（用户实机：复位按钮藏在最底部且默认置灰）。
+      // 语义 = 清我的外观覆盖 + 分区来源，按当前主题重新播种，**保持自定义**（可继续微调）。
+      // 与「切回跟随主题」不同：那个退出自定义（覆盖进 stash，可再切回恢复）。
+      "app.appearanceReset": {
+        type: "string",
+        group: t("整体配方"),
+        default: "",
+        title: t("以当前主题为起点"),
+        description: t("清除我的外观覆盖，按当前主题重新开始（保持自定义）"),
+        renderHint: "action",
+        actionCommand: "theme.resetToTheme",
+        dependsOn: { key: "app.appearanceMode", value: "custom" },
+      },
       // E5.8#133：图标主题——独立选择器（VS Code 模式），与配色主题完全独立（概念键分离）。
       //   默认 "default" = codicon 保底（零图标主题插件也成立，UI 恒显该项）；枚举 = default + 已登记
       //   图标主题 id（syncIconThemeEnum 装/卸动态刷新）；onApply 广播 iconTheme:changed（载荷带
@@ -561,12 +574,15 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
       // 复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
       // 点击执行 theme.resetMix 命令（单一写入点：批复位 3 来源键回跟随主题，保持自定义模式）。
       // actionDisabledAll：4 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
+      // 分区来源复位（2026-11-24 改名归位）——只复位 3 个域来源键（颜色/玻璃/背景/字体）回「跟随主题」，
+      // **不动**外观覆盖（玻璃不透明度/圆角/壁纸/字号）。旧名「全部复位为整体配方」承诺过大，且默认全跟随 → 置灰，
+      // 用户误以为是坏按钮（实机）。动作仍是 theme.resetMix（单一写入点）。
       "app.mixReset": {
         type: "string",
-        group: t("复位"),
+        group: t("整体配方"),
         default: "",
-        title: t("复位整体配方"),
-        description: t("⟲ 全部复位为整体配方"),
+        title: t("复位分区来源"),
+        description: t("⟲ 颜色/玻璃/背景/字体的来源回到「跟随主题」（外观覆盖不动）"),
         renderHint: "action",
         actionCommand: "theme.resetMix",
         dependsOn: { key: "app.appearanceMode", value: "custom" },
