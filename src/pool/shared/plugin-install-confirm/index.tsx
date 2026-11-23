@@ -19,7 +19,8 @@ import PluginInstallConfirm from "../../../components/shared/plugin-install-conf
 import PluginUpdateBatchSummary from "../../../components/shared/plugin-install-confirm/PluginUpdateBatchSummary";
 // 2026-11-24（线 1 · AI 权限档位）：风险表宿主内容视图——跨线登记，仅此两行
 import AiPolicyRiskTableDialog from "../ai-policy/AiPolicyRiskTableDialog";
-import { AI_POLICY_RISK_TABLE_HOST_VIEW } from "../../../core/types/ipc/aiPolicy";
+import { AI_POLICY_RISK_TABLE_HOST_VIEW, AI_POLICY_SENSITIVE_VIEW } from "../../../core/types/ipc/aiPolicy";
+import AiSensitiveManager from "../ai-policy/AiSensitiveManager";
 import { buildBatchVM, buildInstallVM } from "../../../components/shared/plugin-install-confirm/buildViewModel";
 import {
   PLUGIN_CONFIRM_HOST_VIEWS,
@@ -149,6 +150,7 @@ const HOST_VIEWS: Record<string, ComponentType<HostDialogViewHostProps>> = {
   [PLUGIN_CONFIRM_HOST_VIEWS.install]: InstallConfirmView,
   [PLUGIN_CONFIRM_HOST_VIEWS.batch]: BatchConfirmView,
   [AI_POLICY_RISK_TABLE_HOST_VIEW]: AiPolicyRiskTableDialog,
+  [AI_POLICY_SENSITIVE_VIEW]: AiSensitiveManager,
 };
 
 /** DialogHost 的宿主视图分派——未知 id 走兜底卡（⛔ 空面板把用户困住） */

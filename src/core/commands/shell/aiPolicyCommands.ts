@@ -23,6 +23,7 @@ import { confirm, confirmContent } from "../../services/ui/DialogService";
 import {
   AI_POLICY_MODE_KEY,
   AI_POLICY_RISK_TABLE_HOST_VIEW,
+  AI_POLICY_SENSITIVE_VIEW,
   type AiPolicyDecisionDto,
   type AiPolicyModeDto,
   type AiPolicyOptionDto,
@@ -133,6 +134,41 @@ async function switchMode(mode: AiPolicyModeDto): Promise<{ mode: AiPolicyModeDt
   await setConfigurationValue(AI_POLICY_MODE_KEY, mode, "user");
   toastSwitched(mode);
   return { mode };
+}
+
+
+/** 敏感能力一览（细分管理）——如实呈现当前规则；⛔ 本版不提供逐能力开关（需要能力分类法，未拍板） */
+export async function openSensitiveManagerDialog(): Promise<void> {
+  const state = await readViewState();
+  if (!state) return;
+  const install = state.riskTable.find((r) => r.id === "install");
+  const installValue = install
+    ? install.decision === "ask"
+      ? t("每次询问")
+      : install.decision === "allow"
+        ? t("允许")
+        : t("不允许")
+    : t("每次询问");
+  const current = state.options.find((o) => o.value === state.mode);
+  await confirmContent({
+    title: t("细分管理"),
+    message: t("这些规则由权限档位统一决定；它们不会绕过上面的权限档位。"),
+    content: {
+      hostView: AI_POLICY_SENSITIVE_VIEW,
+      payload: {
+        rows: [
+          { label: "安装 / 卸载插件", value: installValue, tone: "fixed" },
+          { label: "修改权限设置", value: "只有你能改", tone: "protected" },
+          { label: "打开调试端口", value: "不在 AI 操作面", tone: "fixed" },
+          {
+            label: "其余操作（写文件 / 发数据等）",
+            value: `由当前档位决定（${current?.label ?? state.mode}）`,
+            tone: "tier",
+          },
+        ],
+      },
+    },
+  });
 }
 
 export function registerAiPolicyCommands(): void {

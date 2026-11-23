@@ -106,3 +106,40 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* ── 敏感能力一览（hostView = aiPolicy.sensitiveManager）── */
+.ldk-ai-sensitive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ldk-ai-sensitive-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-sm);
+}
+
+.ldk-ai-sensitive-label {
+  color: var(--text-primary);
+}
+
+.ldk-ai-sensitive-value {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ldk-ai-sensitive-row[data-tone="fixed"] .ldk-ai-sensitive-value {
+  color: var(--text-muted);
+}
+
+.ldk-ai-sensitive-row[data-tone="protected"] .ldk-ai-sensitive-value {
+  color: var(--danger);
+}

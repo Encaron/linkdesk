@@ -17,6 +17,7 @@
  * 非壳环境（vitest 无 preload）一律静默退化——handler 不自己判环境（`updateCommands` 同款）。
  */
 import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { openSensitiveManagerDialog } from "./aiPolicyCommands"; // 2026-11-24：细分管理走权限档位的数据面
 import i18n from "../../../i18n";
 import { getConfigurationValue } from "../../services/configuration/ConfigurationService";
 import { getShellExposed } from "../../api/linkdesk-api/surfaces";
@@ -261,18 +262,10 @@ export function registerAiBridgeCommands(): void {
     id: "aiBridge.openSensitiveManager",
     title: "管理敏感能力细分",
     category: "首选项",
-    description: "打开敏感能力细分说明（首版粒度 = 总开关＋白名单整组，装/卸插件每次确认）",
+    description: "打开敏感能力一览：按当前权限档位列出 AI 能做/不能做哪类事（含固定规则与受保护命令）",
     params: [],
-    handler: async () => {
-      const { alert } = await import("../../services/ui/DialogService");
-      await alert({
-        title: i18n.t("敏感能力细分"),
-        message: [
-          i18n.t("当前粒度（首版）：一个总开关管全部通道 ＋ 白名单整组生效；最高风险项已由「装 = 问一声」覆盖——AI 发起安装时软件里会弹确认框，你点头才装。"),
-          i18n.t("按操作逐条设闸（如「允许 AI 发送串口数据」）在后续版本提供；到时这里就是管理入口。"),
-        ].join("\n"),
-      });
-    },
+    // 2026-11-24：改走权限档位的数据面（真实规则表；不再是一段「后续版本提供」的占位文案）
+    handler: async () => { await openSensitiveManagerDialog(); },
   });
 
   registerCommand(PID, {

@@ -50,7 +50,13 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 98 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 105 条 / 9 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+
+### 外观（1）
+
+| 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
+|:--|:--|:--|:--|:--|
+| `appearance.pickImage` | 选择背景图片 | 弹出系统图片选择框，把选中的图片拷入受控外观存储并返回受控 URL（起始目录/过滤器由宿主决定；取消返回 picked:false） | `options`: object 必填 — { domain: string; target: string }——两个值都取自配置 schema 的 assetDomain / pickTarget（如 { domain:"appearance", target:"app" }） | —— |
 
 ### 帮助（7）
 
@@ -141,7 +147,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（33）
+### 首选项（39）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -151,13 +157,19 @@
 | `aiBridge.mcpDetails` | 打开通道详情 | 打开通道详情对话框（连接地址、凭据存放位置、连不上的原因对照） | —— | —— |
 | `aiBridge.openLog` | 查看日志 | 打开操作日志对话框（谁在何时调了什么、结果如何；被拒的调用也在账上） | —— | —— |
 | `aiBridge.openScopeList` | 查看完整操作清单 | 打开完整操作清单对话框（每条白名单能力一条，写明怎么调；条数 = 白名单条数） | —— | —— |
-| `aiBridge.openSensitiveManager` | 管理敏感能力细分 | 打开敏感能力细分说明（首版粒度 = 总开关＋白名单整组，装/卸插件每次确认） | —— | —— |
+| `aiBridge.openSensitiveManager` | 管理敏感能力细分 | 打开敏感能力一览：按当前权限档位列出 AI 能做/不能做哪类事（含固定规则与受保护命令） | —— | —— |
 | `aiBridge.regenerateToken` | 重新生成凭据 | 重新生成 AI 接入凭据（旧凭据立即失效；明文不显示，客户端重读 ai-bridge.token 接上） | —— | —— |
 | `aiBridge.scopeSummary` | 开放范围明细 | 开放范围只读明细（只读数据源：读/做两栏从白名单 kind 派生，与 linkdeskctl --help 同源） | —— | —— |
 | `aiBridge.statusAuditLog` | 操作日志状态 | 操作日志落盘开关状态（只读数据源，跟随 ai.auditLog.enabled 配置值） | —— | —— |
 | `aiBridge.statusCli` | CLI 通道状态 | CLI 通道实时状态（只读数据源：CLI 与 MCP 共用同一个内核监听，状态同源） | —— | —— |
 | `aiBridge.statusDebug` | 调试端口状态 | CDP 调试端口实况（只读数据源：argv 是唯一真相，与命令行实况一致不猜） | —— | —— |
 | `aiBridge.statusMcp` | MCP 通道状态 | MCP 通道实时状态（只读数据源：返回「运行中 · 地址」等状态文本，供设置页状态行取用） | —— | —— |
+| `aiPolicy.getState` | AI 权限档位 | 读取 AI 权限策略：当前档位、四档各自的判定摘要（矩阵）、风险表（当前档下允许/询问/不允许）、受保护命令。只读 | —— | —— |
+| `aiPolicy.openRiskTable` | 查看完整风险表 | 打开完整风险表：每一项操作的风险，以及 AI 在当前档位下能不能做 | —— | —— |
+| `aiPolicy.openSettings` | 打开 AI 权限设置 | 打开设置页的「AI 接入 → 开放范围与安全」分节（状态栏徽标点击的落点） | —— | —— |
+| `aiPolicy.resetToDefault` | 恢复默认权限（自主） | 把 AI 权限恢复到默认档「自主」。⚠️ 只许用户操作（userOnly），AI 不可调 | —— | —— |
+| `aiPolicy.setMode` | 切换 AI 权限档位 | 切换 AI 权限档位（read\|ask\|auto\|full）。完全访问需二次确认；设置常驻到用户改回。⚠️ 只许用户操作（userOnly），AI 不可调 | `mode`: string 必填 — 目标档位：read \| ask \| auto \| full | —— |
+| `aiPolicy.statusSummary` | 当前权限一览 | 设置页只读行：一行说明 AI 现在能做什么、哪些会先问你（按当前档位实时生成） | —— | —— |
 | `core.resetSettingsToBuiltin` | 回退内置设置页 | 把设置槽的激活套回退到内置设置页（= 声明 factoryRole:"settings" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次 | —— | —— |
 | `storage.cacheDirStatus` | 缓存目录 | 当前生效的缓存目录路径（只读数据源，供设置页状态行取用） | —— | —— |
 | `storage.openCacheDir` | 打开缓存目录 | 在系统资源管理器中打开当前生效的缓存目录（目录不存在时先建再开） | —— | —— |
@@ -196,12 +208,13 @@
 
 <!-- BEGIN API-INDEX -->
 
-**17 个域接口 → 49 个命名空间 / 265 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**19 个域接口 → 51 个命名空间 / 281 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
+| `aiPolicy` | AiPolicyAPI | 2 | `getState` `onChange` | AI 权限档位读面——只读：getState（快照）＋ onChange（变更后重读并回调）。写档位不在此面 |
 | `app` | AppAPI | 1 | `getVersion` | The app namespace — read-only product identity. The only runtime source of the version number = main-process app.getVer… |
-| `appearance` | AppearanceAPI | 2 | `importImage` `revealStorage` | appearance assets — locally picked images are copied into managed storage (controlled source — user-chosen paths cannot… |
+| `appearance` | AppearanceAPI | 3 | `importImage` `revealStorage` `pickImage` | appearance assets — locally picked images are copied into managed storage (controlled source — user-chosen paths cannot… |
 | `bridge` ⚠️ | ShellAPI | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | Shell↔plugin communication relay — shell preload only |
 | `clipboard` | DataAPI | 3 | `readText` `writeText` `writeFileList` | Clipboard — read/write the system clipboard |
 | `commands` | CommandsAPI | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | Commands — modeled after VS Code vscode.commands |
@@ -209,7 +222,7 @@
 | `configuration` | CommandsAPI | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | Configuration — the new name — modeled after VS Code vscode.workspace.getConfiguration |
 | `contextKey` | UiAPI | 1 | `set` | ContextKey — plugins SET state for the shell's when clauses to read |
 | `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | file decorations — a local in-pool registry (zero IPC). Shape modeled after contract §3.24 |
-| `dialog` | UiAPI | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | Dialogs — confirm/alert/file selection |
+| `dialog` | UiAPI | 6 | `confirm` `alert` `open` `openFile` `save` `confirmContent` | Dialogs — confirm/alert/file selection |
 | `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's DialogHost (the shell preload has no such surface). Named dial… |
 | `encoding` | WorkspaceAPI | 4 | `detect` `decode` `encode` `isBinary` | encoding detection/conversion (main-process EncodingService) |
 | `env` | WorkspaceAPI | 1 | `get` | Environment info — modeled after VS Code ExtensionContext |
@@ -230,9 +243,10 @@
 | `p2p` | DataAPI | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.broadcast (fire-and-forget) |
 | `panel` | PanelAPI | 3 | `reveal` `revealFloating` `setFloatingBounds` | —— |
 | `path` | WorkspaceAPI | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | Path utilities — injected on both shell/pool ends (in-pool plugins such as editor/file-tree consume normalize/join etc.… |
+| `pluginAssets` | PluginAssetsAPI | 1 | `getUrl` | —— |
 | `pluginManager` | PluginsAPI | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), … |
 | `pluginState` | DataAPI | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persistence |
-| `plugins` | PluginsAPI | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
+| `plugins` | PluginsAPI | 22 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
 | `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + se… |
 | `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main process). parseLine/detect are stripped before returning (J… |
 | `quickPick` | UiAPI | 1 | `show` | plugin quickPick picker — local bridge inside the pool (zero IPC, rendered by QuickPickHost). A settle of null → undefi… |
@@ -241,14 +255,14 @@
 | `serial` | DataAPI | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | Serial — read/write/listen, modeled after VS Code SerialPort API |
 | `settings` | SettingsAPI | 3 | `list` `getActive` `setActive` | —— |
 | `shell` | ShellAPI | 7 | `showItemInFolder` `openInTerminal` `pluginLocation` `openPluginFolder` `startDrag` `relaunch`° `openExternal` | Shell-level commands — revealInOS / openInTerminal / startDrag / relaunch, injected on both ends |
-| `storage` ⚠️ | StorageAPI | 2 | `revealCache` `cacheDir` | —— |
+| `storage` ⚠️ | StorageAPI | 3 | `revealCache` `cacheDir` `getFilePath` | —— |
 | `tabs` | TabsAPI | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `theme` | AppearanceAPI | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `toasts` | UiAPI | 1 | `show` | 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store、不同名、不同角落）。 |
 | `update` | UpdateAPI | 1 | `getState` | The update namespace — read-only update state (for "About"-type plugins to read the host version/update state). |
 | `viewContainer` | EditorAPI | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side registry). The DTO contains only serializable public fields |
 | `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | Window control — TitleBar button mapping, injected on both ends (11 methods on one channel, shared module electron/wind… |
-| `workspace` | WorkspaceAPI | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | Workspace — injected by the pool preload (the shell side uses WorkspaceService directly). Pool-authoritative namespace … |
+| `workspace` | WorkspaceAPI | 10 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` `getRecentFolders` `onDidChangeRecentFolders` | Workspace — injected by the pool preload (the shell side uses WorkspaceService directly). Pool-authoritative namespace … |
 
 ⚠️ = 契约里的**可选命名空间**（只在一侧 preload 注入）：`bridge` `hotExit` `storage`——用前先判存在，另一侧是 `undefined`。
 ° = 契约标 `?` 的成员：只在一侧 preload 注入（几乎都是壳侧独有）。**插件跑在池侧** ⇒ 调用前先判存在。
