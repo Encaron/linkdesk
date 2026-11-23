@@ -20,6 +20,7 @@ import { runPluginPublish } from "./publish.js";
 import { runPluginLint, renderPluginLintReport } from "./eslint/lint.js";
 import { runUiMinAppVersionCheck } from "./eslint/checks/ui-min-app-version.js";
 import { importIconTheme, renderImportReport } from "./import-icon-theme.js";
+import { checkManifestI18n, formatMissingTranslation } from "./i18n-gate.js";
 
 const VITE_CONFIG_FILES = [
   "vite.config.ts",
@@ -61,15 +62,33 @@ const USAGE = `linkdesk-plugin-sdk <command>
               （从零起步的默认路径），传 --list = 按作者清单筛（extensions/fileNames/folders/
               overrides/localIcons）。清单住作者本仓——**编辑决定住作者仓，转换机制住 SDK**。
               ⚠️ 上游图标包的 LICENSE 要一并放进插件目录（多为 MIT，署名是作者的事）。
-  lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨，全 WARN 永不 fail；知情绕行 =
-              eslint-disable 注释）。参数 = 工程根，默认 process.cwd()
+  lint        E6#54d 门禁（eslint 12 规则 + 三 check 双轨；风格类 WARN 不拦，
+              但**声明了语言却缺 manifest 显示文本译文 = 硬失败**）。参数 = 工程根，默认 process.cwd()
 `;
 
 async function cmdLint(root: string): Promise<number> {
   const report = await runPluginLint(root);
   // WARN 永不 fail（门禁哲学）——退出码只反映真 error（语法致命 / 作者自配 error 规则）
   process.stdout.write(renderPluginLintReport(report) + "\n");
-  return report.eslintRows.some((r) => r.severity === 2) ? 1 : 0;
+  let code = report.eslintRows.some((r) => r.severity === 2) ? 1 : 0;
+
+  // 声明式显示文本完整性是**硬契约**：声明了 en/ja/ko 就必须每条都有译文。
+  // 缺一条，英文界面就混一行中文；没声明 i18n 的单语言作者完全跳过。
+  try {
+    const i18n = checkManifestI18n(root);
+    if (i18n.problems.length || i18n.missing.length) {
+      console.error("\n🔴 manifest 显示文本 i18n 不完整：");
+      for (const p of i18n.problems) console.error(`   - ${p}`);
+      for (const m of i18n.missing.slice(0, 40)) console.error(`   - ${formatMissingTranslation(m)}`);
+      if (i18n.missing.length > 40) console.error(`   … 另有 ${i18n.missing.length - 40} 条`);
+      console.error("   修法：把上述中文原文作为 key 补进每种声明语言的字典；不想翻译就删掉对应语言声明。");
+      code = 1;
+    }
+  } catch (e) {
+    // 没有 plugin.json 的目录（纯 eslint 试跑）不在这里拦——validate 会给真正的原因
+    if (!/plugin\.json/.test(e instanceof Error ? e.message : String(e))) throw e;
+  }
+  return code;
 }
 
 /**

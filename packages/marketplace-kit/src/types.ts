@@ -65,6 +65,7 @@ export interface CatalogEntry {
   publishedAt?: string;
   minAppVersion?: string;
   readmeUrl?: string;
+  readmeLocales?: Record<string, string>;
   versions: CatalogVersion[];
 }
 

@@ -279,6 +279,13 @@ async function loadPlugin(
     log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
   }
 
+  // ═══ Step 4.5: 插件字典必须先于 contributes 注册 ═══
+  // 命令/菜单/视图/配置的显示文本在注册时按插件命名空间解析；字典晚到 = 注册面永远是中文
+  // （2026-11-24 用户拍板：翻译归宿主，市场只渲染）。语言包 / 主题数据仍在 Step 6。
+  if (manifest.contributes?.i18n) {
+    await loadPluginI18nData(pluginId, manifest);
+  }
+
   // ═══ Step 5: 解析 contributes → 分发各 Registry ═══
   await loadPluginLifecycle(pluginId, manifest, { pluginRoot: runtimePluginRoot });
 
@@ -306,9 +313,6 @@ async function loadPlugin(
   }
   if (manifest.contributes?.languages) {
     await loadLanguageContributionData(pluginId, manifest);
-  }
-  if (manifest.contributes?.i18n) {
-    await loadPluginI18nData(pluginId, manifest);
   }
 
   // ═══ Step 7: 收尾 ═══

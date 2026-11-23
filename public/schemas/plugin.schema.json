@@ -418,6 +418,30 @@
       "description": "Keep the current Sidebar when this view is focused — for example the Sidebar stays unchanged while browsing the plugin detail page.",
       "default": false
     },
+    "readme": {
+      "description": "Multi-language README. A string is the legacy tombstone (ignored with a warning — use root README.md). An object maps language codes to markdown files under docs/readme/; the host/marketplace picks the app language and falls back to `default` (then README.md). Shared images stay in resources/.",
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "default": {
+              "type": "string",
+              "description": "Fallback README path relative to the plugin root (default: README.md)."
+            },
+            "locales": {
+              "type": "object",
+              "description": "Language code → README path (relative, forward slashes). A language may point at README.md itself.",
+              "patternProperties": {
+                "^[a-z]{2,3}(-[a-z0-9]{2,8})?$": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "contributes": {
       "type": "object",
       "description": "Contribution point declarations — mirrors VS Code package.json contributes. A core mechanism.",

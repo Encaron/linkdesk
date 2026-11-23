@@ -23,3 +23,11 @@ export { packPluginData } from "./pack.js";
 export type { PackResult } from "./pack.js";
 // ⛔ 不在此 re-export `shell-commands`（理由见头注红字段）——运行面消费者走子路径。
 export type * from "./types.js";
+
+export {
+  collectManifestDisplayText,
+  dictDisplayText,
+  missingDisplayTranslations,
+  resolveDisplayManifest,
+} from "./display-text.js";
+export type { DisplayTextEntry, DisplayTextPath, MissingDisplayTranslation, ResolveDisplayText, DisplayDicts } from "./display-text.js";

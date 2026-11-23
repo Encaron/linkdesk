@@ -16,7 +16,8 @@ You do not need to pre-create empty folders (git does not track them). **Create 
 | Path | What goes here | When it exists |
 |:--|:--|:--|
 | `plugin.json` | The plugin manifest | **Always** |
-| `README.md` | Description — the data source for the marketplace **Details** tab | Strongly recommended |
+| `README.md` | Description — the data source for the marketplace **Details** tab, and the GitHub landing page | **Required** |
+| `docs/readme/<lang>.md` | Additional-language READMEs (e.g. `docs/readme/en.md`). Declare them in `plugin.json` `readme.locales`; shared images stay in `resources/` (reference them as `../../resources/...`). Do **not** create empty translations — add a file only when it has real content. | When you translate |
 | `CHANGELOG.md` | Release notes — the data source for the marketplace **Changelog** tab | Strongly recommended |
 | `resources/` | Assets — **three preset placeholders, each with a job comment inside**: `icon.svg` (small in-app icon) / `icon-bar.svg` (Icon Bar single-colour glyph) / `cover.svg` (README cover), plus any images referenced from the README | Always (replace the placeholders) |
 | `i18n/` | `en.json` (key = the source string; **do not create `zh.json`**) | Once you have UI text |
@@ -30,6 +31,10 @@ You do not need to pre-create empty folders (git does not track them). **Create 
 | `src/__tests__/` | Unit tests — **test tooling is preinstalled** (`vitest` / `jsdom` / `@testing-library/react` are already in `devDependencies`); the `window.linkdesk` mock is **not** in this repo — `vitest.setup.ts` is a one-line pointer to the shared ground in `@linkdesk/plugin-sdk`, so just write tests and run `npm run test` | When needed |
 
 > 🔴 **Shared things do not belong here** — components/hooks reused across plugins come from `@linkdesk/ui` (the public package the shell provides; it is already declared in `package.json` as `"latest"`, which resolves to the shell's current version line when you install — pin it to a specific shell version if you need a floor). The shell supplies that one instance at runtime, so **do not import its css** and **do not write a second copy inside your plugin**. Only logic that belongs to this plugin stays local.
+> 🔴 **README translations live under `docs/readme/` — never stack `README.<lang>.md` at the root.** Root `README.md` is the GitHub landing + fallback; every other language is one file under `docs/readme/`. All shared images stay in `resources/` (one copy); a localized README references them as `../../resources/...`. Declare the paths in `plugin.json` `readme.locales` (schema field available).
+>
+> 🔴 **Manifest display text is i18n content.** Every human-readable string in `plugin.json` (name/description, command titles/descriptions, menu labels, view titles, settings titles/descriptions) must be a key in each declared language dictionary. `npm run lint` now fails on a missing translation; if you do not want to translate, remove the language declaration instead of shipping half a translation.
+>
 > 🔴 **Assets always live in `resources/` — no loose images in the plugin root.** What gets into the install package is what is **referenced by the README** or **declared by `icon` / `marketIcon`**; the directory name itself has no magic.
 > 🔴 **Every import from `@linkdesk/ui` sets your `minAppVersion` floor** — that field is the oldest shell your plugin can run on, **not the shell you happened to test with**. An export that does not exist in that shell means the plugin **fails to load as a whole**, not that one component is missing. Since the dependency is `"latest"`, the gate has to compute the real floor for you: after changing your imports, run `npm run lint` and put the value it reports into `plugin.json`'s `minAppVersion`. (The `latest` dependency is only safe because something recomputes the floor — that is the pair.) What ships in this template is already the floor for the imports this template makes.
 

@@ -33,6 +33,14 @@
   "icon": "resources/icon.svg", // 占位图，换成你的
   // "marketIcon": "resources/icon.svg", // 市场彩色身份图（可选；缺省回落 icon）——市场要彩色展示时取消注释
 
+  // ── README 多语言（可选；根 README.md 是 GitHub 首页 + 兜底）──
+  // 翻译文件住 docs/readme/<lang>.md，共享图仍住 resources/（从 docs/readme 里引用为 ../../resources/...）。
+  // 语言码与 contributes.i18n 同一套；zh 可以直接指向 README.md，不必抄第二份中文。
+  // "readme": {
+  //   "default": "README.md",
+  //   "locales": { "zh": "README.md", "en": "docs/readme/en.md" }
+  // },
+
   // ── 入口（视图插件 = 此文件 default 导出一个 React 组件）──
   "entry": "src/index.tsx",
 

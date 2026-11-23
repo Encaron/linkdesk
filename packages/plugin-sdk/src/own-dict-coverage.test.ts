@@ -101,15 +101,14 @@ describe("collectRenderableManifestStrings（判据字段表）", () => {
     }
   });
 
-  it("豁免守住：commands[].description / params[].description 是声明数据（→ AI），不进判据", () => {
+  it("commands[].description / params[].description 进判据（2026-11-24 纠偏：市场功能页确实渲染）", () => {
     const texts = collectRenderableManifestStrings(SETTINGS_LIKE).map((s) => s.text);
-    expect(texts).not.toContain("打开快捷键编辑——声明数据，不是 UI 文字");
-    expect(texts).not.toContain("命令 id——同样是声明数据");
-    // 字段表里也不许出现 description 落在 commands / params 上的规格
+    expect(texts).toContain("打开快捷键编辑——声明数据，不是 UI 文字");
+    expect(texts).toContain("命令 id——同样是声明数据");
     const commandDesc = RENDERABLE_MANIFEST_FIELDS.filter(
       (f) => f.field === "description" && f.steps.includes("commands"),
     );
-    expect(commandDesc).toHaveLength(0);
+    expect(commandDesc.length).toBeGreaterThanOrEqual(2); // 命令说明 + 参数说明
   });
 
   it("反向对照：旧字段表（只有 title / label 那批）必漏「配置页那四类」——扩域不是自说自话", () => {
@@ -162,6 +161,31 @@ describe("checkOwnDictCoverage（两条判据 ＋ 严重度）", () => {
     expect(r.manifestGap).toHaveLength(0);
     expect(r.dict.files).toHaveLength(1);
     expect(r.dict.files[0].rel).toBe("i18n/en.json");
+  });
+
+  it("声明了 en + ja 就各自都要覆盖：en 有、ja 没有 ⇒ manifestGap 记 missingLangs", () => {
+    const manifest = {
+      pluginId: "p",
+      name: "演示",
+      contributes: { i18n: { en: "i18n/en.json", ja: "i18n/ja.json" } },
+    };
+    const root = fixture({
+      "plugin.json": manifest,
+      "i18n/en.json": { 演示: "Demo" },
+      "i18n/ja.json": { 演示: "デモ" },
+    });
+    const r = checkOwnDictCoverage(root, { manifest });
+    expect(r.manifestGap).toHaveLength(0);
+
+    const root2 = fixture({
+      "plugin.json": manifest,
+      "i18n/en.json": { 演示: "Demo" },
+      "i18n/ja.json": {},
+    });
+    const r2 = checkOwnDictCoverage(root2, { manifest });
+    expect(r2.manifestGap).toEqual([
+      expect.objectContaining({ text: "演示", missingLangs: ["ja"] }),
+    ]);
   });
 
   it("源码腿是黄灯：本仓 t(\"中文\") 没住自有字典 ⇒ sourceGap 里，但不动 manifest 腿", () => {

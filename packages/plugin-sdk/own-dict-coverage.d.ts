@@ -21,6 +21,8 @@ export interface OwnDictFile extends OwnDictDecl {
 export interface OwnDictLoad {
   /** 全部声明字典的 key 并集 */
   keys: Set<string>;
+  /** 每种声明语言自己的 key 集（key = 原文）——「声明了 ja/ko 就必须覆盖 ja/ko」的判据 */
+  byLang: Map<string, Set<string>>;
   files: OwnDictFile[];
   /** 读不到 / 解析不动的声明（非空 ⇒ degraded） */
   problems: string[];
@@ -44,6 +46,8 @@ export interface ManifestString {
   text: string;
   field: string;
   consumer: string;
+  /** 缺失的语言（只列「声明了但没这条 key」的语言；未声明字典时不填） */
+  missingLangs?: string[];
 }
 
 export interface SourceKey {

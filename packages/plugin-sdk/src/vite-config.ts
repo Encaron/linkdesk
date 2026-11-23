@@ -48,7 +48,7 @@
  *   - dev/serve 不触发 build 系 hook → packager 天然只在 build 跑。
  */
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { build as viteBuild, type Plugin, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -65,7 +65,7 @@ import {
   validatePluginJson,
 } from "./validate.js";
 import { pinDirectoryEntryDates, zipTree } from "./pack.js";
-import { copyFileInto, copyReadmeReferencedAssets } from "./readme-media.js";
+import { copyFileInto, copyReadmeFileAssets, copyReadmeReferencedAssets } from "./readme-media.js";
 import { findDuplicatedEntryModules, missingEntries, type EmittedChunk } from "./surface-chunk-guard.js";
 
 /** 壳提供、插件不得重复打包的依赖——i18next 必须 external（B3：自打实例 → 翻译全空）。
@@ -543,6 +543,16 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         //  只认 README 相对引用，不碰声明字段——作者零心智。README 缺省则跳过。
         if (existsSync(join(root, "README.md"))) {
           copyReadmeReferencedAssets(root, pkgDir, readFileSync(join(root, "README.md"), "utf8"));
+        }
+        // 多语言 README（2026-11-24）：plugin.json readme.locales 声明的 md 与它引用的
+        // resources/ 资产随包；未声明的语言文件不猜测、不打包。共享图只存 resources/ 一份。
+        const readmeDecl = (manifest as { readme?: { locales?: Record<string, string> } }).readme;
+        for (const rel of Object.values(readmeDecl?.locales ?? {})) {
+          if (typeof rel !== "string" || rel.includes("\\")) continue;
+          if (copyFileInto(root, pkgDir, rel)) copyReadmeFileAssets(root, pkgDir, rel);
+        }
+        if (existsSync(join(root, "docs/readme"))) {
+          cpSync(join(root, "docs/readme"), join(pkgDir, "docs/readme"), { recursive: true });
         }
         // E6#164：CHANGELOG 只随包带**最近 N 版**（窗口与市场目录同源）——从 copyFileInto 改过来，
         //   理由见 writeChangelogWindow：包内整史 = 每次安装/更新都多下几十 KB 散文。

@@ -12,8 +12,8 @@
  * 的每个 `<source>` 都是独立资源引用，漏收 = 装完只有 poster 没有片源（详情页播放器黑屏）。
  */
 
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { isWithinRoot } from "./validate.js";
 
 /** 单个文件安全拷贝：断言 src 在 root 内，落 pkgDir 同相对路径，缺省忽略 */
@@ -52,4 +52,19 @@ export function readmeMediaRefs(md: string): string[] {
  *  作者零声明清单——detail 说明区渲染以 assetBase=linkdesk://{id}/ 解析这些相对路径 → 资产必须真在包内。 */
 export function copyReadmeReferencedAssets(root: string, pkgDir: string, readmeText: string): void {
   for (const rel of readmeMediaRefs(readmeText)) copyFileInto(root, pkgDir, rel);
+}
+
+/** 多语言 README 的随包：按该 md 自己的目录解析相对媒体引用，落包内同相对路径。
+ *  声明路径由 plugin.json readme.locales 给出；未声明 = 不随包。 */
+export function copyReadmeFileAssets(root: string, pkgDir: string, readmeRel: string): void {
+  const absReadme = resolve(root, readmeRel);
+  if (!isWithinRoot(root, absReadme) || !existsSync(absReadme)) return;
+  const baseDir = dirname(readmeRel);
+  const text = readFileSync(absReadme, "utf8");
+  for (const rel of readmeMediaRefs(text)) {
+    const abs = resolve(root, baseDir, rel);
+    if (!isWithinRoot(root, abs) || !existsSync(abs)) continue;
+    const destRel = relative(root, abs).split(sep).join("/");
+    copyFileInto(root, pkgDir, destRel);
+  }
 }

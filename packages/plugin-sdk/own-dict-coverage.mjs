@@ -78,9 +78,9 @@ const CJK_RE = /[\u4e00-\u9fff]/;
  * `field` 为 `null` ⇒ 落点**自己就是那条字符串**（如 `groupDescriptions` 的值）。
  *
  * 🔴 **改 `schemas/plugin.schema.json` 的渲染字段时，同笔改这里**（两处是同一件事的两面：
- *    schema 说「能声明什么」，本表说「声明了要译」）。⛔ 别把「声明数据」（`commands[].description`
- *    / `params[].description`——2026-09-28 裁决：消费方 = 契约 → AI，零渲染消费方）塞进来；
- *    撤销条件 = 那些说明一旦进 UI。
+ *    schema 说「能声明什么」，本表说「声明了要译」）。2026-11-24 纠偏：`commands[].description` /
+ *    `params[].description` 曾以「消费方 = AI，零渲染消费方」排除；市场「功能」页实际渲染后
+ *    该假设失效，已纳入。**判据不是「作者觉得重不重要」，而是「有没有 UI 消费方」。**
  * ⛔ 故意**不在表内**的专名/元数据（各有理由，与壳侧旧名单同一口径）：
  *    `languages[].label` / `langDefs[].aliases`（语言自称／`English`/`English (US)` 这种自称形式）、
  *    `icons.*.description`（作者面元数据，消费方是**别的作者**不是用户）、以及一切路径/ID/上下文键
@@ -93,6 +93,10 @@ export const RENDERABLE_MANIFEST_FIELDS = [
   { steps: ["statusBar", "[]"], field: "label", consumer: "状态栏条目文本" },
   { steps: ["contributes", "commands", "[]"], field: "title", consumer: "命令面板 / 菜单标题" },
   { steps: ["contributes", "commands", "[]"], field: "category", consumer: "命令面板分组名" },
+  // 2026-11-24 纠偏：此前把这两条当「声明数据 → AI，零渲染消费方」排除；市场详情「功能」页
+  // 实际渲染 commands[].description / params[].description（用户实机截图），假设已失效。
+  { steps: ["contributes", "commands", "[]"], field: "description", consumer: "市场详情「功能」页命令说明 / AI 选命令" },
+  { steps: ["contributes", "commands", "[]", "params", "[]"], field: "description", consumer: "市场详情「功能」页参数说明" },
   { steps: ["contributes", "menus", "*", "[]", "**"], field: "label", consumer: "菜单项 / 子菜单标签" },
   { steps: ["contributes", "configuration"], field: "title", consumer: "设置页分组名" },
   { steps: ["contributes", "configuration"], field: "subtitle", consumer: "设置页分组副标题" },
@@ -208,6 +212,8 @@ export function loadOwnDict(absRoot, manifest) {
   const files = [];
   const problems = [];
   const keys = new Set();
+  /** 每种声明语言自己的 key 集——用于「声明了 ja/ko 就必须覆盖 ja/ko」，不能只看并集。 */
+  const byLang = new Map();
   for (const d of collectOwnDictDecls(manifest)) {
     let raw;
     try {
@@ -229,9 +235,11 @@ export function loadOwnDict(absRoot, manifest) {
     }
     const own = Object.keys(dict);
     own.forEach((k) => keys.add(k));
+    if (!byLang.has(d.lang)) byLang.set(d.lang, new Set());
+    own.forEach((k) => byLang.get(d.lang).add(k));
     files.push({ origin: d.origin, rel: d.rel, lang: d.lang, keys: own });
   }
-  return { keys, files, problems, degraded: problems.length > 0 };
+  return { keys, byLang, files, problems, degraded: problems.length > 0 };
 }
 
 /** `steps` 逐段下钻 → 落点数组（`"*"` 开放键 / `"[]"` 数组 / `"**"` 沿 children 递归） */
@@ -412,6 +420,14 @@ export function checkOwnDictCoverage(absRoot, options = {}) {
   }
   const sourceKeys = collectSourceTKeys(absRoot, options);
   const problems = [...dict.problems, ...themeLeg.problems];
+  /** 每条声明串在**每个声明语言**里都必须有译文；没声明任何字典时退回「并集里有没有」。 */
+  const gapOf = (s) => {
+    const missingLangs = [...dict.byLang.entries()]
+      .filter(([, keys]) => !keys.has(s.text))
+      .map(([lang]) => lang);
+    const missing = missingLangs.length > 0 || (!dict.byLang.size && !dict.keys.has(s.text));
+    return missing ? { ...s, ...(missingLangs.length ? { missingLangs } : {}) } : null;
+  };
   return {
     dict,
     scanned: {
@@ -419,7 +435,7 @@ export function checkOwnDictCoverage(absRoot, options = {}) {
       themeStrings: themeLeg.strings.length,
       sourceKeys: sourceKeys.length,
     },
-    manifestGap: merged.filter((s) => !dict.keys.has(s.text)),
+    manifestGap: merged.map(gapOf).filter(Boolean),
     sourceGap: sourceKeys.filter((k) => !dict.keys.has(k.key)),
     degraded: dict.degraded || themeLeg.problems.length > 0,
     problems,
@@ -428,7 +444,10 @@ export function checkOwnDictCoverage(absRoot, options = {}) {
 
 /** 违规 → 人类可读一行（两轴打印同款，免得同一条错两种说法） */
 export function formatOwnDictIssue(issue) {
-  if ("text" in issue) return `${JSON.stringify(issue.text)}  @${issue.field}（${issue.consumer}）`;
+  if ("text" in issue) {
+    const langs = issue.missingLangs?.length ? ` 缺少语言：${issue.missingLangs.join(" / ")}` : "";
+    return `${JSON.stringify(issue.text)}  @${issue.field}（${issue.consumer}）${langs}`;
+  }
   return `${JSON.stringify(issue.key)}  t() @${issue.at.slice(0, 3).join(" / ")}${issue.at.length > 3 ? ` 等 ${issue.at.length} 处` : ""}`;
 }
 

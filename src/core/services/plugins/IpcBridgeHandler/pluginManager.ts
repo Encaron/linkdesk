@@ -5,6 +5,7 @@
  */
 
 import { getCommands, resolveCommandOwnership } from "../../../registry/commands/CommandRegistry";
+import { resolvePluginManifestForDisplay } from "../../../../pluginLoader/display/displayService";
 import type {
   PluginInstallRequestOpts,
   PluginLocalInstallResult,
@@ -40,7 +41,7 @@ export interface PluginManagementAPI {
   // E6#73j（G6）：updatable 随行——住所判据（userData 安装家才可被包更新），市场据此遮蔽死钮
   getListPluginManifests(): Array<{
     pluginId: string;
-    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide" };
+    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown; requires?: string[]; icon?: string; iconSource?: "codicon" | "svg" | "url" | "lucide" | "shared"; marketIcon?: string; marketIconSource?: "codicon" | "svg" | "url" | "lucide"; readme?: { default?: string; locales?: Record<string, string> } };
     pendingReason?: string;
     updatable: boolean;
   }>;
@@ -53,32 +54,37 @@ export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api;
 export async function handlePluginManagerMethod(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
     case "list":
-      return _pluginAPI!.getListPluginManifests().map((p) => ({
-        pluginId: p.pluginId,
-        manifest: {
-          name: p.manifest.name,
-          description: p.manifest.description,
-          version: p.manifest.version,
-          core: p.manifest.core,
-          author: p.manifest.author,
-          statusBar: p.manifest.statusBar,
-          contributes: p.manifest.contributes,
-          // E6#30.5e/30.6c3：声明依赖透传——manifest.requires（dependencies.ts 判定缺依赖的消费源）
-          requires: p.manifest.requires,
-          // E6#65a（14 档案批次一数据通道）：icon/iconSource 随行——市场行/详情 PluginIcon 渲染源
-          // （resolvePluginIcon 只读这两字段；serial/settings png、marketplace svg、file-tree lucide 即显）
-          icon: p.manifest.icon,
-          iconSource: p.manifest.iconSource,
-          // E6#67（14 档案批次二·五）：marketIcon/marketIconSource 随行——市场展示图（cover art）数据通道
-          // （市场层 pick「marketIcon ?? icon」；壳仍只读 icon 故不影响图标栏/标签栏）
-          marketIcon: p.manifest.marketIcon,
-          marketIconSource: p.manifest.marketIconSource,
-        },
-        // E5.8#15.5：缺依赖挂起原因——marketplace 显示 "等待依赖: xxx"（无挂起 = undefined）
-        pendingReason: p.pendingReason,
-        // E6#73j（G6）：住所判据透传——市场据此不画「更新到 vX」死钮（app 树/随包发货件更新必失败）
-        updatable: p.updatable,
-      }));
+      return _pluginAPI!.getListPluginManifests().map((p) => {
+        // 显示文本在宿主边界解析（2026-11-24）：市场/任何第三方市场只渲染，不碰插件字典。
+        const d = resolvePluginManifestForDisplay(p.pluginId, p.manifest);
+        return {
+          pluginId: p.pluginId,
+          manifest: {
+            name: d.name,
+            description: d.description,
+            version: d.version,
+            core: d.core,
+            author: d.author,
+            statusBar: d.statusBar,
+            contributes: d.contributes,
+            // E6#30.5e/30.6c3：声明依赖透传——manifest.requires（dependencies.ts 判定缺依赖的消费源）
+            requires: d.requires,
+            // E6#65a（14 档案批次一数据通道）：icon/iconSource 随行——市场行/详情 PluginIcon 渲染源
+            // （resolvePluginIcon 只读这两字段；serial/settings png、marketplace svg、file-tree lucide 即显）
+            icon: d.icon,
+            iconSource: d.iconSource,
+            // E6#67（14 档案批次二·五）：marketIcon/marketIconSource 随行——市场展示图（cover art）数据通道
+            // （市场层 pick「marketIcon ?? icon」；壳仍只读 icon 故不影响图标栏/标签栏）
+            marketIcon: d.marketIcon,
+            marketIconSource: d.marketIconSource,
+            readme: (d as { readme?: unknown }).readme,
+          },
+          // E5.8#15.5：缺依赖挂起原因——marketplace 显示 "等待依赖: xxx"（无挂起 = undefined）
+          pendingReason: p.pendingReason,
+          // E6#73j（G6）：住所判据透传——市场据此不画「更新到 vX」死钮（app 树/随包发货件更新必失败）
+          updatable: p.updatable,
+        };
+      });
     case "enable":
       return _pluginAPI!.enablePlugin(args[0] as string);
     case "disable":
@@ -103,7 +109,10 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
       // E6#13b（段 B）：只读查更新——pluginId + catalogUrl
       return _pluginAPI!.checkPluginUpdates(args[0] as string, args[1] as string);
     case "getDisabled":
-      return _pluginAPI!.getDisabledPluginInfo();
+      return _pluginAPI!.getDisabledPluginInfo().map((row) => {
+        const d = resolvePluginManifestForDisplay(row.pluginId, row);
+        return { ...row, name: d.name, description: d.description };
+      });
     case "getUninstalled":
       return _pluginAPI!.getUninstalledPluginInfo();
     case "isDisabled":

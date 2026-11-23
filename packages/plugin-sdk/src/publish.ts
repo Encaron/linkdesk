@@ -46,6 +46,7 @@ import { createInterface } from "node:readline";
 import JSZip from "jszip";
 import * as jsonc from "jsonc-parser";
 import { derivePluginId, readPluginManifest } from "./validate.js";
+import { checkManifestI18n, formatMissingTranslation } from "./i18n-gate.js";
 import { ghErrorDetail, ghHttp } from "./github-http.js";
 
 /* ── 类型 ─────────────────────────────────────────────────────────────── */
@@ -110,6 +111,8 @@ export interface CatalogPluginEntry {
   size?: number;
   publishedAt?: string;
   minAppVersion?: string;
+  /** 多语言 README 远端直链（语言码 → tag 下 raw URL）；缺省 = 单语言（readmeUrl）。 */
+  readmeLocales?: Record<string, string>;
   /** 未装插件详情页「详情」页签的 README 远端直链（E6#91c 接通）——publish 自动写，作者零声明。
    *  与打进 zip 的 README 同源（同一 tag），故未装看到的 = 装上后看到的。工程根无 README.md → 不写。 */
   readmeUrl?: string;
@@ -570,6 +573,8 @@ export interface ManifestView {
    */
   category?: string;
   categories?: string[];
+  /** plugin.json `readme.locales`（语言码 → 相对插件根路径）；publish 映射成 tag 下 raw URL。 */
+  readme?: { default?: string; locales?: Record<string, string> };
 }
 
 function parseLocaleOverrides(raw: unknown): LocaleOverrides | undefined {
@@ -612,11 +617,29 @@ export function collectManifestView(manifest: unknown, sourceDirName: string): M
     categories: Array.isArray(m.categories)
       ? (m.categories.filter((v) => typeof v === "string" && v.trim()) as string[])
       : undefined,
+    readme: parseReadmeDecl(m.readme),
   };
+}
+
+/** `plugin.json.readme` → { default?, locales? }；非法/空值忽略。 */
+function parseReadmeDecl(raw: unknown): { default?: string; locales?: Record<string, string> } | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const def = typeof r.default === "string" && r.default.trim() ? r.default.trim() : undefined;
+  const locales: Record<string, string> = {};
+  if (r.locales && typeof r.locales === "object" && !Array.isArray(r.locales)) {
+    for (const [lang, rel] of Object.entries(r.locales as Record<string, unknown>)) {
+      if (typeof rel === "string" && rel.trim()) locales[lang.toLowerCase()] = rel.trim();
+    }
+  }
+  if (!def && !Object.keys(locales).length) return undefined;
+  return { ...(def ? { default: def } : {}), ...(Object.keys(locales).length ? { locales } : {}) };
 }
 
 /** 条目补充字段——**缺省即不写该键**（字段缺省比填空串/空对象诚实，渲染层两条路走同一兜底） */
 export interface CatalogEntryExtras {
+  /** 多语言 README —— 语言码 → tag 下 raw URL（由 manifest.readme.locales 映射） */
+  readmeLocales?: Record<string, string>;
   /** 未装态 README 远端直链——工程根无 README.md 时缺省（写了必 404） */
   readmeUrl?: string;
   /** 当前版本正文（`CHANGELOG.md` 切段所得）——无文件 / 切不到时缺省 */
@@ -650,6 +673,7 @@ export function buildCatalogEntry(
     ...(v.category !== undefined ? { category: v.category } : {}),
     ...(v.categories !== undefined ? { categories: v.categories } : {}),
     ...(extras.readmeUrl !== undefined ? { readmeUrl: extras.readmeUrl } : {}),
+    ...(extras.readmeLocales !== undefined ? { readmeLocales: extras.readmeLocales } : {}),
     downloadUrl,
     size,
     publishedAt,
@@ -817,6 +841,11 @@ export async function assertAssetCurrent(root: string, assetPath: string, releas
  *  那份 README 同源（同一 commit）；用 main 会让「未装浏览者看到的」与「装上后看到的」是两份内容。 */
 export function readmeRawUrl(remote: GitHubRemote, tag: string): string {
   return `https://raw.githubusercontent.com/${remote.owner}/${remote.repo}/${tag}/README.md`;
+}
+
+/** 任意随包文件 → tag 下 raw 直链（多语言 README 用；路径保持正斜杠）。 */
+export function rawTagUrl(remote: GitHubRemote, tag: string, rel: string): string {
+  return `https://raw.githubusercontent.com/${remote.owner}/${remote.repo}/${tag}/${rel.replace(/^\/+/, "")}`;
 }
 
 /** E6#106：**包内相对路径 → 远端 raw 直链**（本仓唯一一处 URL 构造——与 readmeRawUrl 同 tag 同形态）。
@@ -1276,6 +1305,8 @@ export interface PublishPreview {
   prerelease: boolean;
   /** 未装态 README 远端直链——工程根无 `README.md` → 缺省（不写，写了必 404；见 §三.3 边界表） */
   readmeUrl?: string;
+  /** 多语言 README（语言码 → tag 下 raw URL）；manifest.readme.locales 非空时写 */
+  readmeLocales?: Record<string, string>;
   /** 当前版本正文——`CHANGELOG.md` 切段所得；无文件 / 切不到该版本 → 缺省（诚实留空，不猜） */
   changelog?: string;
   /** publish v2：工程根 marketplace.config.json（缺 → null = 纯 v1 发布，行为零变化） */
@@ -1290,6 +1321,20 @@ async function collectPreview(root: string): Promise<PublishPreview> {
     throw new Error(`当前目录不是插件工程——找不到 ${pluginJsonPath}。请 cd 进插件项目根再跑 linkdesk-plugin-sdk publish`);
   }
   const manifest = readPluginManifest(pluginJsonPath);
+  // 发布前硬闸：声明了语言就必须每条显示文本都有译文。缺一条，装到英文界面就是中文混排；
+  // 作者不想翻译可以删语言声明——自由仍在，但「声明了却只翻一半」不能静默发出去。
+  const i18nCheck = checkManifestI18n(root);
+  if (i18nCheck.problems.length || i18nCheck.missing.length) {
+    const detail = [
+      ...i18nCheck.problems.map((p) => `  - ${p}`),
+      ...i18nCheck.missing.slice(0, 30).map((m) => `  - ${formatMissingTranslation(m)}`),
+      ...(i18nCheck.missing.length > 30 ? [`  … 另有 ${i18nCheck.missing.length - 30} 条`] : []),
+    ].join("\n");
+    throw new Error(
+      `manifest 显示文本 i18n 不完整，拒绝发布：\n${detail}\n` +
+        `修法：把中文原文作为 key 补进每种声明语言的字典；不想翻译就删掉对应语言声明。`,
+    );
+  }
   const view = collectManifestView(manifest, basename(resolve(root)));
   const assetName = assetNameForId(view.id);
   const assetPath = join(root, assetName);
@@ -1324,6 +1369,13 @@ async function collectPreview(root: string): Promise<PublishPreview> {
     releaseName: `${view.name} v${view.version}`,
     prerelease: view.version.includes("-"),
     ...(existsSync(join(root, "README.md")) ? { readmeUrl: readmeRawUrl(remote, tag) } : {}),
+    ...(view.readme?.locales
+      ? {
+          readmeLocales: Object.fromEntries(
+            Object.entries(view.readme.locales).map(([lang, rel]) => [lang, rawTagUrl(remote, tag, rel)]),
+          ),
+        }
+      : {}),
     ...(existsSync(changelogPath) ? { changelog: sliceChangelogSection(readFileSync(changelogPath, "utf8"), view.version) } : {}),
     publishConfig: v2?.config ?? null,
     unknownConfigKeys: v2?.unknownKeys ?? [],
@@ -1427,6 +1479,7 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
     new Date().toISOString(),
     {
       readmeUrl: preview.readmeUrl,
+      ...(preview.readmeLocales ? { readmeLocales: preview.readmeLocales } : {}),
       changelog: preview.changelog,
     },
   );

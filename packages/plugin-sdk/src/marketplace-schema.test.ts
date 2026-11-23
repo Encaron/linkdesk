@@ -336,6 +336,7 @@ const TS_ENTRY_KEYS: Record<keyof CatalogPluginEntry, true> = {
   publishedAt: true,
   minAppVersion: true,
   readmeUrl: true,
+  readmeLocales: true,
   versions: true,
 };
 

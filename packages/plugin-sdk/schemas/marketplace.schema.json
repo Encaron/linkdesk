@@ -153,6 +153,11 @@
           "type": "string",
           "description": "Remote raw URL of the repository README.md — the 'Details' tab of an uninstalled plugin renders this. Written automatically by publish when a README.md exists at the project root (same tag as the zip ⇒ what you see uninstalled equals what you get installed). No README.md ⇒ field omitted."
         },
+        "readmeLocales": {
+          "type": "object",
+          "description": "Localized README URLs (language code → raw URL at the release tag). Written by publish from plugin.json readme.locales; the Details tab picks the app language, falls back to readmeUrl. Omitted ⇒ single-language README only.",
+          "additionalProperties": { "type": "string" }
+        },
         "screenshots": {
           "prefixItems": [
             {
