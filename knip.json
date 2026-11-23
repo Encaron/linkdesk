@@ -14,7 +14,21 @@
   //   见 2026-10-04 复核）⇒ 摘除该条目，不留无对象的豁免；`packages/*` 仍被壳侧工具链消费
   //   （`check` 里的 `tsc -p packages/plugin-sdk`、postinstall 的 build-linkdesk-ui.mjs、contracts 生成链）
   //   ——18 只发货插件搬走**不改变**这条的存在理由。
-  "ignoreWorkspaces": ["packages/*"],
+  // 🔴 2026-11-23（归一化与 AI 友好化门禁 · 第 1 步）：`packages/*` 笼统豁免收窄——
+  //   **`marketplace-kit` 进审计**（G-N3 死代码腿；它此前被一条通配整包漏掉，坏文件/死导出永远无人发现）。
+  //   其余四包仍按各自理由留在域外，⛔ 不写成通配（免得下一个新包又被静默漏掉）：
+  //   · `linkdesk-ui`：导出面由 `check-ui-surface-additive` + `gen-ui-surface` 逐项对账，
+  //     且是**已发布公共 API 包**——knip 的「导出未用」在这里等于「第三方还没用」，不是死代码；
+  //   · `plugin-sdk`：同上（`contracts` 生成链消费）＋ 随包 lint 腿自测在 vitest 域；
+  //   · `plugin-docs`：纯文档包（产物 = 作者面 Markdown，无运行时入口）；
+  //   · `create-linkdesk-plugin`：脚手架模板故意零入口（模板源码是产物素材，不是本仓运行代码）。
+  //   新增包必须显式决定「进审计 or 写理由豁免」——⛔ 不许再出现 `packages/*` 通配。
+  "ignoreWorkspaces": [
+    "packages/linkdesk-ui",
+    "packages/plugin-sdk",
+    "packages/plugin-docs",
+    "packages/create-linkdesk-plugin"
+  ],
   "workspaces": {
     ".": {
       "entry": [
@@ -214,6 +228,21 @@
       "ignoreBinaries": [
         // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
         "xdg-open"
+      ]
+    },
+    // ── @linkdesk/marketplace-kit（2026-11-23 起进审计）──
+    // 为什么它必须被审：这是**作者机器的正典工具链**（validate / init / keygen / sign-license），
+    //   一条死导出就是作者照文档调不到的东西；它的测试又来路特殊——kit 自己不声明 vitest，
+    //   测试由**根仓** `vitest.config.ts` 的 `packages/**/*.test.ts` 统一跑 ⇒ knip 若不知道这件事，
+    //   会把 6 个 `src/*.test.ts` 全报「未用」（naive 放开后的实测假红）。故测试文件列 entry。
+    // entry 只认**源码**（⛔ 不认 package.json exports 指向的 dist/：dist 是构建产物，
+    //   审它等于审 tsc 输出，永远自洽且看不见源码里的死导出）。
+    "packages/marketplace-kit": {
+      "entry": [
+        "src/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
       ]
     }
   }
