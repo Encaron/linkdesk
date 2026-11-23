@@ -50,7 +50,13 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 105 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 105 条 / 9 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+
+### 外观（1）
+
+| 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
+|:--|:--|:--|:--|:--|
+| `appearance.pickImage` | 选择背景图片 | 弹出系统图片选择框，把选中的图片拷入受控外观存储并返回受控 URL（起始目录/过滤器由宿主决定；取消返回 picked:false） | `options`: object 必填 — { domain: string; target: string }——两个值都取自配置 schema 的 assetDomain / pickTarget（如 { domain:"appearance", target:"app" }） | —— |
 
 ### 帮助（7）
 
@@ -141,7 +147,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（40）
+### 首选项（39）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -164,7 +170,6 @@
 | `aiPolicy.resetToDefault` | 恢复默认权限（自主） | 把 AI 权限恢复到默认档「自主」。⚠️ 只许用户操作（userOnly），AI 不可调 | —— | —— |
 | `aiPolicy.setMode` | 切换 AI 权限档位 | 切换 AI 权限档位（read\|ask\|auto\|full）。完全访问需二次确认；设置常驻到用户改回。⚠️ 只许用户操作（userOnly），AI 不可调 | `mode`: string 必填 — 目标档位：read \| ask \| auto \| full | —— |
 | `aiPolicy.statusSummary` | 当前权限一览 | 设置页只读行：一行说明 AI 现在能做什么、哪些会先问你（按当前档位实时生成） | —— | —— |
-| `appearance.pickImage` | 选择背景图片 | 弹出系统图片选择框，把选中的图片拷入受控外观存储并返回受控 URL（起始目录/过滤器由宿主决定；取消返回 picked:false） | `options`: object 必填 — { domain: string; target: string }——两个值都取自配置 schema 的 assetDomain / pickTarget（如 { domain:"appearance", target:"app" }） | —— |
 | `core.resetSettingsToBuiltin` | 回退内置设置页 | 把设置槽的激活套回退到内置设置页（= 声明 factoryRole:"settings" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次 | —— | —— |
 | `storage.cacheDirStatus` | 缓存目录 | 当前生效的缓存目录路径（只读数据源，供设置页状态行取用） | —— | —— |
 | `storage.openCacheDir` | 打开缓存目录 | 在系统资源管理器中打开当前生效的缓存目录（目录不存在时先建再开） | —— | —— |
