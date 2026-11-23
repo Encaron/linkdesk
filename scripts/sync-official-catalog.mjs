@@ -184,40 +184,30 @@ export function mergeCatalogs(official, ours, { repoForId }) {
       keptForeign.push({ id: entry.id, existingVersion: existing.version, oursVersion: entry.version });
       continue;
     }
-    const betterRaw = pickHigher(existing, entry);
-    // 🔴 语言槽位是**目录维护数据**（可能只在官方目录里回填、源仓条目没有）：新版本条目缺 locales 时
-    //    保留官方目录已有的 locales，⛔ 不让一次版本追新把翻译抹掉。
-    const better =
-      betterRaw === entry && !entry.locales && existing.locales
-        ? { ...entry, locales: existing.locales }
-        : betterRaw;
-    if (better === existing) {
-      /* E6#106：**同版本但内容有变 ⇒ 采用**（此前的「版本比高者胜」会把这类更新整条跳过）。
-       *
-       * 为什么必须有这条：目录条目是**各仓条目的镜像**，而「元数据回填 / 展示字段演进」这类改动
-       * **不伴随版本号变化**——E6#106 把 18 只插件的 `icon`/`marketIcon` 从包内相对路径改成绝对 URL、
-       * 并补上此前从未写入的 `marketIcon`，插件版本一个没动。旧规则下这 17 条会被判「同版未动」，
-       * 官方目录继续挂着**未装态恒 404 的包内路径** ⇒ 修了一半，用户还是看不到图。
-       *
-       * 🔴 **只在版本相等时走这条路**：版本更低仍一律不动（`versionRank !== 0` 直接落 unchanged）——
-       * 否则「回填」会变成把官方目录往回退的口子（这条由自测的「更低版本不许往回退」负例钉住）。
-       *
-       * 取「保留我方缺失的键、其余以我方为准」（`{...existing, ...entry}`）：官方目录万一有维护者手工
-       * 补注（如 `repository`/`category`），不因本仓条目没写就被抹掉；反过来本仓新写的字段一定生效。
-       * 与既有两条铁律不冲突——本条只走到「我们的 repo 认领得到」的行（别人的行上文已 continue）。 */
-      if (versionRank(entry.version, existing.version) === 0) {
-        const merged = { ...existing, ...entry };
-        if (stableStringify(merged) !== stableStringify(existing)) {
-          cloned[idx] = merged;
-          metadataUpdated.push({ id: entry.id, version: entry.version });
-          continue;
-        }
-      }
+    const rank = versionRank(entry.version, existing.version);
+    if (rank < 0) {
+      // 🔴 更低版本不许把官方目录往回退（负例钉住）
       unchanged.push(entry.id);
       continue;
     }
-    cloned[idx] = better;
-    changed.push({ id: entry.id, from: existing.version, to: better.version });
+    /* 目录条目 = 各仓条目的镜像，但官方目录里还有**只在维护侧存在**的展示数据：
+     * `cover` / `screenshots`（宣传图，实体在 linkdesk-marketplace/media/）、`license`、
+     * `repository`、`pricing`、手工补的 `locales`……源仓 marketplace.json 不带这些字段。
+     * 因此升级/同版更新一律 **`{...existing, ...entry}`**：源仓新写的字段生效，源仓没写的
+     * 目录维护字段保留。⛔ 不能整条替换——那会把宣传图抹掉（2026-11-24 实机：hero 退化成 icon）。
+     */
+    const merged = { ...existing, ...entry };
+    if (rank === 0) {
+      if (stableStringify(merged) !== stableStringify(existing)) {
+        cloned[idx] = merged;
+        metadataUpdated.push({ id: entry.id, version: entry.version });
+      } else {
+        unchanged.push(entry.id);
+      }
+      continue;
+    }
+    cloned[idx] = merged;
+    changed.push({ id: entry.id, from: existing.version, to: entry.version });
   }
 
   const catalog = {
@@ -428,12 +418,35 @@ function selfTest() {
   );
   check("同版且内容全等 ⇒ 判未动（幂等）", idem.report.unchanged.includes("settings") && idem.report.metadataUpdated.length === 0);
 
+  /* 2026-11-24 实机「宣传图消失」负例：版本升级时源仓条目没有 cover/screenshots，
+   * 它们是官方目录侧维护的展示数据（实体在 linkdesk-marketplace/media/）。升级必须保留。 */
+  const mediaKept = mergeCatalogs(
+    {
+      plugins: [{
+        id: "settings",
+        version: "1.0.6",
+        cover: "https://raw.githubusercontent.com/Encaron/linkdesk-marketplace/HEAD/media/settings/shot-1.jpg",
+        screenshots: ["https://raw.githubusercontent.com/Encaron/linkdesk-marketplace/HEAD/media/settings/shot-1.jpg"],
+        downloadUrl: "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.6/settings.linkdesk-plugin",
+        versions: [{ version: "1.0.6" }],
+      }],
+    },
+    [{
+      id: "settings",
+      version: "1.0.7",
+      downloadUrl: "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.7/settings.linkdesk-plugin",
+      versions: [{ version: "1.0.7" }],
+    }],
+    { repoForId },
+  );
+  check("版本升级保留官方目录侧 cover/screenshots", mediaKept.catalog.plugins[0].cover?.includes("/media/settings/") && mediaKept.catalog.plugins[0].screenshots?.length === 1);
+
   if (fails.length) {
     console.error(`[sync-official-catalog] --self-test 🔴 ${fails.length} 例不过：`);
     for (const f of fails) console.error(`    ✗ ${f}`);
     return 1;
   }
-  console.log(`[sync-official-catalog] --self-test ✓ 11 例全过（含「别人的行不许动」撞号负例、版本回退负例、同版内容变更负例）`);
+  console.log(`[sync-official-catalog] --self-test ✓ 12 例全过（含「别人的行不许动」撞号负例、版本回退负例、同版内容变更负例）`);
   return 0;
 }
 
