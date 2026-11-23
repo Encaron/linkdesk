@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "$comment": "尺寸域规格表（第七域）。唯一真相源：宿主 token 值 = src/index.css；此处是机器可读副本 + 语义 + 消费方 + 门禁类别。门禁 = scripts/check-size-tokens.mjs（挂 npm run check）。⛔ 不在这里定义新的值——改值先改 src/index.css，再同步本表。",
+  "$comment": "尺寸域规格表（第七域）。唯一真相源：宿主 token 值 = src/index.css；此处是机器可读副本 + 语义 + 消费方 + 门禁类别。门禁 = scripts/check-size-tokens.mjs（挂 npm run check）；强制面 = 官方 FACTS 名单全部（官方仓），第三方仓不扫。⛔ 不在这里定义新的值——改值先改 src/index.css，再同步本表。",
   "tokens": [
     { "name": "--size-control-sm", "value": "24px", "category": "control", "semantics": "小号控件高度（工具条小钮 / 搜索钮）" },
     { "name": "--size-control-md", "value": "28px", "category": "control", "semantics": "标准控件高度（图标钮 / 工具条按钮）" },
@@ -19,7 +19,6 @@
     "glyph": { "properties": ["width", "height"], "selector": "tile|glyph|avatar" },
     "media": { "properties": ["aspect-ratio"], "selector": "." }
   },
-  "enforcedPlugins": ["marketplace", "pdf-reader"],
   "declaredGeometry": {
     "marketplace": {
       "tokenFile": "src/styles/store/store-cards.css",
