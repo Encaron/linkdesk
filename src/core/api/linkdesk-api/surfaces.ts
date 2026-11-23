@@ -33,7 +33,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
   | "viewContainer" | "plugins" | "pluginManager" | "licenses" | "aiPolicy" | "window"
-  | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots" | "update"> & {
+  | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots" | "update" | "pluginAssets"> & {
   /** pool namespace — split-surface method-level subset: pool side = receive layout + send actions + the beforeClose channel (the shell-side pushLayout/onReady/… 12 methods are the shell→pool push surface and do not exist in the pool).
    *  pool in the contract is required (after E5.8#22 review, N1 correction) — direct Pick, no NonNullable needed
    *  E5.8#30.16 (P8): the three beforeClose methods are pool-only (the plugin registers the handler / GroupTabBar's close path awaits)
@@ -42,6 +42,10 @@ export type PoolExposed = Pick<LinkDeskAPI,
    *  E5.8#46.10: adsorbIndex is pool-only (the pool returns the insertion gap — the shell side has no send surface)
    *  M1 AI#4: getLayout is pool-only (reads this window's most recent snapshot — the shell is the pusher and has no need to "read back what it just pushed") */
   pool: Pick<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
+  /** storage namespace — split-surface method-level subset: 2026-11-24 semantic ownership added the pool half
+   *  (`getFilePath` — a pool UI plugin asks the host for the on-disk path of a storage key instead of assembling it).
+   *  revealCache/cacheDir stay shell-only (settings-page command handlers run in the shell process). */
+  storage: Pick<NonNullable<LinkDeskAPI["storage"]>, "getFilePath">;
 };
 
 /** The shell preload's required exposure surface (26; bridge is truly shell-only; storage is shell-side-only — the pool does not inject it, and the surface itself is `?` optional). Method-level subsets of the commands/tabs/pool/appearance namespaces:
@@ -50,10 +54,9 @@ export type PoolExposed = Pick<LinkDeskAPI,
  *    + M1 AI#3's list (a read surface — the shell already holds this very state and does not loop over IPC to ask itself)
  *  pool shell = the push surface (onLayout/ready/sidebarAction/tabAction are the pool-side send surface; the shell does not implement them)
  *    + M1 AI#4's getLayout (a pool-side read surface — same as above)
- *  storage shell = both methods (a shell-side-only surface — the settings page's action/status command handlers run in the shell process;
- *    the pool does not inject it, hence the namespace is `?` optional in LinkDeskAPI and picked in here)
- *  appearance shell = only revealStorage (E5.8#153: the gear command handler runs in the shell process and needs the shell side to trigger the main process's openPath;
- *    importImage is pool-only — image selection and copy-into-store happen only in the pool's settings UI)
+ *  storage shell = revealCache/cacheDir (shell-side command handlers) + getFilePath (both ends since 2026-11-24 — the namespace is `?` optional in LinkDeskAPI and method-level picked by the pool)
+ *  appearance shell = revealStorage (E5.8#153: the gear command handler runs in the shell process and needs the shell side to trigger the main process's openPath)
+ *    + pickImage (2026-11-24 semantic ownership: the AI/user command `appearance.pickImage` runs in the shell process; importImage stays pool-only)
  *  update shell = the getState contract surface + three write commands and the in-shell private onStateChanged extension (E6#57.9c/d — see the update section below)
  *  app shell = the getVersion contract surface (E6#57.2b exposed in sync by both preloads) + the in-shell private getProductInfo extension (the About page's
  *    E6#57.14 data source, not in the contract). ⚠️ Excess-exposure implementation note: satisfies's excess-property check reaches every level of the literal;
@@ -78,7 +81,7 @@ export type ShellExposed = Pick<LinkDeskAPI,
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab" | "list">;
   pool: Omit<LinkDeskAPI["pool"], "getLayout" | "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "dragPosition" | "onAdsorbHint" | "adsorbIndex" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
-  appearance: Pick<LinkDeskAPI["appearance"], "revealStorage">;
+  appearance: Pick<LinkDeskAPI["appearance"], "revealStorage" | "pickImage">;
   /**
    * update shell = the contract's read-only surface (`getState`) **+ in-shell private extensions** (E6#57.9c/d, update dossier 06).
    *

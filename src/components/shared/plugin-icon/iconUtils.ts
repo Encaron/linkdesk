@@ -13,6 +13,7 @@
  * 设计依据：[[phase4-design-decisions]] §16 + VS Code extension icon 解析（manifest.icon + galleryBanner）
  */
 import type { PluginManifest } from "@linkdesk/contracts"; // 仅类型引用；参数按最小结构收缩（函数只读 icon/iconSource）
+import { getPluginAssetPath } from "../asset-url/pluginAssetPath"; // 2026-11-24 K6：资产 URL 形状唯一实现（同层，零 core 依赖）
 import { DEFAULT_PLUGIN_IDENTITY_URI } from "./defaultIdentityArt"; // E6#69a 统一默认彩色块——单份共享（壳/市场同 URI）
 
 export interface ResolvedIcon {
@@ -80,7 +81,8 @@ export function resolvePluginIcon(pluginId: string, manifest: ManifestIconShape)
     // 含 / 或 . → 文件路径（如 "resources/icon.png"）；否则 → codicon 名（如 "terminal"）
     if (icon.includes("/") || icon.includes(".")) {
       const filename = icon.includes(".") ? icon : `${icon}.png`;
-      return { src: `linkdesk://${pluginId}/${filename}` };
+      // 2026-11-24 K6：⛔ 共享件不持有 `linkdesk://` 形状——唯一实现 = getPluginAssetPath（与主进程协议解析同源）
+      return { src: getPluginAssetPath(pluginId, filename) };
     }
     return { codicon: `codicon-${icon}` };
   }

@@ -647,6 +647,7 @@ both stylesheets land on the same element.
 | Reserved keyframe names | Notes |
 |---|---|
 | `ldk-selectbox-in` | the shared select dropdown's entrance animation |
+| `ldk-ai-badge-pulse` | the AI policy badge's breathing pulse (status hint) |
 | `ldk-drop-zone-in` | the drop zone's entrance animation |
 | `ldk-dropdown-card-in` | the dropdown card's entrance animation |
 | `ldk-floating-panel-in` | the floating panel's entrance animation |

@@ -9,6 +9,7 @@ import type { FileEntry } from "../../types/fileEntry";
 import type { FileChangeEvent } from "../../services/files/FileService";
 import type { WorkspaceFolder } from "../../services/layout/WorkspaceService";
 import type { SearchWireOptions, SearchWireResult } from "../../types/ipc/search";
+import type { RecentFolder } from "../../services/recentFolders/recentFolders";
 
 /** Workspace / filesystem / path / environment / search / encoding namespace surfaces — modeled after VS Code vscode.workspace + env + ExtensionContext */
 export interface WorkspaceAPI {
@@ -22,6 +23,12 @@ export interface WorkspaceAPI {
     removeFolder(path: string): Promise<void>;
     onDidChangeFolders(cb: () => void): () => void;
     onDidChangeActiveWorkspace(cb: (uri: string | null) => void): () => void;
+    /** 2026-11-24 (A3/F2): the host-owned "recent folders" read surface — already normalized (legacy bare-string shape tolerated),
+     *  deduped and capped to the display limit by `src/core/services/recentFolders`. Pool plugins ⛔ must not read
+     *  `pluginState.get("app","recentFolders")` cross-owner: the host key/shape may change and the read breaks silently. */
+    getRecentFolders(): Promise<RecentFolder[]>;
+    /** 2026-11-24: subscribe to recent-folder changes — the host pushes the normalized display list (not a raw pluginState payload). */
+    onDidChangeRecentFolders(cb: (folders: RecentFolder[]) => void): () => void;
   };
 
   /** Filesystem — plugin read/write (path validation is performed by the main process) */

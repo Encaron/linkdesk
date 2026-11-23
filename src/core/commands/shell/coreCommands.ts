@@ -491,6 +491,7 @@ import { registerAiBridgeCommands } from "./aiBridgeCommands"; // M4 AI#38：AI 
 import { registerAiPolicyCommands } from "./aiPolicyCommands"; // 2026-11-24：AI 权限档位（四段控件/风险表/切档）
 import { registerReadCommands } from "./readCommands"; // M2 AI#62：读数命令族（配置读／布局读／容器与视图读）
 import { registerStorageCommands } from "./storageCommands"; // 设置页「存储」——打开缓存目录按钮行＋只读路径行出口
+import { registerAppearanceAssetCommands } from "./appearanceAssetCommands"; // 2026-11-24 语义归属：appearance.pickImage（选图＋入库一步）
 import { registerOpenWithCommands } from "./openWithCommands"; // 「打开方式」壳命令——共享件 OpenWithPicker 的唯一调用面
 import { registerShellMenus } from "../input-bindings/shellMenus";
 import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
@@ -518,6 +519,7 @@ export function ensureCoreCommands(): void {
   registerReadCommands(); // M2 AI#62：读数命令族（配置读／布局读／容器与视图读——写侧 AI#21 的读侧补齐）
   registerStorageCommands(); // 设置页「存储」——打开缓存目录（action）＋生效路径读数（statusCommand）
   registerOpenWithCommands(); // 「打开方式」壳命令（共享件 OpenWithPicker 唯一调用面——转正后壳内唯一实现）
+  registerAppearanceAssetCommands(); // 2026-11-24 语义归属：appearance.pickImage（宿主选图＋入库）
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──

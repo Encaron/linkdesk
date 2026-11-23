@@ -120,6 +120,8 @@ export class IpcBridge {
     // E5#85：workspace——插件查询工作区信息
     IPC.workspace.getFolders,
     IPC.workspace.getActive,
+    // 2026-11-24（A3/F2）：最近文件夹读取面（宿主属主投影；插件不跨属主读 pluginState）
+    IPC.workspace.getRecentFolders,
     // E5.6#11.5-A：扩展 workspace——池插件完整工作区操作
     // （fileAssociation:getPluginFor 已随 E5.7#50 移 registry-handlers 主进程直答——不再代理到壳；
     //  decorations:getDecoration 已随 E5.7#60 整删——注册表池内化，池内直答零 IPC）

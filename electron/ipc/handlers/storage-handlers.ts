@@ -13,6 +13,7 @@
 import { ipcMain, shell } from 'electron';
 import { IPC } from '../channels.js';
 import { fileService } from '../../services/file-service.js';
+import { storageFilename } from '../../../src/core/services/configuration/storageFilename';
 
 // E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
 let _registered = false;
@@ -21,7 +22,9 @@ let _registered = false;
 async function resolveEffectiveCacheDir(): Promise<string> {
   const fallback = fileService.appDataDir();
   try {
-    const raw = await fileService.readTextFile(fileService.join(fallback, 'settings.json'));
+    const raw = await fileService.readTextFile(
+      fileService.join(fallback, storageFilename('settings')),
+    );
     const settings = JSON.parse(raw) as Record<string, unknown>;
     const v = settings['app.storage.cacheDir'];
     return typeof v === 'string' && v.trim() !== '' ? v : fallback;
@@ -47,5 +50,15 @@ export function registerStorageHandlers(): void {
     if (err) {
       throw new Error(`打开缓存目录失败: ${err}`);
     }
+  });
+
+  // 2026-11-24（V6/A1）：宿主存储键 → 落盘路径——池内设置插件「打开设置(JSON)」用。
+  // 文件名映射唯一源 = storageFilename（本进程与渲染侧 StorageService 同源）；
+  // 键收窄为小写短横线标识，⛔ 不接受路径分隔符/绝对路径（插件不能借它探任意文件）。
+  ipcMain.handle(IPC.storage.getFilePath, async (_event, key: unknown) => {
+    if (typeof key !== 'string' || !/^[a-z][a-z0-9-]*$/.test(key)) {
+      throw new Error(`getFilePath: 非法存储键——${String(key)}`);
+    }
+    return fileService.join(fileService.appDataDir(), storageFilename(key));
   });
 }

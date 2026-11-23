@@ -197,7 +197,18 @@
         //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。
         // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
         //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
-        "electron/ipc/runtime-dto-registry.ts"
+        "electron/ipc/runtime-dto-registry.ts",
+        // ── 2026-11-24 并行三线新增（语义归属 / AI 权限 / 安装确认）──
+        // 契约/公共面或字符串寻址渲染体：knip 静态图看不见（契约生成、渲染槽按声明字符串取件），
+        // 与上方 src/core/api/linkdesk-api/* 同型豁免——⛔ 不是死代码。
+        "src/core/api/linkdesk-api/install.ts",
+        "src/core/services/plugins/install/index.ts",
+        "src/core/services/plugins/IpcBridgeHandler/install.ts",
+        "src/pool/shared/plugin-install-confirm/index.tsx",
+        "src/components/shared/plugin-install-confirm/types.ts",
+        "src/pool/shared/fallback/FallbackFace.tsx",
+        "electron/services/aiBridge/policy/state.ts",
+        "src/App/config/appearanceApplier.ts"
       ],
       "ignoreDependencies": [
         // E6#16：pool dev 曾经 import.meta.glob（PluginComponent/PoolStatusBarComponent）把插件源码直引

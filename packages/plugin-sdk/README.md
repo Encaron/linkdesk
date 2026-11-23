@@ -18,24 +18,25 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**17 domain interfaces → 49 namespaces / 265 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**19 domain interfaces → 51 namespaces / 281 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
+| `aiPolicy` | 2 | `getState` `onChange` | AI 权限档位读面——只读：getState（快照）＋ onChange（变更后重读并回调） |
 | `commands` | 5 | `execute` `executeCommand` `registerCommand` `unregisterCommands` `getCommands` | Commands — modeled after VS Code vscode.commands |
 | `configuration` | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | Configuration — the new name — modeled after VS Code vscode… |
 | `config` | 15 | (deprecated alias → `configuration`) | @deprecated  — backward-compatibility alias |
 | `theme` | 11 | `getCurrent` `getAvailable` `apply` `listRecipes` `getActive` `getEffectiveTokens` `setRecipe` `setColorway` `resetAppearance` `resetMix` `getBaselineSeeds` | —— |
 | `language` | 5 | `getCurrent` `getAvailable` `set` `getInitial` `onChange` | —— |
-| `appearance` | 2 | `importImage` `revealStorage` | appearance assets — locally picked images are copied into m… |
-| `storage` ⚠️ | 2 | `revealCache` `cacheDir` | —— |
+| `appearance` | 3 | `importImage` `revealStorage` `pickImage` | appearance assets — locally picked images are copied into m… |
+| `storage` ⚠️ | 3 | `revealCache` `cacheDir` `getFilePath` | —— |
 | `tabs` | 9 | `create` `openOrFocus` `focus` `close` `focusBySourceId` `updateLabelBySourceId` `closeBySourceId` `onDidChangeActiveTab` `list` | —— |
 | `keybindings` | 13 | `getKeybindings` `getConflicts` `registerKeybinding` `saveUserKeybindings` `removeKeybindingForCommand` `resetKeybindingToDefault` `clearKeybindingForCommand` `findKeybindingForCommand` `setKeybindingCaptureActive` `keyboardEventToKeyString` `onChange` `syncToMainProcess`° `onForwardedEvent`° | —— |
 | `notifications` | 3 | `show` `list` `subscribe` | Notifications — plugins raise notifications ( the only noti… |
 | `toasts` | 1 | `show` | 轻 Toast（TransientToast）——2026-11-19 用户授权改判恢复的第二呈现面（同一 store… |
 | `menu` | 2 | `registerItems` `getItems` | Menus — declarative read/write for plugins |
 | `contextKey` | 1 | `set` | ContextKey — plugins SET state for the shell's when clauses… |
-| `dialog` | 5 | `confirm` `alert` `open` `openFile` `confirmContent` | Dialogs — confirm/alert/file selection |
+| `dialog` | 6 | `confirm` `alert` `open` `openFile` `save` `confirmContent` | Dialogs — confirm/alert/file selection |
 | `quickPick` | 1 | `show` | plugin quickPick picker — local bridge inside the pool (zer… |
 | `quickPickHost` | 6 | `registerHost` `onShow` `select` `highlight` `close` `itemAction` | QuickPick host rendering bridge — consumed by the pool's Qu… |
 | `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's Di… |
@@ -45,7 +46,7 @@ npm install -D @linkdesk/plugin-sdk
 | `p2p` | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.bro… |
 | `events` | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data p… |
 | `pluginState` | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persis… |
-| `workspace` | 8 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` | Workspace — injected by the pool preload (the shell side us… |
+| `workspace` | 10 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` `getRecentFolders` `onDidChangeRecentFolders` | Workspace — injected by the pool preload (the shell side us… |
 | `filesystem` | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | Filesystem — plugin read/write (path validation is performe… |
 | `path` | 6 | `appDataDir`° `normalize` `join` `basename` `dirname` `extname` | Path utilities — injected on both shell/pool ends (in-pool … |
 | `env` | 1 | `get` | Environment info — modeled after VS Code ExtensionContext |
@@ -57,7 +58,7 @@ npm install -D @linkdesk/plugin-sdk
 | `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP bridge — autocompletion/F12/diagnostics/rename |
 | `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main… |
 | `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side … |
-| `plugins` | 14 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° | Plugin discovery — injected on both ends: resolvePath exist… |
+| `plugins` | 22 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exist… |
 | `pluginManager` | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader funct… |
 | `licenses` | 3 | `verify` `list` `remove` | —— |
 | `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | Shell↔plugin communication relay — shell preload only |
@@ -71,6 +72,7 @@ npm install -D @linkdesk/plugin-sdk
 | `factorySlots` | 4 | `listRoles` `list` `getActive` `setActive` | —— |
 | `app` | 1 | `getVersion` | The app namespace — read-only product identity. The only ru… |
 | `update` | 1 | `getState` | The update namespace — read-only update state (for "About"-… |
+| `pluginAssets` | 1 | `getUrl` | —— |
 
 ⚠️ = optional namespace in the contract (injected on one side only): `storage` `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
 ° = member marked `?` in the contract: injected in one side's preload only (almost always shell-side). **Your plugin runs in the pool** — check for existence before calling.

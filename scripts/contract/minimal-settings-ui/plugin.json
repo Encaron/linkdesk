@@ -1,0 +1,30 @@
+{
+  "$schema": "../../../node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json",
+  "pluginId": "minimal-settings-ui",
+  "name": "Minimal Settings UI",
+  "version": "0.0.0",
+  "category": "productivity",
+  "description": "可替换性契约测试夹具（不发布）：只读配置声明、只调公开 API，零宿主字面量",
+  "author": "LinkDesk contract fixture",
+  "factoryRole": "settings",
+  "entry": "index.tsx",
+  "minAppVersion": "0.2.0",
+  "contributes": {
+    "viewsContainers": {
+      "settings": {
+        "title": "Settings",
+        "location": "auxiliarybar"
+      }
+    },
+    "views": {
+      "settings": [
+        {
+          "id": "settings",
+          "title": "Settings",
+          "render": "index.tsx",
+          "order": 0
+        }
+      ]
+    }
+  }
+}

@@ -36,7 +36,7 @@ export const IPC = {
     getAiBridge: 'app:getAiBridge', // { present, enabled, listening, endpoint, debugPort, ops, ledger… }（services/aiBridge/info.ts）
     // 2026-11-24（AI 安全 · 权限档位）：策略快照——main 直答（⛔ 不进 PROXY_CHANNELS，同 getAiBridge）。
     // 只出数据与 i18n key；终稿文案由壳命令 aiPolicy.getState 过 t() 产出。
-    getAiPolicy: 'app:getAiPolicy', // { mode, degraded, channelsEnabled, matrix, options, riskTable }（policy/state.ts）
+    getAiPolicy: 'app:getAiPolicy', // { mode, degraded, matrix, options, riskTable }（policy/state.ts）
   },
   bridge: {
     response: 'bridge:response',
@@ -69,6 +69,8 @@ export const IPC = {
     confirm: 'dialog:confirm',
     alert: 'dialog:alert',
     open: 'dialog:open',
+    // 2026-11-24（D12）：保存对话框——只选落盘路径（主进程 showSaveDialog；写入由调用方走 filesystem）
+    save: 'dialog:save',
     // E6#71c 富内容确认——插件自绘确认内容（content 视图声明寻址 + 不透明 payload）
     confirmContent: 'dialog:confirmContent',
     // 04「工作区导入导出-布局恢复断线」：选工作区文件并读回内容（主进程 showOpenDialog + readFile）。
@@ -267,17 +269,22 @@ export const IPC = {
   },
   // E5.8#50.11：外观资产——选择图片拷贝入库（受控来源——用户任选路径不能 file:// 直读）
   // E5.8#153：revealStorage——背景图齿轮「打开存储位置」（主进程解析 userData/appearance 并 openPath）
+  // 2026-11-24 语义归属：pickImage——选图＋入库一步，起始目录/过滤器由 hostAssets/appearance/defaults 决定
   appearance: {
     importImage: 'appearance:importImage',
     revealStorage: 'appearance:reveal-storage',
+    pickImage: 'appearance:pick-image',
   },
   // 「打开缓存目录」设置行（04-软件更新/已落地/设置页-打开缓存目录 3.3）——主进程解析**当前生效**
   // 缓存目录（settings.json 的 app.storage.cacheDir，空/缺 = userData 默认位；解析单点在 storage-handlers），
   // revealCache 先建目录再 shell.openPath（非模态资源管理器窗口）。main 直答，⛔ 不进 PROXY_CHANNELS
   // （双登记启动即抛 second handler——appearance 先例）。
+  // 2026-11-24（V6/A1）：getFilePath——宿主存储键 → 落盘路径（文件名映射唯一源 = storageFilename），
+  // 供池内设置插件打开 settings.json；插件⛔ 不再自拼 appDataDir + 文件名。
   storage: {
     revealCache: 'storage:reveal-cache',
     cacheDir: 'storage:cache-dir',
+    getFilePath: 'storage:get-file-path',
   },
   theme: { changed: 'theme:changed' },
   // E6#57.4（06-主软件更新 07 §二）：主软件更新状态机——命令四条（invoke）+ 事件两条（broadcast）。
@@ -329,6 +336,8 @@ export const IPC = {
     openFolder: 'workspace:openFolder',
     addFolder: 'workspace:addFolder',
     removeFolder: 'workspace:removeFolder',
+    // 2026-11-24（A3/F2）：最近文件夹读取面——宿主属主 `app` 的只读投影（插件⛔ 跨属主读 pluginState）
+    getRecentFolders: 'workspace:getRecentFolders',
     // E6#46b：intake 文件投递（主进程 → 壳直发，非 plugin:push 分发）——命令行/文件关联/右键
     // 三源汇入 launch-args 后的文件半；载荷 { paths: string[] }。壳侧经 preload 缓冲回放订阅。
     openPath: 'workspace:openPath',

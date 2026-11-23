@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "note": "插件宿主知识门禁（scripts/check-plugin-host-knowledge.mjs）豁免账本。每条 = 旧壳 fallback / 壳暂无对应面；until 是**删除期限**（YYYY-MM-DD），过期即红——⛔ 不许续期当挡箭牌。owner = 负责迁走的线/仓。",
+  "entries": [
+    {
+      "repo": "settings",
+      "rule": "K1",
+      "file": "src/views/SettingsView.tsx",
+      "reason": "旧壳无 storage.getFilePath ⇒ 「打开设置(JSON)」兜底仍拼 appDataDir + settings.json；新壳已走宿主面。到期 = minAppVersion 抬到含 storage.getFilePath 的壳版本后删兜底。",
+      "owner": "settings（线 2）",
+      "until": "2027-06-30"
+    },
+    {
+      "repo": "settings",
+      "rule": "K10",
+      "file": "src/views/SettingsView.tsx",
+      "reason": "同上兜底里的 settings.json 文件名 + 标签文案；新壳路径由 storage.getFilePath 给出。到期 = 删兜底分支。",
+      "owner": "settings（线 2）",
+      "until": "2027-06-30"
+    },
+    {
+      "repo": "settings",
+      "rule": "K2",
+      "file": "src/views/SettingsView/renderControl/sharedAdapters.tsx",
+      "reason": "旧壳无 appearance.pickImage ⇒ 选图兜底仍传 defaultPathKind 令牌；新壳走 pickImage({domain,target})。到期 = minAppVersion 抬到含 pickImage 的壳版本后删。",
+      "owner": "settings（线 2）",
+      "until": "2027-06-30"
+    },
+    {
+      "repo": "marketplace",
+      "rule": "K9",
+      "file": "src/views/detail/DetailView/useDetailPackage.ts",
+      "reason": "旧壳无 pluginAssets.getUrl ⇒ 包内媒体基址兜底自拼 linkdesk://；新壳走 pluginAssets.getUrl。到期 = 市场 minAppVersion 抬到含 pluginAssets 的壳版本后删。",
+      "owner": "marketplace（线 3）",
+      "until": "2027-06-30"
+    },
+    {
+      "repo": "marketplace",
+      "rule": "K10",
+      "file": "src/views/store/sources/AddSourceModal.tsx",
+      "reason": "**临时**：M1 patch（docs/04-软件更新/待抉择池/插件语义归属-设置与生态/marketplace-1.4.26.patch）待线 3 应用；应用后本条即删（文件名改为 MANIFEST_FILE 常量，不再命中）。",
+      "owner": "marketplace（线 3）",
+      "until": "2026-12-31"
+    }
+  ]
+}

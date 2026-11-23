@@ -5,11 +5,13 @@
  * 提供文件/文件夹选择对话框。
  */
 
-import { dialog, ipcMain, type OpenDialogOptions } from 'electron';
+import { dialog, ipcMain, type OpenDialogOptions, type SaveDialogOptions } from 'electron';
 import * as fs from 'node:fs';
 import { IPC } from '../channels.js';
 // E5.7#97：DialogOpenOptions 归口 src/core/types/ipc/dialogs.ts（与 linkdesk-api 同源——原双份手工对齐）
-import type { DialogOpenOptions } from '../../../src/core/types/ipc/dialogs';
+import type { DialogOpenOptions, DialogSaveOptions } from '../../../src/core/types/ipc/dialogs';
+// 2026-11-24 语义归属：起始目录/过滤器的唯一语义源（与 appearance.pickImage 同源）
+import { getAppearanceDefaults } from '../../services/hostAssets/appearance';
 // E5.8#62 审计#4：对话框父窗绑定——sender 反查宿主窗传 parent（脱出窗选图 modal 到脱出窗）
 import type { WindowManager } from '../../windows/window-manager.js';
 import { fileService } from '../../services/file-service.js';
@@ -37,9 +39,11 @@ export function registerDialogHandlers(windowManager?: WindowManager): void {
       properties: options?.directory ? ['openDirectory'] : ['openFile'],
     };
     // 2026-11-23：已知文件夹令牌 → 主进程解析初始目录（插件只给令牌，不给绝对路径）。
-    // 背景图选择默认落在受控缓存 userData/appearance，用户可直接复用已入库的图。
+    // 2026-11-24 语义归属：令牌映射的唯一源迁至 hostAssets/appearance/defaults（与 appearance.pickImage 同源）。
+    // ⚠️ 兼容期：`defaultPathKind` 是旧路（设置插件 0.2.60 壳仍会传）；新路 = appearance.pickImage({domain,target})。
+    // 到期条件 = 设置插件 minAppVersion 抬到含 pickImage 的壳版本后，本分支与契约字段一并删（K2 豁免账本登记）。
     if (options?.defaultPathKind === 'appearance') {
-      const dir = fileService.join(fileService.appDataDir(), 'appearance');
+      const dir = getAppearanceDefaults(fileService.appDataDir()).dir;
       await fileService.createDir(dir);
       opts.defaultPath = dir;
     }
@@ -47,6 +51,23 @@ export function registerDialogHandlers(windowManager?: WindowManager): void {
       ? await dialog.showOpenDialog(hostWindow, opts)
       : await dialog.showOpenDialog(opts);
     return result.canceled ? null : result.filePaths[0] ?? null;
+  });
+
+  // 2026-11-24（D12）：保存对话框——只选落盘路径，壳不代写内容（插件随后走 filesystem.writeTextFile）。
+  // 起始目录/覆盖确认 = OS 原生（defaultName 只给建议名）；取消 → null。
+  // 为什么归壳：串口已自造 showSaveFilePicker + <a download> 兜底，第二只插件必然再抄一份（判据 A）。
+  ipcMain.handle(IPC.dialog.save, async (event, options?: DialogSaveOptions) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const hostWindow = _windowManager?.getHostWindow(windowId) ?? undefined;
+    const opts: SaveDialogOptions = {
+      title: options?.title ?? '保存文件',
+      filters: options?.filters,
+      defaultPath: options?.defaultName,
+    };
+    const result = hostWindow
+      ? await dialog.showSaveDialog(hostWindow, opts)
+      : await dialog.showSaveDialog(opts);
+    return result.canceled ? null : result.filePath ?? null;
   });
 
   // 04「工作区导入导出-布局恢复断线」：选工作区文件 + 读回文本——**一条通道做完选与读**。

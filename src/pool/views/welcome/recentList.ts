@@ -9,10 +9,17 @@
  *  §七#1 拍板：文件夹原本「存10显5」、视图「存10显10」——同一概念两种容量，归一为都显 5。
  */
 
-export interface RecentFolder {
-  path: string;
-  name: string;
-}
+/** 2026-11-24 A3：类型与常量迁宿主服务（唯一源）——本文件 re-export 保住既有 import 路径。 */
+import type { RecentFolder } from "../../../core/services/recentFolders/recentFolders";
+import { RECENT_STORE_CAP } from "../../../core/services/recentFolders/recentFolders";
+
+export type { RecentFolder } from "../../../core/services/recentFolders/recentFolders";
+export {
+  RECENT_DISPLAY_CAP,
+  RECENT_FOLDERS_KEY,
+  RECENT_OWNER as STATE_OWNER,
+  RECENT_STORE_CAP,
+} from "../../../core/services/recentFolders/recentFolders";
 
 export interface RecentEntry {
   pluginId: string;
@@ -20,14 +27,6 @@ export interface RecentEntry {
   workspaceName?: string;
 }
 
-/** 存量上限——两列表同值 */
-export const RECENT_STORE_CAP = 10;
-/** 显示上限——两列表同值（§七#1） */
-export const RECENT_DISPLAY_CAP = 5;
-
-/** pluginState 归属与键——全仓唯一读写点仍在本组件（键名照旧，别改：改了等于把用户已有记录清零） */
-export const STATE_OWNER = "app";
-export const RECENT_FOLDERS_KEY = "recentFolders";
 export const RECENT_VIEWS_KEY = "recentViews";
 /** 通知来源桶（`app.<域>` 约定）——轻提示只借它分桶，不进铃铛面板 */
 export const WELCOME_SOURCE = "app.welcome";

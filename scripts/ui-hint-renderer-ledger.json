@@ -80,6 +80,11 @@
       "composes": [],
       "note": "未知 hint 的只读降级（两个原生元素 ＋ 一句说明），是**降级契约**不是控件 ⇒ 无共享件可接（判据 T-C）。"
     },
+    "AiPolicyControl": {
+      "file": "src/views/SettingsView/renderControl/aiPolicyControl.tsx",
+      "composes": ["AiPolicyPicker"],
+      "note": "接线件：aiPolicy.getState/setMode 经壳命令注入，渲染体是共享 AiPolicyPicker（插件零档位字面量/零风险判定）。"
+    },
     "FontToneControl": {
       "file": "src/views/SettingsView/renderControl/toneControls.tsx",
       "composes": ["SegmentedRadio", "SegmentPreviewText"],

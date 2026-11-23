@@ -10,6 +10,7 @@ import {
   openFolder, addFolder, removeFolder, onDidChangeActiveWorkspace,
 } from "../../layout/WorkspaceService"; // E5#85 + E5.6#11.5-A
 import { ViewContainerService, type ViewDescriptor } from "../../layout/ViewContainerService"; // E5.6#19e
+import { readRecentFolders } from "../../recentFolders"; // 2026-11-24（A3/F2）：最近文件夹宿主读取面
 import type { LinkDeskAPI } from "../../../api/linkdesk-api";
 
 let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区变更广播
@@ -73,6 +74,9 @@ export async function handleWorkspaceChannel(channel: string, args: unknown[]): 
       return getWorkspaceFolders();
     case "workspace:getActive":
       return getActiveWorkspace();
+    // 2026-11-24（A3/F2）：最近文件夹——宿主属主 `app` 的只读投影（归一化/去重/截断在 recentFolders 服务）
+    case "workspace:getRecentFolders":
+      return readRecentFolders();
     // ── E5.6#11.5-A：扩展 workspace——池插件写工作区操作 ──
     case "workspace:setActive": {
       const [uri] = args as [string];

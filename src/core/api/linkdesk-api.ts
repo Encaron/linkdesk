@@ -40,13 +40,14 @@ import type { DataAPI } from "./linkdesk-api/data";
 import type { WorkspaceAPI } from "./linkdesk-api/workspace";
 import type { EditorAPI } from "./linkdesk-api/editor";
 import type { PluginsAPI } from "./linkdesk-api/plugins";
+import type { PluginAssetsAPI } from "./linkdesk-api/pluginAssets"; // 2026-11-24（A2/M3）：插件包内资产 URL 宿主面
 import type { LicensesAPI } from "./linkdesk-api/licenses"; // R4-1.3（I21/#24 壳侧）：许可验签与权益命名空间（第 17 域）
 import type { ShellAPI } from "./linkdesk-api/shell";
 import type { PanelAPI } from "./linkdesk-api/panel"; // E5.8#34.5: bottom panel namespace
 import type { SettingsAPI } from "./linkdesk-api/settings"; // E5.8#41.12: settings suite namespace (enumeration/switching)
 import type { FactorySlotsAPI } from "./linkdesk-api/factory-slots"; // E5.8#41.14: generic system-slot enumeration surface (slot-agnostic)
 import type { AppAPI } from "./linkdesk-api/app"; // E6#57.2a: app domain (main-software product identity — read-only getVersion)
-import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8: update domain (read-only main-software update state — write commands stay out of the contract)
+import type { UpdateAPI } from "./linkdesk-api/update";
 import type { AiPolicyAPI } from "./linkdesk-api/aiPolicy"; // 2026-11-24: AI permission-tier read surface (renderers/AI)
 
 /**
@@ -59,7 +60,7 @@ import type { AiPolicyAPI } from "./linkdesk-api/aiPolicy"; // 2026-11-24: AI pe
  * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
  */
 export type { AiPolicyAPI };
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI & AiPolicyAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI & AiPolicyAPI & PluginAssetsAPI;
 
 // ── Standalone type interface re-exports (types.ts base) ──
 
@@ -78,6 +79,20 @@ export type {
   PluginLocalInstallReason,
   PluginInfoEntry,
   PluginListSubset,
+  // P1 壳托管安装/更新确认（2026-11-24 拍板）——市场提交的请求形状、壳算出的计划、两条开关、信任清单
+  PluginSourceIdentity,
+  PluginInstallDisplay,
+  PluginInstallRequest,
+  PluginConfirmReason,
+  PluginConfirmItem,
+  PluginConfirmSummaryRow,
+  PluginConfirmGroup,
+  PluginConfirmRejected,
+  PluginConfirmPlan,
+  PluginUpdatePolicy,
+  PluginSourceTrustEntry,
+  PluginInstallConfirmResult,
+  PluginUpdateBatchResult,
   EnvInfo,
   LicenseKeyPayload,
   LicenseVerifyResult,

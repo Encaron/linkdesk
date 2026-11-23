@@ -22,11 +22,12 @@ import { registerLicenseHandlers } from './ipc/handlers/license-handlers.js'; //
 import { registerProductHandlers } from './ipc/handlers/product-handlers.js'; // E6#57.3b：产品身份（app:getVersion/getProductInfo）
 import { registerManualHandlers } from './ipc/handlers/manual-handlers.js'; // M3 AI#16：AI 操作手册（app:getAiManual）
 import { registerAiBridgeHandlers } from './ipc/handlers/ai-bridge-handlers.js'; // M4 AI#38.4：AI 接入状态（app:getAiBridge）
+import { registerAiPolicyHandlers } from './ipc/handlers/aiPolicy-handlers.js'; // 2026-11-24：AI 权限档位快照（app:getAiPolicy）
 import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
 import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { scheduleOsAssociationsSync } from './services/os-associations-sync.js'; // T6（第 5 波）：插件声明 → OS「打开方式」候选
 import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
-import { registerAppearanceHandlers } from './ipc/handlers/appearance-handlers.js'; // E5.8#50.11：外观资产
+import { registerHostAssetsHandlers } from './ipc/handlers/hostAssets-handlers.js'; // 2026-11-24 语义归属：选图/入库/开目录（hostAssets 域）
 import { registerStorageHandlers } from './ipc/handlers/storage-handlers.js'; // 「打开缓存目录」设置行（主进程解析生效缓存目录并 openPath）
 import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
@@ -143,6 +144,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   registerProductHandlers(); // E6#57.3b：产品身份 main 直答（app:getVersion / app:getProductInfo）
   registerManualHandlers();  // M3 AI#16：AI 操作手册 main 直答（app:getAiManual，壳内私有）
   registerAiBridgeHandlers();  // M4 AI#38.4：AI 接入状态 main 直答（app:getAiBridge，壳内私有）
+  registerAiPolicyHandlers();  // 2026-11-24：AI 权限档位 main 直答（app:getAiPolicy，壳内私有）
   registerClipboardHandlers();
   registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   // T6（第 5 波）：装配好 OS 关联同步依赖后**显式补一次启动同步**——启动路径上
@@ -151,7 +153,6 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   // 都只能靠这一次主动跑收掉。去抖 + 幂等，重复调用（壳崩重建）无副作用。
   scheduleOsAssociationsSync('startup');
   registerHotExitHandlers();   // E5.7#38
-  registerAppearanceHandlers(); // E5.8#50.11：外观资产——选择图片拷贝入库
   registerStorageHandlers(); // 「打开缓存目录」设置行——生效缓存目录读数 + 先建目录再 openPath
 
   // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）
@@ -176,6 +177,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   registerFileHandlers(windowManager);              // E5#80
   registerPluginInstallHandlers();                  // E6#11/#13（1.2-5）：装卸更 fs/net 段——无窗引用（进度走 IpcBridge.active）
   registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入
+  registerHostAssetsHandlers(windowManager);        // 2026-11-24 语义归属：选图 modal 到宿主窗（须在 windowManager 创建后注入）
   registerPoolHandlers(windowManager, win);  // E5.6#8e
   registerUpdateHandlers();                  // E6#57.8b：update.* 命令四条（服务在 whenReady 序列里已装配）
 

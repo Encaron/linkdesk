@@ -8,10 +8,15 @@ import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import { listenDirect, type EventSystemApi } from '../ipc/event-system';
 import type { WorkspaceFolder } from '../../src/core/services/layout/WorkspaceService';
-import type { WorkspaceActiveChangedPayload, TabActivatedPayload } from '../../src/core/types/ipc/events';
-import type { DialogOpenOptions, DialogContentOpenOptions } from '../../src/core/types/ipc/dialogs';
+import type { WorkspaceActiveChangedPayload, TabActivatedPayload, PluginStateChangedPayload } from '../../src/core/types/ipc/events';
+import type { RecentFolder } from '../../src/core/services/recentFolders/recentFolders'; // A3：宿主读取面返回类型（type-only）
+import type { DialogOpenOptions, DialogContentOpenOptions, DialogSaveOptions } from '../../src/core/types/ipc/dialogs';
 import type { TabsSnapshot } from '../../src/core/api/linkdesk-api/tabs'; // M1 AI#3：标签清单读取面返回类型
 import type { NotifLayout } from '../../src/core/types/pool/poolLayout'; // M1 AI#1：通知读取面返回类型
+
+/** 宿主属主命名空间（正典 = src/core/services/recentFolders；preload 不引 core 运行时）——大写常量，⛔ 裸字符串比较 */
+const HOST_RECENT_OWNER = 'app';
+const HOST_RECENT_FOLDERS_KEY = 'recentFolders';
 
 /** workspace 命名空间——池插件完整工作区操作（E5.6#11.5a 扩展） */
 export function buildWorkspace(events: EventSystemApi) {
@@ -26,6 +31,21 @@ export function buildWorkspace(events: EventSystemApi) {
     onDidChangeActiveWorkspace: (cb: (uri: string | null) => void) => {
       return events.on('workspace:activeChanged', (d: WorkspaceActiveChangedPayload) => {
         try { cb(d?.uri ?? null); } catch { /* contextBridge 回调静默失败 */ }
+      });
+    },
+    // 2026-11-24（A3/F2）：宿主属主 `app` 的最近文件夹只读投影——插件⛔ 跨属主读 pluginState。
+    // 变更通知复用 plugin-state:changed（属主/键由本 preload 认识——插件只拿到归一化列表）。
+    getRecentFolders: (): Promise<RecentFolder[]> =>
+      ipcRenderer.invoke(IPC.workspace.getRecentFolders),
+    onDidChangeRecentFolders: (cb: (folders: RecentFolder[]) => void) => {
+      return events.on('plugin-state:changed', (d: PluginStateChangedPayload) => {
+        // 属主/键 = 壳自己的状态（正典 src/core/services/recentFolders；preload 不引 core 运行时，
+        // 这里只做事件过滤，插件拿到的永远是归一化后的列表）
+        if (d?.pluginId !== HOST_RECENT_OWNER || d?.key !== HOST_RECENT_FOLDERS_KEY) return;
+        void ipcRenderer
+          .invoke(IPC.workspace.getRecentFolders)
+          .then((folders) => { try { cb(folders as RecentFolder[]); } catch { /* 回调静默失败 */ } })
+          .catch(() => { /* 读失败 = 下次变更再试 */ });
       });
     },
   };
@@ -163,6 +183,9 @@ export function buildDialog() {
       filters?: { name: string; extensions: string[] }[];
       directory?: boolean;
     }): Promise<string | null> => ipcRenderer.invoke(IPC.dialog.open, opts),
+    // 2026-11-24（D12）：保存对话框——只选路径（取消 → null）；写入由插件走 filesystem
+    save: (opts?: DialogSaveOptions): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.dialog.save, opts),
     // E6#71c 富内容确认——内容 = 插件自绘视图（content 视图声明寻址 + 不透明 payload）。
     // title/message 兜底——content 视图解析失败时壳回落纯文字确认（弹窗仍出，不静默死）。
     confirmContent: (opts: DialogContentOpenOptions): Promise<boolean> =>

@@ -235,7 +235,7 @@
         "sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$",
-          "description": "SHA-256 of this version's package (lowercase hex). The host verifies it after download and before extraction; a mismatch deletes the package and rejects the install. Optional for legacy entries (shown as unverified)."
+          "description": "SHA-256 of this version's package (lowercase hex). The host verifies it after download and before extraction; a mismatch deletes the package and rejects the install."
         }
       }
     },

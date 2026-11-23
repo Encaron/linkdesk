@@ -6,6 +6,20 @@
 
 import type { LinkDeskTheme, LinkDeskLanguage, RecipeMeta } from "./types";
 
+/** Options for `appearance.pickImage` — the caller forwards the schema-declared `assetDomain` / `pickTarget` verbatim (2026-11-24 semantic ownership).
+ *  ⛔ No path, no directory token, no domain literal: start directory / filters / copy-into-store are host-owned. */
+export interface AppearancePickOptions {
+  /** Host asset domain registry key (e.g. "appearance") — declared by the config schema (`assetDomain`) */
+  domain: string;
+  /** Target slot inside the domain (e.g. "app" / "zone") — declared by the config schema (`pickTarget`); shares the domain's directory and filters */
+  target: string;
+}
+
+/** Result of `appearance.pickImage` — a canceled dialog is `{picked:false}`, not an error. */
+export type AppearancePickResult =
+  | { picked: true; url: string; name: string }
+  | { picked: false };
+
 /** Theme + language + appearance asset namespace surfaces — modeled after the VS Code appearance surface */
 export interface AppearanceAPI {
   theme: {
@@ -55,5 +69,9 @@ export interface AppearanceAPI {
     /** E5.8#153: open the appearance storage directory (userData/appearance) — the main process resolves the path and uses shell.openPath to open the file explorer
      *  at the directory contents (not highlighting a single file); a missing directory is created too (opening reveals the storage location); an openPath failure throws fail-loud. */
     revealStorage(): Promise<void>;
+    /** 2026-11-24 semantic ownership: pick + import in one host action. The start directory, extension whitelist and copy-into-store are decided by the main process
+     *  (`electron/services/hostAssets/appearance/defaults.ts` — the single semantic source); the caller only forwards the schema-declared `{domain,target}`.
+     *  Returns the controlled URL (`linkdesk-userdata://…`) or `{picked:false}` on cancel. Replacing the UI plugin leaves this behavior intact. */
+    pickImage(options: AppearancePickOptions): Promise<AppearancePickResult>;
   };
 }

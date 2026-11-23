@@ -140,6 +140,23 @@ export interface ConfigurationProperty {
    *  false/缺省 = 不透明、输出 hex（旧键零变化）。只对 "color" 渲染有意义。
    *  消费方 = 设置插件 SettingRow → ColorPicker `allowAlpha`（壳只透传声明，不认识具体键）。 */
   allowAlpha?: boolean;
+  /** 🆕 2026-11-24 语义归属：宿主资产域（registry key，如 "appearance"）——选图/导入等宿主动作的**域来源**。
+   *  UI 只把声明值原样传给 `appearance.pickImage`，⛔ 不自持域名字符串（换掉 UI 插件，起始目录/过滤器仍在）。
+   *  可选字段：不声明 = 普通文本框/文件框，无资产域语义（零侵入）。 */
+  assetDomain?: string;
+  /** 🆕 2026-11-24：资产落点语义（如 "app"/"zone"）——同一域内不同目标槽共用目录/过滤器，仅决定写回哪个配置键。
+   *  可选字段：不声明 = 域内无目标区分。 */
+  pickTarget?: string;
+  /** 🆕 2026-11-24：条件说明——条件 `{key,value}` 成立时用本文字替换 `description`。
+   *  示例：`app.themeColor` 在 `app.appearanceMode="custom"` 下换为「颜色域来源」说明。
+   *  UI 按声明渲染；⛔ 不再在渲染层写 `key === "app.themeColor"` 特判。 */
+  descriptionWhen?: { key: string; value: unknown; description: string };
+  /** 🆕 2026-11-24：来源徽标激活条件——`sourceKey` 指向的域来源生效判定（如 appearanceMode="custom"）。
+   *  无本声明 = 该槽不派生「混搭」来源；UI ⛔ 不自持 `"custom"` 字面量。 */
+  sourceActiveWhen?: { key: string; value: unknown };
+  /** 🆕 2026-11-24：`sourceKey` 的「跟随主题」哨兵值（如 "followTheme"）——来源徽标判 mix 的第二条件。
+   *  UI 读声明；⛔ 不自持哨兵字面量。 */
+  sourceFollowValue?: string;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

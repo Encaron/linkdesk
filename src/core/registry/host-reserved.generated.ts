@@ -48,7 +48,6 @@ export const HOST_RESERVED_CONFIG_KEYS: readonly string[] = [
   "app.mixBackground",
   "app.mixFont",
   "app.mixMode",
-  "app.mixReset",
   "app.osIntegration.dirMenu",
   "app.osIntegration.fileAssoc",
   "app.osIntegration.fileMenu",

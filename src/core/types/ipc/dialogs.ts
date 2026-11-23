@@ -33,3 +33,12 @@ export interface DialogContentOpenOptions {
   /** Opaque payload—structured-cloned over IPC; the shell does not interpret it; the content view reads it via dialogHost.current() */
   payload?: unknown;
 }
+
+/** 2026-11-24（D12）：保存对话框入参——只选**落盘路径**，壳不代写内容（写入由调用方走 filesystem）。
+ *  起始目录 / 覆盖确认由 OS 原生对话框决定；插件⛔ 不再自造 `showSaveFilePicker` / `<a download>` 第二套。 */
+export interface DialogSaveOptions {
+  title?: string;
+  filters?: { name: string; extensions: string[] }[];
+  /** 建议文件名（可含扩展名；OS 对话框据此给出落点） */
+  defaultName?: string;
+}

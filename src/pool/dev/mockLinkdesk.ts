@@ -294,6 +294,9 @@ export function installMockLinkdesk(): void {
       removeFolder: makeAsyncLogger("workspace.removeFolder"),
       onDidChangeFolders: () => () => {},
       onDidChangeActiveWorkspace: () => () => {},
+      // 2026-11-24（A3）：预览 mock 无宿主状态——空表 + no-op 订阅
+      getRecentFolders: async () => [],
+      onDidChangeRecentFolders: () => () => {},
     },
     pluginState: {
       get: async () => undefined,

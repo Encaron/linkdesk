@@ -9,8 +9,9 @@
 import { ipcRenderer, webUtils } from 'electron';
 import { IPC } from '../ipc/channels';
 import { type EventSystemApi } from '../ipc/event-system';
+import { getPluginAssetPath } from '../../src/core/utils/path/pluginAssetPath'; // 2026-11-24（A2/M3）：资产 URL 形状的唯一实现
 import type { PluginStateChangedPayload } from '../../src/core/types/ipc/events';
-import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginFolderKind, PluginCompatibilityRequest } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#78：+ 插件目录落点；E6#117：+ 兼容读数请求
+import type { MenuItemDescriptor, PluginInstallRequestOpts, PluginFolderKind, PluginCompatibilityRequest, PluginInstallRequest, PluginUpdatePolicy } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面；E6#78：+ 插件目录落点；E6#117：+ 兼容读数请求
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormalization.js';
 
@@ -69,6 +70,20 @@ export function buildPlugins() {
     resolveEntry: (id: string) => ipcRenderer.invoke(IPC.plugins.resolveEntry, id),
     // E6#117：兼容读数（只读 invoke——main 直答，与壳 preload 同面同通道；市场插件格 5 消费）
     getCompatibility: (req: PluginCompatibilityRequest) => ipcRenderer.invoke(IPC.plugins.getCompatibility, req),
+    // ── P1 壳托管安装/更新确认（2026-11-24 拍板 D1/D2/D3/D5/D8）──
+    // 远端（市场/AI）唯一合法安装入口：壳算 ConfirmPlan → 出确认卡 → 用户确认 → 壳内签票 → 执行。
+    // 旧链 pluginManager.install/update 的**远程来源**在壳分发层一律拒（no-token）——本命名空间不是可选装饰。
+    requestInstall: (req: PluginInstallRequest) => ipcRenderer.invoke(IPC.plugins.call, 'requestInstall', req),
+    requestUpdateBatch: (reqs: PluginInstallRequest[]) => ipcRenderer.invoke(IPC.plugins.call, 'requestUpdateBatch', reqs),
+    // 只读预览（不改状态、不入队）——确认卡内改设置后原地重算；AI 也能先看「这次会问哪几个」
+    previewUpdatePlan: (reqs: PluginInstallRequest[], opts?: { forceAsk?: boolean }) =>
+      ipcRenderer.invoke(IPC.plugins.call, 'previewUpdatePlan', reqs, opts),
+    getUpdatePolicy: () => ipcRenderer.invoke(IPC.plugins.call, 'getUpdatePolicy'),
+    setUpdatePolicy: (patch: Partial<PluginUpdatePolicy>) => ipcRenderer.invoke(IPC.plugins.call, 'setUpdatePolicy', patch),
+    listSourceTrust: () => ipcRenderer.invoke(IPC.plugins.call, 'listSourceTrust'),
+    trustSource: (entry: { sourceId: string; url: string; repo?: string; publisher?: string }) =>
+      ipcRenderer.invoke(IPC.plugins.call, 'trustSource', entry),
+    untrustSource: (sourceId: string) => ipcRenderer.invoke(IPC.plugins.call, 'untrustSource', sourceId),
   };
   /* jscpd:ignore-end */
 }
@@ -99,6 +114,26 @@ export function buildAppearance() {
     importImage: (sourcePath: string) => ipcRenderer.invoke(IPC.appearance.importImage, sourcePath),
     // E5.8#153：背景图齿轮「打开存储位置」——主进程解析 userData/appearance 并 openPath（池内无路径知识）
     revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
+    // 2026-11-24 语义归属：选图＋入库一步——插件只传 schema 声明的 {domain,target}（起始目录/过滤器全在壳）
+    pickImage: (options: { domain: string; target: string }) =>
+      ipcRenderer.invoke(IPC.appearance.pickImage, options),
+  };
+}
+
+/** storage 命名空间（池半边）——宿主存储键 → 落盘路径（设置插件打开 settings.json 用）。
+ *  revealCache/cacheDir 是壳侧命令面，池不注入（PoolExposed 只 Pick getFilePath）。 */
+export function buildStorage() {
+  return {
+    getFilePath: (key: string) => ipcRenderer.invoke(IPC.storage.getFilePath, key),
+  };
+}
+
+/** pluginAssets 命名空间（2026-11-24 A2/M3）：插件包内资产 URL。
+ *  🔴 唯一实现 = `getPluginAssetPath`（与主进程协议解析同源）——插件⛔ 自行拼 `linkdesk://${id}/…`。 */
+export function buildPluginAssets() {
+  return {
+    getUrl: (pluginId: string, relativePath: string = "") =>
+      getPluginAssetPath(pluginId, relativePath),
   };
 }
 

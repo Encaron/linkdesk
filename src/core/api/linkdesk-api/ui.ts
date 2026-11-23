@@ -5,7 +5,7 @@
  */
 
 import type { MenuItemDescriptor, NotificationHandle, PluginToastAction, ToastHandle, ToastShowOptions } from "./types";
-import type { DialogOpenOptions, DialogContentOpenOptions } from "../../types/ipc/dialogs"; // E6#71c rich-content confirm parameters
+import type { DialogOpenOptions, DialogContentOpenOptions, DialogSaveOptions } from "../../types/ipc/dialogs"; // E6#71c rich-content confirm parameters; 2026-11-24 D12 save dialog
 import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../../types/pool/poolQuickPick";
 import type { PoolDialogData, PoolPendingDialog } from "../../types/pool/poolDialog";
@@ -106,6 +106,10 @@ export interface UiAPI {
     open(opts?: DialogOpenOptions): Promise<string | null>;
     /** Opens the file picker — returns the user-selected path; cancel → null. Security is controlled by the main process */
     openFile(opts?: DialogOpenOptions): Promise<string | null>;
+    /** 2026-11-24 (D12): save dialog — returns the chosen absolute path, or null on cancel.
+     *  One host action for "where to save" (start directory / overwrite confirm are OS-native); the plugin then writes via `filesystem.writeTextFile`.
+     *  ⛔ A plugin must not build a second save path (`showSaveFilePicker` / `<a download>`) — the second consumer always copies it. */
+    save(opts?: DialogSaveOptions): Promise<string | null>;
     /** E6#71c: rich-content confirm — the dialog's content = a plugin self-drawn view (content view declarative addressing + opaque payload).
      *  Dialog mechanics match confirm (centered/mask/Esc/focus lock/click-mask-to-cancel); content layout and buttons are drawn by the plugin view
      *  (Modeled after VS Code's "the dialog is the shell's, the content is the plugin's"). title/message as fallback — if the content view fails to resolve,

@@ -25,6 +25,8 @@ import {
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
 import { IconRegistry, iconThemeEnumOptions, ICON_THEME_FALLBACK_ID } from "../../core/registry/appearance/IconRegistry";
+// 2026-11-24 语义归属：来源徽标哨兵「跟随主题」= 共享件唯一常量（声明驱动，插件不持字面量）
+import { MIX_FOLLOW_THEME_SENTINEL } from "../../components/shared/settings-hints/settingsHints";
 import {
   getConfigurationValue, resetConfigurationValue, resetConfigurationValueBatch,
 } from "../../core/services/configuration/ConfigurationService";
@@ -121,6 +123,12 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         resetsToTheme: true,
         title: t("配色"),
         description: t("配色变体——活动主题配方的可用配色"),
+        // 2026-11-24 语义归属（V3）：条件说明由声明驱动——设置插件不再写 `key === "app.themeColor"` 特判
+        descriptionWhen: {
+          key: "app.appearanceMode",
+          value: "custom",
+          description: t("颜色域来源——指定主题配方的配色变体（选「跟随主题」= 整体配方配色）"),
+        },
         // 枚举仍由 applyRecipeForConfig 每次应用同步（第三方设置 UI 读取 + setConfigurationValue 校验）；壳 UI 走 optionsFrom 动态取。
         uiHint: "select",
         optionsFrom: "theme.colorways",
@@ -372,7 +380,13 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         title: t("背景图片"),
         description: t("窗口背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image", // E5.8#50.11：专属「选择图片」控件（选图→拷贝入库→受控路径持久化）
+        // 2026-11-24 语义归属（V1/V5）：域/落点由宿主声明，选图走 appearance.pickImage（插件不传路径/域字符串）
+        assetDomain: "appearance",
+        pickTarget: "app",
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+        // 2026-11-24 语义归属（V4）：激活条件与哨兵由声明给出——设置插件不再持 "custom"/"followTheme" 字面量
+        sourceActiveWhen: { key: "app.appearanceMode", value: "custom" },
+        sourceFollowValue: MIX_FOLLOW_THEME_SENTINEL,
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },
@@ -394,6 +408,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+        // 2026-11-24 语义归属（V4）：激活条件与哨兵由声明给出——设置插件不再持 "custom"/"followTheme" 字面量
+        sourceActiveWhen: { key: "app.appearanceMode", value: "custom" },
+        sourceFollowValue: MIX_FOLLOW_THEME_SENTINEL,
         effectiveToken: "bg-opacity", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -411,6 +428,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "slider",
         stepper: true, // 滑杆件能力扩展：壳外观滑杆键 = 细调步进第一批使用者（−/＋ 单击单发）
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+        // 2026-11-24 语义归属（V4）：激活条件与哨兵由声明给出——设置插件不再持 "custom"/"followTheme" 字面量
+        sourceActiveWhen: { key: "app.appearanceMode", value: "custom" },
+        sourceFollowValue: MIX_FOLLOW_THEME_SENTINEL,
         effectiveToken: "bg-mask", // 2026-11-23：跟随主题显示生效值
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -475,6 +495,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "fontFamily",
         monoOnly: false,
         sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
+        // 2026-11-24 语义归属（V4）：激活条件与哨兵由声明给出
+        sourceActiveWhen: { key: "app.appearanceMode", value: "custom" },
+        sourceFollowValue: MIX_FOLLOW_THEME_SENTINEL,
         effectiveToken: "font-ui", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--font-ui）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -494,6 +517,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         uiHint: "fontFamily",
         monoOnly: true,
         sourceKey: "app.mixFont", // E5.8#87：来源徽标——字体域 mix 来源 key
+        // 2026-11-24 语义归属（V4）：激活条件与哨兵由声明给出
+        sourceActiveWhen: { key: "app.appearanceMode", value: "custom" },
+        sourceFollowValue: MIX_FOLLOW_THEME_SENTINEL,
         effectiveToken: "font-mono", // E5.8#155：跟随主题生效值徽标——本键生效 CSS token（--font-mono）
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
@@ -558,7 +584,13 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         title: t("分区背景图片"),
         description: t("分区背景图片路径——空 = 主题自带；无背景 = 绝对无图"),
         uiHint: "image",
+        // 2026-11-24 语义归属（V1/V5）：同域不同 target；起始目录/过滤器/入库全由壳决定
+        assetDomain: "appearance",
+        pickTarget: "zone",
         sourceKey: "app.mixBackground", // E5.8#87：来源徽标——背景域 mix 来源 key
+        // 2026-11-24 语义归属（V4）：激活条件与哨兵由声明给出——设置插件不再持 "custom"/"followTheme" 字面量
+        sourceActiveWhen: { key: "app.appearanceMode", value: "custom" },
+        sourceFollowValue: MIX_FOLLOW_THEME_SENTINEL,
         dependsOn: { key: "app.appearanceMode", value: "custom" },
         onApply: () => debouncedApplyThemeIfReady(),
       },

@@ -1,0 +1,117 @@
+# 语义归属 · marketplace 1.4.26 patch（2026-11-24 · 线 2 → 线 3）
+# 应用：cd /e/linkdesk-plugins/official/marketplace && git apply <本文件>
+# 内容：M1 删手拼兜底 / M2 path.join / M3 pluginAssets.getUrl / M4 头像缓存迁 pluginCacheDir（D11 迁移）
+
+--- a/src/services/avatarCache.ts
++++ b/src/services/avatarCache.ts
+@@ -104,20 +104,52 @@
+   }
+ }
+ 
+-/** 插件数据目录（不存在则创建） */
++/** 插件**缓存**目录（不存在则创建）——2026-11-24（D11/M4）：头像缓存应可清理，落 pluginCacheDir。
++ *  旧缓存曾落 pluginDataDir（永久区）——首次读时一次性迁到 cache 区（标记文件防重复）。 */
+ async function dataDir(api: Ld): Promise<string | null> {
+   if (!api?.env?.get || !api.filesystem || !api.path?.join) return null;
+   try {
+     const env = await api.env.get("marketplace");
+-    const base = env?.pluginDataDir;
++    const base = env?.pluginCacheDir ?? env?.pluginDataDir;
+     if (!base) return null;
+     if (!(await api.filesystem.exists(base))) await api.filesystem.createDir(base);
++    await migrateLegacyAvatarCache(api, env?.pluginDataDir, base);
+     return base;
+   } catch {
+     return null;
+   }
+ }
+ 
++/** 头像缓存子目录（迁移范围——不搬 pluginDataDir 里的其它数据） */
++const AVATAR_CACHE_SUBDIRS = ["avatars", "repo-avatars"] as const;
++
++async function copyCacheTree(api: Ld, from: string, to: string): Promise<void> {
++  if (!api.path?.join || !api.filesystem) return;
++  const list = await api.filesystem.listDir(from).catch(() => []);
++  if (!(await ensureDir(api, to))) return;
++  for (const e of list) {
++    const src = api.path.join(from, e.name);
++    const dst = api.path.join(to, e.name);
++    if (e.isDirectory) { await copyCacheTree(api, src, dst); continue; }
++    try {
++      const bytes = await api.filesystem.readBinaryFile(src);
++      await api.filesystem.writeBinaryFile(dst, bytes);
++    } catch { /* 单文件失败不阻断 */ }
++  }
++}
++
++/** D11 一次性迁移：pluginDataDir 的旧头像缓存 → pluginCacheDir（目标标记文件存在则跳过） */
++async function migrateLegacyAvatarCache(api: Ld, legacyBase: string | undefined, cacheBase: string): Promise<void> {
++  if (!legacyBase || legacyBase === cacheBase || !api.path?.join) return;
++  const marker = api.path.join(cacheBase, ".avatar-cache-migrated");
++  try { if (await api.filesystem?.exists(marker)) return; } catch { return; }
++  for (const sub of AVATAR_CACHE_SUBDIRS) {
++    try { await copyCacheTree(api, api.path.join(legacyBase, sub), api.path.join(cacheBase, sub)); } catch { /* 子目录缺省 = 无旧缓存 */ }
++  }
++  try { await api.filesystem?.writeTextFile(marker, "1"); } catch { /* 标记失败下次重试 */ }
++}
++}
++
+ async function ensureDir(api: Ld, dir: string): Promise<boolean> {
+   try {
+     if (!(await api.filesystem.exists(dir))) await api.filesystem.createDir(dir);
+--- a/src/services/packageFiles.ts
++++ b/src/services/packageFiles.ts
+@@ -16,11 +16,13 @@
+ export async function readInstalledPackageFile(pluginId: string, fileName: string): Promise<string | null> {
+   const fs = lk()?.filesystem;
+   const plugins = lk()?.plugins;
+-  if (!fs?.readTextFile || !plugins?.resolvePath) return null;
++  const path = lk()?.path;
++  if (!fs?.readTextFile || !plugins?.resolvePath || !path?.join) return null;
+   try {
+     const root = await plugins.resolvePath(pluginId);
+     if (typeof root !== "string" || !root) return null;
+-    return await fs.readTextFile(`${root.replace(/[\\/]+$/, "")}/${fileName}`);
++    // 2026-11-24（M2）：路径拼接唯一源 = 壳 path.join（⛔ 不再手拼）
++    return await fs.readTextFile(path.join(root, fileName));
+   } catch {
+     return null;
+   }
+--- a/src/views/store/sources/AddSourceModal.tsx
++++ b/src/views/store/sources/AddSourceModal.tsx
+@@ -23,6 +23,9 @@
+ import { readConfiguredAuthorSources } from "../../../services/marketSources";
+ import { previewRemoteSource } from "../../../services/sourceAdmin";
+ 
++/** 本地目录预览的 manifest 文件名——壳暂无池侧 manifest 读取面（K10 豁免账本登记） */
++const MANIFEST_FILE = "plugin.json";
++
+ export type AddSourceMode = "remote" | "local";
+ 
+ interface Message {
+@@ -126,7 +129,10 @@
+       path?: { join?: (...p: string[]) => string };
+     } | undefined);
+     const join = fs?.path?.join;
+-    const manifestPath = join ? join(path, "plugin.json") : `${path.replace(/[\\/]+$/, "")}\\plugin.json`;
++    // 2026-11-24（M1）：⛔ 手拼兜底已删——路径拼接唯一源 = 壳 path.join；
++    // manifest 文件名 = 本地目录预览所需（壳暂无池侧 manifest 读取面），集中成一个常量。
++    const manifestPath = join ? join(path, MANIFEST_FILE) : null;
++    if (!manifestPath) throw new Error("no-host-path");
+     try {
+       const text = await fs?.filesystem?.readTextFile?.(manifestPath);
+       if (!text) throw new Error("no-fs");
+--- a/src/views/detail/DetailView/useDetailPackage.ts
++++ b/src/views/detail/DetailView/useDetailPackage.ts
+@@ -38,7 +38,10 @@
+ /** 包内文件的媒体基址：`linkdesk://<id>/<目录>/`；根文件 → `linkdesk://<id>/`。 */
+ function localReadmeAssetBase(pluginId: string, rel: string): string {
+   const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/") + 1) : "";
+-  return `linkdesk://${pluginId}/${dir}`;
++  const build = window.linkdesk.pluginAssets?.getUrl;
++  // 2026-11-24（M3）：URL 形状归壳（pluginAssets.getUrl）；旧壳无该面 = 兼容期兜底（K9 豁免账本登记，
++  // 到期条件：市场 minAppVersion 抬到含 pluginAssets 的壳版本后删本行）。
++  return build ? build(pluginId, dir) : `linkdesk://${pluginId}/${dir}`;
+ }
+ 
+ export function useDetailPackage(id: DetailIdentity) {

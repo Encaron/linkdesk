@@ -16,6 +16,18 @@
 
 ### fix
 
+- 🧭 **语义归属归一化（设置/串口/文件树/市场）**：把「插件持有宿主语义」的四仓 15 条逐项迁回壳——
+  - 壳新增 **`hostAssets`** 域（`appearance/defaults.ts` 为起始目录/过滤器唯一源）＋ `appearance.pickImage({domain,target})`（选图＋入库一步，IPC/池面/命令三面同源）；`importImage/revealStorage` 同笔迁入该域，旧通道名不变。
+  - 壳新增 **`storage.getFilePath(key)`**（池面半边；文件名映射唯一源 = `storageFilename`，主进程/渲染侧共用）与 **`dialog.save`**（只选落盘路径，串口导出改调）；**`workspace.getRecentFolders()` ＋ `onDidChangeRecentFolders`**（宿主属主投影——文件树不再跨属主读 `pluginState("app",…)`）；**`pluginAssets.getUrl`**（`linkdesk://` 形状唯一实现，市场不再自拼）。
+  - 配置 schema 新增 **`assetDomain / pickTarget / descriptionWhen / sourceActiveWhen / sourceFollowValue`** 声明字段——两背景的域/落点、主题配色的条件说明、来源徽标派生全部改读声明（设置插件零 `app.*` 键特判）。
+  - 设置插件（工作树）：选图改调 `appearance.pickImage`、`settings.json` 路径改调 `storage.getFilePath`、分组过滤/条件说明/徽标改声明驱动；串口改 `path.join` ＋ 宿主保存对话框；文件树路径工具改壳 `path.*`（`hostPath.ts` 单向转入口）、行高只吃 `--ui-scale` token。
+
+- 🧱 **K1–K10 插件宿主知识门禁 ＋ 可替换性夹具**：新增 `check-plugin-host-knowledge`（官方 error/第三方 warn、豁免账本带到期日、自测 14 例；已挂 `npm run check`）；新增 `scripts/contract/minimal-settings-ui/` 最小第三方设置 UI 夹具与 `npm run test:replaceability`（首版半自动预检＋R1–R7 场景清单，⛔ 不进 check）。
+
+- 🔧 **收尾机械接线**：`ui-surface / npm-author-surface / knip / ui-hint 账本 / host-reserved` 重新生成；安装确认与权限档位的原生 `title` 改 `data-hint`、间距归 4px 刻度、kit schema 与 SDK 同步。
+
+### fix
+
 - 🧹 **作者显示名归一**（市场侧）：`authorLabel` 原有三份（`catalogText.ts` / `installConfirmPayload.ts` / `storeRead.ts` 私有副本）⇒ 收敛为 `catalogText` 唯一实现，另两处改 import。
 
 ## v0.2.62（2026-11-24）
