@@ -151,4 +151,38 @@
 - 判据新增：**带底图的主题，内容面必须是「实色基」或 alpha ≥0.55**；环境面（窗/栏）才允许随图透。暗主题写「白提亮卡片」= 白字压白玻璃。
 - dev 实例注意：改 `src/` 触发 Vite HMR 会重置主题注册表（插件主题暂时只剩内置 dark/light）——**改完壳代码要整进程重启**再验主题，别把 HMR 假象当 bug。
 
+## 十、第 2 棒续：三项债（2026-11-24 · 用户拍板「可以执行」）
+
+### 10.1 高对比去重（①）
+
+- 判定：`traits.contrast="high"` 的 colorway = **全局对比度开关的内部资源**，不是用户可挑的配色。
+- 单写法 `userSelectableColorways(recipe)`：`theme.listRecipes()` 元数据、`app.themeColor` 可写 enum 一律只列普通配色（异常数据「整配方只有高对比」保底原样返回）。
+- 高对比开关改真消费作者配色：`applyRecipe` 在 `contrastMode=high` 时取**同极性**作者高对比配色覆盖生效集（稀疏合并），没有才走 `applyHighContrast` 派生；用户选择的 colorway 不变。
+- 存量「手动选了 High Contrast 配色」→ 补跑 `appearance-contrast-colorway-retire` 清回配方默认（幂等）。
+- 🔴 顺带发现并修复：`parseThemeRecipe` **一直丢弃 `traits`** → 过滤与作者配色都拿不到。已随配色保留（单测 +1）。
+
+### 10.2 跟随 ↔ 自定义保留覆盖（②，方向二 + 显式 Reset）
+
+- 切 follow：13 覆盖 + 域来源 + 配色源先抄进 `customStash`（localStorage，纯 UX 快照；丢了只退化回播种），再按原样复位。
+- 切 custom：**有用户改动 → 原样恢复**（上次调好的）；**没改动（种子原封）→ 按当前主题重新播种**（=「在跟随主题基础上微调」的起点）。
+- 「有没有改动」的锚 = 抄存时冻结的主题基线（`getThemeBaseTokens`），切过主题不误判。
+- 「以当前主题为起点」仍是一键：`theme.resetAppearance`（复位外观覆盖）。
+- 实测：`custom(glass .37 + 壁纸)` → `follow(清空)` → `custom(.37 + 壁纸 全回来)`。
+
+### 10.3 SDK 对比度门禁（③）
+
+- `@linkdesk/plugin-sdk` **0.1.113**：`validateThemeJson` 增两条判据——
+  ① 有背景图且**未声明 glass** ⇒ 内容面（`bg-card`/`bg-input`）必须实色或 alpha ≥ 0.55（整窗旧数据的类）；
+  ② `text-primary` 对内容面**实色合成**（与引擎 `*-solid` 同口径）≥ 4.5:1、`text-muted` ≥ 3:1。
+- 为什么 ② 不用「纯黑/纯白底图最差」：会误杀极光/玫瑰窗这类玻璃主题（任意用户亮壁纸本来就得靠玻璃不透明度兜，门禁管不到）——门禁只判**作者可控的实色关系**，底图风险由 ① 的实色基契约承担。
+- 四套官方主题实跑：panorama / rose-window / aurora-glass / defaults **全 PASS**；旧版 panorama 数据（白 10% 卡片）**会被 ① 判红**。
+- 作者文档 11（中英）补同一条契约 + 版本门槛。
+
+### 10.4 提交
+
+- 壳：`3c813b0d7`（去重 + stash）、`2fcb2bcbf`（traits + SDK 门禁 + 文档）、后续 `fix:` 笔（门禁口径修正）。
+- npm：`@linkdesk/plugin-sdk` 0.1.112 → **0.1.113**（0.1.112 曾按「最坏底图」口径发布，已立即以 0.1.113 更正）。
+- ⚠️ 各主题仓的 SDK 依赖仍是旧 lock——门禁在它们下次 `npm update @linkdesk/plugin-sdk` 后生效（官方四套今日实跑已全过，不阻塞）。
+
+
 - Radix Colors（12-step scale，step 11/12 对比度）: <https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale>
