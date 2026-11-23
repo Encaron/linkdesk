@@ -6,7 +6,7 @@
 
 - 🔴 **插件商店标签页不再被预览替换**（用户实机：Plugins Store 标签页是斜体、极容易被下一次打开顶掉）：根因是标签创建默认 `pinned:false`（预览态=斜体）且 `reduceOpenOrFocus` 对「已存在」标签页只聚焦、不补 pin——插件入口即使传 `pinned:true`，也只能保证新开是正体。⇒ 与 `reduceCreateTab` Step 1 同口径：`createOpts.pinned === true` 时把已存在的目标标签页也转正；市场插件 1.4.24 的 `openStoreTab` 同笔传 `pinned:true`（新开即正体）。老会话里的斜体页点一次入口即转正。
 - 🎚️ **主题配色 `traits` 进注册表**（配合「高对比配色退出用户列表」）：`parseThemeRecipe` 原先丢弃 `colorways[].traits`，导致 `traits.contrast="high"` 的配色既过滤不掉、高对比开关也取不到作者配色。现随配色原样保留。单测 +1。
-- 📐 **作者契约 + 机械门禁**：`@linkdesk/plugin-sdk` 0.1.112 —— `validateThemeJson` 新增内容面可读性判据：① 有背景图时内容面（`bg-card`/`bg-input`）必须实色或 alpha ≥ 0.55；② `text-primary` 对合成面 ≥ 4.5:1、`text-muted` ≥ 3:1（底图不可知取黑/白两端最差）。主题作者文档 11（中英）补同一条 |
+- 📐 **作者契约 + 机械门禁**：`@linkdesk/plugin-sdk` 0.1.113 —— `validateThemeJson` 新增内容面可读性判据：① 有背景图且未声明 `glass` 时，内容面（`bg-card`/`bg-input`）必须是实色或 alpha ≥ 0.55；② `text-primary` 对内容面**实色合成** ≥ 4.5:1、`text-muted` ≥ 3:1（与引擎 `*-solid` 同口径；玻璃主题豁免实色基契约，避免误杀）。主题作者文档 11（中英）补同一条契约 |
 
 ## v0.2.61（2026-11-23）
 

@@ -72,3 +72,30 @@ describe("validateThemeJson — 内容面可读性", () => {
     expect(r.errors.join("\n")).toContain("text-muted");
   });
 });
+
+describe("validateThemeJson — 声明 glass 的主题不受「实色基」契约约束", () => {
+  it("有底图 + glass + 半透明暗卡片 ⇒ 通过（极光玻璃同款）", () => {
+    const path = join(dir, `theme-glass-${Math.random().toString(36).slice(2)}.json`);
+    writeFileSync(path, JSON.stringify({
+      id: "test.glass",
+      name: "Test Glass",
+      type: "dark",
+      appearance: {
+        glass: { type: "glass", blur: 24, opacity: 0.55 },
+        background: { image: "assets/bg.svg", opacity: 0.9, mask: 0.3 },
+      },
+      colorways: [{
+        id: "test.glass.a",
+        name: "A",
+        colors: {
+          "bg-window": "rgba(11, 16, 32, 0.55)",
+          "bg-card": "rgba(22, 32, 62, 0.55)",
+          "text-primary": "#F1F5FF",
+          "text-muted": "#B9C7E6",
+        },
+      }],
+    }), "utf8");
+    const r = validateThemeJson(path);
+    expect(r.errors).toEqual([]);
+  });
+});
