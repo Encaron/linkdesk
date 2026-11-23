@@ -48,7 +48,9 @@ export interface PluginsAPI {
     readAllManifests?(): Promise<Record<string, PluginManifest>>;
     /** E6#11/#13 (1.2-5): the main-process real download stage — fetches the .linkdesk-plugin package → {userData}/tmp/<original package name> (shell preload only; called by the loader's install flow packageOps).
      *  E6#73c: may carry a job identity — progress events from the main-process stage backfill jobId/pluginId accordingly (absent = events carry no identity; with N=1 attributed to the active session) */
-    packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{ zipPath: string; sizeBytes?: number }>;
+    /** P1 sha256（spec §七）：传了就在**下载后、解压前**校验——不符即删包并拒装（`integrity-failed`）。
+     *  缺省 = 过渡期「未校验」（旧目录条目没有 hash），不阻断。 */
+    packageDownload?(url: string, job?: PluginInstallJobRef, sha256?: string): Promise<{ zipPath: string; sizeBytes?: number }>;
     /** E6#11/#13 (1.2-5): the main-process real extract stage — shared bundle-zip semantics → {userData}/plugins/<id>/ (2026-09-05 flattened single root; shell preload only; rejects if the target already exists).
      *  E6#73c: job same as packageDownload — extract-stage progress events backfill the identity */
     packageExtract?(zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef): Promise<{ pluginId: string; version: string; targetDir: string }>;

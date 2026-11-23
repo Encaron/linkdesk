@@ -34,6 +34,8 @@ import { deriveBundlePluginId, extractZip, isSafePluginId, openPluginZip } from 
 // E6#31a：真网络段下载 = plugin-download 服务（.part 生命周期单复本——handler 只引用，不重写 fetch/进度）
 // E6#73q：下载落盘名带唯一化后缀（并发 N=3 防同名互截）——zipBase 裁决前先剥后缀拿回原包名
 import { downloadPackage, downloadTmpDir, stripDownloadUniq, STAGE_PREFIX } from "../../services/plugin-download.js";
+// P1（spec §七 内容完整性）：包 sha256 校验复用 app 更新腿的**同一份**逐块哈希实现（⛔ 不造第二个）
+import { sha256File } from "../../services/update-download.js";
 // E6#76：主进程出网唯一出口（走 Chromium 网络栈 ⇒ 读系统代理）——目录拉取腿不再直呼全局 fetch
 import { mainFetch } from "../../services/main-fetch.js";
 import type { PluginManifest } from "../../../src/core/api/types.js";
@@ -127,11 +129,22 @@ export function registerPluginInstallHandlers(): void {
   // ── plugins:download(url) → { zipPath, sizeBytes } ──
   // 真网络段：fetch 包 → {userData}/tmp/<原包名>。流式写盘 + Content-Length 可得时推 percent。
   // 下载逻辑 = plugin-download 服务单复本——update stage（段 B）同段复用（下载非 update 专属，无单复本）。
-  loggedHandle(IPC.plugins.download, async (_event, url: string, job?: PluginInstallJobRef) => {
+  loggedHandle(IPC.plugins.download, async (_event, url: string, job?: PluginInstallJobRef, sha256?: string) => {
     if (typeof url !== "string" || !isHttpSource(url)) {
       throw new Error("仅支持 http(s) 下载源（.linkdesk-plugin 包 URL）");
     }
     const { zipPath, total } = await downloadWithProgress(url, job);
+    // ── P1（spec §七）：**下载后、解压前**校验内容完整性 ──
+    // 不符 ⇒ 删包 + 抛（壳侧据此走 integrity-failed，不弹确认、不留暂存）。
+    // 未传校验值 = 过渡期「未校验」（旧目录条目没有 hash），放行但如实告知在日志里。
+    if (typeof sha256 === "string" && sha256) {
+      const expect = sha256.trim().toLowerCase();
+      const actual = await sha256File(zipPath);
+      if (!actual || actual !== expect) {
+        try { await fs.unlink(zipPath); } catch { /* 删包失败不掩盖主因 */ }
+        throw new Error(`包完整性校验失败：期望 sha256 ${expect}，实际 ${actual ?? "读取失败"}——已删除该包`);
+      }
+    }
     return { zipPath, sizeBytes: total || undefined };
   });
 

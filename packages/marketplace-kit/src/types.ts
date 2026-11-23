@@ -21,6 +21,9 @@ export interface CatalogVersion {
   downloadUrl: string;
   publishedAt: string;
   changelog?: string;
+  /** P1（spec §七 内容完整性）：该版本分发件的 sha256（小写 hex64）——壳下载后**先校验再解压**。
+   *  缺省 = 过渡期「未校验」（旧条目没有 hash）；kit publish 自 0.1.8 起自动计算写入。 */
+  sha256?: string;
 }
 
 type LocaleText = Record<string, string | undefined>;

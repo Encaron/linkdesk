@@ -27,7 +27,7 @@ import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
 import type { DownloadProgress, UpdateState } from '../src/core/types/ipc/update'; // E6#57.9c：#57.12 加 DownloadProgress
-import type { DialogOpenOptions, DialogContentOpenOptions } from '../src/core/types/ipc/dialogs';
+import type { DialogOpenOptions, DialogContentOpenOptions, DialogSaveOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
@@ -355,7 +355,8 @@ try {
       getCompatibility: (req: PluginCompatibilityRequest) => ipcRenderer.invoke(IPC.plugins.getCompatibility, req),
       // E6#11/#13（1.2-5）：包安装流主进程 fs/net 段——壳 preload 独有（loader 在壳跑；download/extract handler 不对池暴露）
       // E6#73c：job 身份随行——主进程段进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份）
-      packageDownload:  (url: string, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.download, url, job),
+      // P1：sha256 随行——主进程下载落盘后、解压前校验（不符即删包拒装）
+      packageDownload:  (url: string, job?: PluginInstallJobRef, sha256?: string) => ipcRenderer.invoke(IPC.plugins.download, url, job, sha256),
       packageExtract:   (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.extract, zipPath, expectedPluginId, job),
       // E6#73d：按 jobId 中止在途下载（面板「取消安装」）——AbortSignal 不可序列化，只能发定向消息。
       // 返回 false = 该 job 没有在途下载（未开跑 / 已收尾）——非错误，壳侧照常撤行。
@@ -400,6 +401,9 @@ try {
       // E5.8#20 D3 修复：补 openFile（对齐池 namespaces-workspace.ts:101，同通道 IPC.dialog.open）——契约必选面壳侧缺失的潜伏漂移
       openFile: (opts?: DialogOpenOptions): Promise<string | null> =>
         ipcRenderer.invoke(IPC.dialog.open, opts),
+      // 2026-11-24（D12）：保存对话框——同池 buildDialog 契约镜像（只选路径；取消 → null）
+      save: (opts?: DialogSaveOptions): Promise<string | null> =>
+        ipcRenderer.invoke(IPC.dialog.save, opts),
       // E5#67：确认/提示弹窗——统一 API，走 PROXY_CHANNELS → IpcBridgeHandler → DialogService
       confirm: (message: string): Promise<boolean> =>
         ipcRenderer.invoke(IPC.dialog.confirm, message),
@@ -556,14 +560,17 @@ try {
       // E6#46b：intake 订阅——shell 命名空间上的壳内私有扩展（工厂返回走结构兼容，同 buildShellApp 先例）
       ...buildShellIntakeExtras(),
     },
-    // ── 外观资产（E5.8#153：壳侧命令执行用——齿轮命令 handler 跑在壳进程，池 appearance 面不注入壳）──
+    // ── 外观资产（E5.8#153：壳侧命令执行用；2026-11-24 pickImage：AI/用户命令 handler 跑在壳进程）──
     appearance: {
       revealStorage: () => ipcRenderer.invoke(IPC.appearance.revealStorage),
+      pickImage: (options: { domain: string; target: string }) =>
+        ipcRenderer.invoke(IPC.appearance.pickImage, options),
     },
-    // ── 存储（「打开缓存目录」设置行——壳侧命令执行用；池不注入：消费方 handler 跑在壳进程）──
+    // ── 存储（「打开缓存目录」设置行；2026-11-24 getFilePath：两个 preload 同面）──
     storage: {
       revealCache: () => ipcRenderer.invoke(IPC.storage.revealCache),
       cacheDir: () => ipcRenderer.invoke(IPC.storage.cacheDir),
+      getFilePath: (key: string) => ipcRenderer.invoke(IPC.storage.getFilePath, key),
     },
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {

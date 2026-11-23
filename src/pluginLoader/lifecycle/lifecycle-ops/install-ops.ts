@@ -54,7 +54,7 @@ function isPackageSource(source: string): boolean {
  *  update 三段（#13b/c：packageUpdateCheck/Stage/Commit）选填随 preload 注入——安装流只要 download/extract，
  *  更新流各自判存在再调（段 B 落法）。 */
 export function packageOps(): {
-  packageDownload: (url: string, job?: PluginInstallJobRef) => Promise<{ zipPath: string; sizeBytes?: number }>;
+  packageDownload: (url: string, job?: PluginInstallJobRef, sha256?: string) => Promise<{ zipPath: string; sizeBytes?: number }>;
   packageExtract: (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => Promise<{ pluginId: string; version: string; targetDir: string }>;
   packageCancel?: (jobId: string) => Promise<boolean>;
   packageUpdateCheck?: (pluginId: string, catalogUrl: string, currentVersion?: string) => Promise<PluginUpdateCheckResult>;
@@ -232,7 +232,8 @@ async function installPackageFromSource(
     let downloaded = false;
     if (/^https?:\/\//i.test(source)) {
       jobProgress(jobId, "downloading", opts?.pluginId, "下载插件包");
-      const r = await ops.packageDownload(source, jobRef);
+      // P1：确认链带来的 sha256 随下载下主进程——主进程在落盘后、解压前校验（不符即删包拒装）
+      const r = await ops.packageDownload(source, jobRef, opts?.sha256);
       zipPath = r.zipPath;
       downloaded = true;
     } else {

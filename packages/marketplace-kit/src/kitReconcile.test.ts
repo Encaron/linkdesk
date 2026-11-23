@@ -110,7 +110,7 @@ const TS_ENTRY_KEYS: Record<keyof CatalogEntry, true> = {
   versions: true,
 };
 
-const TS_VERSION_KEYS: Record<keyof CatalogVersion, true> = { version: true, downloadUrl: true, publishedAt: true, changelog: true };
+const TS_VERSION_KEYS: Record<keyof CatalogVersion, true> = { version: true, downloadUrl: true, publishedAt: true, changelog: true, sha256: true };
 
 const TS_SOURCE_KEYS: Record<keyof SourceDecl, true> = { url: true, authorId: true, addedAt: true };
 

@@ -300,6 +300,9 @@ export interface PluginInstallRequestOpts {
   displayName?: string;
   /** Job origin — row = one user action (user, default); dependencies dragged in by a plugin (dependency) hide inside that row */
   origin?: "user" | "dependency";
+  /** P1（spec §七）：期望的包 sha256（小写 hex）——壳在**下载后、解压前**校验，不符即删包拒装。
+   *  壳自己的确认链（`plugins.requestInstall`）必带；市场/手装可缺省（过渡期「未校验」不阻断）。 */
+  sha256?: string;
   /**
    * R4-1.3（I21/#24 壳侧·正典 09 §三·补3）：目录条目的 pricing 声明随行——**声明进数据层、裁决进壳**（05 §三·4）。
    * 调用方（市场插件）把它读到的条目 pricing 原样带上；壳安装门见 model 存在即查壳侧权益（licenses），

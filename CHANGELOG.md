@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.2.63（2026-11-24）
+
+### feat
+
+- 🛡️ **插件安装/更新确认收归壳（P1 · 壳托管确认）**：新增功能域 `src/core/services/plugins/install/`（门面 `index.ts` ＋ `types/policy/token/ledger/trust/batch/confirm-service/renderer` 八件）——`plugins.requestInstall / requestUpdateBatch / previewUpdatePlan / getUpdatePolicy / setUpdatePolicy / listSourceTrust / trustSource / untrustSource` 八方法进契约（`linkdesk-api/install.ts`，契约体积门禁拆域）。
+  - **D2 一次性令牌**：远程来源的旧链 `pluginManager.install/update` 在 IPC 分发层**一律拒**（`no-token`）——旧链入参装不下 `version+sha256` 绑定，能验的只有「有没有票」= 假门禁；本地路径安装（文件夹 / `.linkdesk-plugin`）放行（用户手势）。令牌只在壳内流转（确认 → 签发 → 执行端口核销），⛔ 过 IPC、⛔ 进契约。
+  - **确认策略矩阵**（`policy.ts` 纯函数 ＋ 19 例单测逐行对照 spec §四）：首装/重装恒问；同版本与未放行降级直接拒；来源/仓库/发布者变更恒问（两条开关不豁免）；官方同源看 `silentOfficial`、第三方同源看 `silentTrustedSources ∧ 该来源已信任`——两条开关**正交**，官方 fixed 信任不参与免问判定。
+  - **批量**：`batch.ts` 一张汇总计划（只列 ask、silent 摘要、按来源分组、ask 组在前）；`updateAll` 确认 = ask＋silent 全入队，取消 = 0 个；20+ 条滚动不截断（10 例单测）。
+  - **来源身份账本** `plugin-source-ledger.json`（userData 根，被落点规范 §二 A#1 覆盖，不新增落点）：记 `sourceUrl/repo/publisher/version/sha256`，与 `installed-plugins.json`（谁装了）两个事实两个 owner。
+  - **HTTPS-only**：远程 `http://` 在壳边界直接拒（本地路径不在此门）。
+- 🎨 **确认卡 UI（D8 渲染槽）**：`@linkdesk/ui` 新增 `PluginInstallConfirm` / `PluginUpdateBatchSummary`（哑渲染 VM，零 i18n 零 IPC）＋ `buildViewModel`（纯函数，18 例单测＝原型逐屏对照的机器版）；池内默认渲染器 `src/pool/shared/plugin-install-confirm/`；`DialogHost` 富内容槽新增 **`hostView`** 一支（宿主内置视图直挂，不吃插件寻址）——第三方整套替换 = 换壳推哪个 viewId，判定/令牌/队列仍在壳。
+- ⚙️ **设置声明完整**（`src/App/config/pluginUpdate.ts`）：「通用」组「更新」节后新增「插件更新」节，三键全声明——`silentOfficial`（默认开）/ `silentTrustedSources`（默认关）/ `trustedSources`（`stringList`）。⛔ 不新增 `hostSlot` 依赖（settings 本轮不动）。
+- 🔧 **两条机械门禁**（P1 D9）：`check-feature-folder`（功能域必须「同名夹 + index.ts 门面」，根级平铺按基线冻结、只许删行）＋ `audit-duplicate-facts`（`pickIdentityArt`/`sourceLabel` 唯一归属、`authorLabel`/`repoHomeUrl` 壳内零定义）——两腿各 7 例自测，均已挂 `npm run check`。
+
+### fix
+
+- 🧹 **作者显示名归一**（市场侧）：`authorLabel` 原有三份（`catalogText.ts` / `installConfirmPayload.ts` / `storeRead.ts` 私有副本）⇒ 收敛为 `catalogText` 唯一实现，另两处改 import。
+
 ## v0.2.62（2026-11-24）
 
 ### feat

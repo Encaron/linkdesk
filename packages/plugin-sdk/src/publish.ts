@@ -38,6 +38,7 @@
  *
  * 失败都 throw 中文可读错误 → bin.ts catch 打印；退出码由 bin 定。
  */
+import { createHash } from "node:crypto"; // P1：发布件 sha256（与上传字节同一份）
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -69,6 +70,9 @@ export interface CatalogVersion {
   downloadUrl: string;
   publishedAt: string;
   changelog?: string;
+  /** P1（spec §七）：该版本分发件 sha256（小写 hex64）——壳下载后先校验再解压。
+   *  publish 自 0.1.114 起自动计算写入；旧条目缺省 = 「未校验」不阻断。 */
+  sha256?: string;
 }
 
 /** marketplace.json 插件条目——对齐规范 §三/§3.2 字段（作者条目=纯增量，缺字段不崩）。
@@ -644,6 +648,8 @@ export interface CatalogEntryExtras {
   readmeUrl?: string;
   /** 当前版本正文（`CHANGELOG.md` 切段所得）——无文件 / 切不到时缺省 */
   changelog?: string;
+  /** P1：本次分发件的 sha256（publish 从**实际上传的字节**算，⛔ 不从磁盘重读——两者必须同一份） */
+  sha256?: string;
 }
 
 /** 单条 catalog 条目构造——versions[] 只有当前一版（合并时与既有历史拼接）。author 缺失时回落 owner。 */
@@ -683,6 +689,7 @@ export function buildCatalogEntry(
         downloadUrl,
         publishedAt,
         ...(extras.changelog !== undefined ? { changelog: extras.changelog } : {}),
+        ...(extras.sha256 !== undefined ? { sha256: extras.sha256 } : {}),
       },
     ],
   };
@@ -1481,6 +1488,8 @@ export async function runPluginPublish(root: string, opts: PublishOptions = {}):
       readmeUrl: preview.readmeUrl,
       ...(preview.readmeLocales ? { readmeLocales: preview.readmeLocales } : {}),
       changelog: preview.changelog,
+      // P1：校验和取**上传的同一份字节**（下面 data 即上传体）——⛔ 不经第二遍磁盘读，避免「hash 的是 A、传的是 B」
+      sha256: createHash("sha256").update(data).digest("hex"),
     },
   );
   const merged = upsertCatalogEntry(existing, entry);
