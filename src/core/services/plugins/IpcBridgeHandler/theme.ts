@@ -9,7 +9,7 @@
 
 import { ThemeRegistry } from "../../../registry/appearance/ThemeRegistry";
 import { resolvePolarity } from "../../ui/ThemeEngine/color";
-import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, normalizeThemeColorValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS, recipeDisplayName, colorwayDisplayName } from "../../ui/ThemeEngine";
+import { recipeDomains, getActiveRecipe, getEffectiveTokens, normalizeThemeValue, normalizeThemeColorValue, deriveAppearanceSeedMap, getThemeBaseTokens, MIX_SOURCE_KEYS, recipeDisplayName, colorwayDisplayName, userSelectableColorways } from "../../ui/ThemeEngine";
 import { getConfigurationValue, setConfigurationValue, resetConfigurationValueBatch } from "../../configuration/ConfigurationService";
 import type { RecipeMeta, ColorwayMeta } from "../../../api/linkdesk-api/types";
 import type { ThemeRecipe } from "../../../types/theme";
@@ -19,7 +19,9 @@ import type { ThemeRecipe } from "../../../types/theme";
  *  同一条规则（名字是中文原文、这里过 t() 解析成当前语言）——中文界面「内置」/「薄荷苏打」，
  *  英文界面取各自字典里的译名（壳兜底住语言包、主题插件住本仓 i18n）。⛔ 不加来源字段/来源行。 */
 function toRecipeMeta(recipe: ThemeRecipe): RecipeMeta {
-  const colorways: ColorwayMeta[] = recipe.colorways.map((cw) => ({
+  // 2026-11-24：高对比专用 colorway（traits.contrast="high"）是全局对比度开关的内部资源，
+  // 不进用户可选列表（旧实现与「Contrast」开关双重暴露 = 同概念两个入口）。
+  const colorways: ColorwayMeta[] = userSelectableColorways(recipe).map((cw) => ({
     id: cw.id,
     name: colorwayDisplayName(cw.name),
     preview: {

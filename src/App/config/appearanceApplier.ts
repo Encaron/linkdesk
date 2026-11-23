@@ -152,6 +152,113 @@ export const readAppearanceOverrideUserValues = (): Record<string, unknown> => {
   return stored;
 };
 
+/* ── 2026-11-24 拍板：跟随 ↔ 自定义不再销毁用户覆盖 ──
+ * 旧语义：切 followTheme 直接 reset 13 覆盖 + 域来源（08 §7.3.5「覆盖丢弃回配方」）——用户壁纸/玻璃白调。
+ * 新语义（两拨人都要照顾）：
+ *   · 切 followTheme：当前覆盖值**抄进 stash** 再清（跟随态仍是纯配方）；
+ *   · 切 custom：stash 里**有用户改动** → 原样恢复（上次调好的）；**没改动**（种子值原封不动）
+ *     → 按当前主题重新播种（=「在跟随主题的基础上微调」的起点）。
+ * 「以当前主题为起点」随时可再由「复位外观覆盖」（theme.resetAppearance）一键到位。
+ * 存储：渲染进程 localStorage（纯 UX 快照，丢了只退化回播种；不占设置面/不受 schema 门禁约束）。 */
+const CUSTOM_STASH_KEY = "linkdesk.appearance.customStash.v1";
+
+interface CustomAppearanceStash {
+  overrides: Record<string, unknown>;
+  mixSources: Record<string, unknown>;
+  themeColor?: string;
+  /** 抄存时的主题基线（判断「有没有用户改动」的锚——不能用当前主题基线，切过主题后会误判） */
+  baseline?: Record<string, unknown>;
+}
+
+function stashStorage(): Storage | null {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+function readUserValues(keys: readonly string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    const uv = inspectConfiguration<unknown>(key).userValue;
+    if (uv !== undefined) out[key] = uv;
+  }
+  return out;
+}
+
+/** 切回 followTheme 前：把当前自定义值抄进 stash，再交调用方复位。 */
+export const stashCustomAppearance = (): void => {
+  const storage = stashStorage();
+  if (!storage) return;
+  const themeColor = inspectConfiguration<unknown>("app.themeColor").userValue;
+  const stash: CustomAppearanceStash = {
+    overrides: readUserValues(APPEARANCE_OVERRIDE_KEYS),
+    mixSources: readUserValues(MIX_SOURCE_KEYS),
+    baseline: deriveAppearanceSeedMap(getThemeBaseTokens()) as Record<string, unknown>,
+    ...(themeColor !== undefined ? { themeColor: String(themeColor) } : {}),
+  };
+  try {
+    storage.setItem(CUSTOM_STASH_KEY, JSON.stringify(stash));
+  } catch {
+    /* 配额/隐私模式：忽略——退化回播种语义 */
+  }
+};
+
+function readCustomStash(): CustomAppearanceStash | null {
+  const storage = stashStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(CUSTOM_STASH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CustomAppearanceStash;
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      overrides: parsed.overrides ?? {},
+      mixSources: parsed.mixSources ?? {},
+      ...(parsed.themeColor !== undefined ? { themeColor: parsed.themeColor } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** stash 里是否有**用户改动**（不是从主题播种来的原值）——锚 = 抄存时冻结的主题基线（切过主题也不误判）。 */
+function stashHasUserEdits(stash: CustomAppearanceStash): boolean {
+  const baseline = stash.baseline ?? (deriveAppearanceSeedMap(getEffectiveTokens()) as Record<string, unknown>);
+  const differs = (key: string, value: unknown): boolean =>
+    value !== undefined && String(value) !== String(baseline[key]);
+  if (APPEARANCE_OVERRIDE_KEYS.some((key) => differs(key, stash.overrides[key]))) return true;
+  if (MIX_SOURCE_KEYS.some((key) => {
+    const value = stash.mixSources[key];
+    return value !== undefined && String(value) !== MIX_FOLLOW_THEME;
+  })) return true;
+  // 配色源：显式选过与当前生效配色不同的配色（含跨配方）也算改动
+  if (stash.themeColor) {
+    const effective = getActiveRecipe()?.colorwayId ?? "";
+    if (stash.themeColor !== effective && stash.themeColor !== "") return true;
+  }
+  return false;
+}
+
+/**
+ * 切到 custom：有 stash 且**有改动** → 恢复上次自定义；否则按当前主题播种（=「跟随主题基础上微调」的起点）。
+ * 返回是否走了恢复路径（调用方可据此提示/日志）。
+ */
+export const enterCustomAppearance = (): boolean => {
+  const stash = readCustomStash();
+  if (stash && stashHasUserEdits(stash)) {
+    const writes: Array<{ key: string; value: unknown }> = [];
+    for (const [key, value] of Object.entries(stash.overrides)) writes.push({ key, value });
+    for (const [key, value] of Object.entries(stash.mixSources)) writes.push({ key, value });
+    if (stash.themeColor !== undefined) writes.push({ key: "app.themeColor", value: stash.themeColor });
+    if (writes.length > 0) setConfigurationValueBatch(writes, "user");
+    return true;
+  }
+  seedAppearanceOverrides();
+  return false;
+};
+
 /**
  * E5.8#88 切主题重播种（策略 A，14-档案 #88）：custom 模式下切主题 = 重新播种——用户显式改过的值保留，
  * 未修改的覆盖随新主题重基线（deriveReseedPlan 纯函数）。旧基准须在应用新配方前冻结（getThemeBaseTokens 无覆盖）。
@@ -350,4 +457,25 @@ registerConfigMigration({
 registerConfigRepair({
   name: "appearance-id-reconcile",
   repair: ({ setMany }) => runAppearanceIdMigration({ setMany }),
+});
+
+/**
+ * 2026-11-24 拍板：高对比专用配色（`traits.contrast="high"`）不再作为用户可选配色——
+ * 「对比度」只由全局开关 `app.contrastMode` 承担。旧机器里可能存着「手动选了 High Contrast 配色」的值，
+ * 这里一次性退役：清回配方默认配色（空 = 跟随配方首配色），对比度档不动（用户自己选 standard/high）。
+ * 幂等：只命中 contrast="high" 的存量值，命中后下一轮读到的已是普通配色 → 零变更。
+ */
+registerConfigRepair({
+  name: "appearance-contrast-colorway-retire",
+  repair: ({ setMany }) => {
+    const recipeId = getConfigurationValue<string>("app.theme");
+    const recipe = recipeId ? ThemeRegistry.getRecipe(recipeId) : undefined;
+    if (!recipe) return;
+    const stored = normalizeThemeColorValue(getConfigurationValue<string>("app.themeColor"));
+    if (!stored || stored === MIX_FOLLOW_THEME) return;
+    const picked = recipe.colorways.find((c) => c.id === stored);
+    if (picked?.traits?.contrast !== "high") return;
+    // 空串 = 跟随配方默认（resolveColorway 回落首个用户可选配色）
+    setMany({ "app.themeColor": "" });
+  },
 });

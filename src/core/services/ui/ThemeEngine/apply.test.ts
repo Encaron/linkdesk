@@ -14,6 +14,7 @@ import {
 import {
   applyRemoteConfigChange, clearConfigurationCache, getConfigurationValue,
 } from "../../configuration/ConfigurationService";
+import type { ThemeRecipe } from "../../../types/theme";
 import { MOCK_THEME, MOCK_THEME2, RECIPE, RECIPE_NO_COLOR, GLASS_VARS } from "./testFixtures.mock";
 
 describe("ThemeEngine — applyTheme / getCurrentTheme", () => {
@@ -177,5 +178,35 @@ describe("ThemeEngine — applyRecipe / getActiveRecipe / getEffectiveTokens（E
     expect(getActiveRecipe()?.colorwayId).toBe("mint");
     expect(syncThemeColorConfig(RECIPE)).toBe(false);
     expect(getConfigurationValue("app.themeColor")).toBe("mint");
+  });
+});
+
+describe("applyRecipe — 高对比轴使用作者配色（2026-11-24 去重）", () => {
+  const HIGH_RECIPE: ThemeRecipe = {
+    id: "demo-high",
+    name: "Demo High",
+    type: "dark",
+    colorways: [
+      { id: "base", name: "Base", colors: { "bg-window": "rgba(10, 14, 20, 0.40)", "text-primary": "#FFFFFF", accent: "#FFB85C" } },
+      { id: "hi-dark", name: "High Dark", colors: { "bg-window": "#000000", "text-primary": "#FFFFFF" }, traits: { contrast: "high" } },
+      { id: "hi-light", name: "High Light", colors: { "bg-window": "#FFFFFF", "text-primary": "#000000" }, traits: { contrast: "high" } },
+    ],
+  };
+
+  beforeEach(() => {
+    clearConfigurationCache();
+  });
+
+  it("标准档 → 用用户选择的普通配色", () => {
+    applyRecipe(HIGH_RECIPE, "base", {});
+    expect(getEffectiveTokens()["bg-window"]).toBe("rgba(10, 14, 20, 0.40)");
+    expect(getActiveRecipe()?.colorwayId).toBe("base");
+  });
+
+  it("高对比档 → 取同极性作者高对比配色的色彩，用户选择不变", () => {
+    applyRemoteConfigChange("app.contrastMode", "high");
+    applyRecipe(HIGH_RECIPE, "base", {});
+    expect(getEffectiveTokens()["bg-window"]).toBe("#000000");
+    expect(getActiveRecipe()?.colorwayId).toBe("base");
   });
 });

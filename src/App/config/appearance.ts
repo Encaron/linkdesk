@@ -32,9 +32,10 @@ import { registerConfiguration, updateConfigurationEnum } from "../../core/regis
 import {
   debouncedApplyThemeIfReady,
   applyRecipeForConfig,
-  seedAppearanceOverrides,
   readAppearanceOverrideUserValues,
   reseedAppearanceOnThemeSwitch,
+  stashCustomAppearance,
+  enterCustomAppearance,
   MIX_RESET_DISABLED_WHEN,
 } from "./appearanceApplier";
 
@@ -202,13 +203,14 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
         onApply: (v) => {
           if (v === "custom") {
-            // 切 custom → 播种 13 覆盖 key + 强调色（同一批量写单次 applier，08 §2 对标 accent 播种）
-            seedAppearanceOverrides();
+            // 2026-11-24 拍板：有 stash 且有用户改动 → 恢复上次自定义；否则按当前主题播种
+            // （=「在跟随主题的基础上微调」的起点）。两拨人都顾到，见 appearanceApplier 头注。
+            enterCustomAppearance();
           } else {
-            // 切回 followTheme → 覆盖丢弃回配方（08 §7.3.5）——清 13 覆盖 + 3 域来源
-            // 全丢回主题基线（批量复位单次 applier）。域来源无须播种（默认 followTheme，未写 = 跟随）。
+            // 切回 followTheme → 先把自定义值抄进 stash（不再销毁），再清 13 覆盖 + 域来源回配方基线。
             // E5.8#98：强调色不入本批——accentSource/accentColor 独立轴，外观主开关不复位它
             // （用户 followTheme 也能只调强调色，14-档案 §十二）。
+            stashCustomAppearance();
             resetConfigurationValueBatch(
               [...APPEARANCE_OVERRIDE_KEYS, ...MIX_SOURCE_KEYS],
               "user"

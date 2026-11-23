@@ -16,6 +16,18 @@ export function resolveColorway(recipe: ThemeRecipe, colorwayId?: string): Theme
   return { id: "", name: "", colors: {} };
 }
 
+/**
+ * 用户可选配色 = 非「高对比专用」的配色（2026-11-24 拍板）。
+ * `traits.contrast="high"` 的 colorway 是**全局对比度开关的内部资源**（`app.contrastMode`），
+ * 不是用户可挑的配色变体——旧实现把它同时摆进「Colors」列表 = 同一个概念两个入口（用户实机指出）。
+ * 单写法：theme.listRecipes 元数据 / app.themeColor 可写 enum / 高对比选色 三处都走本函数。
+ * 异常数据（整配方只有高对比配色）→ 原样返回，避免列表空掉。
+ */
+export function userSelectableColorways(recipe: ThemeRecipe): ThemeColorway[] {
+  const normal = recipe.colorways.filter((c) => c.traits?.contrast !== "high");
+  return normal.length > 0 ? normal : recipe.colorways;
+}
+
 /** 配方贡献域——colorways 恒贡献 colors；appearance 五风格域稀疏判定（缺的域不声明）。
  *  供 listRecipes 元数据（混搭来源过滤）+ applyRecipe 广播 domains（域级细粒度刷新）共用。 */
 export function recipeDomains(recipe: ThemeRecipe): ThemeDomain[] {

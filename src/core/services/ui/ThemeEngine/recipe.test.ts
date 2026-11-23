@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { mergeDomains, applyOverrides, applyRadiusAbsolute, RADIUS_SCALE_KEYS, FONT_SIZE_STEPS, FONT_SIZE_BASE_PX } from "../ThemeEngine";
+import { mergeDomains, applyOverrides, applyRadiusAbsolute, RADIUS_SCALE_KEYS, FONT_SIZE_STEPS, FONT_SIZE_BASE_PX, userSelectableColorways } from "../ThemeEngine";
 import { clearConfigurationCache } from "../../configuration/ConfigurationService";
 import type { ThemeRecipe } from "../../../types/theme";
 
@@ -194,5 +194,30 @@ describe("ThemeEngine — Phase 12 字号比例（E5.8#160：--ui-scale + --font
     // 主题/配方 token 不受字号块影响（并集共存）
     expect(tokens["bg-window"]).toBe("#112233");
     expect(tokens["accent"]).toBe("#445566");
+  });
+});
+
+describe("userSelectableColorways — 高对比专用配色不进用户可选集（2026-11-24）", () => {
+  const base: ThemeRecipe = {
+    id: "demo-contrast",
+    name: "Demo Contrast",
+    type: "dark",
+    colorways: [
+      { id: "a", name: "A", colors: {} },
+      { id: "b", name: "B", colors: {} },
+      { id: "hi", name: "High", colors: {}, traits: { contrast: "high" } },
+    ],
+  };
+
+  it("过滤 traits.contrast=high——对比度只由全局开关承担", () => {
+    expect(userSelectableColorways(base).map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  it("整配方只有高对比配色（异常数据）→ 原样返回，列表不空", () => {
+    const onlyHigh: ThemeRecipe = {
+      ...base,
+      colorways: [{ id: "hi", name: "High", colors: {}, traits: { contrast: "high" } }],
+    };
+    expect(userSelectableColorways(onlyHigh).map((c) => c.id)).toEqual(["hi"]);
   });
 });

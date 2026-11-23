@@ -98,11 +98,24 @@ export function applyRecipe(
   const glassSurface = isMix
     ? resolveMixDomainRecipe("glass", getMixProfile(), recipe, colorway).appearance?.glass
     : recipe.appearance?.glass;
+  // 2026-11-24 高对比 = 正交轴：作者的 `traits.contrast="high"` 配色是**开关的内部资源**
+  // （不再作为用户可选配色出现在 Colors 列表）。选了高对比且有同极性作者配色 → 用它的色彩覆盖生效集
+  // （稀疏合并，缺键保留基色），之后不再派生；没有作者配色 → 走 applyHighContrast 安全派生。
+  let authorHigh = colorway.traits?.contrast === "high";
+  if (!authorHigh && !isMix && highContrastEnabled()) {
+    const wantPolarity = resolvePolarity(effective, recipe.type);
+    const high = recipe.colorways.find(
+      (c) => c.traits?.contrast === "high" && resolvePolarity(c.colors ?? {}, recipe.type) === wantPolarity
+    );
+    if (high) {
+      Object.assign(effective, high.colors ?? {});
+      authorHigh = true;
+    }
+  }
   synthesizeGlassSurfaces(effective, getThemeGlassSurfaceSpec(glassSurface));
   // 2026-11-24 极性归一化：派生值 = 渲染真相；声明 type 只作 token 解析失败的 hint。
   let polarity = resolvePolarity(effective, recipe.type);
-  // 2026-11-24 高对比（用户级 · 正交）：作者已提供 high 档 colorway 时尊重作者；否则派生安全 token。
-  if (highContrastEnabled() && colorway.traits?.contrast !== "high") {
+  if (highContrastEnabled() && !authorHigh) {
     applyHighContrast(effective, polarity);
   }
   // 主题前景可读性 · 第 1 刀：图标反向光晕（同位置；未显式 fontTone 时回落派生极性）

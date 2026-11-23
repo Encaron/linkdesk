@@ -25,7 +25,7 @@ export {
 // E5.8#117：gateMirrorVisibility 已删除（panorama 镜像机制整体废除，cp114 证据）
 export { getEffectiveTokens, applyRadiusAbsolute, applyOverrides } from "./ThemeEngine/tokens";
 
-export { recipeDomains, mergeDomains } from "./ThemeEngine/recipe";
+export { recipeDomains, mergeDomains, userSelectableColorways } from "./ThemeEngine/recipe";
 
 // 2026-09-30「Dark/Light 指认不明」＋ 2026-10-01「我不要双语了」：配方/配色显示名的唯一权威。
 //   一条规则——名字一律中文原文、显示期一律 t()（壳兜底译名住语言包，插件名译名住该插件字典）。

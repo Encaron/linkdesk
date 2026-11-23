@@ -12,7 +12,7 @@ import { MIX_DOMAIN_KEYS, MIX_FOLLOW_THEME, GLASS_TOKEN_KEYS, MIX_DOMAIN_ORDER }
 // E6#111f／1.36：域来源 id 的读时归一（本模块是 app.themeColor/app.mixFont/app.mixBackground 的唯一读入口）
 import { normalizeRecipeId, normalizeThemeColorValue } from "./migration";
 import { surfaceVariables, backgroundVariables, applyOverrides, flattenRadiusTokens } from "./tokens";
-import { recipeDomains } from "./recipe";
+import { recipeDomains, userSelectableColorways } from "./recipe";
 import { getActiveRecipe } from "./state";
 
 /** 混搭档案——来源域映射。colors = 配方 id/配色 id/followTheme（决策 B：配方+配色粒度）；
@@ -239,12 +239,13 @@ export function syncThemeColorConfig(recipe: ThemeRecipe): boolean {
 export function syncThemeColorEnum(): void {
   // E5.8#90：外观主开关分派——custom = colors 域来源全集；followTheme = 配方内变体
   if (getConfigurationValue<string>("app.appearanceMode") === "custom") {
-    const ids = ThemeRegistry.getRecipes().flatMap((r) => r.colorways.map((c) => c.id));
+    // 高对比专用配色（traits.contrast="high"）不进用户可选集——它们归 app.contrastMode 管
+    const ids = ThemeRegistry.getRecipes().flatMap((r) => userSelectableColorways(r).map((c) => c.id));
     updateConfigurationEnum("app.themeColor", [MIX_FOLLOW_THEME, ...ids]);
     return;
   }
   const active = getActiveRecipe();
   const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
   if (!recipe) return; // 无活动配方——保留上次 enum
-  updateConfigurationEnum("app.themeColor", recipe.colorways.map((c) => c.id));
+  updateConfigurationEnum("app.themeColor", userSelectableColorways(recipe).map((c) => c.id));
 }
