@@ -57,7 +57,7 @@ import i18n from "../i18n";
 import { APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { reportError } from "../core/services/bootstrap/ErrorService";
 import {
-  TOAST_TTL_ERROR, TOAST_TTL_SUCCESS, pushToast, replaceToast, type Toast,
+  TOAST_TTL_ERROR, TOAST_TTL_SUCCESS, pushToast, replaceToast, showTransientToast, type Toast,
 } from "../core/services/ui/toast";
 import type { UpdateError, UpdateState } from "../core/types/ipc/update";
 import { openReleaseNotesTab } from "../core/commands/shell/releaseNotesCommands";
@@ -284,17 +284,14 @@ function pushStartupInterrupted(error: UpdateError): void {
   });
 }
 
-/** ⑦ 手动检查无更新——即查即答，短提示 */
+/** ⑦ 手动检查无更新——即查即答，短提示（2026-11-23：改走轻 toast）。 */
 function pushUpToDate(): void {
-  pushToast({
+  // 2026-11-23 用户拍板：本条从「面板 + wake」改为轻 toast。2026-09-12 的 wake 拍板
+  // 要解决的是「点了菜单却像什么都没发生」——底中轻 toast 正好满足，且不往铃铛堆留档。
+  showTransientToast({
     message: i18n.t("当前已是最新版本"),
     source: SOURCE,
     ttl: TOAST_TTL_SUCCESS,
-    // 🔴 **显式 `wake: true`**（2026-09-12 用户拍板）——默认白名单只认 error ∨ 带按钮，本条两者
-    // 都不是 ⇒ 不显式打开就只会让铃铛数字悄悄 +1（而且它 5 秒就没了），用户点了「检查更新…」
-    // 却像什么都没发生。这是对白名单的**窄口径覆盖**：只此一条，不动 `shouldWake` 表达式本身
-    // （动表达式会把内存墙、一切 warning 一起算重要）。
-    wake: true,
   });
 }
 

@@ -241,9 +241,13 @@ export default function WelcomePoolView({ isActive, creatableViews }: WelcomePoo
    * 不用 `window.open` 假装能开：仓库里没有可打开的文档页，撒谎比什么都不做更糟。
    */
   const showDocsHint = () => {
-    void api?.notifications?.show(t("用户文档整理中——先看「帮助 → AI 操作手册」（随包发货、离线可读）"), {
-      type: "info", source: WELCOME_SOURCE,
-    });
+    // 过路指路句 ⇒ 轻 Toast（2026-11-23 toast 调用面归位）；旧壳无 toasts 面回退通知面板
+    const message = t("用户文档整理中——先看「帮助 → AI 操作手册」（随包发货、离线可读）");
+    if (api?.toasts?.show) {
+      void api.toasts.show({ message, severity: "info", source: WELCOME_SOURCE });
+      return;
+    }
+    void api?.notifications?.show(message, { type: "info", source: WELCOME_SOURCE });
   };
 
   return (

@@ -12,6 +12,7 @@ import * as toast from "./toast";
 import {
   pushToast, dismissToast, replaceToast, updateToast,
   getToasts, getFoldedCount, isPending, sourceKeyOf, clearDismissedState,
+  showTransientToast,
   TOAST_SOURCE_CAP, OTHER_SOURCE_KEY,
 } from "./toast";
 
@@ -396,5 +397,53 @@ describe("轻 Toast（2026-11-19 改判）：单 store 双呈现", () => {
     // 一条条目只进一个面：presentation:"toast" 的条目绝不因 pushToast 被复制出第二个队列
     pushToast({ message: "演示消息 单面", source: "demo-plugin", presentation: "toast", ttl: 3000 });
     expect(getToasts()).toHaveLength(1);
+  });
+});
+
+describe("showTransientToast —— 壳侧轻回执的唯一入口（调用方不预判）", () => {
+  it("短 info 无动作 ⇒ toast，ttl 走契约缺省 3000（B15）", () => {
+    const r = showTransientToast({ message: "演示消息 已复制", source: "demo-plugin" });
+    expect(r.presentation).toBe("toast");
+    const t = getToasts().find((x) => x.id === r.id)!;
+    expect(t.presentation).toBe("toast");
+    expect(t.ttl).toBe(3000);
+  });
+
+  it("error ⇒ panel（B12——错误需留存诊断）", () => {
+    const r = showTransientToast({ message: "演示消息 失败", severity: "error", source: "demo-plugin" });
+    expect(r.presentation).toBe("panel");
+  });
+
+  it("视觉宽 >96 ⇒ panel（B3），不截断不缩字号", () => {
+    const r = showTransientToast({ message: "测".repeat(49), source: "demo-plugin" }); // 98 视觉单位
+    expect(r.presentation).toBe("panel");
+  });
+
+  it("ttl ≥8000 ⇒ panel（B14——用户想看一会儿）", () => {
+    const r = showTransientToast({ message: "演示消息 长时", ttl: 9000, source: "demo-plugin" });
+    expect(r.presentation).toBe("panel");
+  });
+
+  it("ttl ≤0（常驻）⇒ panel，且不会被 clamp 成 1500 掉进 toast", () => {
+    const r = showTransientToast({ message: "演示消息 常驻", ttl: 0, source: "demo-plugin" });
+    expect(r.presentation).toBe("panel");
+    const t = getToasts().find((x) => x.id === r.id)!;
+    expect(t.ttl).toBe(0);
+    expect(t.persistent).toBe(true);
+  });
+
+  it("动作数 1 ⇒ toast；动作数 2 ⇒ panel（B9）", () => {
+    const one = showTransientToast({
+      message: "演示消息 单动作",
+      source: "demo-plugin",
+      actions: [{ label: "查看", onClick: () => {} }],
+    });
+    expect(one.presentation).toBe("toast");
+    const two = showTransientToast({
+      message: "演示消息 双动作",
+      source: "demo-plugin",
+      actions: [{ label: "甲", onClick: () => {} }, { label: "乙", onClick: () => {} }],
+    });
+    expect(two.presentation).toBe("panel");
   });
 });

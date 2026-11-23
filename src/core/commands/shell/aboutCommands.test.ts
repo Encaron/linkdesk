@@ -54,9 +54,10 @@ vi.mock("../../../hooks/useAbout", () => ({
 
 vi.mock("../../services/ui/ClipboardService", () => ({ writeClipboardText: vi.fn() }));
 
-const toast = vi.hoisted(() => ({ pushToast: vi.fn() }));
+const toast = vi.hoisted(() => ({ pushToast: vi.fn(), showTransientToast: vi.fn() }));
 vi.mock("../../services/ui/toast", () => ({
   pushToast: toast.pushToast,
+  showTransientToast: toast.showTransientToast,
   TOAST_TTL_INFO: 6000,
   TOAST_TTL_SUCCESS: 5000,
   TOAST_TTL_ERROR: 8000,
@@ -65,13 +66,14 @@ vi.mock("../../services/ui/toast", () => ({
 import { clearCommands, executeCommand, getCommand, getPluginCommands } from "../../registry/commands/CommandRegistry";
 import { updateCoreCallbacks, type CoreCallbacks } from "../infra/CoreCallbacks";
 import { writeClipboardText } from "../../services/ui/ClipboardService";
-import { pushToast } from "../../services/ui/toast";
+import { pushToast, showTransientToast } from "../../services/ui/toast";
 import { ABOUT_TAB_TYPE } from "../../utils/tabIdentity";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { registerAboutCommands } from "./aboutCommands";
 
 const mockClipboard = vi.mocked(writeClipboardText);
 const mockToast = vi.mocked(pushToast);
+const mockTransient = vi.mocked(showTransientToast);
 
 /* E6#57.14 EXEMPT：本块与 `releaseNotesCommands.test.ts` 的结构性重复是**壳视图命令测试的样板**
    （h.hoisted 态 + 动态 import 落地等待 + 替身内部埋观察点 + CoreCallbacks 装卸）——两个文件测的是
@@ -139,24 +141,28 @@ describe("aboutCommands（② 「复制」不许把空串写进剪贴板）", ()
 
     expect(mockClipboard).not.toHaveBeenCalled();
     expect(mockToast).not.toHaveBeenCalled();
+    expect(mockTransient).not.toHaveBeenCalled();
   });
 
-  it("正控：取到数 ⇒ 写剪贴板 + 推一条信息级 toast", async () => {
+  it("正控：取到数 ⇒ 写剪贴板 + 推一条轻 toast（路过型回执，不占铃铛）", async () => {
     h.phase = "content";
     registerAboutCommands();
     await executeCommand("app.aboutCopy");
 
     expect(mockClipboard).toHaveBeenCalledWith("演示标签甲: 9.9.9");
-    expect(mockToast).toHaveBeenCalledTimes(1);
-    expect(mockToast.mock.calls[0][0].ttl).toBe(6000);
+    expect(mockTransient).toHaveBeenCalledTimes(1);
+    expect(mockTransient.mock.calls[0][0]).toMatchObject({ message: "已复制", source: APP_PLUGIN_ID });
+    // ttl 缺省交给 showTransientToast 内的 clampTtl（3000），生产者不再手写
+    expect(mockTransient.mock.calls[0][0].ttl).toBeUndefined();
   });
 
-  it("🔴 复制 toast **不设 `wake`**（跟随既有复制动作先例：不把铃铛弹开）", async () => {
+  it("🔴 复制回执不设 `wake`（轻 toast 不需要唤醒面板）", async () => {
     h.phase = "content";
     registerAboutCommands();
     await executeCommand("app.aboutCopy");
 
-    expect(mockToast.mock.calls[0][0].wake).toBeUndefined();
+    // `TransientToastInput` 无 wake 字段（类型层就不允许表达「唤醒面板」）
+    expect("wake" in mockTransient.mock.calls[0][0]).toBe(false);
   });
 });
 

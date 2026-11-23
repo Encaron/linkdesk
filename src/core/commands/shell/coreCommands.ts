@@ -16,7 +16,7 @@ import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { CUSTOM_EVENTS } from "../../react/events/CoreEvents";
 import i18n from "../../../i18n";
 import { getWorkspaceLayout } from "../../services/layout/LayoutService"; // E3f #56
-import { pushToast } from "../../services/ui/toast"; // 04 工作区导入反馈（唯一通知面）
+import { pushToast, showTransientToast } from "../../services/ui/toast"; // 04 工作区导入反馈（唯一通知面）
 import { getUserSettings } from "../../services/configuration/ConfigurationService"; // E3f #56
 import { getShellExposed } from "../../api/linkdesk-api/surfaces"; // 04 工作区导入：壳私有 dialog 扩展
 import { CONFIG_NONE_SENTINEL } from "../../services/ui/ThemeEngine"; // E5.8#158：默认项哨兵（__none__）
@@ -120,7 +120,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.RESTORE_WORKSPACE, {
         detail: { layout: data.layout, settings: data.settings },
       }));
-      pushToast({ source: "workspace", severity: "info", message: i18n.t("工作区已导入——布局与设置已恢复") });
+      showTransientToast({ source: "workspace", severity: "info", message: i18n.t("工作区已导入——布局与设置已恢复") });
     },
   },
   {
@@ -353,8 +353,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       if (!key) return;
       const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(key);
-      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
-      pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
+      const { showTransientToast } = await import("../../services/ui/toast");
+      showTransientToast({ message: i18n.t("已复制：") + key });
     },
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
@@ -386,8 +386,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const label = title ? i18n.t(title) : key;
       const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(label);
-      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
-      pushToast({ message: i18n.t("已复制：") + label, ttl: TOAST_TTL_INFO });
+      const { showTransientToast } = await import("../../services/ui/toast");
+      showTransientToast({ message: i18n.t("已复制：") + label });
     },
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
@@ -407,8 +407,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const json = JSON.stringify({ [key]: value }, null, 2);
       const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(json);
-      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
-      pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
+      const { showTransientToast } = await import("../../services/ui/toast");
+      showTransientToast({ message: i18n.t("已复制为 JSON") });
     },
     menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",

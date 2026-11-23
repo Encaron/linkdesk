@@ -23,7 +23,8 @@
  * 面板开合镜像只留读写两个函数。 */
 
 export type { Toast, ToastSeverity, ToastAction } from "./toast";
+export type { TransientToastInput } from "./toast";
 export { dismissToast, getToasts, subscribeToasts, clearToastsBySource } from "./toast";
 export { setNotifPanelOpen, isNotifPanelOpen } from "./toast";
 export { TOAST_TTL_ERROR, TOAST_TTL_INFO, TOAST_TTL_SUCCESS } from "./toast";
-export { pushToast, clearDismissedState } from "./toast";
+export { pushToast, clearDismissedState, showTransientToast } from "./toast";

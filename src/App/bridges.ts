@@ -12,7 +12,7 @@ import { QuickPickService } from "../core/services/ui/QuickPickService";
 import { TOAST_TTL_INFO } from "../core/services/ui/toast";
 import { registerDialogRenderers, resolveDialogButtons, type DialogOptions } from "../core/services/ui/DialogService";
 import { registerFloatingPanelRenderer, handleFloatingPanelAction, reportGeometry } from "../core/services/ui/FloatingPanelService"; // E5.8#37（Phase 8 类型 B）＋ M2 AI#20 几何镜像
-import { pushToast } from "../core/services/ui/NotificationService";
+import { pushToast, showTransientToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { ViewContainerService } from "../core/services/layout/ViewContainerService"; // E5.8#34：面板切换器勾选显隐
@@ -84,8 +84,8 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
       const filePath = (payload as { filePath?: unknown } | null | undefined)?.filePath;
       if (typeof filePath !== "string") return;
       shellEvents.emit("file:deleted", { filePath });
-      // 删除联动 toast——对标串口侧栏关闭会话即删标签的即时反馈
-      pushToast({ message: i18n.t("文件已删除，标签已关闭"), severity: "info", ttl: TOAST_TTL_INFO });
+      // 删除联动回执——操作结果已在标签栏体现，属路过型 ⇒ 轻 toast
+      showTransientToast({ message: i18n.t("文件已删除，标签已关闭"), severity: "info" });
     });
     const offRenamed = events?.on("file:renamed", (payload) => {
       const d = payload as { oldPath?: unknown; newPath?: unknown } | null | undefined;

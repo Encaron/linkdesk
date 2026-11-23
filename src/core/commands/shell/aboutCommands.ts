@@ -99,19 +99,15 @@ export function registerAboutCommands(): void {
       const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(text);
 
-      // 出声归通知面（06 §4.3：落**通知面条目**「已复制」）。
-      // 🔴 **不带 `wake`**——照既有「复制类动作」先例（`coreCommands.ts` 的
-      // `workbench.action.copySettingId` / `copySettingAsJson`：同款 `pushToast` + `TOAST_TTL_INFO`、
-      // 同样不唤醒）。唤醒白名单是收口的（18 档 §五 B，`shouldWake` 表达式只此一处）——
-      // `#57.12` 的「当前已是最新版本」是为「点了菜单却像什么都没发生」开的**窄口径覆盖**，
-      // 复制不在那一类，**别顺手把白名单放宽**（那会把面板一步步变成什么都弹）。
-      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
-      pushToast({
+      // 路过型回执 ⇒ 轻 toast（2026-11-23 用户拍板：复制类不做留档——底中 3s，
+      // 不留铃铛条目、也不唤醒面板）。走 `showTransientToast` 让路由判据兜底，
+      // ⛔ 不手写 `presentation:"toast"`（第二把尺）。
+      const { showTransientToast } = await import("../../services/ui/toast");
+      showTransientToast({
         message: i18n.t("已复制"),
         // 来源 = 主软件（`usePoolSync/notif.ts` 的 `shellSourceName` 已有 `APP_PLUGIN_ID` 一行
         // ⇒ 「主软件」，零新映射）。复制的是**主软件的身份**，不是「主软件更新」。
         source: APP_PLUGIN_ID,
-        ttl: TOAST_TTL_INFO,
       });
     },
   });

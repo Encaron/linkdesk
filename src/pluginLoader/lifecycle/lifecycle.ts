@@ -15,7 +15,7 @@
 
 import { CUSTOM_EVENTS } from "../../core/react/events/CoreEvents";
 import i18n from "../../i18n";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../../core/services/ui/NotificationService";
+import { pushToast, showTransientToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../../core/services/ui/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 
 // E5.8#9：事件定义抽到轻模块 lifecycle-events.ts——registrationTracker 直接 import 它，
@@ -85,16 +85,22 @@ export function initLifecycleConsumers(): void {
       : manifest?.version
         ? i18n.t("已安装：{{name}} v{{version}}", { name, version: manifest.version })
         : i18n.t("已安装：{{name}}", { name });
+    const message = `${msg}${i18n.t("（即时生效）")}`;
+    // 2026-11-23 用户拍板：**启用是开关回执**（非安装 job）⇒ 路过型轻 toast；
+    // 安装才是任务终态 ⇒ 留铃铛并唤醒。两条语义此前共用一次 pushToast。
+    if (reason === "enable") {
+      showTransientToast({ message, source: pluginId, severity: "info", ttl: TOAST_TTL_SUCCESS });
+      return;
+    }
     pushToast({
-      message: `${msg}${i18n.t("（即时生效）")}`,
+      message,
       source: pluginId,
       severity: "info",
       ttl: TOAST_TTL_SUCCESS,
       // E6#73b（18 档 §五 B ②）：安装终态进唤醒白名单——这是新建条目（「新状态」），
       // 且 R5-5 明确要求「装成功也要冒出来」。缺省判据（error ∨ 带按钮）够不着它：
       // 装成功是 info、无按钮，靠缺省就是静默。
-      // ⚠️ `enable`（启用）不是 job、不在 §五 B ② 的四类里——照旧不唤醒，别顺手放宽。
-      wake: reason !== "enable",
+      wake: true,
     });
   });
 

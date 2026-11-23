@@ -17,6 +17,7 @@
  */
 
 import { readSync, writeSync } from "../configuration/StorageService";
+import { clampTtl, decidePresentation } from "./toastRouting";
 
 /** 对标 VS Code Severity——success 随轻 Toast 契约（01 §二）加宽：success 条目降级进面板时图标/色照语义显示 */
 export type ToastSeverity = "info" | "success" | "warning" | "error";
@@ -369,6 +370,49 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
 
   notify();
   return id;
+}
+
+/** 壳侧轻回执入参——与 `toasts.show` 同口径（01 契约 §二），但动作可用闭包（壳内无 IPC）。 */
+export interface TransientToastInput {
+  message: string;
+  severity?: ToastSeverity;
+  key?: string;
+  icon?: boolean;
+  actions?: ToastAction[];
+  ttl?: number;
+  source?: string;
+  isCloseAffordance?: boolean;
+}
+
+/**
+ * 壳侧「轻回执」唯一入口——先按 `toastRouting.decidePresentation` 定面，再交给 `pushToast`。
+ *
+ * 🔴 **为什么壳侧需要它**：`pushToast({ presentation:"toast" })` 是**跳过路由**的直接写面；
+ * 壳内生产者若各自预判，就会长出第二把尺（01 §三 / `toastRouting.ts` 头注）。本函数让壳侧
+ * 复制/删除/切换这类「路过型回执」也只表达意图，落在哪个面由判据决定：
+ *   - error / 动作 >1 / 视觉宽 >96 / 显式换行 >2 / ttl ≥8000 ⇒ 面板（契约 B9/B12/B3/B4/B14）。
+ *   - ttl ≤ 0（常驻）⇒ 面板（轻 toast 不承载「等用户关」）；⛔ 不能先 clamp，否则 0 会被夹成
+ *     1500 而掉进 toast。
+ *   - 其余 ⇒ toast，ttl 走 `clampTtl`（缺省 3000，夹取 [1500,10000]）。
+ *
+ * 返回值带实际落面，便于调用方/单测断言（与插件面 `ToastHandle.presentation` 同语义）。
+ */
+export function showTransientToast(input: TransientToastInput): { id: string; presentation: "toast" | "panel" } {
+  const wantsPersistent = typeof input.ttl === "number" && input.ttl <= 0;
+  const route = wantsPersistent
+    ? "panel"
+    : decidePresentation({
+        message: input.message,
+        severity: input.severity,
+        actionCount: input.actions?.length ?? 0,
+        ttl: input.ttl,
+      });
+  const ttl = route === "toast"
+    ? clampTtl(input.ttl)
+    // 面板侧：error 与插件面同口径缺省 8s（其余缺省交给 pushToast 的 6000）
+    : (input.ttl ?? (input.severity === "error" ? TOAST_TTL_ERROR : undefined));
+  const id = pushToast({ ...input, ttl, presentation: route });
+  return { id, presentation: route };
 }
 
 /** 移除 toast（用户点 × / 句柄取消 / 全部清除） */

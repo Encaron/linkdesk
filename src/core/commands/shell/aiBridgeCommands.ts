@@ -298,10 +298,10 @@ export function registerAiBridgeCommands(): void {
   });
 }
 
-/** 复制成功的出声——toast 是唯一通知面（coreCommands 同款） */
+/** 复制成功的出声——轻 toast（路过型回执；coreCommands 同款） */
 function pushToastCopied(): void {
   void (async () => {
-    const { pushToast } = await import("../../services/ui/toast");
-    pushToast({ source: "ai-bridge", severity: "info", message: i18n.t("已复制到剪贴板") });
+    const { showTransientToast } = await import("../../services/ui/toast");
+    showTransientToast({ source: "ai-bridge", severity: "info", message: i18n.t("已复制到剪贴板") });
   })();
 }

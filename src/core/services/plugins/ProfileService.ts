@@ -19,7 +19,7 @@ import {
 } from "../../../pluginLoader/loader";
 import i18n from "../../../i18n"; // E6#73h（D3）：用户可见文案走 i18n（硬约束 2）
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
-import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
+import { pushToast, showTransientToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
 import { deepEqual } from "../../utils/deepEqual"; // E5.8 归一化：JSON.stringify 深比较捷径统一走共享工具
 import { normalizeThemeValue, normalizeThemeColorValue, normalizeRecipeId, normalizeIconThemeId } from "../ui/ThemeEngine"; // E5.8#50.21：快照导出/校验前旧值归一化｜E6#111f／1.36：＋外观四键比较归一（见 PROFILE_COMPARE_NORMALIZERS）｜E6#111n／1.47：＋app.iconTheme
 import {
@@ -394,6 +394,6 @@ export async function switchProfile(name: string): Promise<boolean> {
   await _setCurrentProfileName(name);
   onDidChangeProfile.fire({ name });
 
-  pushToast({ message: i18n.t("已切换到配置方案「{{name}}」", { name }), severity: "info" });
+  showTransientToast({ message: i18n.t("已切换到配置方案「{{name}}」", { name }), severity: "info" });
   return true;
 }

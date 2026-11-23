@@ -492,14 +492,16 @@ describe("发起方自消化（⑤ 后台静默 / 手动出声——**成对的�
     expect(stub.checkContexts).toEqual([false]);
   });
 
-  it("手动查到无更新 ⇒ 短提示，且**显式 wake**（否则铃铛悄悄 +1，用户以为点了没反应）", async () => {
+  it("手动查到无更新 ⇒ 轻 toast（底中可见，不再占铃铛、也不靠 wake 弹面板）", async () => {
     stub.setCheckResult({ type: "idle" });
 
     await mod.checkForUpdatesAndReport(true);
 
     const live = toast.getToasts();
     expect(live).toHaveLength(1);
-    expect(live[0].wake).toBe(true);
+    expect(live[0].presentation).toBe("toast");
+    // store 会把 wake 缺省落成 false（defaultWake：info 无按钮）——轻 toast 本来就不弹面板
+    expect(live[0].wake).toBe(false);
     expect(live[0].ttl).toBe(toast.TOAST_TTL_SUCCESS);
   });
 

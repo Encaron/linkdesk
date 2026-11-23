@@ -18,13 +18,17 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-vi.mock("../../services/ui/toast", () => ({ pushToast: vi.fn(() => "mock-toast-id") }));
-import { pushToast } from "../../services/ui/toast";
+vi.mock("../../services/ui/toast", () => ({
+  pushToast: vi.fn(() => "mock-toast-id"),
+  showTransientToast: vi.fn(() => ({ id: "mock-toast-id", presentation: "toast" })),
+}));
+import { pushToast, showTransientToast } from "../../services/ui/toast";
 import { CUSTOM_EVENTS } from "../../react/events/CoreEvents";
 import { ensureCoreCommands } from "./coreCommands";
 import { updateCoreCallbacks, type CoreCallbacks } from "../infra/CoreCallbacks";
 
 const pushToastMock = vi.mocked(pushToast);
+const showTransientMock = vi.mocked(showTransientToast);
 
 /** `dialog.openWorkspaceImport` 的返回值——每用例自己决定（null = 用户取消） */
 let picked: { path: string; content: string } | null;
@@ -34,6 +38,7 @@ let dispatched: number;
 
 beforeEach(() => {
   pushToastMock.mockClear();
+  showTransientMock.mockClear();
   dispatched = 0;
   picked = null;
   window.addEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, countDispatch);
@@ -105,8 +110,8 @@ describe("工作区导入（校验与反馈——04 布局恢复断线修后）"
     await runImport();
 
     expect(dispatched).toBe(1);
-    expect(pushToastMock).toHaveBeenCalledTimes(1);
-    expect(pushToastMock.mock.calls[0]?.[0]).toMatchObject({ severity: "info", source: "workspace" });
+    expect(showTransientMock).toHaveBeenCalledTimes(1);
+    expect(showTransientMock.mock.calls[0]?.[0]).toMatchObject({ severity: "info", source: "workspace" });
   });
 
   it("用户取消（dialog 返回 null）⇒ 无动作无提示", async () => {
@@ -115,6 +120,7 @@ describe("工作区导入（校验与反馈——04 布局恢复断线修后）"
 
     expect(dispatched).toBe(0);
     expect(pushToastMock).not.toHaveBeenCalled();
+    expect(showTransientMock).not.toHaveBeenCalled();
   });
 });
 
