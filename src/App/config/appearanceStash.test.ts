@@ -69,8 +69,10 @@ describe("外观模式切换 —— 自定义覆盖 stash（2026-11-24）", () =
   });
 
   it("切 custom：stash 无改动（纯种子） → 走播种，不恢复旧值", () => {
-    // 无 stash 时也应播种而非抛错
+    // 无 stash 时也应播种而非抛错；无 glass 主题 → 玻璃键不写、其余种子照写
     expect(enterCustomAppearance()).toBe(false);
-    expect(inspectConfiguration("app.glassOpacity").userValue).toBe(0.5); // 默认种子
+    expect(inspectConfiguration("app.glassOpacity").userValue).toBeUndefined();
+    expect(inspectConfiguration("app.surfaceRadius").userValue).toBe(0);
+    // 无 glass 声明的主题不再播种玻璃键（2026-11-24）——播种走其余覆盖
   });
 });

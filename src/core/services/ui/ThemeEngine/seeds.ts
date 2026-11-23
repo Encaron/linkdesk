@@ -36,6 +36,20 @@ export const APPEARANCE_OVERRIDE_KEYS = [
   "app.backgroundOpacity", "app.backgroundMask", "app.fontFamilyMono", "app.glassSaturate",
 ] as const;
 
+/** 玻璃四键（2026-11-24）——播种/重播种/复位时若当前主题**没有声明 glass 域**，这些键一律不写并摘除：
+ *  玻璃激活是 presence 门控（写过 0/0.5/1 都算显式），给无玻璃主题播种 = 凭空让面板变半透明，
+ *  视觉与跟随主题不一致（用户实机：「切自定义/切主题颜色变了」的来源之一）。 */
+export const GLASS_OVERRIDE_KEYS = [
+  "app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate",
+] as const;
+
+/** 当前活动主题是否声明了 glass 域（决定 GLASS_OVERRIDE_KEYS 是否参与播种/保留）。 */
+export function activeThemeDeclaresGlass(): boolean {
+  const active = getActiveRecipe();
+  const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
+  return !!recipe?.appearance?.glass;
+}
+
 /** 外观覆盖播种值形状——deriveAppearanceSeeds 返回值（08 §2：设置层永远只存用户偏离量） */
 export interface AppearanceSeedValues {
   surfaceRadius: number;
@@ -189,14 +203,16 @@ export function getThemeBaseTokens(): Record<string, string> {
  * （presence 门控：写过 0/0.5/1 都算显式），视觉与跟随主题不一致。
  */
 export function resetAppearanceToThemeValues(): void {
-  const active = getActiveRecipe();
-  const recipe = active ? ThemeRegistry.getRecipe(active.recipeId) : undefined;
-  const hasThemeGlass = !!recipe?.appearance?.glass;
+  const hasThemeGlass = activeThemeDeclaresGlass();
   const seedMap = deriveAppearanceSeedMap(getThemeBaseTokens()) as Record<string, unknown>;
-  const glassKeys = ["app.glassBlur", "app.glassOpacity", "app.glassTint", "app.glassSaturate"];
-  const writeKeys = APPEARANCE_OVERRIDE_KEYS.filter((key) => hasThemeGlass || !glassKeys.includes(key));
+  const writeKeys = APPEARANCE_OVERRIDE_KEYS.filter(
+    (key) => hasThemeGlass || !(GLASS_OVERRIDE_KEYS as readonly string[]).includes(key)
+  );
   setConfigurationValueBatch(writeKeys.map((key) => ({ key, value: seedMap[key] })), "user");
-  resetConfigurationValueBatch([...MIX_SOURCE_KEYS, ...(hasThemeGlass ? [] : glassKeys)], "user");
+  resetConfigurationValueBatch([
+    ...MIX_SOURCE_KEYS,
+    ...(hasThemeGlass ? [] : GLASS_OVERRIDE_KEYS),
+  ], "user");
 }
 
 /** E5.8 Phase 11.16：玻璃系统标尺化——表面合成规格（apply 层在 applyOverrides 后消费）。

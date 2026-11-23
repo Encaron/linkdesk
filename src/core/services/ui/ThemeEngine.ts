@@ -60,4 +60,5 @@ export type { AppearanceSeedValues, GlassSurfaceSpec } from "./ThemeEngine/seeds
 export {
   APPEARANCE_OVERRIDE_KEYS, deriveAppearanceSeeds, deriveAppearanceSeedMap,
   deriveReseedPlan, getThemeBaseTokens, getAppearanceOverrides, resetAppearanceToThemeValues,
+  GLASS_OVERRIDE_KEYS, activeThemeDeclaresGlass,
 } from "./ThemeEngine/seeds";

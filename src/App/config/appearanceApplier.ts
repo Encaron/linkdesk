@@ -32,12 +32,13 @@ import {
   APPEARANCE_OVERRIDE_KEYS,
   MIX_FOLLOW_THEME,
   MIX_SOURCE_KEYS, // E5.8#90：混搭来源 key 全集——单一来源 ThemeEngine
+  GLASS_OVERRIDE_KEYS, activeThemeDeclaresGlass, // 2026-11-24：无 glass 主题不播种玻璃键
 } from "../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../../core/registry/appearance/IconRegistry";
 import type { ThemeRecipe } from "../../core/types/theme";
 import {
-  getConfigurationValue, setConfigurationValueBatch, inspectConfiguration,
+  getConfigurationValue, setConfigurationValueBatch, resetConfigurationValueBatch, inspectConfiguration,
 } from "../../core/services/configuration/ConfigurationService";
 import { registerConfigMigration, registerConfigRepair } from "../../core/services/configuration/schemaMigrations";
 
@@ -134,12 +135,19 @@ export const MIX_RESET_DISABLED_WHEN = MIX_SOURCE_KEYS.map((key) => ({ key, valu
  */
 export const seedAppearanceOverrides = (): void => {
   const seedMap = deriveAppearanceSeedMap(getEffectiveTokens());
+  // 2026-11-24：无 glass 声明的主题不写玻璃四键——presence 门控下写了就等于「凭空开玻璃」，
+  // 进入自定义后视觉和跟随主题不一致（用户实机：「切模式颜色变了」来源之一）。
+  const hasGlass = activeThemeDeclaresGlass();
+  const keys = APPEARANCE_OVERRIDE_KEYS.filter(
+    (key) => hasGlass || !(GLASS_OVERRIDE_KEYS as readonly string[]).includes(key)
+  );
   // E5.8#98：强调色不入播种批——accentSource 独立轴，切 custom 不物化强调色（跟随主题就保持跟随，
   // 自定义就已是自定义色）。旧 #90 逻辑「取引擎追踪强调色 getAppliedAccent 物质化为槽值」随强调色解耦
   // 作废——若仍播种，followTheme 用户的 accentColor 被写进一个永不生效的值（14-档案 §十二）。
   // 注意不能用 getEffectiveAccentColor()——此刻模式已切 custom，读到的已是旧 app.accentColor。
-  const writes: Array<{ key: string; value: unknown }> = APPEARANCE_OVERRIDE_KEYS.map((key) => ({ key, value: seedMap[key] }));
+  const writes: Array<{ key: string; value: unknown }> = keys.map((key) => ({ key, value: seedMap[key] }));
   setConfigurationValueBatch(writes, "user");
+  if (!hasGlass) resetConfigurationValueBatch([...GLASS_OVERRIDE_KEYS], "user");
 };
 
 /** E5.8#88：当前用户外观覆盖值（raw user scope）——切主题重播种的「显式修改」判定集 */
@@ -269,10 +277,16 @@ export const reseedAppearanceOnThemeSwitch = async (
 ): Promise<void> => {
   const newBaseline = deriveAppearanceSeedMap(getThemeBaseTokens());
   const writes = deriveReseedPlan(oldBaseline, newBaseline, stored);
-  if (writes.length) {
+  // 2026-11-24：新主题没有 glass 域 → 玻璃四键不写、并摘除旧值（presence 门控会把它们当显式覆盖，
+  // 切到无玻璃主题后仍开着玻璃 = 视觉与跟随主题不一致）。
+  const hasGlass = activeThemeDeclaresGlass();
+  const glassKeys = GLASS_OVERRIDE_KEYS as readonly string[];
+  const effectiveWrites = hasGlass ? writes : writes.filter((w) => !glassKeys.includes(w.key));
+  if (effectiveWrites.length) {
     // #59 同款：批量写单次持久化 + 单次 applier（末 key 全量读生效态一次广播收敛）
-    await setConfigurationValueBatch(writes, "user");
+    await setConfigurationValueBatch(effectiveWrites, "user");
   }
+  if (!hasGlass) await resetConfigurationValueBatch([...GLASS_OVERRIDE_KEYS], "user");
 };
 
 /* ── E5.8#85 补课：schema 版本迁移登记（14-档案 §五 #85 + schemaMigrations.ts） ──

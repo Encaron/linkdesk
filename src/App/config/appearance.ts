@@ -230,11 +230,26 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         type: "string",
         group: t("整体配方"),
         default: "",
-        title: t("以当前主题为起点"),
-        description: t("清除我的外观覆盖，按当前主题重新开始（保持自定义）"),
+        title: t("重置为当前主题"),
+        // 按钮文案 = title（settings 插件 ActionButton 优先取 title）——短到一眼懂；长解释留 description（行下说明）
+        description: t("清除你的外观覆盖与分区来源，按当前主题的值重新开始；仍留在自定义，可继续微调"),
         renderHint: "action",
         actionCommand: "theme.resetToTheme",
         dependsOn: { key: "app.appearanceMode", value: "custom" },
+      },
+      // 分区来源复位（2026-11-24 改名归位）——只复位 3 个域来源键（颜色/玻璃/背景/字体）回「跟随主题」，
+      // **不动**外观覆盖（玻璃不透明度/圆角/壁纸/字号）。旧名「全部复位为整体配方」承诺过大，且默认全跟随 → 置灰，
+      // 用户误以为是坏按钮（实机）。与「重置为当前主题」相邻（同属「整体配方」组，声明顺序即渲染顺序）。
+      "app.mixReset": {
+        type: "string",
+        group: t("整体配方"),
+        default: "",
+        title: t("分区来源改回主题"),
+        description: t("颜色 / 玻璃 / 背景 / 字体的来源改回「跟随主题」；已调好的外观覆盖不受影响"),
+        renderHint: "action",
+        actionCommand: "theme.resetMix",
+        dependsOn: { key: "app.appearanceMode", value: "custom" },
+        actionDisabledAll: MIX_RESET_DISABLED_WHEN,
       },
       // E5.8#133：图标主题——独立选择器（VS Code 模式），与配色主题完全独立（概念键分离）。
       //   默认 "default" = codicon 保底（零图标主题插件也成立，UI 恒显该项）；枚举 = default + 已登记
@@ -571,23 +586,7 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
       // E5.8#132：surface 域删——app.mixSurface（表面域来源选择器）随域消失（原并入背景小组，
       // 域来源随域；surface 域视觉输出 = zone 表面材质 = 背景相邻，与 zoneBackgroundImage 同写
       // --surface-bg-image）。
-      // 复位按钮（10 §2/§6 决策记录 3）——renderHint "action" 渲染操作按钮；
-      // 点击执行 theme.resetMix 命令（单一写入点：批复位 3 来源键回跟随主题，保持自定义模式）。
-      // actionDisabledAll：4 来源全「跟随主题」→ 置灰（mockup 已实现，减少噪音）。
-      // 分区来源复位（2026-11-24 改名归位）——只复位 3 个域来源键（颜色/玻璃/背景/字体）回「跟随主题」，
-      // **不动**外观覆盖（玻璃不透明度/圆角/壁纸/字号）。旧名「全部复位为整体配方」承诺过大，且默认全跟随 → 置灰，
-      // 用户误以为是坏按钮（实机）。动作仍是 theme.resetMix（单一写入点）。
-      "app.mixReset": {
-        type: "string",
-        group: t("整体配方"),
-        default: "",
-        title: t("复位分区来源"),
-        description: t("⟲ 颜色/玻璃/背景/字体的来源回到「跟随主题」（外观覆盖不动）"),
-        renderHint: "action",
-        actionCommand: "theme.resetMix",
-        dependsOn: { key: "app.appearanceMode", value: "custom" },
-        actionDisabledAll: MIX_RESET_DISABLED_WHEN,
-      },
+      // 分区来源复位已上移到「整体配方」组（与「以当前主题为起点」相邻）——此处保留说明，无声明。
     },
   });
 }
