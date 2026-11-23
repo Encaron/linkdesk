@@ -1,0 +1,116 @@
+/* AiPolicyPicker——AI 权限四段选择器（`@linkdesk/ui` 共享件 · 2026-11-24）
+ *
+ * 视觉基线 = mockups/01-设置页-权限档位-交互.html 的 `.policy-seg` / `.seg-btn` / `.policy-current`
+ * / `.policy-full-note`，逐值换成 token（硬约束 1：禁 hex）。
+ * 🔴 共享件不许假设自己长在哪个容器里：宽度 100%、不设外边距（间距归调用方）。
+ */
+
+.ldk-ai-policy-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 四段轨道 */
+.ldk-ai-policy-seg {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+
+.ldk-ai-policy-segbtn {
+  appearance: none;
+  min-width: 0;
+  padding: 7px 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.ldk-ai-policy-segbtn:hover:not(:disabled) {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* 选中态 = accent 实底 + on-accent 文字（对比度由 token 保证） */
+.ldk-ai-policy-segbtn[aria-checked="true"] {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.ldk-ai-policy-segbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ldk-ai-policy-segbtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 当前档说明（人话） */
+.ldk-ai-policy-current {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+/* 判定摘要（四段各一段，☑/询问/不允许） */
+.ldk-ai-policy-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+}
+
+/* 完全访问的常驻提示条——危险语气，但颜色仍走 token */
+.ldk-ai-policy-note {
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+}
+
+/* 「改成自主」——次级按钮（不是主 CTA：真正的写入在设置页的保存心智里） */
+.ldk-ai-policy-reset {
+  align-self: flex-start;
+  padding: 0 12px;
+  height: var(--size-control-sm);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ldk-ai-policy-reset:hover:not(:disabled) {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.ldk-ai-policy-reset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

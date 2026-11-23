@@ -14,6 +14,7 @@
     ],
     "appearance": [
       "importImage",
+      "pickImage",
       "revealStorage"
     ],
     "bridge": [
@@ -85,7 +86,8 @@
       "confirm",
       "confirmContent",
       "open",
-      "openFile"
+      "openFile",
+      "save"
     ],
     "dialogHost": [
       "cancel",
@@ -231,19 +233,27 @@
     ],
     "plugins": [
       "getCompatibility",
+      "getUpdatePolicy",
       "listAll",
       "listDirs",
       "listDisabledDirs",
+      "listSourceTrust",
       "packageCancel",
       "packageCommitUpdate",
       "packageDownload",
       "packageExtract",
       "packageStageUpdate",
       "packageUpdateCheck",
+      "previewUpdatePlan",
       "readAllManifests",
       "readManifest",
+      "requestInstall",
+      "requestUpdateBatch",
       "resolveEntry",
-      "resolvePath"
+      "resolvePath",
+      "setUpdatePolicy",
+      "trustSource",
+      "untrustSource"
     ],
     "pool": [
       "adsorbIndex",
@@ -327,6 +337,7 @@
     ],
     "storage": [
       "cacheDir",
+      "getFilePath",
       "revealCache"
     ],
     "tabs": [
@@ -382,15 +393,19 @@
       "addFolder",
       "getActive",
       "getFolders",
+      "getRecentFolders",
       "onDidChangeActiveWorkspace",
       "onDidChangeFolders",
+      "onDidChangeRecentFolders",
       "openFolder",
       "removeFolder",
       "setActive"
     ]
   },
   "apiRootMembers": [
-    "getFilePath"
+    "getFilePath",
+    "getState",
+    "onChange"
   ],
   "poolExposed": {
     "app": [
@@ -398,6 +413,7 @@
     ],
     "appearance": [
       "importImage",
+      "pickImage",
       "revealStorage"
     ],
     "clipboard": [
@@ -463,7 +479,8 @@
       "confirm",
       "confirmContent",
       "open",
-      "openFile"
+      "openFile",
+      "save"
     ],
     "dialogHost": [
       "cancel",
@@ -609,19 +626,27 @@
     ],
     "plugins": [
       "getCompatibility",
+      "getUpdatePolicy",
       "listAll",
       "listDirs",
       "listDisabledDirs",
+      "listSourceTrust",
       "packageCancel",
       "packageCommitUpdate",
       "packageDownload",
       "packageExtract",
       "packageStageUpdate",
       "packageUpdateCheck",
+      "previewUpdatePlan",
       "readAllManifests",
       "readManifest",
+      "requestInstall",
+      "requestUpdateBatch",
       "resolveEntry",
-      "resolvePath"
+      "resolvePath",
+      "setUpdatePolicy",
+      "trustSource",
+      "untrustSource"
     ],
     "pool": [
       "adsorbIndex",
@@ -683,6 +708,9 @@
       "showItemInFolder",
       "startDrag"
     ],
+    "storage": [
+      "getFilePath"
+    ],
     "tabs": [
       "close",
       "closeBySourceId",
@@ -736,14 +764,17 @@
       "addFolder",
       "getActive",
       "getFolders",
+      "getRecentFolders",
       "onDidChangeActiveWorkspace",
       "onDidChangeFolders",
+      "onDidChangeRecentFolders",
       "openFolder",
       "removeFolder",
       "setActive"
     ]
   },
   "poolRootMembers": [
+    "aiPolicy",
     "getFilePath"
   ],
   "manifestFields": {
@@ -959,6 +990,15 @@
     "ldk-about-skel-logo",
     "ldk-about-tagline",
     "ldk-about-ver",
+    "ldk-ai-badge",
+    "ldk-ai-badge-dot",
+    "ldk-ai-policy-current",
+    "ldk-ai-policy-note",
+    "ldk-ai-policy-picker",
+    "ldk-ai-policy-reset",
+    "ldk-ai-policy-seg",
+    "ldk-ai-policy-segbtn",
+    "ldk-ai-policy-summary",
     "ldk-app-shell",
     "ldk-background-layer",
     "ldk-badge",
@@ -1028,6 +1068,17 @@
     "ldk-empty-stage-mark",
     "ldk-empty-stage-sr",
     "ldk-empty-stage-wordmark",
+    "ldk-fallback",
+    "ldk-fallback--micro",
+    "ldk-fallback--panel",
+    "ldk-fallback-actions",
+    "ldk-fallback-btn",
+    "ldk-fallback-btn--primary",
+    "ldk-fallback-desc",
+    "ldk-fallback-detail",
+    "ldk-fallback-icon",
+    "ldk-fallback-kv",
+    "ldk-fallback-title",
     "ldk-famgr",
     "ldk-famgr-contested",
     "ldk-famgr-control",
@@ -1239,6 +1290,44 @@
     "ldk-pd-subtitle",
     "ldk-pd-title-row",
     "ldk-pd-version",
+    "ldk-pic",
+    "ldk-pic--batch",
+    "ldk-pic-badge",
+    "ldk-pic-body",
+    "ldk-pic-btn",
+    "ldk-pic-check",
+    "ldk-pic-empty",
+    "ldk-pic-foot",
+    "ldk-pic-group",
+    "ldk-pic-group-count",
+    "ldk-pic-group-head",
+    "ldk-pic-group-name",
+    "ldk-pic-head",
+    "ldk-pic-headtext",
+    "ldk-pic-kv",
+    "ldk-pic-kv-k",
+    "ldk-pic-kv-row",
+    "ldk-pic-kv-v",
+    "ldk-pic-link",
+    "ldk-pic-note",
+    "ldk-pic-row",
+    "ldk-pic-row-icon",
+    "ldk-pic-row-icon-inner",
+    "ldk-pic-row-name",
+    "ldk-pic-row-sub",
+    "ldk-pic-row-text",
+    "ldk-pic-row-ver",
+    "ldk-pic-scroll",
+    "ldk-pic-shield",
+    "ldk-pic-silent",
+    "ldk-pic-silent-text",
+    "ldk-pic-stat",
+    "ldk-pic-stat-l",
+    "ldk-pic-stat-n",
+    "ldk-pic-stats",
+    "ldk-pic-sub",
+    "ldk-pic-title",
+    "ldk-pic-warn",
     "ldk-plugin-card",
     "ldk-plugin-card--disabled",
     "ldk-plugin-card--expanded",

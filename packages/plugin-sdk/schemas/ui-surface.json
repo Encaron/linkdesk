@@ -2,6 +2,9 @@
   "$comment": "`@linkdesk/ui` 导出面账本（随包下发，生成物勿手改）——每个导出名 → since（首次随哪个**壳版本**提供）。插件据此算自己 `plugin.json` 的 minAppVersion 地板：地板 = max(since(实际导入的名字))。数据唯一源 = 壳仓 scripts/ui-surface.json（同一次采集），由 scripts/gen-ui-surface.mjs 同笔投影（--check 对账）；口径 = scripts/lib/ui-surface.mjs。since 是**壳版本**空间（不是 ui 包版本），语义与判据见 docs/03-插件制造/04-插件分发格式.md §minAppVersion。",
   "version": 1,
   "components": {
+    "AiPolicyPicker": {
+      "since": "0.2.62"
+    },
     "BackgroundImagePicker": {
       "since": "0.2.40"
     },
@@ -212,6 +215,15 @@
     }
   },
   "types": {
+    "AiPolicyOption": {
+      "since": "0.2.62"
+    },
+    "AiPolicyPickerProps": {
+      "since": "0.2.62"
+    },
+    "AiPolicyValue": {
+      "since": "0.2.62"
+    },
     "BackgroundImagePickerProps": {
       "since": "0.2.40"
     },
@@ -309,5 +321,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 100
+  "count": 104
 }

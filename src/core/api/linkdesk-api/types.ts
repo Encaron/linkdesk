@@ -110,7 +110,8 @@ export type SettingsUiHint =
   | "fontSize"
   | "segmented"
   | "stringList"
-  | "fileAssociationsManager";
+  | "fileAssociationsManager"
+  | "aiPolicy";
 
 /**
  * Canonical render hint for settings rows (`renderHint`) — three values.

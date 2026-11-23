@@ -620,7 +620,7 @@
                   },
                   "uiHint": {
                     "type": "string",
-                    "description": "Settings editor rendering hint — SettingsView picks the control from the hint. Known hints: slider, fontSize, color, fontFamily, file, directory, image, segmented, fontTone, accentSource, themePicker, select, stringList, fileAssociationsManager. A hint the installed renderer does not know is shown read-only — the current value plus a tooltip saying the declared control is unsupported (no editable fallback control, no error thrown). The value is an open string, so third parties may declare new hint names."
+                    "description": "Settings editor rendering hint — SettingsView picks the control from the hint. Known hints: slider, fontSize, color, fontFamily, file, directory, image, segmented, fontTone, accentSource, themePicker, select, stringList, fileAssociationsManager, aiPolicy. A hint the installed renderer does not know is shown read-only — the current value plus a tooltip saying the declared control is unsupported (no editable fallback control, no error thrown). The value is an open string, so third parties may declare new hint names."
                   },
                   "allowAlpha": {
                     "type": "boolean",

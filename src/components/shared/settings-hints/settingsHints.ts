@@ -51,6 +51,9 @@ export const SETTINGS_UI_HINTS: readonly SettingsUiHint[] = [
   "segmented",
   "stringList",
   "fileAssociationsManager",
+  // 2026-11-24（AI 安全 · 权限档位）：四段权限选择器——渲染体 = 共享件 `AiPolicyPicker`
+  // （受控、零桥）。认识的渲染器画四段控件；不认识的按未知 hint 降级为只读（老契约一字不动）。
+  "aiPolicy",
 ];
 
 /** 渲染提示词表——3 枚（`renderHint` 的已知值）。

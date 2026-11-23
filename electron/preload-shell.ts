@@ -189,6 +189,12 @@ function buildShellApp() {
      */
     getAiBridge: (action?: { action: 'get' | 'regenerateToken' }) =>
       ipcRenderer.invoke(IPC.app.getAiBridge, action),
+    /**
+     * AI 权限档位快照（2026-11-24 · AI 安全 · 权限档位与提权）——**壳内私有扩展的第五例**
+     * （同 `getAiBridge` 形：main 直答、池 preload 不注入；设置页壳命令经它取数据，
+     * 终稿文字在命令里 `t()`——主进程只出数据与 i18n key）。
+     */
+    getAiPolicy: () => ipcRenderer.invoke(IPC.app.getAiPolicy),
   };
 }
 

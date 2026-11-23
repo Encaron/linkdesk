@@ -1,7 +1,8 @@
 {
   "generatedAt": "2026-10-05T16:26:14.762Z",
-  "shellVersion": "0.2.61",
+  "shellVersion": "0.2.62",
   "components": {
+    "AiPolicyPicker": { "since": "0.2.62" },
     "BackgroundImagePicker": { "since": "0.2.40" },
     "Badge": { "since": "0.2.13" },
     "Button": { "since": "0.2.13" },
@@ -76,6 +77,9 @@
     "urlSourceKey": { "since": "0.2.13" }
   },
   "types": {
+    "AiPolicyOption": { "since": "0.2.62" },
+    "AiPolicyPickerProps": { "since": "0.2.62" },
+    "AiPolicyValue": { "since": "0.2.62" },
     "BackgroundImagePickerProps": { "since": "0.2.40" },
     "BuildInput": { "since": "0.2.52" },
     "CardModel": { "since": "0.2.52" },
@@ -109,5 +113,5 @@
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 100
+  "count": 104
 }

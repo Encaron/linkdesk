@@ -92,6 +92,7 @@ import { buildDecorations } from './preload-pool/decorations';
 import { buildViewContainer } from './preload-pool/viewcontainer';
 import { buildPanel } from './preload-pool/panel'; // E5.8#34.5：底部面板命名空间（panel.reveal）
 import { buildSettings } from './preload-pool/settings'; // E5.8#41.12：设置套命名空间（枚举/切换）
+import { buildAiPolicy } from './preload-pool/aiPolicy'; // 2026-11-24：AI 权限档位读面（getState/onChange）
 import { buildFactorySlots } from './preload-pool/factory-slots'; // E5.8#41.14：系统插槽通用枚举面（槽位无关）
 import { buildUpdate } from './preload-pool/update'; // E6#57.8：主软件更新只读态（写命令不进契约）
 import {
@@ -156,6 +157,7 @@ try {
     plugins: buildPlugins(),
     licenses: buildLicenses(), // R4-1.3（I21）：许可验签/权益——市场付费流消费（plugins:call 代理）
     theme: buildTheme(),
+    aiPolicy: buildAiPolicy(events),
     appearance: buildAppearance(), // E5.8#50.11：外观资产（选择图片拷贝入库）
     keybindings: buildKeybindings(events),
     pluginState: buildPluginState(events),

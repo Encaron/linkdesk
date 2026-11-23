@@ -13,6 +13,57 @@
  */
 
 // ── Contract types ──
+/** 四档 id（与主进程 `PolicyMode` 同值；跨进程边界用字符串） */
+export type AiPolicyModeDto = "read" | "ask" | "auto" | "full";
+/** 风险级（与主进程 `Risk` 同值） */
+export type AiPolicyRiskDto = "R0" | "R1" | "R2" | "R3";
+/** 判定（与主进程 `Decision` 同值） */
+export type AiPolicyDecisionDto = "allow" | "ask" | "deny";
+/** 四档 × 四级的全矩阵（四段控件给每段算摘要用——⛔ 渲染方不自己判，只格式化） */
+export type AiPolicyMatrixDto = Record<AiPolicyModeDto, Record<AiPolicyRiskDto, AiPolicyDecisionDto>>;
+/** 一段可选项（四段控件每段 = 一条） */
+export interface AiPolicyOptionDto {
+    value: AiPolicyModeDto;
+    /** 段标题（i18n key） */
+    label: string;
+    /** 一句人话（i18n key）——与设置声明 enumDescriptions 同文 */
+    description: string;
+}
+/** 风险表一行（`decision` = **当前档位下**的判定，随档变化） */
+export interface AiPolicyRiskRowDto {
+    id: string;
+    kind: "op" | "command";
+    risk: AiPolicyRiskDto;
+    decision: AiPolicyDecisionDto;
+    /** 是什么动作（i18n key；缺省 = 只有 id） */
+    what?: string;
+    /** 为什么这样判（i18n key） */
+    why?: string;
+}
+export interface AiPolicyStateDto {
+    mode: AiPolicyModeDto;
+    /** true = 配置损坏/值非法，已按 fail-closed 档（ask）处理 */
+    degraded: boolean;
+    /** 读数时刻（ms） */
+    effectiveAt: number;
+    /** AI 通道是否开着（`ai.mcp.enabled` / `ai.cli.enabled` 任一 true）——徽标据此显示/隐藏 */
+    channelsEnabled: boolean;
+    /** 四档 × 四级判定（唯一来源 = 主进程 `decide`，⛔ 不二次实现） */
+    matrix: AiPolicyMatrixDto;
+    options: AiPolicyOptionDto[];
+    riskTable: AiPolicyRiskRowDto[];
+    /** `userOnly` 命令 id（AI 永远不可调）——由壳命令补，主进程返回空数组 */
+    protectedCommands: string[];
+}
+export interface AiPolicyAPI {
+    /** AI 权限档位读面——只读：getState（快照）＋ onChange（变更后重读并回调）。写档位不在此面 */
+    aiPolicy: {
+        /** 当前策略快照（档位 / 四档矩阵 / 风险表 / 受保护命令） */
+        getState(): Promise<AiPolicyStateDto>;
+        /** 档位变更订阅——回调参数是**重新读过**的快照（不是配置值）；返回退订函数 */
+        onChange(cb: (state: AiPolicyStateDto) => void): () => void;
+    };
+}
 /**
  * Command parameter descriptor —  commands **carry their own parameter descriptions**, returned together with `commands.getCommands()`.
  * Positional semantics: `params[i]` maps **one-to-one by position** to handler arguments (`name` follows the handler's argument name, ⛔ do not invent another) —
@@ -39,6 +90,12 @@ export interface LinkDeskCommand {
     description?: string;
     /** parameter structure (positionally mapped to handler arguments). Optional, purely additive; omit for commands without parameters. */
     params?: LinkDeskCommandParam[];
+    /**
+     * AI permission tier (2026-11-24 · AI-safety policy, L2): `true` = user-only command —
+     * the AI gateway (`exec` / `notifyAction`) always answers `EPROTECTED`. Omitted = AI-callable
+     * (still subject to the policy tier). Purely additive: existing plugins keep current behaviour.
+     */
+    userOnly?: boolean;
 }
 /** Recipe contribution domains—shared by theme metadata domains (mix-and-match source filtering) and the theme:changed payload (domain-level fine-grained refresh) (06 §2/§6.2).
  *  Five domains: colors (colorways always contribute) + the four appearance style domains (radius/glass/font/background).
@@ -98,6 +155,25 @@ export interface LinkDeskConfigProperty {
     group?: string;
     /** numeric unit — value-label unit for uiHint "slider" ("×" / "px"; empty = bare number) */
     unit?: string;
+    /** 2026-11-24 semantic ownership: host asset domain registry key (e.g. "appearance") — the domain source of host asset actions.
+     *  The UI forwards this value verbatim to `appearance.pickImage`; ⛔ it never holds a domain literal (replace the UI plugin and the start directory stays). */
+    assetDomain?: string;
+    /** 2026-11-24: asset target slot inside the domain (e.g. "app"/"zone") — same directory/filters, only decides which config key the UI writes back. */
+    pickTarget?: string;
+    /** 2026-11-24: conditional description — when `{key,value}` holds, this text replaces `description`.
+     *  Example: `app.themeColor` under `app.appearanceMode="custom"` shows the colors-domain source wording. The UI ⛔ no longer special-cases the key. */
+    descriptionWhen?: {
+        key: string;
+        value: unknown;
+        description: string;
+    };
+    /** 2026-11-24: source-badge activation condition for `sourceKey` (e.g. appearanceMode="custom"). Without it the slot derives no "mix" source; the UI ⛔ no longer holds the `"custom"` literal. */
+    sourceActiveWhen?: {
+        key: string;
+        value: unknown;
+    };
+    /** 2026-11-24: the `sourceKey` sentinel meaning "follow theme" (e.g. "followTheme") — the second condition for a mix badge. The UI reads the declaration, ⛔ not a sentinel literal. */
+    sourceFollowValue?: string;
 }
 /** Config schema — key → property definition (index signature kept for existing consumers) */
 export interface LinkDeskConfigSchema {
@@ -288,6 +364,22 @@ export interface LinkDeskLanguage {
     label: string;
     pluginId: string;
 }
+/** Options for `appearance.pickImage` — the caller forwards the schema-declared `assetDomain` / `pickTarget` verbatim (2026-11-24 semantic ownership).
+ *  ⛔ No path, no directory token, no domain literal: start directory / filters / copy-into-store are host-owned. */
+export interface AppearancePickOptions {
+    /** Host asset domain registry key (e.g. "appearance") — declared by the config schema (`assetDomain`) */
+    domain: string;
+    /** Target slot inside the domain (e.g. "app" / "zone") — declared by the config schema (`pickTarget`); shares the domain's directory and filters */
+    target: string;
+}
+/** Result of `appearance.pickImage` — a canceled dialog is `{picked:false}`, not an error. */
+export type AppearancePickResult = {
+    picked: true;
+    url: string;
+    name: string;
+} | {
+    picked: false;
+};
 /** Theme + language + appearance asset namespace surfaces — modeled after the VS Code appearance surface */
 export interface AppearanceAPI {
     theme: {
@@ -344,6 +436,10 @@ export interface AppearanceAPI {
         /** open the appearance storage directory (userData/appearance) — the main process resolves the path and uses shell.openPath to open the file explorer
          *  at the directory contents (not highlighting a single file); a missing directory is created too (opening reveals the storage location); an openPath failure throws fail-loud. */
         revealStorage(): Promise<void>;
+        /** 2026-11-24 semantic ownership: pick + import in one host action. The start directory, extension whitelist and copy-into-store are decided by the main process
+         *  (`electron/services/hostAssets/appearance/defaults.ts` — the single semantic source); the caller only forwards the schema-declared `{domain,target}`.
+         *  Returns the controlled URL (`linkdesk-userdata://…`) or `{picked:false}` on cancel. Replacing the UI plugin leaves this behavior intact. */
+        pickImage(options: AppearancePickOptions): Promise<AppearancePickResult>;
     };
 }
 /** Storage namespace surface — the read port and open port for the currently effective cache directory (the single resolution point is in the main process storage-handlers) */
@@ -356,6 +452,10 @@ export interface StorageAPI {
         /** The absolute path of the currently effective cache directory — settings.json's `app.storage.cacheDir` (empty/missing = the userData default location);
          *  🔴 the single resolution entry (placement contract iron rule 3: no second copy of the path is stored anywhere — take it, never copy it) */
         cacheDir(): Promise<string>;
+        /** 🆕 2026-11-24: on-disk path of a host storage key (e.g. `"settings"` → `<userData>/settings.json`).
+         *  🔴 The filename map lives in the host only (`storageFilename` — shared by the renderer StorageService and the main process);
+         *  a UI plugin must call this instead of joining `appDataDir` with a filename literal (V6 / K10). */
+        getFilePath(key: string): Promise<string>;
     };
 }
 /**
@@ -1452,6 +1552,17 @@ export interface DialogOpenOptions {
      */
     defaultPathKind?: "appearance";
 }
+/** 2026-11-24（D12）：保存对话框入参——只选**落盘路径**，壳不代写内容（写入由调用方走 filesystem）。
+ *  起始目录 / 覆盖确认由 OS 原生对话框决定；插件⛔ 不再自造 `showSaveFilePicker` / `<a download>` 第二套。 */
+export interface DialogSaveOptions {
+    title?: string;
+    filters?: {
+        name: string;
+        extensions: string[];
+    }[];
+    /** 建议文件名（可含扩展名；OS 对话框据此给出落点） */
+    defaultName?: string;
+}
 /** rich-content confirm dialog open params—pool plugin → shell DialogService (addressed by content view declaration).
  *  title/message are fallbacks—when the content view fails to resolve, the shell falls back to a plain-text confirm (the dialog still shows; it does not silently die). */
 export interface DialogContentOpenOptions {
@@ -1552,6 +1663,11 @@ export type PoolDialogData = {
         renderPath: string;
         /** Opaque serialized payload — travels with the open parameters through shell→back to pool (structured clone); used by the content view to fetch data */
         payload?: unknown;
+    } | {
+        /** P1（D8 渲染槽）：宿主内置内容视图 id（池内 `plugin-install-confirm` 注册表直挂，无需 renderPath）
+         *  ——壳默认渲染器用它；第三方整套替换时换 pluginId+renderPath 那一支。两支二选一。 */
+        hostView: string;
+        payload?: unknown;
     };
 };
 /**
@@ -1578,8 +1694,9 @@ export interface PoolPendingDialog {
     /** rich-content confirmation — content = a plugin's self-drawn view. Gives the **identity** (not renderPath: that is the pool-internal addressing key,
      *  whereas this surface asks "what is the shell waiting for" from inside the pool); ⛔ no payload (the opaque payload can be large and is useless for reading "what is being waited on"). */
     content?: {
-        pluginId: string;
-        viewId: string;
+        pluginId?: string;
+        viewId?: string; /** P1：宿主内置默认渲染器（无 pluginId/viewId——壳自带视图） */
+        hostView?: string;
     };
 }
 /** Title bar action buttons — rendered by the pool + sent back for the shell to re-resolve business semantics (zero pool semantics, except UI mechanical knowledge).
@@ -1734,6 +1851,10 @@ export interface UiAPI {
         open(opts?: DialogOpenOptions): Promise<string | null>;
         /** Opens the file picker — returns the user-selected path; cancel → null. Security is controlled by the main process */
         openFile(opts?: DialogOpenOptions): Promise<string | null>;
+        /** 2026-11-24 (D12): save dialog — returns the chosen absolute path, or null on cancel.
+         *  One host action for "where to save" (start directory / overwrite confirm are OS-native); the plugin then writes via `filesystem.writeTextFile`.
+         *  ⛔ A plugin must not build a second save path (`showSaveFilePicker` / `<a download>`) — the second consumer always copies it. */
+        save(opts?: DialogSaveOptions): Promise<string | null>;
         /** rich-content confirm — the dialog's content = a plugin self-drawn view (content view declarative addressing + opaque payload).
          *  Dialog mechanics match confirm (centered/mask/Esc/focus lock/click-mask-to-cancel); content layout and buttons are drawn by the plugin view
          *  (Modeled after VS Code's "the dialog is the shell's, the content is the plugin's"). title/message as fallback — if the content view fails to resolve,
@@ -1915,6 +2036,20 @@ export interface WorkspaceFolder {
     /** Index—the first opened folder is index=0 */
     index: number;
 }
+/**
+ * 「最近文件夹」的宿主语义 —— 纯函数（2026-11-24 A3 / F2）。
+ *
+ * 为什么住壳：最近文件夹的**属主是壳**（`app` 命名空间，唯一写点 = 欢迎页 `recentList.ts`）。
+ * 文件树过去跨属主直读 `pluginState.get("app","recentFolders")`——宿主改键名/结构就静默断链。
+ * 现在读取面 = `workspace.getRecentFolders()`（主进程按本文件的规则归一化后下发），
+ * 插件⛔ 不再读别的属主的私有状态；写侧（合并/剔除）仍在欢迎页（本文件只给共享常量与读取归一）。
+ *
+ * 纯函数零副作用：不碰 window/fs/Electron——主进程与渲染侧可同图引用。
+ */
+export interface RecentFolder {
+    path: string;
+    name: string;
+}
 /** File/directory entry—shared by front and back ends */
 export interface FileEntry {
     name: string;
@@ -1983,6 +2118,12 @@ export interface WorkspaceAPI {
         removeFolder(path: string): Promise<void>;
         onDidChangeFolders(cb: () => void): () => void;
         onDidChangeActiveWorkspace(cb: (uri: string | null) => void): () => void;
+        /** 2026-11-24 (A3/F2): the host-owned "recent folders" read surface — already normalized (legacy bare-string shape tolerated),
+         *  deduped and capped to the display limit by `src/core/services/recentFolders`. Pool plugins ⛔ must not read
+         *  `pluginState.get("app","recentFolders")` cross-owner: the host key/shape may change and the read breaks silently. */
+        getRecentFolders(): Promise<RecentFolder[]>;
+        /** 2026-11-24: subscribe to recent-folder changes — the host pushes the normalized display list (not a raw pluginState payload). */
+        onDidChangeRecentFolders(cb: (folders: RecentFolder[]) => void): () => void;
     };
     /** Filesystem — plugin read/write (path validation is performed by the main process) */
     filesystem: {
@@ -2349,6 +2490,132 @@ export interface PluginUpdateCheckResult {
     downloadUrl?: string;
     update: boolean;
 }
+/** 来源身份——壳账本记录并比对（同源判据 = sourceUrl＋repo＋publisher＋pluginId 全同，spec §3.4） */
+export interface PluginSourceIdentity {
+    /** 市场源 id（`official` = 官方目录） */
+    id: string;
+    /** 目录源 URL */
+    url: string;
+    /** GitHub repo（可判定时，`owner/repo`） */
+    repo?: string;
+    /** 作者/发布者（目录条目声明值） */
+    publisher?: string;
+}
+/** 确认卡可画的展示数据——⛔ 只许结构化纯数据（不接受 HTML/CSS；壳只额外接受一个经对比度校验的 accent，见 spec §3.3） */
+export interface PluginInstallDisplay {
+    name: string;
+    /** 图标声明（iconSource 语义同 plugin.json；壳解析，市场不传路径） */
+    icon?: string;
+    /** 纯文本简介——壳按卡片宽度截断 */
+    description?: string;
+    changelogUrl?: string;
+    /** 包大小（字节） */
+    size?: number;
+}
+/** 一次安装/更新请求——市场唯一可提交的形状（spec §3.2；`pluginManager.install/update` 不再是远程安装的可用面） */
+export interface PluginInstallRequest {
+    mode: "install" | "update";
+    pluginId: string;
+    version: string;
+    downloadUrl: string;
+    /** P1 起必填（目录已收录的版本）；缺省 = 过渡期「未校验」横幅，不阻断（spec §七 迁移） */
+    sha256?: string;
+    source: PluginSourceIdentity;
+    display: PluginInstallDisplay;
+    /** update 模式：显式放行降级（版本下拉选旧版）——仍会走确认（policy 出 `downgrade`） */
+    allowOlder?: boolean;
+    /** 缺依赖解析目录（同 PluginInstallRequestOpts.catalogUrl 语义）——壳在同一 job 内自动装依赖用 */
+    catalogUrl?: string;
+}
+/** `requestInstall` 回执——`confirmed:false` ＋ `cancelled:false` = 被拒（`reason` 说原因） */
+export interface PluginInstallConfirmResult {
+    confirmed: boolean;
+    cancelled?: boolean;
+    /** 确认后壳已入队；进度/终态走 `plugin:installJobs` 全量快照 */
+    jobId?: string;
+    /** `invalid` = 请求本身不成立（同版本重装 / 未放行降级 / 重复请求） */
+    reason?: "user-cancelled" | "source-changed" | "integrity-failed" | "min-app" | "no-token" | "up-to-date" | "invalid";
+}
+/** 直接拒的项——不弹卡、不入队（spec §四：minApp 不满足直接拦；哈希/id 不符直接拒） */
+export interface PluginConfirmRejected {
+    pluginId: string;
+    reason: "min-app" | "integrity-failed" | "invalid";
+    message?: string;
+}
+/** `requestUpdateBatch` 回执——`confirmed:false` = **整批取消**（0 个入队，spec §五.4） */
+export interface PluginUpdateBatchResult {
+    confirmed: boolean;
+    cancelled?: boolean;
+    /** 确认后 ask ＋ silent 全部入队（按请求顺序）；`batchId` 是壳侧汇总键，**不是 job 表字段** */
+    jobIds: string[];
+    batchId?: string;
+    /** 被直接拒的项（不弹卡、不进 jobIds） */
+    rejected?: PluginConfirmRejected[];
+}
+/** 需要确认的原因——**封闭集合**；渲染体只按它选文案，⛔ 不自推（两条独立开关见 PluginUpdatePolicy） */
+export type PluginConfirmReason = "first-install" | "source-changed" | "downgrade" | "untrusted-source"
+/** 官方同源更新、但用户把 `silentOfficial` 关掉了 ⇒ 仍需一问（不是「未信任」——官方恒信任） */
+ | "official-source";
+/** 需要确认的一项（壳 policy 算好，渲染体只画） */
+export interface PluginConfirmItem {
+    request: PluginInstallRequest;
+    reason: PluginConfirmReason;
+    /** `reason:"source-changed"` 时的旧身份——卡片画「旧 → 新」（spec §3.4） */
+    previous?: PluginSourceIdentity;
+    /** 旧身份的**显示名**（壳解析 = 与当前来源同一份推导 `sourceLabel`；⛔ 渲染体自己从 identity 推 = 第二推导点） */
+    previousLabel?: string;
+}
+/** 免问项（silent）摘要行——⛔ 不逐项展开成表（spec §5.1：silent 项以「官方 3 个将直接更新」摘要出现） */
+export interface PluginConfirmSummaryRow {
+    pluginId: string;
+    displayName: string;
+    version: string;
+    sourceId: string;
+}
+/** 按来源分组——**需要确认的组在前、免问组在后**；组内保持目录顺序（spec §5.1） */
+export interface PluginConfirmGroup {
+    sourceId: string;
+    /** 来源显示名（壳解析 = 单一来源，⛔ 市场拼） */
+    label: string;
+    /** 该来源在信任清单里（官方 fixed 恒 true） */
+    trusted: boolean;
+    /** 当前策略下该来源的同源更新**免问**（trusted 且对应开关开 = 真；⛔ 渲染体自己按开关推） */
+    silentAllowed: boolean;
+    askCount: number;
+    silentCount: number;
+}
+/** 确认计划——壳 `policy.ts` 唯一产出；确认卡 / 执行 / 完成通知全读它（⛔ 第二份计划） */
+export interface PluginConfirmPlan {
+    ask: PluginConfirmItem[];
+    silent: PluginConfirmSummaryRow[];
+    groups: PluginConfirmGroup[];
+    rejected: PluginConfirmRejected[];
+    /** 顶栏总览：「共 N 个 · M 个需确认 · K 个免问」（spec §5.2） */
+    totals: {
+        total: number;
+        ask: number;
+        silent: number;
+    };
+}
+/** 两条**独立**开关（D5 拍板：正交、可同时开；首装/来源变更/降级不可关，见 spec §3.5） */
+export interface PluginUpdatePolicy {
+    /** 官方目录的**同源更新**不逐项询问（默认开） */
+    silentOfficial: boolean;
+    /** 已信任第三方来源的**同源更新**不逐项询问（默认关） */
+    silentTrustedSources: boolean;
+}
+/** 来源信任清单一行——每行**显式状态**（⛔ 让用户猜「点一下是信任还是不信任」，spec §3.5） */
+export interface PluginSourceTrustEntry {
+    sourceId: string;
+    url: string;
+    repo?: string;
+    publisher?: string;
+    trusted: boolean;
+    /** 官方固定信任（不可关） */
+    fixed?: boolean;
+    /** 最近一次见到该来源的时刻（ms） */
+    seenAt?: number;
+}
 /** Manifest serialization subset of list() — aligned with the projection fields of handlePluginsCall "list"
  * the declared dependency id list (manifest.requires passed through) — the data source for the marketplace's missing-dependency check and the depends-on/depended-on rows
  *  (the dependencies.ts engine runs only inside the shell; consumption goes through the list() projection). No requires = undefined.
@@ -2553,6 +2820,36 @@ export interface PluginsAPI {
             version: string;
             deferred?: boolean;
         }>;
+        /* ── P1 壳托管安装/更新确认（2026-11-24 拍板 D1/D2/D3/D5/D8）──
+         * 任何市场（官方/第三方）想装/更新插件都必须走这里：壳算 ConfirmPlan → 出确认卡（可替换渲染槽，
+         * 默认壳渲染器）→ 用户确认 → 壳**内部**签一次性 token → 立刻执行。token ⛔ 不过 IPC、不进契约。
+         * 原 pluginManager.install/update 对**远程来源**无 token 即拒（`no-token`）；本地文件安装两条腿
+         * （installFromDirectory / .linkdesk-plugin 包）不过此门（用户手势、无远程来源；2026-11-24 拍板）。
+         * 全部可选 `?`：老 preload 无此面 ⇒ 调用方判存在后回落旧 API（市场兼容窗口，spec §9 P1）。 */
+        /** 首装/单项更新 —— 一条请求一次确认事务；`confirmed:false` ＋ `cancelled:false` = 被拒 */
+        requestInstall?(req: PluginInstallRequest): Promise<PluginInstallConfirmResult>;
+        /** 批量更新 —— 只提交结构化请求；谁要确认由壳算（`ask` 为空则**不弹卡**直接全入队） */
+        requestUpdateBatch?(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult>;
+        /** 只读预览：按**当前**设置算一遍计划（不改状态、不入队）。确认卡内改设置后就地重算；
+         *  AI 也可先用它看「这次会问哪几个」。`forceAsk` = 把免问项也展开成需确认（本批临时，不改设置） */
+        previewUpdatePlan?(reqs: PluginInstallRequest[], opts?: {
+            forceAsk?: boolean;
+        }): Promise<PluginConfirmPlan>;
+        /** 读两条独立开关（设置页渲染源） */
+        getUpdatePolicy?(): Promise<PluginUpdatePolicy>;
+        /** 写两条开关（部分更新）；返回写后全量 */
+        setUpdatePolicy?(patch: Partial<PluginUpdatePolicy>): Promise<PluginUpdatePolicy>;
+        /** 读来源信任清单（设置页/确认卡同一事实源；首装仍确认、来源变更自动失效） */
+        listSourceTrust?(): Promise<PluginSourceTrustEntry[]>;
+        /** 显式信任一个来源（返回写后清单） */
+        trustSource?(entry: {
+            sourceId: string;
+            url: string;
+            repo?: string;
+            publisher?: string;
+        }): Promise<PluginSourceTrustEntry[]>;
+        /** 撤销信任（返回写后清单） */
+        untrustSource?(sourceId: string): Promise<PluginSourceTrustEntry[]>;
     };
     /** Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), required */
     pluginManager: {
@@ -3276,16 +3573,7 @@ export interface UpdateAPI {
         getState(): Promise<UpdateState>;
     };
 }
-/**
- * linkdesk API — the type-safe entry point for plugin code.
- * Global namespace structure modeled after the VS Code `vscode` object.
- * The namespaces injected by the pool preload are the plugin runtime source of truth (required);
- * only bridge (true-shell-only) / hotExit (pool-side-only) are optional with `?` — the other side does not inject them (review N1 fix:
- * the remaining bridge surfaces window/pool/shell/getFilePath are injected on both ends and marked required in the contract).
- * cross-composed from 15 namespace domain interfaces (interface→type intersection;
- * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
- */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI & AiPolicyAPI;
 /**
  * 🔥 Canonical vocabulary for settings control hints (`uiHint`) — the single vocabulary between host declarations and the rendering layer (criterion B).
  *
@@ -3301,7 +3589,7 @@ export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & K
  * The runtime list and type guards live in `@linkdesk/ui` (`SETTINGS_UI_HINTS` / `isSettingsUiHint`) —
  * this contract package is a **pure type-generation artifact with zero runtime** and can only carry types.
  */
-export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider" | "image" | "fontTone" | "fontFamily" | "color" | "file" | "directory" | "fontSize" | "segmented" | "stringList" | "fileAssociationsManager";
+export type SettingsUiHint = "themePicker" | "select" | "accentSource" | "slider" | "image" | "fontTone" | "fontFamily" | "color" | "file" | "directory" | "fontSize" | "segmented" | "stringList" | "fileAssociationsManager" | "aiPolicy";
 /**
  * Canonical render hint for settings rows (`renderHint`) — three values.
  * `readonly` read-only status row (value comes from the `statusCommand` runtime data source, not from config storage);

@@ -80,10 +80,12 @@ export const linkdeskMock: Record<string, unknown> = {
   appearance: {
     importImage: async (..._args: unknown[]) => { console.info("[linkdesk-mock] appearance.importImage", ..._args); return ""; },
     revealStorage: async (..._args: unknown[]) => { console.info("[linkdesk-mock] appearance.revealStorage", ..._args); },
+    pickImage: async (..._args: unknown[]) => { console.info("[linkdesk-mock] appearance.pickImage", ..._args); },
   },
   storage: {
     revealCache: async (..._args: unknown[]) => { console.info("[linkdesk-mock] storage.revealCache", ..._args); },
     cacheDir: async (..._args: unknown[]) => { console.info("[linkdesk-mock] storage.cacheDir", ..._args); return ""; },
+    getFilePath: async (..._args: unknown[]) => { console.info("[linkdesk-mock] storage.getFilePath", ..._args); return ""; },
   },
   tabs: {
     create: async (..._args: unknown[]) => { console.info("[linkdesk-mock] tabs.create", ..._args); },
@@ -132,6 +134,7 @@ export const linkdeskMock: Record<string, unknown> = {
     alert: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.alert", ..._args); },
     open: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.open", ..._args); },
     openFile: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.openFile", ..._args); },
+    save: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.save", ..._args); },
     confirmContent: async (..._args: unknown[]) => { console.info("[linkdesk-mock] dialog.confirmContent", ..._args); return false; },
   },
   quickPick: {
@@ -200,6 +203,8 @@ export const linkdeskMock: Record<string, unknown> = {
     removeFolder: async (..._args: unknown[]) => { console.info("[linkdesk-mock] workspace.removeFolder", ..._args); },
     onDidChangeFolders: (..._args: unknown[]) => { console.info("[linkdesk-mock] workspace.onDidChangeFolders", ..._args); return () => {}; },
     onDidChangeActiveWorkspace: (..._args: unknown[]) => { console.info("[linkdesk-mock] workspace.onDidChangeActiveWorkspace", ..._args); return () => {}; },
+    getRecentFolders: async (..._args: unknown[]) => { console.info("[linkdesk-mock] workspace.getRecentFolders", ..._args); return []; },
+    onDidChangeRecentFolders: (..._args: unknown[]) => { console.info("[linkdesk-mock] workspace.onDidChangeRecentFolders", ..._args); return () => {}; },
   },
   filesystem: {
     readTextFile: async (..._args: unknown[]) => { console.info("[linkdesk-mock] filesystem.readTextFile", ..._args); return ""; },
@@ -282,6 +287,14 @@ export const linkdeskMock: Record<string, unknown> = {
     packageUpdateCheck: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageUpdateCheck", ..._args); },
     packageStageUpdate: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageStageUpdate", ..._args); },
     packageCommitUpdate: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.packageCommitUpdate", ..._args); },
+    requestInstall: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.requestInstall", ..._args); },
+    requestUpdateBatch: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.requestUpdateBatch", ..._args); },
+    previewUpdatePlan: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.previewUpdatePlan", ..._args); },
+    getUpdatePolicy: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.getUpdatePolicy", ..._args); },
+    setUpdatePolicy: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.setUpdatePolicy", ..._args); },
+    listSourceTrust: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.listSourceTrust", ..._args); return []; },
+    trustSource: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.trustSource", ..._args); return []; },
+    untrustSource: async (..._args: unknown[]) => { console.info("[linkdesk-mock] plugins.untrustSource", ..._args); return []; },
   },
   pluginManager: {
     list: async (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginManager.list", ..._args); return []; },
@@ -393,5 +406,9 @@ export const linkdeskMock: Record<string, unknown> = {
   },
   update: {
     getState: async (..._args: unknown[]) => { console.info("[linkdesk-mock] update.getState", ..._args); },
+  },
+  aiPolicy: {
+    getState: async (..._args: unknown[]) => { console.info("[linkdesk-mock] aiPolicy.getState", ..._args); },
+    onChange: (..._args: unknown[]) => { console.info("[linkdesk-mock] aiPolicy.onChange", ..._args); return () => {}; },
   },
 };

@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 40 组件（32 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名
+ *   - 41 组件（33 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名
  *       + parseColor / formatColor / isCssVariableExpression 颜色工具）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
@@ -16,7 +16,7 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 32 类型（IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 35 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyValue / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
@@ -125,6 +125,8 @@ export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUt
 //     · 官方设置插件薄壳取数组装 —— 现布局＝默认皮，视觉零变化（C3 文案／C5 工具条两处拍板面除外）；
 //     · 第三方渲染方两路任选：共享聚合 ＋ 共享件自组（零重推导）／只拿数据全画。
 //   🔴 聚合与件套件**不认识任何命令 id**：齿轮菜单项由消费方注入（`*GearItems`）——数据入、事件出。
+export { default as AiPolicyPicker } from "@shared/ai-policy-picker/AiPolicyPicker";
+export type { AiPolicyOption, AiPolicyPickerProps, AiPolicyValue } from "@shared/ai-policy-picker/AiPolicyPicker";
 export { default as ManagerView } from "@shared/file-associations-manager/ManagerView";
 export { default as CardRow } from "@shared/file-associations-manager/pieces/CardRow";
 export { default as ContestedRow } from "@shared/file-associations-manager/pieces/ContestedRow";

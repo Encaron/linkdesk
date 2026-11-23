@@ -1,0 +1,57 @@
+/* AiPolicyBadge——状态栏 AI 权限徽标（池）。
+ * 视觉基线 = 状态栏既有条目（`.ldk-status-bar-btn` 的高度/字号），只多一个状态圆点。
+ * 🔴 零 hex / 零裸 px：颜色走 token（硬约束 1）；类名 `ldk-` 前缀（硬约束 23）。
+ * `full` 档呼吸 = 常驻高危态的可感知提醒；`prefers-reduced-motion` 下退化为常亮（不闪）。 */
+
+.ldk-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  padding: 0 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ldk-ai-badge:hover {
+  color: var(--text-primary);
+  background: var(--icon-btn-hover-bg);
+}
+
+.ldk-ai-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ldk-ai-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ldk-ai-badge-accent .ldk-ai-badge-dot {
+  background: var(--accent);
+}
+
+/* 完全访问：常亮 + 呼吸（"还在全权"一眼可见） */
+.ldk-ai-badge-live .ldk-ai-badge-dot {
+  animation: ldk-ai-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ldk-ai-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldk-ai-badge-live .ldk-ai-badge-dot {
+    animation: none;
+  }
+}

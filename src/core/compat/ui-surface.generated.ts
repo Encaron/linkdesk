@@ -20,8 +20,9 @@ export interface UiSurfaceLedger {
 }
 
 export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
-  shellVersion: "0.2.61",
+  shellVersion: "0.2.62",
   components: {
+    "AiPolicyPicker": { since: "0.2.62" },
     "BackgroundImagePicker": { since: "0.2.40" },
     "Badge": { since: "0.2.13" },
     "Button": { since: "0.2.13" },
@@ -96,6 +97,9 @@ export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
     "urlSourceKey": { since: "0.2.13" },
   },
   types: {
+    "AiPolicyOption": { since: "0.2.62" },
+    "AiPolicyPickerProps": { since: "0.2.62" },
+    "AiPolicyValue": { since: "0.2.62" },
     "BackgroundImagePickerProps": { since: "0.2.40" },
     "BuildInput": { since: "0.2.52" },
     "CardModel": { since: "0.2.52" },

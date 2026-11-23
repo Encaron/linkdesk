@@ -25,6 +25,7 @@
     "segmented": "SegmentedRadio",
     "stringList": "StringListEditor",
     "fileAssociationsManager": "@handledElsewhere",
+    "aiPolicy": "AiPolicyPicker",
     "default": "UnknownHintControl"
   },
   "uiHintHandledElsewhere": {

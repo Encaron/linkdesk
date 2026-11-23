@@ -36,6 +36,8 @@ const WHITELIST = join(ROOT, "electron", "services", "aiBridge", "whitelist.ts")
 const RISK = join(ROOT, "electron", "services", "aiBridge", "policy", "risk.ts");
 const POLICY_STATE = join(ROOT, "electron", "services", "aiBridge", "policy", "policyState.ts");
 const CONFIG_DECL = join(ROOT, "src", "App", "config", "aiBridge.ts");
+const POLICY_CONST_FILE = join(ROOT, "src", "core", "types", "ipc", "aiPolicy.ts");
+const POLICY_COMMANDS_FILE = join(ROOT, "src", "core", "commands", "shell", "aiPolicyCommands.ts");
 
 const POLICY_KEY_PREFIX = "ai.policy.";
 const POLICY_MODE_KEY = "ai.policy.mode";
@@ -157,7 +159,13 @@ export function checkAiPolicy(input) {
     }
   }
 
-  const allowedKeyFiles = new Set([norm(input.policyStatePath), norm(input.configDeclPath)]);
+  const allowedKeyFiles = new Set([
+    norm(input.policyStatePath),
+    norm(input.configDeclPath),
+    norm(input.policyConstPath),
+    norm(input.commandsPath),
+  ]);
+  const writerPath = norm(input.commandsPath);
 
   for (const file of input.files) {
     const path = norm(file.path);
@@ -179,11 +187,11 @@ export function checkAiPolicy(input) {
           level: "error",
           message: `${where} 写死了档位键「${POLICY_MODE_KEY}」——读侧唯一入口是 policy/policyState.ts，声明侧唯一入口是 config/aiBridge.ts`,
         });
-      } else if (path === norm(input.configDeclPath) && WRITE_CALL_RE.test(text)) {
+      } else if (path !== writerPath && WRITE_CALL_RE.test(text)) {
         findings.push({
           code: "P4",
           level: "error",
-          message: `${where} 同时出现档位键与写配置调用——声明文件只许声明，⛔ 不许写档位（写点只有壳侧 aiPolicy.setMode）`,
+          message: `${where} 同时出现档位键与写配置调用——档位写点只有壳侧 aiPolicyCommands.ts（aiPolicy.setMode / resetToDefault）`,
         });
       }
     }
@@ -208,6 +216,8 @@ function loadRealInput() {
     risk: readFileSync(RISK, "utf8"),
     policyStatePath: POLICY_STATE,
     configDeclPath: CONFIG_DECL,
+    policyConstPath: POLICY_CONST_FILE,
+    commandsPath: POLICY_COMMANDS_FILE,
     files: sources.map((path) => ({ path, text: readFileSync(path, "utf8") })),
   };
 }
@@ -229,8 +239,12 @@ function selfTest() {
     risk: ["export const OP_RISK: Record<string, RiskEntry> = {", "  describe: { risk: 'R0' },", "  exec: { risk: 'R1' },", "};"].join("\n"),
     policyStatePath: "/x/policy/policyState.ts",
     configDeclPath: "/x/src/App/config/aiBridge.ts",
+    policyConstPath: "/x/src/core/types/ipc/aiPolicy.ts",
+    commandsPath: "/x/src/core/commands/shell/aiPolicyCommands.ts",
     files: [
-      { path: "/x/policy/policyState.ts", text: "export const POLICY_MODE_KEY = 'ai.policy.mode';" },
+      { path: "/x/policy/policyState.ts", text: "const POLICY_MODE_KEY = 'ai.policy.mode';" },
+      { path: "/x/src/core/types/ipc/aiPolicy.ts", text: "export const AI_POLICY_MODE_KEY = 'ai.policy.mode';" },
+      { path: "/x/src/core/commands/shell/aiPolicyCommands.ts", text: "setConfigurationValue(AI_POLICY_MODE_KEY, mode, 'user');" },
       { path: "/x/src/App/config/aiBridge.ts", text: "// declares ai.policy.mode" },
       { path: "/x/src/core/other.ts", text: "export const x = 1;" },
     ],

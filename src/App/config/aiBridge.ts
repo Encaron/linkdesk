@@ -49,6 +49,7 @@
  */
 import { registerConfiguration } from "../../core/registry/ConfigurationRegistry";
 import { OPEN_AI_MANUAL_COMMAND_ID } from "../../core/commands/shell/manualCommands";
+import { AI_POLICY_MODE_KEY } from "../../core/types/ipc/aiPolicy";
 
 /** t() 类型——仅声明组取 key（同 config/update.ts） */
 type ConfigT = (key: string) => string;
@@ -63,7 +64,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
     groupDescriptions: {
       [t("通道")]: t("开关改动后重启软件生效；开关右边的灰字是实时读数（来自运行时命令），不是配置值。"),
       [t("接入引导")]: t("按手里的 AI 类型挑一条路，点一下就行。"),
-      [t("开放范围与安全")]: t("AI 只能做白名单里的事，不开放任意代码执行；装/卸插件每次都要你点头。"),
+      [t("开放范围与安全")]: t("AI 只能做下面这些事；每一项会不会先问你，由权限档位决定。"),
       [t("记录")]: t("AI 的每一次操作都有账；默认不记，开了才有。"),
     },
     properties: {
@@ -149,7 +150,44 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         description: t("打开 AI 操作手册"),
       },
 
-      /* ── 分节③：开放范围与安全（4 键）── */
+      /* ── 分节③：开放范围与安全（7 键；2026-11-24 加权限档位三键）── */
+      // 🔴 权限档位（AI 安全 · 权限档位与提权）：主控件 = 四段选择器（共享件 AiPolicyPicker）。
+      //    档位值与判定只在主进程算；设置插件只按 uiHint 渲染 + 调命令，⛔ 不判风险、不写档位字面量。
+      //    键名取自主进程同一常量（`AI_POLICY_MODE_KEY`）——壳侧唯一常量源。
+      [AI_POLICY_MODE_KEY]: {
+        type: "string",
+        group: t("开放范围与安全"),
+        default: "auto",
+        enum: ["read", "ask", "auto", "full"],
+        // 四句人话逐字取自规格 03 §2.1；与 `policy/state.ts` 的段说明同文（改文案两处同笔）
+        enumDescriptions: [
+          t("AI 只能查看，不能修改。"),
+          t("AI 每次要修改，都会先问你。"),
+          t("日常修改 AI 自己完成；装更新、删数据这类操作仍会先问你。"),
+          t("所有操作都不再询问，直到你在这里改回来。"),
+        ],
+        uiHint: "aiPolicy",
+        title: t("权限档位"),
+        description: t("AI 现在能做什么、哪些会先问你。改动立即生效，且会一直有效到你改回来"),
+      },
+      "ai.policy.summary": {
+        type: "string",
+        group: t("开放范围与安全"),
+        default: "",
+        renderHint: "readonly",
+        statusCommand: "aiPolicy.statusSummary",
+        title: t("当前权限一览"),
+        description: t("AI 现在能做什么、哪些会先问你。"),
+      },
+      "ai.policy.openRiskTable": {
+        type: "string",
+        group: t("开放范围与安全"),
+        default: "",
+        renderHint: "action",
+        actionCommand: "aiPolicy.openRiskTable",
+        title: t("完整风险表"),
+        description: t("查看风险表"),
+      },
       "ai.scope.summary": {
         type: "string",
         group: t("开放范围与安全"),

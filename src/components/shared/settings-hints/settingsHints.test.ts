@@ -1,7 +1,7 @@
 /**
  * 词表正典运行时值单测（「设置控件-词表正典与共享化」阶段 3.3 · 判据 B）。
  *
- * 钉四样：① 哨兵字面量与壳/仓旧处一字不差（E4 同步门禁的运行时侧）；② 14 hint 名单无重复、
+ * 钉四样：① 哨兵字面量与壳/仓旧处一字不差（E4 同步门禁的运行时侧）；② 15 hint 名单无重复、
  * 守卫对表内为真对表外为假（E2「无 uiHint ≠ 未知 uiHint」靠它区分）；③ renderHint 三值（E4d）；
  * ④ 隐藏位名单（C2b）是子集、与 uiHint 守卫**不是互斥**（先问顺序即契约）。
  * fixture 全虚构（硬约束 21）。
@@ -26,9 +26,9 @@ describe("哨兵字面量", () => {
 });
 
 describe("uiHint 名单与守卫", () => {
-  it("14 条正典 hint，无重复", () => {
-    expect(SETTINGS_UI_HINTS).toHaveLength(14);
-    expect(new Set(SETTINGS_UI_HINTS).size).toBe(14);
+  it("15 条正典 hint，无重复", () => {
+    expect(SETTINGS_UI_HINTS).toHaveLength(15);
+    expect(new Set(SETTINGS_UI_HINTS).size).toBe(15);
   });
 
   it("表内每个值守卫为真", () => {

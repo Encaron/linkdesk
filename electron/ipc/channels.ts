@@ -34,6 +34,9 @@ export const IPC = {
     // M4 AI#38.4：AI 接入状态——**壳内私有第四例**（main 直答，⛔ 不进 PROXY_CHANNELS）。
     // 带动作参数：{action:"get"} 读快照 / {action:"regenerateToken"} 重生成凭据（AI#38.9）。
     getAiBridge: 'app:getAiBridge', // { present, enabled, listening, endpoint, debugPort, ops, ledger… }（services/aiBridge/info.ts）
+    // 2026-11-24（AI 安全 · 权限档位）：策略快照——main 直答（⛔ 不进 PROXY_CHANNELS，同 getAiBridge）。
+    // 只出数据与 i18n key；终稿文案由壳命令 aiPolicy.getState 过 t() 产出。
+    getAiPolicy: 'app:getAiPolicy', // { mode, degraded, channelsEnabled, matrix, options, riskTable }（policy/state.ts）
   },
   bridge: {
     response: 'bridge:response',

@@ -49,6 +49,10 @@
     {
       "name": "ldk-tt-in",
       "why": "宿主轻 Toast（TransientToast）条目入场位移+淡入（04「底部Toast轻提示」棒 0）"
+    },
+    {
+      "name": "ldk-ai-badge-pulse",
+      "why": "宿主状态栏 AI 权限徽标（full 档呼吸）"
     }
   ]
 }

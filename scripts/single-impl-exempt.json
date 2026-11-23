@@ -30,9 +30,10 @@
       "files": [
         "src/components/shared/badge/Badge.tsx",
         "src/components/shared/effective-badge/EffectiveBadge.tsx",
-        "src/components/shared/source-badge/SourceBadge.tsx"
+        "src/components/shared/source-badge/SourceBadge.tsx",
+        "src/pool/shared/ai-policy/AiPolicyBadge.tsx"
       ],
-      "reason": "三个不同语义：通用徽标 / 「生效值」徽标 / 「来源」徽标（各有独立数据源与消费者）。",
+      "reason": "三个不同语义：通用徽标 / 「生效值」徽标 / 「来源」徽标（各有独立数据源与消费者）。 ＋ AiPolicyBadge = 状态栏 AI 权限档位指示（四档文案/呼吸态，语义与「标签徽标」不同）。",
       "owner": "调度台",
       "until": "若其中两个合并为同一语义则清账"
     },

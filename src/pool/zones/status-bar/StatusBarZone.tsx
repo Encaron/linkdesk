@@ -32,6 +32,8 @@
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import type { StatusBarLayout, PoolStatusBarItem } from "../../../core/types/pool/poolLayout";
 import PoolStatusBarComponent from "../../shared/pool-status-bar/PoolStatusBarComponent";
+// 2026-11-24（AI 安全 · 权限档位）：AI 权限徽标——档位可见、点它直达设置
+import AiPolicyBadge from "../../shared/ai-policy/AiPolicyBadge";
 import { executePoolCommand } from "../../commands/executePoolCommand";
 import OverlayPortal from "../../../components/shared/overlay-portal/OverlayPortal";
 import {
@@ -244,6 +246,9 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
       {/* 右区：插件贡献项 + 通知中心（壳 NotificationCenter 迁入） */}
       <div className="ldk-status-bar-right">
         {rightItems.map(renderItem)}
+        {/* 2026-11-24（AI 安全 · 权限档位）：AI 权限徽标——档位可见；点它直达设置。
+            通道关着时组件自隐（agent 门都没开 = 没门可管）。 */}
+        <AiPolicyBadge />
         {/* E6#73a / E6#75：铃铛是**收/开双通开关**——收起时点它开、已展开时点它收起（§五 A 第 8 行
             `OPEN →(铃铛)→ MINIMIZED`，与头部「最小化」逐字同义：收起、什么都不丢）。
             ⚠️ 73a 一度把它改成「只进不出」（理由是「又一条『关掉』的路 = R3-1 抱怨的所有按钮都在管关掉」），

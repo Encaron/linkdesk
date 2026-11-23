@@ -488,6 +488,7 @@ import { registerAboutCommands } from "./aboutCommands"; // E6#57.14：关于标
 import { registerManualCommands } from "./manualCommands"; // M3 AI#16：AI 操作手册（打开；帮助菜单入口）
 import { registerWelcomeCommands } from "./welcomeCommands"; // 欢迎页重设计 W4a：app.openWelcome（帮助菜单/+/命令面板三入口共用）
 import { registerAiBridgeCommands } from "./aiBridgeCommands"; // M4 AI#38：AI 接入（状态出口＋设置页动作按钮）
+import { registerAiPolicyCommands } from "./aiPolicyCommands"; // 2026-11-24：AI 权限档位（四段控件/风险表/切档）
 import { registerReadCommands } from "./readCommands"; // M2 AI#62：读数命令族（配置读／布局读／容器与视图读）
 import { registerStorageCommands } from "./storageCommands"; // 设置页「存储」——打开缓存目录按钮行＋只读路径行出口
 import { registerOpenWithCommands } from "./openWithCommands"; // 「打开方式」壳命令——共享件 OpenWithPicker 的唯一调用面
@@ -513,6 +514,7 @@ export function ensureCoreCommands(): void {
   registerManualCommands(); // M3 AI#16：AI 操作手册标签页（打开；帮助菜单入口）
   registerWelcomeCommands(); // 欢迎页重设计 W4a：app.openWelcome（打开；帮助菜单/+/命令面板三入口共用）
   registerAiBridgeCommands(); // M4 AI#38：AI 接入（五条状态出口 ＋ 七条动作按钮）
+  registerAiPolicyCommands(); // 2026-11-24：AI 权限档位（getState/statusSummary/setMode/resetToDefault/openRiskTable/openSettings）
   registerReadCommands(); // M2 AI#62：读数命令族（配置读／布局读／容器与视图读——写侧 AI#21 的读侧补齐）
   registerStorageCommands(); // 设置页「存储」——打开缓存目录（action）＋生效路径读数（statusCommand）
   registerOpenWithCommands(); // 「打开方式」壳命令（共享件 OpenWithPicker 唯一调用面——转正后壳内唯一实现）

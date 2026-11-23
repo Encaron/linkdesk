@@ -47,6 +47,7 @@ import type { SettingsAPI } from "./linkdesk-api/settings"; // E5.8#41.12: setti
 import type { FactorySlotsAPI } from "./linkdesk-api/factory-slots"; // E5.8#41.14: generic system-slot enumeration surface (slot-agnostic)
 import type { AppAPI } from "./linkdesk-api/app"; // E6#57.2a: app domain (main-software product identity — read-only getVersion)
 import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8: update domain (read-only main-software update state — write commands stay out of the contract)
+import type { AiPolicyAPI } from "./linkdesk-api/aiPolicy"; // 2026-11-24: AI permission-tier read surface (renderers/AI)
 
 /**
  * linkdesk API — the type-safe entry point for plugin code.
@@ -57,7 +58,8 @@ import type { UpdateAPI } from "./linkdesk-api/update"; // E6#57.8: update domai
  * E5.8#0d.10-9e: cross-composed from 15 namespace domain interfaces (interface→type intersection;
  * index access such as LinkDeskAPI["pool"]/["configuration"] keeps the consumer contract unchanged).
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI;
+export type { AiPolicyAPI };
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI & AiPolicyAPI;
 
 // ── Standalone type interface re-exports (types.ts base) ──
 
