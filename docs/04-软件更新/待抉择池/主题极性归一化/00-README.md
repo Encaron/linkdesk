@@ -119,4 +119,36 @@
 - Material 3 color system（对比度三档）: <https://m3.material.io/styles/color/system/overview>
 - Apple HIG Dark Mode（Increase Contrast / Reduce Transparency 正交）: <https://developer.apple.com/design/human-interface-guidelines/dark-mode>
 - Windows contrast themes vs light/dark: <https://learn.microsoft.com/windows/accessibility/contrast-themes>
+
+## 九、第 2 棒回执（2026-11-24 · 实测取证 + 修数据/引擎/资产）
+
+### 9.1 用户报「唯独整窗主视觉字看不见」——取证结论
+
+| 现象 | 实测 | 判定 |
+|:--|:--|:--|
+| 跟随主题下白字消失（串口日志/卡片） | 同 colorway 内：**窗框暗玻璃**（`bg-window rgba(10,14,20,.30)`）而 **卡片/输入框是白玻璃**（`bg-card rgba(255,255,255,.10)` / `bg-input .14`）+ 白字 | **主题数据 bug**（三套官方主题里唯一「暗主题 + 白提亮面」；极光 0.55 暗面 / 玫瑰窗亮面深字都自洽） |
+| 跟随 ↔ 自定义「底色会变」 | 两条管线：自定义 `--bg-card = color-mix(rgb(35,38,44) 50%)`（合成实色再上玻璃）；跟随 = **作者原值 `rgba(255,255,255,.10)` 原样透传** | 引擎口子：玻璃未激活时不走内容面下限；且「切 follow 会丢弃 custom 覆盖」是既定设计（08 §7.3.5，不是 bug）——壁纸/玻璃 0.37 被丢，观感落差被白玻璃放大 |
+| 市场 Hero 标题「黑字压黑图」 | `--surface-media-ink` = `#10161F`（暗）压在 `rgba(10,14,20,.82)` 暗遮罩上 | 派生逻辑反了：暗主题的 `text-on-accent` 常是暗色（金底黑字） |
+| 串口插件详情页日志字几乎看不见 | 该处是封面资产 `resources/cover.svg`（**静态图**，非实时视图）：时间戳/RX/TX `#4d5b7d/#55638a` 压 `#0c161e` ≈ **2.6:1** | 资产对比度问题（与主题无关，任何主题都暗） |
+
+### 9.2 落地（每笔独立提交）
+
+| 层 | 内容 | 提交 |
+|:--|:--|:--|
+| 壳引擎 | ① **有底图 + 内容面（bg-card/bg-input）+ 作者 alpha < 0.55 ⇒ 按 `*-solid` 抵到下限**（实色/高于下限/无底图零变化；新增 `colorAlpha`）。② **压图墨色改按对遮罩的对比度取高者**（不再「暗遮罩→text-on-accent」）。单测 +4（ThemeEngine 300 绿） | `d0991f422`（electron，未发版） |
+| 整窗主视觉 1.1.1 | 内容面改实色基 `#23262C`/`#2C3035`（与 `*-solid` 同值）；标题栏/状态栏/工具栏/图标栏/侧栏 0.30–0.50 → **0.66–0.72**；窗底 0.42；遮罩 0.22 → **0.35** | `745b020` · Release `v1.1.1` |
+| 串口 1.0.41 | `cover.svg` 时间戳/RX/TX 提亮（`#93A5C9`/`#8FA0C4`，深底 ≈7:1） | `42ce129` · Release `v1.0.41` |
+| 官方目录 | 整窗 1.1.1 + 串口 1.0.41 收录（以官方条目为底逐版回填，editor 1.0.30 未动） | `5ffd9ce` → `f8b258b` |
+| 壳出厂账 | `bundled-plugins.lock.json` 追两版指纹 | `94019fa1a` |
+
+### 9.3 验证读数（dev 实例 CDP 9333 · 整窗·月夜·跟随）
+
+`--bg-card` `#23262C`（实色基）· `--bg-card-solid` `rgb(35,38,44)` · `--bg-input` `#2C3035` · `--bg-titlebar rgba(8,12,18,.72)` · `--bg-side-panel .70` · `--bg-mask 0.35` · `--surface-media-ink #FFFFFF`。市场 Hero 标题恢复白字；侧栏/设置页文字可读；Monaco 底仍 `#23262C`。
+
+### 9.4 未做 / 判据沉淀
+
+- **主题对比度机械门禁**（colorway 文字 vs 合成面，暗/亮两端各算）**未落**：正确落点是 `@linkdesk/plugin-sdk` 的 `validateThemeJson`（各主题仓 CI 跑 `npm run validate`），但需 SDK 发版 + 各主题仓升 dep 才生效；引擎运行时下限（9.2①）已兜住同类失效。建议单独一笔排期，⛔ 不要塞进本棒收尾。
+- 判据新增：**带底图的主题，内容面必须是「实色基」或 alpha ≥0.55**；环境面（窗/栏）才允许随图透。暗主题写「白提亮卡片」= 白字压白玻璃。
+- dev 实例注意：改 `src/` 触发 Vite HMR 会重置主题注册表（插件主题暂时只剩内置 dark/light）——**改完壳代码要整进程重启**再验主题，别把 HMR 假象当 bug。
+
 - Radix Colors（12-step scale，step 11/12 对比度）: <https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale>
