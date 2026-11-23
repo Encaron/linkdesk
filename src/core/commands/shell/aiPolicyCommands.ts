@@ -19,9 +19,10 @@ import i18n from "../../../i18n";
 import { getShellExposed } from "../../api/linkdesk-api/surfaces";
 import { setConfigurationValue } from "../../services/configuration/ConfigurationService/settings-io";
 import { showTransientToast } from "../../services/ui/toast";
-import { alert, confirm } from "../../services/ui/DialogService";
+import { confirm, confirmContent } from "../../services/ui/DialogService";
 import {
   AI_POLICY_MODE_KEY,
+  AI_POLICY_RISK_TABLE_HOST_VIEW,
   type AiPolicyDecisionDto,
   type AiPolicyModeDto,
   type AiPolicyOptionDto,
@@ -134,13 +135,6 @@ async function switchMode(mode: AiPolicyModeDto): Promise<{ mode: AiPolicyModeDt
   return { mode };
 }
 
-/** 风险表文字版（首版；内容模式表格随后续批落地，数据同一份） */
-function riskTableText(state: AiPolicyViewState): string {
-  const head = `${t("操作")}\t${t("风险")}\t${t("现在")}`;
-  const rows = state.riskTable.map((r) => `${r.what ?? r.id}\t${t(r.risk === "R0" ? "查看" : r.risk === "R1" ? "可撤销" : r.risk === "R2" ? "有改动" : "不可撤销")}\t${decisionText(r.decision)}`);
-  return [head, ...rows].join("\n");
-}
-
 export function registerAiPolicyCommands(): void {
   registerCommand(PID, {
     id: "aiPolicy.getState",
@@ -194,9 +188,18 @@ export function registerAiPolicyCommands(): void {
     handler: async () => {
       const state = await readViewState();
       if (!state) return;
-      await alert({
+      // DialogHost 内容模式（宿主内置视图）：表格 / 图例 / 关闭都在视图里；壳只回传动作类型
+      await confirmContent({
         title: t("完整风险表"),
-        message: `${t("风险由软件统一登记；插件自己的命令也要声明。")}\n\n${riskTableText(state)}`,
+        message: t("风险由软件统一登记；插件自己的命令也要声明。"),
+        content: {
+          hostView: AI_POLICY_RISK_TABLE_HOST_VIEW,
+          payload: {
+            title: t("完整风险表"),
+            rows: state.riskTable.map((r) => ({ id: r.id, what: r.what, risk: r.risk, decision: r.decision })),
+            note: t("风险由软件统一登记；插件自己的命令也要声明。"),
+          },
+        },
       });
     },
   });

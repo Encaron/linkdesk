@@ -1,0 +1,56 @@
+/* AiPolicyRiskTable——AI 操作风险表（`@linkdesk/ui` 共享件）。
+ * 视觉：三列表格，与设置页既有行密度一致；判定色走 --success/--warning/--danger（对比度由 token 保证）。
+ * 🔴 零 hex / 零裸 px；类名 `ldk-` 前缀。 */
+
+.ldk-ai-risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.ldk-ai-risk-table th,
+.ldk-ai-risk-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ldk-ai-risk-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: var(--font-size-xs);
+}
+
+.ldk-ai-risk-what {
+  color: var(--text-primary);
+}
+
+.ldk-ai-risk-level {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ldk-ai-risk-decision {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.ldk-ai-risk-decision-allow {
+  color: var(--success);
+}
+
+.ldk-ai-risk-decision-ask {
+  color: var(--warning);
+}
+
+.ldk-ai-risk-decision-deny {
+  color: var(--danger);
+}
+
+.ldk-ai-risk-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: var(--font-size-xs);
+}

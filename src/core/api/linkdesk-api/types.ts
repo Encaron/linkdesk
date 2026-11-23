@@ -44,6 +44,11 @@ export interface LinkDeskCommand {
    * (still subject to the policy tier). Purely additive: existing plugins keep current behaviour.
    */
   userOnly?: boolean;
+  /**
+   * Declared risk level (2026-11-24 · AI permission tiers) — mirrors `contributes.commands[].risk`.
+   * Merge order: host built-in table > this declaration > fallback R1. Purely additive.
+   */
+  risk?: "R0" | "R1" | "R2" | "R3";
 }
 
 export interface LinkDeskTheme {

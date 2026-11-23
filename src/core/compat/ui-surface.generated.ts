@@ -20,9 +20,10 @@ export interface UiSurfaceLedger {
 }
 
 export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
-  shellVersion: "0.2.62",
+  shellVersion: "0.2.63",
   components: {
     "AiPolicyPicker": { since: "0.2.62" },
+    "AiPolicyRiskLegend": { since: "0.2.63" },
     "BackgroundImagePicker": { since: "0.2.40" },
     "Badge": { since: "0.2.13" },
     "Button": { since: "0.2.13" },
@@ -60,6 +61,7 @@ export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
     "StringListEditor": { since: "0.2.13" },
     "ThemePicker": { since: "0.2.13" },
     "Toggle": { since: "0.2.13" },
+    "default as AiPolicyRiskTable": { since: "0.2.63" },
     "formatColor": { since: "0.2.60" },
     "isCssVariableExpression": { since: "0.2.60" },
     "parseColor": { since: "0.2.60" },
@@ -99,6 +101,8 @@ export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
   types: {
     "AiPolicyOption": { since: "0.2.62" },
     "AiPolicyPickerProps": { since: "0.2.62" },
+    "AiPolicyRiskTableProps": { since: "0.2.63" },
+    "AiPolicyRiskTableRow": { since: "0.2.63" },
     "AiPolicyValue": { since: "0.2.62" },
     "BackgroundImagePickerProps": { since: "0.2.40" },
     "BuildInput": { since: "0.2.52" },

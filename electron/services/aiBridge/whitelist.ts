@@ -38,6 +38,7 @@ import {
   askTextForOp,
   decide,
   getPolicySnapshot,
+  isRisk,
   isUserOnlyCommand,
   POLICY_MODE_LABEL,
   requestElevationFlow,
@@ -192,7 +193,9 @@ async function runShellCommand(
       `命令「${commandId}」只允许用户操作（userOnly）——AI 永远不可调；请提示用户去设置页操作，⛔ 不要重试`,
     );
   }
-  const risk = riskOfCommand(commandId);
+  // 声明面风险（manifest `contributes.commands[].risk`）——壳内建表优先，见 riskOfCommand
+  const declaredRaw = (commands.find((c) => c && c.id === commandId) as { risk?: unknown } | undefined)?.risk;
+  const risk = riskOfCommand(commandId, isRisk(declaredRaw) ? declaredRaw : undefined);
   const snapshot = getPolicySnapshot();
   const decision = decide(snapshot.mode, risk);
   if (decision === 'deny') throw policyDenied(snapshot.mode, risk, `执行「${commandId}」`);

@@ -26,6 +26,8 @@
     "../../src/components/shared/number-input/**/*.ts",
     "../../src/components/shared/number-input/**/*.tsx",
     "../../src/components/shared/ai-policy-picker/**/*.ts",
+    "../../src/components/shared/ai-policy-risk-table/**/*.ts",
+    "../../src/components/shared/ai-policy-risk-table/**/*.tsx",
     "../../src/components/shared/ai-policy-picker/**/*.tsx",
     "../../src/components/shared/button/**/*.ts",
     "../../src/components/shared/button/**/*.tsx",

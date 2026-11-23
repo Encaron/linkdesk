@@ -476,6 +476,11 @@
                 "type": "string",
                 "description": "What this command does — the intent from the user/AI perspective. Do not restate the command id."
               },
+              "risk": {
+                "type": "string",
+                "enum": ["R0", "R1", "R2", "R3"],
+                "description": "Risk level for the AI permission tiers — R0 read-only / R1 reversible write / R2 side-effecting write / R3 irreversible. The host built-in table always wins; an unknown value is reported and falls back to R1. Optional (omit = fallback R1)."
+              },
               "params": {
                 "type": "array",
                 "description": "Parameter structure — items correspond positionally to the handler's arguments.",

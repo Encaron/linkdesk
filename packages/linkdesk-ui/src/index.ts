@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 41 组件（33 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch 具名
+ *   - 43 组件（34 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch / AiPolicyRiskLegend 具名
  *       + parseColor / formatColor / isCssVariableExpression 颜色工具）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
@@ -16,7 +16,7 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 35 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyValue / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 37 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyValue / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
@@ -70,6 +70,20 @@ export { default as OpenWithPicker } from "@shared/open-with-picker/OpenWithPick
 export type { OpenWithHandler, OpenWithRequest, OpenWithPickerProps } from "@shared/open-with-picker/types";
 // E6#69f：插件身份彩色图裁决（marketIcon ?? icon ?? 默认彩色块）——壳 windowLayout 标签 + 市场 list/detail 同消费（单一实现防漂移）
 export { pickIdentityArt } from "@shared/plugin-icon/iconUtils";
+// P1 插件安装/更新确认（2026-11-24 拍板 D1/D8）：哑渲染卡 + 视图模型构建 + 宿主视图 id 登记处。
+// 第三方渲染器整套替换时也用这套零件——判定/令牌/队列仍在壳。
+export { default as PluginInstallConfirm } from "@shared/plugin-install-confirm/PluginInstallConfirm";
+export { default as PluginUpdateBatchSummary } from "@shared/plugin-install-confirm/PluginUpdateBatchSummary";
+export { buildInstallVM, buildBatchVM, formatBytes, shortHash } from "@shared/plugin-install-confirm/buildViewModel";
+export { PLUGIN_CONFIRM_HOST_VIEWS, format as formatConfirmText } from "@shared/plugin-install-confirm/types";
+export type {
+  PluginConfirmVM,
+  PluginConfirmKvRow,
+  PluginConfirmBatchRow,
+  PluginConfirmBatchGroup,
+  PluginInstallConfirmLabels,
+  PluginConfirmDialogPayload,
+} from "@shared/plugin-install-confirm/types";
 export { DEFAULT_PLUGIN_IDENTITY_URI } from "@shared/plugin-icon/defaultIdentityArt";
 export { default as OverlayPortal } from "@shared/overlay-portal/OverlayPortal";
 // E6#15h：零件包扩到 UI 交互 hook（08-共享hook归位.md）——源码壳 src/components/shared/hooks/ 单一副本
@@ -126,6 +140,8 @@ export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUt
 //     · 第三方渲染方两路任选：共享聚合 ＋ 共享件自组（零重推导）／只拿数据全画。
 //   🔴 聚合与件套件**不认识任何命令 id**：齿轮菜单项由消费方注入（`*GearItems`）——数据入、事件出。
 export { default as AiPolicyPicker } from "@shared/ai-policy-picker/AiPolicyPicker";
+export { default as AiPolicyRiskTable, AiPolicyRiskLegend } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
+export type { AiPolicyRiskTableProps, AiPolicyRiskTableRow } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
 export type { AiPolicyOption, AiPolicyPickerProps, AiPolicyValue } from "@shared/ai-policy-picker/AiPolicyPicker";
 export { default as ManagerView } from "@shared/file-associations-manager/ManagerView";
 export { default as CardRow } from "@shared/file-associations-manager/pieces/CardRow";

@@ -55,3 +55,54 @@
     animation: none;
   }
 }
+
+/* ── 风险表弹窗内容视图（hostView = aiPolicy.riskTable）──
+ * DialogHost 给外壳（居中/遮罩/Esc）；这里只管内容排布与「关闭」按钮。 */
+.ldk-ai-risk-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ldk-ai-risk-dialog-title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+}
+
+.ldk-ai-risk-dialog-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+}
+
+.ldk-ai-risk-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ldk-ai-risk-dialog-btn {
+  height: var(--size-control-sm);
+  padding: 0 14px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.ldk-ai-risk-dialog-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.ldk-ai-risk-dialog-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

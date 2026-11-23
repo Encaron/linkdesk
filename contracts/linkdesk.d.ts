@@ -96,6 +96,11 @@ export interface LinkDeskCommand {
      * (still subject to the policy tier). Purely additive: existing plugins keep current behaviour.
      */
     userOnly?: boolean;
+    /**
+     * Declared risk level (2026-11-24 · AI permission tiers) — mirrors `contributes.commands[].risk`.
+     * Merge order: host built-in table > this declaration > fallback R1. Purely additive.
+     */
+    risk?: "R0" | "R1" | "R2" | "R3";
 }
 /** Recipe contribution domains—shared by theme metadata domains (mix-and-match source filtering) and the theme:changed payload (domain-level fine-grained refresh) (06 §2/§6.2).
  *  Five domains: colors (colorways always contribute) + the four appearance style domains (radius/glass/font/background).
@@ -2669,6 +2674,9 @@ export interface PluginInstallRequestOpts {
     displayName?: string;
     /** Job origin — row = one user action (user, default); dependencies dragged in by a plugin (dependency) hide inside that row */
     origin?: "user" | "dependency";
+    /** P1（spec §七）：期望的包 sha256（小写 hex）——壳在**下载后、解压前**校验，不符即删包拒装。
+     *  壳自己的确认链（`plugins.requestInstall`）必带；市场/手装可缺省（过渡期「未校验」不阻断）。 */
+    sha256?: string;
     /**
      * R4-1.3（I21/壳侧·正典 09 §三·补3）：目录条目的 pricing 声明随行——**声明进数据层、裁决进壳**。
      * 调用方（市场插件）把它读到的条目 pricing 原样带上；壳安装门见 model 存在即查壳侧权益（licenses），
@@ -2786,7 +2794,9 @@ export interface PluginsAPI {
         readAllManifests?(): Promise<Record<string, PluginManifest>>;
         /** (1.2-5): the main-process real download stage — fetches the .linkdesk-plugin package → {userData}/tmp/<original package name> (shell preload only; called by the loader's install flow packageOps).
          * may carry a job identity — progress events from the main-process stage backfill jobId/pluginId accordingly (absent = events carry no identity; with N=1 attributed to the active session) */
-        packageDownload?(url: string, job?: PluginInstallJobRef): Promise<{
+        /** P1 sha256（spec §七）：传了就在**下载后、解压前**校验——不符即删包并拒装（`integrity-failed`）。
+         *  缺省 = 过渡期「未校验」（旧目录条目没有 hash），不阻断。 */
+        packageDownload?(url: string, job?: PluginInstallJobRef, sha256?: string): Promise<{
             zipPath: string;
             sizeBytes?: number;
         }>;
@@ -3573,7 +3583,17 @@ export interface UpdateAPI {
         getState(): Promise<UpdateState>;
     };
 }
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI & AiPolicyAPI;
+/** Plugin-packaged asset URL surface — pool-only (the shell renderer calls the util directly). */
+export interface PluginAssetsAPI {
+    pluginAssets: {
+        /** Build the controlled `linkdesk://` URL for a plugin-packaged asset (2026-11-24 A2/).
+         *  @param pluginId plugin identity (`plugin.json` `pluginId`)
+         *  @param relativePath plugin-root-relative path (`README.md`, `resources/icon.svg`, `docs/`); empty/omitted = plugin root.
+         *  Normalizes `\` → `/` and strips a leading `./`. ⛔ A plugin must not concatenate the protocol itself (K9). */
+        getUrl(pluginId: string, relativePath?: string): string;
+    };
+}
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & StorageAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & LicensesAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI & AppAPI & UpdateAPI & AiPolicyAPI & PluginAssetsAPI;
 /**
  * 🔥 Canonical vocabulary for settings control hints (`uiHint`) — the single vocabulary between host declarations and the rendering layer (criterion B).
  *

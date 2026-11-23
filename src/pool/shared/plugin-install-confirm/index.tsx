@@ -17,6 +17,9 @@ import { useTranslation } from "react-i18next";
 import type { PluginConfirmPlan } from "@linkdesk/contracts";
 import PluginInstallConfirm from "../../../components/shared/plugin-install-confirm/PluginInstallConfirm";
 import PluginUpdateBatchSummary from "../../../components/shared/plugin-install-confirm/PluginUpdateBatchSummary";
+// 2026-11-24（线 1 · AI 权限档位）：风险表宿主内容视图——跨线登记，仅此两行
+import AiPolicyRiskTableDialog from "../ai-policy/AiPolicyRiskTableDialog";
+import { AI_POLICY_RISK_TABLE_HOST_VIEW } from "../../../core/types/ipc/aiPolicy";
 import { buildBatchVM, buildInstallVM } from "../../../components/shared/plugin-install-confirm/buildViewModel";
 import {
   PLUGIN_CONFIRM_HOST_VIEWS,
@@ -145,6 +148,7 @@ export function BatchConfirmView({ payload }: HostDialogViewHostProps) {
 const HOST_VIEWS: Record<string, ComponentType<HostDialogViewHostProps>> = {
   [PLUGIN_CONFIRM_HOST_VIEWS.install]: InstallConfirmView,
   [PLUGIN_CONFIRM_HOST_VIEWS.batch]: BatchConfirmView,
+  [AI_POLICY_RISK_TABLE_HOST_VIEW]: AiPolicyRiskTableDialog,
 };
 
 /** DialogHost 的宿主视图分派——未知 id 走兜底卡（⛔ 空面板把用户困住） */

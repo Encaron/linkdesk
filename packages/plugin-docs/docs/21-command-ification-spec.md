@@ -289,7 +289,8 @@ The same command surface behaves like this under the four tiers:
 | Full access | ✅ | ✅ | ✅ | ✅ |
 
 - **Risk levels are registered by the host** (built-in table first, then the plugin declaration, fallback = reversible write):
-  an **unregistered** command is never treated as read-only.
+  an **unregistered** command is never treated as read-only. Plugins may declare `contributes.commands[].risk`
+  (`R0`–`R3`, optional); the **host built-in table always wins**, and an unknown value is reported and falls back.
 - **`userOnly` is host metadata, not a manifest field**: host commands carrying it always answer `EPROTECTED` to the AI
   gateway (only the user can trigger them from the UI). ⛔ Do not look for this field in plugin.json — it governs commands
   that "change the door itself".

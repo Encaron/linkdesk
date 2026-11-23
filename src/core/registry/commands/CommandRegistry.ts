@@ -38,6 +38,18 @@ export interface Command {
   /** M1 `AI#7`：参数结构（逐位对应 handler 实参）——无参数命令不填。契约 `LinkDeskCommandParam` 同型 */
   params?: LinkDeskCommandParam[];
   /**
+   * AI 权限档位（`docs/04-软件更新/待抉择池/AI安全-权限档位与提权/01-设计/02-执行闸与防自提权.md` §二 · L2）：
+   * `true` = **AI 正门永远不可调**（`runShellCommand` 一律 `EPROTECTED`），只有用户点界面能触发。
+   * 用途 = 「能改门本身」的命令（切档位 / 复位默认）。
+   * 🔴 判据是**元数据**，不是 id 名单（名单会漏：改名即绕过）。缺省 = false（AI 可调，受档位策略约束）。
+   */
+  userOnly?: boolean;
+  /**
+   * 声明面风险级（2026-11-24 · AI 权限档位）：manifest `contributes.commands[].risk` 的落点。
+   * 合并优先级 = 壳内建表 > 本字段 > 兜底 R1（壳表永远赢，⛔ 插件不能靠声明把写命令降成只读）。
+   */
+  risk?: "R0" | "R1" | "R2" | "R3";
+  /**
    * 占位标记——loader.ts 按 plugin.json contributes.commands 注册的元数据命令。
    * handler 只是诊断 warn；真实 handler 由插件视图在池内 mount 时注册到池侧注册表
    * （preload-pool 的 _poolCommands）。执行时走壳→池转发（executeInPool），不调本 handler。
@@ -173,6 +185,12 @@ export function registerCommand(
     // description/params 抹掉（title 是必填故无条件覆盖，二者不同款）。
     if (command.description !== undefined) existing.description = command.description;
     if (command.params !== undefined) existing.params = command.params;
+    // 权限档位（2026-11-24）：`userOnly` 属**安全元数据**——重注册（组件 mount / 池元数据同步）
+    // 不带它时**不得抹掉**；显式给了才覆盖（允许安全侧收紧/放开）。
+    if (command.userOnly !== undefined) existing.userOnly = command.userOnly;
+    // 声明面风险级同款「有值才覆盖」——池侧重注册不带它时保留声明面那份
+    if (command.risk !== undefined) existing.risk = command.risk;
+    if (command.risk !== undefined) existing.risk = command.risk;
     // 组件重注册真实 handler 时清 placeholder——否则真实实现永远被转发分支拦截
     existing.placeholder = command.placeholder;
     // 重注册未新增条目——首注册者的 disposer 持有删除权，返回 no-op

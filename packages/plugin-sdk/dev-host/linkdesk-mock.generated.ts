@@ -411,4 +411,7 @@ export const linkdeskMock: Record<string, unknown> = {
     getState: async (..._args: unknown[]) => { console.info("[linkdesk-mock] aiPolicy.getState", ..._args); },
     onChange: (..._args: unknown[]) => { console.info("[linkdesk-mock] aiPolicy.onChange", ..._args); return () => {}; },
   },
+  pluginAssets: {
+    getUrl: (..._args: unknown[]) => { console.info("[linkdesk-mock] pluginAssets.getUrl", ..._args); return ""; },
+  },
 };

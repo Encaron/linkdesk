@@ -28,6 +28,28 @@ import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../../i18n";
 import { errMsg } from "../resolution/state";
 
+/** 声明面风险级白名单（`contributes.commands[].risk`）——壳只认这四值 */
+const DECLARED_RISKS = new Set(["R0", "R1", "R2", "R3"]);
+
+/**
+ * `contributes.commands[].risk` 收敛（2026-11-24 · AI 权限档位）。
+ * - 未声明 ⇒ `undefined`（壳兜底 R1）；
+ * - 已知值 ⇒ 原样；
+ * - 未知值 ⇒ **明确告知作者**并退回兜底（⛔ 不静默当 R1 装作没事，也对齐插件权限系统「壳不认识的能力要出声」口径）。
+ */
+function normalizeDeclaredRisk(
+  pluginId: string,
+  cmd: { id: string; risk?: string },
+): "R0" | "R1" | "R2" | "R3" | undefined {
+  if (cmd.risk === undefined) return undefined;
+  if (DECLARED_RISKS.has(cmd.risk)) return cmd.risk as "R0" | "R1" | "R2" | "R3";
+  console.warn(
+    `[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 声明了未知风险级 "${String(cmd.risk)}"`
+      + "——只认 R0–R3；本条已按兜底 R1 处理（请修正 plugin.json）",
+  );
+  return undefined;
+}
+
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
   const raw = data.colors;
@@ -127,7 +149,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   // 导致 terminal 组件注册的真实 handler 被 placeholder 覆盖。
   if (c.commands) {
     // M1 AI#7：声明面同样可写 description/params（与运行时 registerCommand meta 同字段、同语义）
-    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }>(pluginId, "commands", c.commands);
+    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string; description?: string; risk?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }>(pluginId, "commands", c.commands);
     for (const cmd of cmds) {
       registerCommand(pluginId, {
         id: cmd.id,
@@ -135,6 +157,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
         category: cmd.category,
         when: cmd.when,
         description: cmd.description,
+        risk: normalizeDeclaredRisk(pluginId, cmd),
         params: cmd.params,
         // E5.7 Bug C：元数据注册标 placeholder——真实 handler 注册在池侧（preload-pool _poolCommands）。
         // 壳执行时走 CommandRegistry.executeInPool 转发到池，不再调下面的诊断 warn。

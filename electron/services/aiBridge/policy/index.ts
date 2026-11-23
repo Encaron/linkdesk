@@ -21,6 +21,7 @@ export {
   askTextForCommand,
   askTextForOp,
   askFirstCatalog,
+  isRisk,
 } from "./risk.js";
 
 export { decide } from "./decide.js";

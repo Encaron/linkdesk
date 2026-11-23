@@ -5,6 +5,9 @@
     "AiPolicyPicker": {
       "since": "0.2.62"
     },
+    "AiPolicyRiskLegend": {
+      "since": "0.2.63"
+    },
     "BackgroundImagePicker": {
       "since": "0.2.40"
     },
@@ -116,6 +119,9 @@
     "Toggle": {
       "since": "0.2.13"
     },
+    "default as AiPolicyRiskTable": {
+      "since": "0.2.63"
+    },
     "formatColor": {
       "since": "0.2.60"
     },
@@ -221,6 +227,12 @@
     "AiPolicyPickerProps": {
       "since": "0.2.62"
     },
+    "AiPolicyRiskTableProps": {
+      "since": "0.2.63"
+    },
+    "AiPolicyRiskTableRow": {
+      "since": "0.2.63"
+    },
     "AiPolicyValue": {
       "since": "0.2.62"
     },
@@ -321,5 +333,5 @@
       "since": "0.2.40"
     }
   },
-  "count": 104
+  "count": 108
 }

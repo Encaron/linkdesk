@@ -9,6 +9,10 @@
     "ledger": "scripts/host-reserved.json 各栏（除 $comment / version：后者是账形状修订号，抬版不是面被拿走）。"
   },
   "apiNamespaces": {
+    "aiPolicy": [
+      "getState",
+      "onChange"
+    ],
     "app": [
       "getVersion"
     ],
@@ -210,6 +214,9 @@
       "join",
       "normalize"
     ],
+    "pluginAssets": [
+      "getUrl"
+    ],
     "pluginManager": [
       "checkUpdates",
       "disable",
@@ -403,11 +410,13 @@
     ]
   },
   "apiRootMembers": [
-    "getFilePath",
-    "getState",
-    "onChange"
+    "getFilePath"
   ],
   "poolExposed": {
+    "aiPolicy": [
+      "getState",
+      "onChange"
+    ],
     "app": [
       "getVersion"
     ],
@@ -603,6 +612,9 @@
       "join",
       "normalize"
     ],
+    "pluginAssets": [
+      "getUrl"
+    ],
     "pluginManager": [
       "checkUpdates",
       "disable",
@@ -774,7 +786,6 @@
     ]
   },
   "poolRootMembers": [
-    "aiPolicy",
     "getFilePath"
   ],
   "manifestFields": {
@@ -806,6 +817,12 @@
       "number",
       "object",
       "string"
+    ],
+    "contributes.commands[].risk": [
+      "R0",
+      "R1",
+      "R2",
+      "R3"
     ],
     "contributes.commands[].title": [],
     "contributes.commands[].when": [],
@@ -999,6 +1016,19 @@
     "ldk-ai-policy-seg",
     "ldk-ai-policy-segbtn",
     "ldk-ai-policy-summary",
+    "ldk-ai-risk-decision",
+    "ldk-ai-risk-decision-allow",
+    "ldk-ai-risk-decision-ask",
+    "ldk-ai-risk-decision-deny",
+    "ldk-ai-risk-dialog",
+    "ldk-ai-risk-dialog-btn",
+    "ldk-ai-risk-dialog-foot",
+    "ldk-ai-risk-dialog-note",
+    "ldk-ai-risk-dialog-title",
+    "ldk-ai-risk-legend",
+    "ldk-ai-risk-level",
+    "ldk-ai-risk-table",
+    "ldk-ai-risk-what",
     "ldk-app-shell",
     "ldk-background-layer",
     "ldk-badge",
@@ -1560,6 +1590,7 @@
     "ldk-zone-resize-handle"
   ],
   "reservedKeyframes": [
+    "ldk-ai-badge-pulse",
     "ldk-boot-mark-breath",
     "ldk-drop-zone-in",
     "ldk-dropdown-card-in",

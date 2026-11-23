@@ -24,6 +24,13 @@
 /** 风险级——**字符串只许出现在本文件**（判红见 `scripts/check-ai-policy.mjs` P4/P5） */
 export type Risk = "R0" | "R1" | "R2" | "R3";
 
+/** 四级的密封清单（矩阵列序 / 测试全集对账用） */
+export const RISKS: readonly Risk[] = ["R0", "R1", "R2", "R3"];
+
+export function isRisk(value: unknown): value is Risk {
+  return typeof value === "string" && RISKS.includes(value as Risk);
+}
+
 /** 一条登记：风险级 ＋ 需要用户点头时的两句话（R3 必填，测试钉） */
 export interface RiskEntry {
   risk: Risk;
@@ -36,18 +43,25 @@ export interface RiskEntry {
 /** 壳命令的风险登记（按命令 id）——安全关键命令的壳内裁决，优先级最高 */
 export const COMMAND_RISK: Record<string, RiskEntry> = {
   /* ── R0 读 ── */
-  "workbench.action.getConfiguration": { risk: "R0" },
+  "workbench.action.getConfiguration": { risk: "R0", what: "读取配置", why: "只看当前值，不改任何东西" },
   "workbench.action.listConfigurations": { risk: "R0" },
 
   /* ── R1 可撤销写 ── */
   // 写非安全键可撤回；`ai.*` 另有 L1 拒写（settingsCommands.ts 的 WRITE_BLOCKED_PREFIXES）
-  "workbench.action.setConfiguration": { risk: "R1" },
+  "workbench.action.setConfiguration": { risk: "R1", what: "修改设置", why: "改的是设置值，可改回来；权限设置本身不在其中" },
   "workbench.action.openKeybindingsSettings": { risk: "R1" },
 
   /* ── R2 有副作用写 ── */
-  "workbench.action.clearConfiguration": { risk: "R2" },
+  "workbench.action.clearConfiguration": { risk: "R2", what: "清除设置覆盖", why: "把改过的设置恢复默认（可以重新设置）" },
 
   /* ── R3 不可回退 / 动本体 ── */
+  "aiPolicy.getState": { risk: "R0", what: "读取 AI 权限档位", why: "只看当前档位与风险表" },
+  "aiPolicy.statusSummary": { risk: "R0" },
+  "aiPolicy.openRiskTable": { risk: "R0", what: "查看完整风险表", why: "只读表格" },
+  "aiPolicy.openSettings": { risk: "R0" },
+  // 能改门本身的命令：userOnly（L2 先拦，AI 永远够不着）；登记 R3 只为账本/自述口径完整
+  "aiPolicy.setMode": { risk: "R3", what: "切换 AI 权限档位", why: "改的就是门本身——只许用户操作" },
+  "aiPolicy.resetToDefault": { risk: "R3", what: "恢复默认权限", why: "改的就是门本身——只许用户操作" },
   "update.openUpdateFlow": {
     risk: "R3",
     what: "处理主软件更新（有新版本会先下载，下载完**重启并装**）",
@@ -62,14 +76,14 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
  */
 export const OP_RISK: Record<string, RiskEntry> = {
   /* R0 */
-  describe: { risk: "R0" },
+  describe: { risk: "R0", what: "读取界面状态", why: "看标签页、通知、布局（只读）" },
   ping: { risk: "R0" },
   tabs: { risk: "R0" },
   notifications: { risk: "R0" },
   log: { risk: "R0" },
 
   /* R1 */
-  openTab: { risk: "R1" },
+  openTab: { risk: "R1", what: "打开标签页", why: "切到某个页面，可撤销" },
   exec: { risk: "R1" }, // 占位：判的是目标命令
   notifyAction: { risk: "R1" }, // 占位：判的是按钮绑定的命令
 

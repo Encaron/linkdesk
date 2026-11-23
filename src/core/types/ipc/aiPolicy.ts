@@ -9,6 +9,9 @@
  *    `protectedCommands` 由**壳命令**补（命令面归壳）。
  */
 
+/** 风险表弹窗的宿主内容视图 id（壳命令 → DialogHost 内容模式；注册处 = 池 HostDialogView 注册表） */
+export const AI_POLICY_RISK_TABLE_HOST_VIEW = "aiPolicy.riskTable";
+
 /** 档位配置键——**壳侧唯一常量源**（声明、命令、渲染方都从这里取；主进程读取侧同值，见 policy/policyState.ts 注）。 */
 export const AI_POLICY_MODE_KEY = "ai.policy.mode";
 
