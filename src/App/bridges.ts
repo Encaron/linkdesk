@@ -262,7 +262,18 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
       // E6#71c 富内容槽——content 声明视图解析成功 → DTO 带 content（DialogHost 用 PluginComponent
       // 挂载插件自绘内容，替代默认标题/正文/按钮）；解析失败（视图未注册/卸载/缺运行时附挂）→
       // 回落纯文字确认（title/message/默认双钮照旧——弹窗仍出，不静默死）。
-      const resolved = options.content
+      // P1（D8 渲染槽）：`hostView` = 宿主内置视图（壳默认渲染器）——不需解析、直接按注册表下发。
+      if (options.content?.hostView) {
+        poolApi.pushDialog({
+          open: true,
+          title: options.title,
+          message: options.message,
+          isAlert,
+          content: { hostView: options.content.hostView, payload: options.content.payload },
+        });
+        return;
+      }
+      const resolved = options.content?.pluginId && options.content?.viewId
         ? resolveDialogContentView(options.content.pluginId, options.content.viewId)
         : null;
       if (resolved) {

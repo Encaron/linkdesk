@@ -1,0 +1,415 @@
+/**
+ * 安装/更新确认卡样式（`@linkdesk/ui` 共享件）—— 与 DialogHost 富内容槽配合：
+ * 宿主给「居中/遮罩/Esc/焦点锁/max-width 80vw」，本文件只管卡片内部的排版与观感。
+ *
+ * 纪律：颜色/圆角/字号全走 CSS 变量（硬约束 1）；尺寸落 4px 网格（check-spacing-grid）；
+ * 类名一律 `ldk-` 前缀 + 本卡自有锚（硬约束 23）；⛔ 不写裸选择器、⛔ 不覆盖宿主既有类。
+ * 亮/暗/玻璃三主题都成立——只用语义 token（--bg-card / --border / --text-* / --accent / --danger / --warning*）。
+ */
+
+.ldk-pic {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 76vw);
+  max-height: 80vh;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.ldk-pic--batch {
+  width: min(620px, 78vw);
+}
+
+/* ── 头部 ── */
+
+.ldk-pic-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px 12px;
+}
+
+.ldk-pic-shield {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.ldk-pic-shield.is-warn {
+  color: var(--warning);
+  border-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.ldk-pic-headtext {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ldk-pic-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ldk-pic-sub {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── 主体 ── */
+
+.ldk-pic-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 24px 16px;
+  min-height: 0;
+}
+
+.ldk-pic-note {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.ldk-pic-note.is-foot {
+  color: var(--text-muted);
+}
+
+/* ── 键值行（插件/发布者/来源/版本/大小/完整性）── */
+
+.ldk-pic-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+
+.ldk-pic-kv-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.ldk-pic-kv-k {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.ldk-pic-kv-v {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ldk-pic-kv-v.is-bold {
+  font-weight: 600;
+}
+
+.ldk-pic-kv-v.is-muted {
+  color: var(--text-secondary);
+}
+
+.ldk-pic-kv-v.is-warn {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.ldk-pic-kv-v.is-hash {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* ── 警告框 ── */
+
+.ldk-pic-warn {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--warning);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
+}
+
+/* ── 勾选行 ── */
+
+.ldk-pic-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.ldk-pic-check input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+/* ── 统计三格 ── */
+
+.ldk-pic-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ldk-pic-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+}
+
+.ldk-pic-stat.is-ask {
+  border-color: var(--accent);
+}
+
+.ldk-pic-stat-n {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ldk-pic-stat.is-ask .ldk-pic-stat-n {
+  color: var(--accent);
+}
+
+.ldk-pic-stat.is-silent .ldk-pic-stat-n {
+  color: var(--text-secondary);
+}
+
+.ldk-pic-stat-l {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+/* ── 滚动区（20+ 条不撑破弹窗）── */
+
+.ldk-pic-scroll {
+  min-height: 0;
+  max-height: 44vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+}
+
+.ldk-pic-scroll:focus-visible {
+  border-color: var(--accent);
+}
+
+.ldk-pic-empty {
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.55;
+}
+
+/* ── 分组 ── */
+
+.ldk-pic-group {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ldk-pic-group:last-child {
+  border-bottom: none;
+}
+
+.ldk-pic-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 8px;
+}
+
+.ldk-pic-group-name {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.ldk-pic-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-2xs);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.ldk-pic-badge.is-free {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.ldk-pic-group-count {
+  margin-left: auto;
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+}
+
+/* ── 行 ── */
+
+.ldk-pic-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+}
+
+.ldk-pic-row:hover {
+  background: var(--bg-selection);
+}
+
+.ldk-pic-row-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.ldk-pic-row-icon-inner {
+  width: 20px;
+  height: 20px;
+}
+
+.ldk-pic-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ldk-pic-row-name {
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-pic-row-sub {
+  font-size: var(--font-size-2xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldk-pic-row-ver {
+  flex: 0 0 auto;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ldk-pic-row-ver b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── 免问摘要行 ── */
+
+.ldk-pic-silent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+}
+
+.ldk-pic-silent-text {
+  flex: 1 1 auto;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ldk-pic-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.ldk-pic-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* ── 底部按钮 ── */
+
+.ldk-pic-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 24px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.ldk-pic-btn {
+  min-height: 32px;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.ldk-pic-btn:hover {
+  border-color: var(--accent);
+}
+
+.ldk-pic-btn.is-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.ldk-pic-btn.is-primary:hover {
+  background: var(--accent-hover);
+}
+
+.ldk-pic-btn.is-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--text-on-accent);
+}

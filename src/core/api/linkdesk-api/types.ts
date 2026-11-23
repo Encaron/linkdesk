@@ -38,6 +38,12 @@ export interface LinkDeskCommand {
   description?: string;
   /** M1 `AI#7`: parameter structure (positionally mapped to handler arguments). Optional, purely additive; omit for commands without parameters. */
   params?: LinkDeskCommandParam[];
+  /**
+   * AI permission tier (2026-11-24 · AI-safety policy, L2): `true` = user-only command —
+   * the AI gateway (`exec` / `notifyAction`) always answers `EPROTECTED`. Omitted = AI-callable
+   * (still subject to the policy tier). Purely additive: existing plugins keep current behaviour.
+   */
+  userOnly?: boolean;
 }
 
 export interface LinkDeskTheme {
@@ -171,6 +177,18 @@ export interface LinkDeskConfigProperty {
   group?: string;
   /** E5.8#77: numeric unit — value-label unit for uiHint "slider" ("×" / "px"; empty = bare number) */
   unit?: string;
+  /** 2026-11-24 semantic ownership: host asset domain registry key (e.g. "appearance") — the domain source of host asset actions.
+   *  The UI forwards this value verbatim to `appearance.pickImage`; ⛔ it never holds a domain literal (replace the UI plugin and the start directory stays). */
+  assetDomain?: string;
+  /** 2026-11-24: asset target slot inside the domain (e.g. "app"/"zone") — same directory/filters, only decides which config key the UI writes back. */
+  pickTarget?: string;
+  /** 2026-11-24: conditional description — when `{key,value}` holds, this text replaces `description`.
+   *  Example: `app.themeColor` under `app.appearanceMode="custom"` shows the colors-domain source wording. The UI ⛔ no longer special-cases the key. */
+  descriptionWhen?: { key: string; value: unknown; description: string };
+  /** 2026-11-24: source-badge activation condition for `sourceKey` (e.g. appearanceMode="custom"). Without it the slot derives no "mix" source; the UI ⛔ no longer holds the `"custom"` literal. */
+  sourceActiveWhen?: { key: string; value: unknown };
+  /** 2026-11-24: the `sourceKey` sentinel meaning "follow theme" (e.g. "followTheme") — the second condition for a mix badge. The UI reads the declaration, ⛔ not a sentinel literal. */
+  sourceFollowValue?: string;
 }
 
 /** Config schema — key → property definition (index signature kept for existing consumers) */
@@ -344,6 +362,22 @@ export interface PluginLocalInstallResult {
   parked?: boolean;
 }
 
+/* ── P1 插件安装/更新确认——契约面已拆到 ./install（体积门禁 800 行；本处只 re-export，⛔ 别写回来）── */
+export type {
+  PluginSourceIdentity,
+  PluginInstallDisplay,
+  PluginInstallRequest,
+  PluginConfirmReason,
+  PluginConfirmItem,
+  PluginConfirmSummaryRow,
+  PluginConfirmGroup,
+  PluginConfirmRejected,
+  PluginConfirmPlan,
+  PluginUpdatePolicy,
+  PluginSourceTrustEntry,
+  PluginInstallConfirmResult,
+  PluginUpdateBatchResult,
+} from "./install";
 /* ── R4-1.3（I21/#24 壳侧·正典 09 §三·补3）：许可与权益（licenses 命名空间）── */
 
 /** 许可密钥签名载荷——kit `sign-license`（棒 11）签什么、壳就验什么（09 正典三字段，⛔ 不私加必填项） */

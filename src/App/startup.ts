@@ -35,6 +35,7 @@ import i18n from "../i18n";
 import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import { registerAppearanceConfiguration } from "./config/appearance";
 import { registerUpdateConfiguration } from "./config/update";
+import { registerPluginUpdateConfiguration } from "./config/pluginUpdate";
 import { registerAiBridgeConfiguration } from "./config/aiBridge";
 import { registerStorageConfiguration } from "./config/storage";
 import { registerFileAssociationConfiguration } from "./config/fileAssociations";
@@ -214,6 +215,10 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
       // ——E6#57.9a：app.update.mode + app.update.showReleaseNotes。
       // 纯声明零 onApply（两键都是被读取的存量值）——调度器/首启弹窗各自读，见 config/update.ts 文件头。
       registerUpdateConfiguration(t);
+
+      // 「插件更新」三键归并进「通用」（P1 壳托管确认：两条独立开关 + 信任来源清单）
+      // ——声明住 config/pluginUpdate.ts；消费方唯一 = install/trust.ts（⛔ 裸键读取）。
+      registerPluginUpdateConfiguration(t);
 
       // 「AI 接入」配置组声明（M4 AI#38.1：独立 pluginId "ai-bridge"——挂 app 会并进「通用」，
       // 导航项永不出现）——三开关默认 false = 门锁语义，内核 resolveBridgeConfig 按同键读取。

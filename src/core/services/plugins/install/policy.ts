@@ -1,0 +1,79 @@
+/**
+ * 确认策略——**谁需要确认**（纯函数，零 I/O，可单测）。
+ *
+ * 矩阵出处：`docs/04-软件更新/待抉择池/插件安装更新确认-壳托管与批量更新/00-提案.md` §四。
+ * 判据顺序即优先级（改动须同步改原型 `view-logic` 的矩阵与单测表）：
+ *   ① 首装/重装（任意来源）→ ask(first-install)            —— 第一次信任决定不能省
+ *   ② 同版本 → rejected(invalid)                            —— 壳的 stage 也会拒，这里先拒 = 不弹无用卡
+ *   ③ 降级（未显式 allowOlder）→ rejected(invalid)           —— 「没打算降级」就是错的请求
+ *   ④ 降级（allowOlder）→ ask(downgrade)
+ *   ⑤ 来源/仓库/发布者变更 → ask(source-changed)             —— 不受两条开关豁免
+ *   ⑥ 同源更新 · 官方 → silentOfficial ? silent : ask(official-source)
+ *   ⑦ 同源更新 · 第三方 → 信任 && silentTrustedSources ? silent : ask(untrusted-source)
+ *
+ * 🔴 两条开关**正交**：官方只由 `silentOfficial` 管，第三方只由 `silentTrustedSources` 管。
+ *    官方在信任清单里是 fixed —— 但 `isTrusted("official")` 绝不参与第 ⑥ 步的判定，
+ *    否则关掉 `silentOfficial` 也照样免问 = 开关失效。
+ */
+
+import { compareVersions } from "../../../utils/plugin/semverUtils";
+import type { PluginInstallRequest, PluginSourceIdentity } from "../../../api/linkdesk-api/types";
+import type { PolicyContext, PolicyDecision } from "./types";
+
+/** 官方目录的固定 sourceId（信任清单里 fixed=true 的那一行；⛔ 不参与第 ⑥ 步判定，见文件头） */
+export const OFFICIAL_SOURCE_ID = "official";
+
+/** 同源判据：sourceUrl ＋ repo ＋ publisher 全同（spec §3.4；id 只是市场的自称，不作判据） */
+export function sameSourceIdentity(known: PluginSourceIdentity | null, next: PluginSourceIdentity): boolean {
+  if (!known) return false;
+  return known.url === next.url && (known.repo ?? "") === (next.repo ?? "") && (known.publisher ?? "") === (next.publisher ?? "");
+}
+
+/**
+ * 远程来源判定——IPC 安装门的唯一判据（D2 落地形态）。
+ * `http(s)://` = 远程（必须走 requestInstall/requestUpdateBatch）；其余按本地路径放行
+ * （文件夹安装 / `.linkdesk-plugin` 包 —— 2026-11-24 拍板：用户手势、无远程来源，不过令牌门）。
+ */
+export function isRemoteSource(path: string): boolean {
+  return /^https?:\/\//i.test(path.trim());
+}
+
+/** 单项判定 */
+export function decideOne(req: PluginInstallRequest, ctx: PolicyContext): PolicyDecision {
+  const facts = ctx.facts(req.pluginId);
+
+  // ① 首装 / 重装 —— 任何来源必问
+  if (req.mode === "install" || facts.installedVersion === null) {
+    return { kind: "ask", reason: "first-install" };
+  }
+
+  const relation = compareVersions(req.version, facts.installedVersion);
+  // ② 同版本 —— 装不出差别，直接拒（不弹卡）
+  if (relation === 0) {
+    return { kind: "rejected", reason: "invalid", message: "same-version" };
+  }
+  // ③ 降级未放行 —— 调用方没打算降级，这是坏请求
+  if (relation < 0 && !req.allowOlder) {
+    return { kind: "rejected", reason: "invalid", message: "older-not-allowed" };
+  }
+  // ④ 降级已放行 —— 还是问一次（spec §四「降级/选旧版 → 确认」）
+  if (relation < 0) {
+    return { kind: "ask", reason: "downgrade", previous: facts.knownSource ?? undefined };
+  }
+
+  // ⑤ 来源/仓库/发布者变更 —— 按新装确认，且不受两条开关豁免
+  if (!sameSourceIdentity(facts.knownSource, req.source)) {
+    return { kind: "ask", reason: "source-changed", previous: facts.knownSource ?? undefined };
+  }
+
+  // ⑥ 同源更新 · 官方
+  if (req.source.id === OFFICIAL_SOURCE_ID) {
+    return ctx.policy.silentOfficial ? { kind: "silent" } : { kind: "ask", reason: "official-source" };
+  }
+
+  // ⑦ 同源更新 · 第三方
+  if (ctx.policy.silentTrustedSources && ctx.isTrusted(req.source.id)) {
+    return { kind: "silent" };
+  }
+  return { kind: "ask", reason: "untrusted-source" };
+}

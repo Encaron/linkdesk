@@ -1,0 +1,22 @@
+{
+  "$comment": "功能域禁止平铺（P1 D9 @ 2026-11-24）——基线只许删行，⛔ 不许为过门禁加行。新增功能域一律「同名夹 + index.ts 门面」。",
+  "roots": ["src/core/services"],
+  "flatFiles": {
+    "src/core/services/PluginInstallService.ts": "存量：安装账本 owner（E6#12a 定案，早于本门禁）",
+    "src/core/services/plugins/IpcBridgeHandler.ts": "存量：IPC 桥聚合器（壳层入口，非功能域）",
+    "src/core/services/plugins/PluginStateService.ts": "存量：插件状态单点（早于本门禁）",
+    "src/core/services/plugins/ProfileService.ts": "存量：装配清单 profile 读面（早于本门禁）",
+    "src/core/services/plugins/readSnapshots.ts": "存量：启动快照读面（早于本门禁）"
+  },
+  "foldersWithoutFacade": {
+    "src/core/services/plugins/IpcBridgeHandler": "存量：夹内每文件 = 一个通道域（ui/tabs/theme…），无统一对外门面；新增域照 install/ 先例自带 index.ts",
+    "src/core/services/bootstrap": "存量：启动编排，无对外消费方",
+    "src/core/services/configuration": "存量：配置服务夹，对外门面是具名文件 ConfigurationService.ts（非 index.ts）",
+    "src/core/services/files": "存量（早于本门禁）",
+    "src/core/services/layout": "存量（早于本门禁）",
+    "src/core/services/licenses": "存量（早于本门禁）",
+    "src/core/services/recentFolders": "存量（早于本门禁）",
+    "src/core/services/ui": "存量：UI 服务夹，对外经具名文件导出（DialogService/NotificationService/toast）",
+    "src/core/services/plugins": "根域夹：子域各自带门面（install/index.ts），根本身不设门面"
+  }
+}

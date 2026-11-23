@@ -21,12 +21,17 @@ export interface DialogOptions {
   type?: "info" | "warning" | "error";
   /** E6#71c 富内容槽——插件自绘确认内容。视图引用（pluginId+viewId 声明寻址 →
    *  壳解析 renderPath 推池 DialogHost 挂载）+ 不透明 payload（壳不解释）。
-   *  present 时确认框内容 = 插件视图（标题/正文/默认按钮由视图自画），弹窗机制不变。 */
+   *  present 时确认框内容 = 插件视图（标题/正文/默认按钮由视图自画），弹窗机制不变。
+   *  🆕 P1（D8 渲染槽）：`hostView` = **宿主内置内容视图**（壳自带默认渲染器，如安装/批量确认卡）——
+   *  与 `pluginId+viewId` 二选一。宿主视图不吃插件寻址、不需要 renderPath，池侧按注册表直挂；
+   *  第三方整套替换时改用 pluginId+viewId 这一支（壳只换「填哪个字段」，弹窗机制不变）。 */
   content?: {
-    /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址） */
-    pluginId: string;
-    /** 内容视图声明 id（contributes.views 注册） */
-    viewId: string;
+    /** 内容归属插件（壳经 ViewContainerService.getView 复合寻址）——与 hostView 二选一 */
+    pluginId?: string;
+    /** 内容视图声明 id（contributes.views 注册）——与 hostView 二选一 */
+    viewId?: string;
+    /** 宿主内置内容视图 id（池内注册表；壳默认渲染器用）——与 pluginId/viewId 二选一 */
+    hostView?: string;
     /** 不透明载荷——结构克隆过 IPC，内容视图经 dialogHost.current() 读 */
     payload?: unknown;
   };
@@ -112,7 +117,13 @@ function toPending(kind: "confirm" | "alert", options: DialogOptions): PoolPendi
     message: options.message,
     buttons: resolveDialogButtons(options, kind === "alert"),
     ...(options.content
-      ? { content: { pluginId: options.content.pluginId, viewId: options.content.viewId } }
+      ? {
+          content: {
+            ...(options.content.pluginId ? { pluginId: options.content.pluginId } : {}),
+            ...(options.content.viewId ? { viewId: options.content.viewId } : {}),
+            ...(options.content.hostView ? { hostView: options.content.hostView } : {}),
+          },
+        }
       : {}),
   };
 }

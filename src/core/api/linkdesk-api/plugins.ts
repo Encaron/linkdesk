@@ -17,6 +17,12 @@ import type {
   PluginEntryInfo,
   PluginCompatibilityRequest,
   PluginCompatibilityReading,
+  PluginInstallRequest,
+  PluginInstallConfirmResult,
+  PluginUpdateBatchResult,
+  PluginUpdatePolicy,
+  PluginSourceTrustEntry,
+  PluginConfirmPlan,
 } from "./types";
 import type { PluginManifest } from "../types";
 
@@ -61,6 +67,30 @@ export interface PluginsAPI {
      *  0.2.48: `deferred: true` = the old directory is occupied (dev-track Vite handles being the main scenario; disk untouched, staging kept as-is) —
      *  the caller shows "will be replaced automatically after restart", and `commitPendingStagedUpdates` commits it on startup; version = the staged new version number. */
     packageCommitUpdate?(pluginId: string, stagedDir: string): Promise<{ pluginId: string; version: string; deferred?: boolean }>;
+
+    /* ── P1 壳托管安装/更新确认（2026-11-24 拍板 D1/D2/D3/D5/D8）──
+     * 任何市场（官方/第三方）想装/更新插件都必须走这里：壳算 ConfirmPlan → 出确认卡（可替换渲染槽，
+     * 默认壳渲染器）→ 用户确认 → 壳**内部**签一次性 token → 立刻执行。token ⛔ 不过 IPC、不进契约。
+     * 原 pluginManager.install/update 对**远程来源**无 token 即拒（`no-token`）；本地文件安装两条腿
+     * （installFromDirectory / .linkdesk-plugin 包）不过此门（用户手势、无远程来源；2026-11-24 拍板）。
+     * 全部可选 `?`：老 preload 无此面 ⇒ 调用方判存在后回落旧 API（市场兼容窗口，spec §9 P1）。 */
+    /** 首装/单项更新 —— 一条请求一次确认事务；`confirmed:false` ＋ `cancelled:false` = 被拒 */
+    requestInstall?(req: PluginInstallRequest): Promise<PluginInstallConfirmResult>;
+    /** 批量更新 —— 只提交结构化请求；谁要确认由壳算（`ask` 为空则**不弹卡**直接全入队） */
+    requestUpdateBatch?(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult>;
+    /** 只读预览：按**当前**设置算一遍计划（不改状态、不入队）。确认卡内改设置后就地重算；
+     *  AI 也可先用它看「这次会问哪几个」。`forceAsk` = 把免问项也展开成需确认（本批临时，不改设置） */
+    previewUpdatePlan?(reqs: PluginInstallRequest[], opts?: { forceAsk?: boolean }): Promise<PluginConfirmPlan>;
+    /** 读两条独立开关（设置页渲染源） */
+    getUpdatePolicy?(): Promise<PluginUpdatePolicy>;
+    /** 写两条开关（部分更新）；返回写后全量 */
+    setUpdatePolicy?(patch: Partial<PluginUpdatePolicy>): Promise<PluginUpdatePolicy>;
+    /** 读来源信任清单（设置页/确认卡同一事实源；首装仍确认、来源变更自动失效） */
+    listSourceTrust?(): Promise<PluginSourceTrustEntry[]>;
+    /** 显式信任一个来源（返回写后清单） */
+    trustSource?(entry: { sourceId: string; url: string; repo?: string; publisher?: string }): Promise<PluginSourceTrustEntry[]>;
+    /** 撤销信任（返回写后清单） */
+    untrustSource?(sourceId: string): Promise<PluginSourceTrustEntry[]>;
   };
 
   /** Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), required */
@@ -90,6 +120,8 @@ export interface PluginsAPI {
     update?(pluginId: string, opts?: { catalogUrl?: string; url?: string; allowOlder?: boolean }): Promise<PluginUpdateResult>;
     /** E6#13b (stage B): read-only update check — returns downloadUrl when a new version exists (data source for the UI badge; the update action goes through update) */
     checkUpdates?(pluginId: string, catalogUrl: string): Promise<PluginUpdateCheckResult>;
+
+
     /** E5.7#48: install/uninstall/reinstall success → notify the main process to fully rescan the three tables */
     notifyManifestChanged?(): void;
   };

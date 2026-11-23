@@ -19,6 +19,8 @@
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70（仅 init 的 registerExternalGetter 保留）
 import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
+import { handleInstallMethod } from "./IpcBridgeHandler/install"; // P1：安装/更新确认域（requestInstall 七方法 + 执行端口接线）
+import { registerInstallConfirmRenderer } from "./install"; // P1：默认确认渲染器（D8 渲染槽默认档）
 import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
 import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
 import { handleTabsChannel, handleTabsMethod } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域 + M1 AI#3 读取面
@@ -93,6 +95,7 @@ export function initIpcBridgeHandler(): void {
         // ── E5#85 + E5.6#11.5-A：workspace——插件查询/写工作区信息（IpcBridgeHandler/workspace 域）──
         case "workspace:getFolders":
         case "workspace:getActive":
+        case "workspace:getRecentFolders": // 2026-11-24（A3/F2）：宿主属主最近文件夹投影
         case "workspace:setActive":
         case "workspace:openFolder":
         case "workspace:addFolder":
@@ -165,6 +168,10 @@ export function initIpcBridgeHandler(): void {
     }
   });
 
+  // P1：默认确认渲染器（D8 渲染槽的默认档）——把 ConfirmPlan 包成 DialogHost 富内容推池；
+  // 第三方整套替换时只换注册体，判定/令牌/队列仍在 install/confirm-service。
+  registerInstallConfirmRenderer();
+
   console.log("[IpcBridgeHandler] 已注册 bridge 请求处理器（含 plugins:call）");
 
   // 订阅配置变更 → 通知主进程广播 config:changed → preload onChange 回调触发
@@ -219,6 +226,17 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "getCommands":
     case "resolveCommandOwner": // E6#111b：命令归属查询（池侧 on-command 激活取真属主；H3 修点）
       return handlePluginManagerMethod(method, args);
+    // ── P1 壳托管安装/更新确认（2026-11-24 拍板 D1/D2/D3/D5/D8）——IpcBridgeHandler/install 域委派 ──
+    // 七个方法 = 远端（市场/AI）唯一合法安装入口；旧链的远程来源已在 handlePluginManagerMethod 里拒。
+    case "requestInstall":
+    case "requestUpdateBatch":
+    case "previewUpdatePlan":
+    case "getUpdatePolicy":
+    case "setUpdatePolicy":
+    case "listSourceTrust":
+    case "trustSource":
+    case "untrustSource":
+      return handleInstallMethod(method, args);
     // ── E5.5#7-p2：快捷键 IPC——插件 WebView 零 @src/core import（IpcBridgeHandler/keybindings 域委派）──
     case "getKeybindings":
     case "getKeybindingConflicts":

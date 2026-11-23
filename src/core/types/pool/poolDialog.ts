@@ -21,13 +21,20 @@ export type PoolDialogData =
        *  centering/overlay/Esc/trap/click-overlay-cancel are still provided by DialogHost). Content = a plugin view —
        *  the shell holds no renderer; the pool mounts it via PluginComponent (modeled after the FloatingPanel DTO). payload is opaque —
        *  the shell does not interpret it and the pool holds it as-is; the content view reads it via window.linkdesk.dialogHost.current(). */
-      content?: {
-        pluginId: string;
-        /** Pool view registry addressing key — attached at loader runtime (ViewContainerService._renderPath) */
-        renderPath: string;
-        /** Opaque serialized payload — travels with the open parameters through shell→back to pool (structured clone); used by the content view to fetch data */
-        payload?: unknown;
-      };
+      content?:
+        | {
+            pluginId: string;
+            /** Pool view registry addressing key — attached at loader runtime (ViewContainerService._renderPath) */
+            renderPath: string;
+            /** Opaque serialized payload — travels with the open parameters through shell→back to pool (structured clone); used by the content view to fetch data */
+            payload?: unknown;
+          }
+        | {
+            /** P1（D8 渲染槽）：宿主内置内容视图 id（池内 `plugin-install-confirm` 注册表直挂，无需 renderPath）
+             *  ——壳默认渲染器用它；第三方整套替换时换 pluginId+renderPath 那一支。两支二选一。 */
+            hostView: string;
+            payload?: unknown;
+          };
     };
 
 /**
@@ -53,5 +60,5 @@ export interface PoolPendingDialog {
   buttons: string[];
   /** E6#71c rich-content confirmation — content = a plugin's self-drawn view. Gives the **identity** (not renderPath: that is the pool-internal addressing key,
    *  whereas this surface asks "what is the shell waiting for" from inside the pool); ⛔ no payload (the opaque payload can be large and is useless for reading "what is being waited on"). */
-  content?: { pluginId: string; viewId: string };
+  content?: { pluginId?: string; viewId?: string; /** P1：宿主内置默认渲染器（无 pluginId/viewId——壳自带视图） */ hostView?: string };
 }

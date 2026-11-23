@@ -5,6 +5,7 @@
  */
 
 import { getCommands, resolveCommandOwnership } from "../../../registry/commands/CommandRegistry";
+import { isRemoteSource } from "../install";
 import { resolvePluginManifestForDisplay } from "../../../../pluginLoader/display/displayService";
 import type {
   PluginInstallRequestOpts,
@@ -50,6 +51,29 @@ export interface PluginManagementAPI {
 let _pluginAPI: PluginManagementAPI | null = null;
 export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api; }
 
+/** P1 安装确认：执行端口接线要拿到**当前**注册的 loader API（同 setPluginAPI 的反转方向；⛔ 桥不持实现） */
+export function getPluginAPI(): PluginManagementAPI | null { return _pluginAPI; }
+
+/**
+ * P1 安装确认（D2 落地形态）——**远程来源的旧安装链在 IPC 分发层一律拒**。
+ *
+ * 为什么不是「校验 token 后放行」：旧链入参是 `(path, opts)`，装不下 `version + sha256` 绑定，
+ * 能验的只有「有没有票」——那是假门禁（随便一张票就能装任何 URL）。所以：
+ *   · 远程来源（http/https）⇒ 拒，`no-token`（唯一对外词），日志给壳；
+ *   · 本地路径（文件夹 / `.linkdesk-plugin` 包）⇒ 放行（用户手势、无远程来源，2026-11-24 用户拍板）；
+ *   · `update` 恒远程（url/catalogUrl）⇒ 一律拒。
+ * 合法路径只剩 `plugins.requestInstall / requestUpdateBatch`（壳内确认 → 签票 → 执行端口核销）。
+ *
+ * 过渡期（壳未发版）正是**一次切换**的窗口：市场 1.4.26 起走新 API；旧市场只会看到 no-token，
+ * 不会静默装（spec §9 P1 / §十一.1）。
+ */
+const NO_TOKEN = "no-token";
+
+/** 拒因日志——只记不入队（用户/作者要能查到「为什么没装」） */
+function rejectRemoteInstall(action: string, target: string): void {
+  console.warn(`[plugin-install] install:rejected ${NO_TOKEN}——${action} 远程来源必须走 plugins.requestInstall（${target}）`);
+}
+
 /** E3a #31：插件管理方法路由——list/enable/disable/uninstall/install/reinstall/getDisabled/getUninstalled/isDisabled/getCommands */
 export async function handlePluginManagerMethod(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
@@ -92,10 +116,20 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
     case "uninstall":
       return _pluginAPI!.uninstallPlugin(args[0] as string);
     case "install":
+      // P1 D2：远程来源拒（本地路径放行）——见文件内 rejectRemoteInstall 的说明
+      if (isRemoteSource(args[0] as string)) {
+        rejectRemoteInstall("install", args[0] as string);
+        return { success: false, error: NO_TOKEN };
+      }
       return _pluginAPI!.installPlugin(args[0] as string, args[1] as PluginInstallRequestOpts | undefined);
     case "installWithProgress":
       // E6#13（1.2-5）：显式包安装流名——同 installPlugin 路由（目录源/包源自适应）；选调用方喂 url/zip
       // E6#73q：args[1] = 请求侧身份（pluginId/displayName/origin）
+      // P1 D2：远程来源拒（本地 .linkdesk-plugin 包放行）
+      if (isRemoteSource(args[0] as string)) {
+        rejectRemoteInstall("installWithProgress", args[0] as string);
+        return { success: false, error: NO_TOKEN };
+      }
       return _pluginAPI!.installWithProgress(args[0] as string, args[1] as PluginInstallRequestOpts | undefined);
     case "installFromDirectory":
       // R4-1.2（I16）：本地安装——文件夹/.linkdesk-plugin → {userData}/plugins/<id>，五类回执
@@ -104,7 +138,9 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
       return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "update":
       // E6#11c（段 B）：安全更新——pluginId + opts { catalogUrl? | url? | allowOlder? }（壳 loader 编排 check→stage→unload→commit→load）
-      return _pluginAPI!.updatePlugin(args[0] as string, args[1] as { catalogUrl?: string; url?: string; allowOlder?: boolean } | undefined);
+      // P1 D2：update 恒远程（url/catalogUrl）——旧链一律拒；合法路径 = plugins.requestInstall(mode:"update")
+      rejectRemoteInstall("update", args[0] as string);
+      return { success: false, pluginId: args[0] as string, error: NO_TOKEN };
     case "checkUpdates":
       // E6#13b（段 B）：只读查更新——pluginId + catalogUrl
       return _pluginAPI!.checkPluginUpdates(args[0] as string, args[1] as string);

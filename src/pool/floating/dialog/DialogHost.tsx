@@ -24,6 +24,7 @@ import { getScrimTarget } from "../../../components/shared/overlay-portal/Overla
 import { OVERLAY_LAYER_ATTR, isTopmostOverlay } from "../../../components/shared/overlay-portal/overlayLayer"; // E6#73b ④ Esc 分层
 import type { PoolDialogData } from "../../../core/types/pool/poolDialog";
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E6#71c 富内容槽——内容 = 插件视图（壳不持渲染器）
+import HostDialogView from "../../shared/plugin-install-confirm"; // P1（D8）：宿主内置内容视图（壳默认确认卡）
 import "./DialogHost.css";
 
 /* ── 池 API 形状——global.d.ts 的 window.linkdesk 是宽松类型，此处收窄到精确形状 ── */
@@ -138,10 +139,16 @@ export default function DialogHost() {
         aria-modal="true"
       >
         {content ? (
-          // 富内容 = 插件自绘视图（confirmContent DTO content{pluginId, renderPath}）。
-          // 挂载视图经 window.linkdesk.dialogHost.current()?.content?.payload 取数。
-          // isActive=true——打开中即渲染（仿 FloatingPanelHost：内容视图按打开挂载）。
-          <PluginComponent pluginId={content.pluginId} isActive renderPath={content.renderPath} />
+          "hostView" in content ? (
+            // P1（D8 渲染槽）：宿主内置视图——壳默认渲染器（安装/批量确认卡）。
+            // 池内注册表直挂，不吃插件寻址；载荷同走 dialogHost.current()（此处由 DTO 直接传入）。
+            <HostDialogView hostView={content.hostView} payload={content.payload} />
+          ) : (
+            // 富内容 = 插件自绘视图（confirmContent DTO content{pluginId, renderPath}）。
+            // 挂载视图经 window.linkdesk.dialogHost.current()?.content?.payload 取数。
+            // isActive=true——打开中即渲染（仿 FloatingPanelHost：内容视图按打开挂载）。
+            <PluginComponent pluginId={content.pluginId} isActive renderPath={content.renderPath} />
+          )
         ) : (
           <>
             {data.title && <h3 className="ldk-dialog-host-title">{data.title}</h3>}
