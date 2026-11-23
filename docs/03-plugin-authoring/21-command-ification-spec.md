@@ -275,6 +275,35 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
 
 ---
 
+
+## 8. AI permission tiers (2026-11-24 · what an outside AI may do is the user's call)
+
+An outside AI (MCP / CLI / scripts) can call your commands, but it is bound by the **permission tier the user picked**.
+The same command surface behaves like this under the four tiers:
+
+| Tier | Read | Reversible write (open tab / change settings) | Side-effecting write (persist / install) | Irreversible (update / delete data) |
+|:--|:--:|:--:|:--:|:--:|
+| Read-only | ✅ | ⛔ denied | ⛔ denied | ⛔ denied |
+| Ask every time | ✅ | ask | ask | ask |
+| Auto (default) | ✅ | ✅ | ✅ | ask |
+| Full access | ✅ | ✅ | ✅ | ✅ |
+
+- **Risk levels are registered by the host** (built-in table first, then the plugin declaration, fallback = reversible write):
+  an **unregistered** command is never treated as read-only.
+- **`userOnly` is host metadata, not a manifest field**: host commands carrying it always answer `EPROTECTED` to the AI
+  gateway (only the user can trigger them from the UI). ⛔ Do not look for this field in plugin.json — it governs commands
+  that "change the door itself".
+- **AI-side error codes** (clients branch on the code, ⛔ never treat them as `EERROR`):
+  `EPOLICYDENIED` (current tier forbids it; the AI may request elevation) · `EPROTECTED` (userOnly, never callable) ·
+  `EUSERDENIED` (the user said no) · `ESHELLTIMEOUT` (nobody answered = it never happened).
+- **How a settings UI reads the tier**: call the `aiPolicy.getState` command (read-only) — it returns the current tier,
+  the four-tier decision matrix, the risk table and the protected commands. ⛔ Do not read `settings.json` yourself and
+  do not judge risk yourself (a replacement settings UI uses the same command).
+- **Elevation**: the AI can only `requestElevation` (a dialog; it takes effect only when the user clicks "Allow" and lasts
+  until the user changes it back). ⛔ No plugin ever gets an "approve" entry point.
+
+---
+
 **Related:** [03-contributes-spec](03-contributes-spec.md) §3.1 (every `contributes.commands` field) ·
 [07-plugin-to-plugin-communication](07-plugin-to-plugin-communication.md) (calling another plugin's command) ·
 [14-data-pipeline-command-conventions](14-data-pipeline-command-conventions.md) (naming conventions for data pipeline commands)

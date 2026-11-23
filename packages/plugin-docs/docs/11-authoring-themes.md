@@ -142,9 +142,12 @@ The one rule a glass theme must get right:
 - The eight surface colors in a colorway (`bg-window` / `bg-card` / `bg-titlebar` / `bg-toolbar` / `bg-icon-bar` / `bg-side-panel` / `bg-input` / `bg-status`) are **base colors** — opaque hex is perfectly fine;
 - Surface transparency comes from **one** place: in follow-theme mode `appearance.glass.opacity`; in custom mode the user's "glass opacity" (`app.glassOpacity`). The engine applies it to the base color and **does not** multiply the colorway's own alpha again;
 - `glass.tint` is the overlay color; its thickness is controlled separately by `glass.tintOpacity` (defaults to `opacity`);
-- Themes without a `glass` domain (pure color schemes / full-window visuals) keep their per-surface rgba as authored — the engine leaves them alone.
+- Themes without a `glass` domain keep their per-surface rgba as authored — **with one exception**: when the theme declares a full-window background image (`appearance.background.image`), the **content surfaces** (`bg-card` / `bg-input`) must be opaque base colors or alpha ≥ 0.55. A low-alpha highlight layer (e.g. `rgba(255,255,255,0.10)`) is composited straight onto the photo in follow-theme mode — white text on white glass disappears. Ambient surfaces (`bg-window` / bars) may stay translucent so the photo shows through.
+- The engine floors translucent content surfaces (composite → solid, alpha ≥ 0.55) as a safety net, and `linkdesk-plugin-sdk` **≥ 0.1.113** rejects such themes in `validate` (plus text/surface contrast < 4.5:1, muted < 3:1). Write the base color instead of relying on the floor.
 
 > 🔴 **Why this note exists**: the old engine only synthesized surfaces when the *user* had touched a glass setting, so follow-theme mode left panels fully opaque and context menus un-frosted; authors had to work around it with rgba surface colors. Since 2026-11-23 the engine also synthesizes in follow-theme mode from `glass.opacity`, and colorway alpha no longer participates — the old "surfaces must be rgba" workaround is obsolete; write base colors.
+>
+> 🔴 **2026-11-24 (Full-Window Hero 1.1.1)**: that theme shipped `bg-card: rgba(255,255,255,0.10)` with white text — on a bright wallpaper every card/serial-log line vanished. Content surfaces now need base colors; the engine floor + SDK gate make this rule mechanical.
 >
 > ⚠️ **Version floor**: the new semantics start with **LinkDesk 0.2.60**. Targeting an older shell: either keep surface colors as `rgba(...,alpha)` (older shells need it) or declare `"minAppVersion": "0.2.60"` in `plugin.json` (the market blocks older shells).
 
