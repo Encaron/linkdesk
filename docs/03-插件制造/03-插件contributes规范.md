@@ -1057,3 +1057,18 @@ const text = await lk.encoding.decode(buffer, await lk.encoding.detect(buffer));
 > **→ 相关：** `08-ViewContainer-视图容器API.md`（views 完整语义）
 > **→ 真相源：** `src/pluginLoader/contributions.ts` / `public/schemas/plugin.schema.json`（contributes 形状）；主题配方数据 = `public/schemas/theme.schema.json`、图标主题 mappings 数据 = `public/schemas/icon-theme.schema.json`（theme/icon-theme 同随 `@linkdesk/plugin-sdk` 分发）
 > **全部文档索引：** `00-README.md`
+
+### 3.16 `contributes.renderers`——确认界面整套替换（2026-11-24 · P1 D8）
+
+**声明什么**：`{ installConfirm?: string; updateBatch?: string }`——值是**本插件自己视图的 id**（该视图必须在
+`contributes.views` 里声明）。两个键分别对应「单项安装/更新确认卡」与「批量更新汇总卡」。
+
+**壳怎么用**：安装/更新请求到来时，壳先扫已装 manifest；命中就在 DialogHost 里挂你的视图（与插件视图其它场景同一套机制），
+把同一份确认计划放进 `window.linkdesk.dialogHost.current().content.payload`（`plan` / `labels` / `policy` / `reqs`）。
+未声明、视图缺失或视图崩溃 ⇒ 回落**宿主默认卡**，再退纯文字确认——⛔ 任何一步都不许让「装不了插件」发生。
+
+**边界（写死不商量）**：
+- 判定（谁要确认）、一次性令牌、队列、来源账本**全在壳**——渲染体只画，⛔ 碰不到 token，也改不了策略；
+- 用户点了确认/取消，走 `window.linkdesk.dialogHost.confirm()/cancel()`（弹窗机制/遮罩/Esc/焦点锁由壳提供）；
+- 多个插件同时声明时，壳取**列表顺序第一个**（确定性）；想改策略类设置请调 `plugins.setUpdatePolicy`，不要自建配置。
+
