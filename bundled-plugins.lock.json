@@ -100,14 +100,6 @@
       "seed": false
     },
     {
-      "id": "theme-twilight-forest",
-      "repo": "Encaron/linkdesk-plugin-theme-twilight-forest",
-      "version": "1.0.12",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-theme-twilight-forest/releases/download/v1.0.12/theme-twilight-forest.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:164aec6d06e4d5871be4c93b96538b14cea9641d1db4712f7fc807d4986edb9a\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:22c108b9e3f1fe92cc24b8ef9fb1d21d47003cc9323867a80680e060f7e4e4a1\ni18n/en.json:365e9b36f3191fa5a9d49d86d0471bcb2100abb2f0ab9feef94890e6d92435e2\nplugin.json:02487df0169d54bad0fb62e0492a41d7d1ab39acfdab4db02cbfa20618721e55\nresources/icon.svg:36d531dfea5e3051607dddbc951eff4239f4fcf8085a818798a5d51a4d982967\nthemes/twilight-forest.json:dd0408fc731a858ea8989de15fee99d833936f068da95e7b102d5d1239e9487c",
-      "seed": false
-    },
-    {
       "id": "geme-tihu-bicycle",
       "repo": "Encaron/linkdesk-plugin-geme-tihu-bicycle",
       "version": "1.0.5",
