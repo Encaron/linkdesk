@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 安全 · 执行闸与提权回路</title>
+<style>
+:root{
+  --bg:#0A0A0E; --card:#17161D; --panel:#121118; --input:#1D1E26;
+  --text:#D4D4D4; --text2:#9D9D9D; --muted:#6E7280;
+  --accent:#8B7CF6; --accent2:#A69CFF;
+  --border:#262838; --sep:#34364A;
+  --ok:#34D399; --warn:#FBBF24; --danger:#F87171;
+  --font:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;padding:32px;max-width:1180px;margin:0 auto}
+h1{font-size:20px;font-weight:600;margin-bottom:6px}
+h1 small{display:block;margin-top:6px;font-size:13px;font-weight:400;color:var(--muted);line-height:1.7}
+code{font-family:var(--mono);font-size:11px;color:var(--accent2)}
+.frame{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:18px}
+.cap{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.cap b{font-size:14px}.cap span{font-size:12px;color:var(--text2)}
+.body{padding:20px}
+.note{padding:10px 14px;border-top:1px solid var(--border);background:#131218;color:var(--muted);font-size:12px;line-height:1.8}
+.note b{color:var(--text2)}
+
+.flow{display:flex;flex-direction:column;align-items:center;gap:0}
+.node{width:100%;max-width:760px;border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px 14px;text-align:center}
+.node .k{font-family:var(--mono);font-size:10.5px;color:var(--muted);display:block;margin-bottom:2px}
+.node b{font-size:13px}
+.node .sub{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.arrow{width:1px;height:18px;background:var(--sep);position:relative}
+.arrow::after{content:'';position:absolute;bottom:-1px;left:-3px;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-top:5px solid var(--sep)}
+.branch{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%;max-width:960px}
+.branch .node{max-width:none}
+.b-allow{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.06)}
+.b-ask{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.06)}
+.b-deny{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.06)}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid var(--sep);color:var(--muted);margin-bottom:4px}
+.tag.red{border-color:rgba(248,113,113,.45);color:#FCA5A5}
+.tag.amber{border-color:rgba(251,191,36,.45);color:#FCD34D}
+.tag.green{border-color:rgba(52,211,153,.45);color:#6EE7B7}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.panel{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:12px 14px}
+.panel h3{font-size:12.5px;color:var(--text2);margin-bottom:8px;letter-spacing:.02em}
+.panel ul{padding-left:16px;font-size:11.5px;color:var(--muted);line-height:1.9}
+.panel li b{color:var(--text)}
+.locks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.lock{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:12px}
+.lock .no{font-family:var(--mono);font-size:10.5px;color:var(--accent2)}
+.lock b{display:block;margin:4px 0 6px;font-size:12.5px}
+.lock p{font-size:11.5px;color:var(--muted);line-height:1.7}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th,td{border-bottom:1px solid var(--border);padding:7px 8px;text-align:left}
+th{color:var(--muted);font-weight:500;font-size:11px}
+td code{font-size:10.5px}
+.pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid var(--sep);color:var(--text2)}
+</style>
+</head>
+<body>
+
+<h1>AI 安全 · 执行闸与提权回路
+  <small>
+    一张图回答：AI 的一个请求，从哪里进来、被哪三道锁拦、什么情况下放行/询问/拒绝、AI 想升权只能怎么走。<br>
+    实线 = 正常路径；红色 = 拒绝；黄色 = 等用户；紫色 = 用户批准后写档位（<b>不经命令面</b>）。
+  </small>
+</h1>
+
+<div class="frame">
+  <div class="cap"><b>Frame 1 · 一个 AI 请求的完整路径</b><span>执行点只在主进程；池只负责画</span></div>
+  <div class="body">
+    <div class="flow">
+
+      <div class="node">
+        <span class="k">AI 客户端（Claude Code / Codex / 脚本）</span>
+        <b>exec / notifyAction / install / requestElevation</b>
+        <span class="sub">经 aiBridge 白名单进入；9 个 op 之外一概不可见</span>
+      </div>
+
+      <div class="arrow"></div>
+
+      <div class="node b-deny" style="max-width:900px">
+        <span class="tag red">L2 · 命令锁（新增）</span><br>
+        <b>目标命令是否 <code>userOnly</code>？</b>
+        <span class="sub">是 → <code>EPROTECTED</code>，不进下一步。<br>例：<code>aiPolicy.setMode</code> / <code>aiPolicy.resetToDefault</code></span>
+      </div>
+
+      <div class="arrow"></div>
+
+      <div class="node" style="max-width:900px">
+        <span class="tag">风险解析</span><br>
+        <b><code>riskOfCommand(id)</code></b>
+        <span class="sub">壳内建表 &gt; 插件清单 <code>contributes.commands[].risk</code> &gt; 兜底 R1（写类 op 兜底 R2）</span>
+      </div>
+
+      <div class="arrow"></div>
+
+      <div class="node" style="max-width:900px">
+        <span class="tag">唯一判定</span><br>
+        <b><code>decide(aiPolicy.mode, risk)</code> —— 纯函数，16 格矩阵</b>
+        <span class="sub">读不到策略 ⇒ 按 <code>ask</code>（fail-closed）</span>
+      </div>
+
+      <div class="arrow"></div>
+
+      <div class="branch">
+        <div class="node b-allow">
+          <span class="tag green">allow</span><br>
+          <b>直接执行</b>
+          <span class="sub">ledger 记 op / command / risk / mode<br>⛔ 不弹窗</span>
+        </div>
+        <div class="node b-ask">
+          <span class="tag amber">ask</span><br>
+          <b>DialogHost 等用户</b>
+          <span class="sub">Enter 允许 / Esc 拒绝 / 超时 10 分钟<br>不点 = 不执行</span>
+        </div>
+        <div class="node b-deny">
+          <span class="tag red">deny</span><br>
+          <b><code>EPOLICYDENIED</code></b>
+          <span class="sub">动作未发生；账本记 deny<br>AI 可改走提权请求</span>
+        </div>
+      </div>
+
+      <div class="arrow"></div>
+
+      <div class="node" style="max-width:900px">
+        <span class="tag">提权回路（AI 唯一的升权通道）</span><br>
+        <b><code>requestElevation(mode, reason)</code> → 弹框 → 用户点「批准」</b>
+        <span class="sub">批准动作在弹窗 handler 里写 <code>ai.policy.mode</code>（<code>source:"user"</code>）→ 发 <code>onDidChangePolicy</code> → 设置页/状态栏同步</span>
+      </div>
+
+    </div>
+  </div>
+  <div class="note">
+    <b>为什么 AI 自提权不可能：</b>① <code>setMode</code> 标 <code>userOnly</code>，<code>runShellCommand</code> 直接拒；
+    ② <code>ai.policy.mode</code> 属 <code>ai.*</code>，配置写命令已拒（<code>settingsCommands.ts:41</code>）；
+    ③ 批准写点在用户点击的 handler 里，AI 没有可调用的「批准」op。
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><b>Frame 2 · 三道锁各挡什么</b><span>缺一不可；任何一层单独失效仍有另外两层</span></div>
+  <div class="body">
+    <div class="locks">
+      <div class="lock">
+        <span class="no">L1</span><b>配置锁（已存在）</b>
+        <p><code>WRITE_BLOCKED_PREFIXES = ["ai."]</code><br>挡：AI 用 <code>setConfiguration</code> / <code>clearConfiguration</code> 改档位。<br>文案：「被管的那个不许改自己的门」。</p>
+      </div>
+      <div class="lock">
+        <span class="no">L2</span><b>命令锁（新增）</b>
+        <p>命令元数据 <code>userOnly:true</code>。<br>挡：即使命令在命令面里，AI 的 <code>exec</code> 也调不到。<br>改名不失效（不是 id 名单）。</p>
+      </div>
+      <div class="lock">
+        <span class="no">L3</span><b>批准锁（新增）</b>
+        <p>写档位只在用户点击的弹窗 handler 里发生。<br>挡：AI 自己批准 / 伪造批准结果。<br>AI 只能 <code>requestElevation</code>。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><b>Frame 3 · AI 看到的 vs 用户看到的</b><span>同一事实，两个视角</span></div>
+  <div class="body">
+    <div class="split">
+      <div class="panel">
+        <h3>AI 侧（可读、可请求）</h3>
+        <ul>
+          <li><code>aiPolicy.getState()</code> → 档位 + 风险表 + 受保护命令</li>
+          <li><code>describe.askFirst</code> → 哪些动作会停下来等人（动手前就知道）</li>
+          <li><code>requestElevation(mode, reason)</code> → 请求升权</li>
+          <li>拒绝码：<code>EPOLICYDENIED</code> / <code>EPROTECTED</code> / <code>EUSERDENIED</code> / <code>ESHELLTIMEOUT</code></li>
+          <li>⛔ 看不到「批准」入口；⛔ 不改档位</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>用户侧（可见、可批）</h3>
+        <ul>
+          <li>设置页四段控件：只读 / 逐次确认 / 自主 / 完全访问</li>
+          <li>确认框：允许一次 / 拒绝（Esc/Enter）</li>
+          <li>提权框：批准（只能你点）/ 拒绝</li>
+          <li>状态栏徽标：<span class="pill">AI 只读</span> <span class="pill">AI 询问</span> <span class="pill">AI 自主</span> <span class="pill">AI 全权</span></li>
+          <li>账本：谁在何时改了什么、被拒的也记</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><b>Frame 4 · 错误码与 AI 的正确反应</b><span>防止「失败就重试」把弹窗刷屏</span></div>
+  <div class="body">
+    <table>
+      <thead><tr><th>code</th><th>含义</th><th>AI 应该</th><th>AI 不要</th></tr></thead>
+      <tbody>
+        <tr><td><code>EPOLICYDENIED</code></td><td>当前档位不允许</td><td>带理由调 <code>requestElevation</code></td><td>原样重试</td></tr>
+        <tr><td><code>EPROTECTED</code></td><td>命令标了 <code>userOnly</code></td><td>提示用户去设置页</td><td>重试 / 换命令绕</td></tr>
+        <tr><td><code>EUSERDENIED</code></td><td>用户点了拒绝/关框</td><td>尊重拒绝，换方案</td><td>连环弹</td></tr>
+        <tr><td><code>ESHELLTIMEOUT</code></td><td>无人应答（10 分钟）</td><td>视为未发生，稍后再问</td><td>立刻重试（用户可能刚走开）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <b>相位：</b>等人点头期间上报 <code>ask-user</code> 相位，客户端超时后回读相位才不会把「人在犹豫」误报成「对面卡住」——避免用户随后一点头、动作做了两遍（沿用 <code>AI#60</code>）。
+  </div>
+</div>
+
+</body>
+</html>

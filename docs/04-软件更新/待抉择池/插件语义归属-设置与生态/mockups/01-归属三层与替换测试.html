@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件语义归属 · 三层与替换测试</title>
+<style>
+:root{
+  --bg:#0A0A0E; --card:#17161D; --panel:#121118; --input:#1D1E26;
+  --text:#D4D4D4; --text2:#9D9D9D; --muted:#6E7280;
+  --accent:#8B7CF6; --accent2:#A69CFF;
+  --border:#262838; --sep:#34364A;
+  --ok:#34D399; --warn:#FBBF24; --danger:#F87171;
+  --font:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;padding:32px;max-width:1220px;margin:0 auto}
+h1{font-size:20px;font-weight:600;margin-bottom:6px}
+h1 small{display:block;margin-top:6px;font-size:13px;font-weight:400;color:var(--muted);line-height:1.7}
+code{font-family:var(--mono);font-size:11px;color:var(--accent2)}
+.frame{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:18px}
+.cap{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.cap b{font-size:14px}.cap span{font-size:12px;color:var(--text2)}
+.body{padding:20px}
+.note{padding:10px 14px;border-top:1px solid var(--border);background:#131218;color:var(--muted);font-size:12px;line-height:1.8}
+.note b{color:var(--text2)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pane{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:14px}
+.pane h3{font-size:12.5px;margin-bottom:10px;color:var(--text2);letter-spacing:.02em}
+.pane.bad{border-color:rgba(248,113,113,.35)}
+.pane.good{border-color:rgba(52,211,153,.35)}
+.flowline{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.box{border:1px solid var(--border);border-radius:7px;background:var(--input);padding:8px 10px;font-size:11.5px;color:var(--text2);text-align:center}
+.box b{color:var(--text);display:block;font-size:12px;margin-bottom:2px}
+.arrowv{text-align:center;color:var(--sep);font-size:12px;line-height:1}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid var(--sep);color:var(--muted)}
+.tag.red{border-color:rgba(248,113,113,.45);color:#FCA5A5}
+.tag.green{border-color:rgba(52,211,153,.45);color:#6EE7B7}
+.switch{display:inline-flex;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:3px;gap:3px}
+.switch button{appearance:none;border:none;background:transparent;color:var(--text2);font-family:inherit;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--accent);color:#fff;font-weight:600}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+.card{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:14px}
+.card h3{font-size:12.5px;color:var(--text2);margin-bottom:8px}
+.card .who{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding:8px 0;font-size:11.5px}
+.row:first-of-type{border-top:none}
+.btn{height:28px;padding:0 12px;border-radius:5px;border:1px solid var(--sep);background:transparent;color:var(--text2);font-family:inherit;font-size:12px;cursor:pointer}
+.btn:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.val{font-family:var(--mono);font-size:10.5px;color:var(--text2);word-break:break-all}
+.verdict{margin-top:14px;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;border:1px solid var(--sep);color:var(--text2)}
+.verdict.bad{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.07);color:#FCA5A5}
+.verdict.good{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.07);color:#6EE7B7}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th,td{border-bottom:1px solid var(--border);padding:7px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:11px}
+td code{font-size:10.5px}
+.pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid var(--sep);color:var(--text2);white-space:nowrap}
+/* fake dialog */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:40}
+.overlay.show{display:block}
+.dlg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:520px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 24px 70px rgba(0,0,0,.65);z-index:41;display:none}
+.dlg.show{display:block}
+.dlg-h{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12.5px;font-weight:600}
+.dlg-b{padding:12px 14px;font-size:11.5px;color:var(--text2)}
+.pathbar{font-family:var(--mono);font-size:10.5px;background:var(--input);border:1px solid var(--border);border-radius:5px;padding:6px 8px;margin-bottom:10px;word-break:break-all}
+.file{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;border:1px solid transparent}
+.file.sel{background:rgba(139,124,246,.14);border-color:rgba(139,124,246,.4)}
+.file .ico{width:18px;height:18px;border-radius:3px;background:linear-gradient(135deg,#8B7CF6,#4F46E5)}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
+.dbtn{height:28px;padding:0 14px;border-radius:4px;border:none;font-family:inherit;font-size:12px;cursor:pointer}
+.dbtn.p{background:var(--accent);color:#fff}
+.dbtn.s{background:transparent;color:var(--text);border:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<h1>插件语义归属 · 三层拆分与「替换测试」
+  <small>
+    起因：改「背景图默认目录」时，壳和<b>设置插件</b>都得改。设置插件只是可替换的 UI——为什么语义在它手里？<br>
+    点下面的开关切「现状 / 归一后」，再点两边的「选择图片…」：看同一动作在「官方设置插件」和「最小第三方 UI」上是否一致。
+  </small>
+</h1>
+
+<div class="frame">
+  <div class="cap"><b>Frame 1 · 一条能力拆三层：语义 / 动作 / 呈现</b><span>语义归壳，动作归壳，插件只画</span></div>
+  <div class="body">
+    <div class="split">
+      <div class="pane bad">
+        <h3>现状 <span class="tag red">语义被劈成两半</span></h3>
+        <div class="flowline">
+          <div class="box"><b>设置插件（可替换）</b>知道字符串 <code>"appearance"</code></div>
+          <div class="arrowv">▼ defaultPathKind</div>
+          <div class="box"><b>壳 dialog-handlers</b>把令牌翻成 <code>userData/appearance</code></div>
+          <div class="arrowv">▼</div>
+          <div class="box"><b>结果</b>换掉设置插件 ⇒ 令牌没人给 ⇒ 起始目录丢</div>
+        </div>
+      </div>
+      <div class="pane good">
+        <h3>归一后 <span class="tag green">语义单源</span></h3>
+        <div class="flowline">
+          <div class="box"><b>设置插件（可替换）</b>只调 <code>appearance.pickImage({domain,target})</code></div>
+          <div class="arrowv">▼ 不带路径/域字符串</div>
+          <div class="box"><b>壳 hostAssets/appearance/defaults.ts</b>起始目录、过滤器、入库</div>
+          <div class="arrowv">▼</div>
+          <div class="box"><b>结果</b>换任何 UI ⇒ 同一命令 ⇒ 行为不变</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><b>判据（语义归属律）：</b>一个行为的默认值/约束/路径/权限由能力所有者声明；UI 插件只做呈现与触发。<b>验证：</b>换掉该 UI 插件，行为还在不在？</div>
+</div>
+
+<div class="frame">
+  <div class="cap"><b>Frame 2 · 替换测试（可点）</b><span>同一动作，两种 UI，看结果是否一致</span></div>
+  <div class="body">
+    <div class="switch" role="group" aria-label="设计状态">
+      <button id="btnNow" aria-pressed="true">现状</button>
+      <button id="btnFixed" aria-pressed="false">归一后</button>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <h3>官方设置插件</h3>
+        <div class="who">当前实现：知道 <code>defaultPathKind:"appearance"</code></div>
+        <div class="row"><span>背景图（app）</span><button class="btn" data-pick="official">选择图片…</button></div>
+        <div class="row"><span>值</span><span class="val" id="valOfficial">（未选）</span></div>
+      </div>
+      <div class="card">
+        <h3>最小第三方 UI</h3>
+        <div class="who">只读配置声明、只会调公开 API；<b>不知道</b>任何宿主路径/域</div>
+        <div class="row"><span>背景图（app）</span><button class="btn" data-pick="third">选择图片…</button></div>
+        <div class="row"><span>值</span><span class="val" id="valThird">（未选）</span></div>
+      </div>
+    </div>
+
+    <div class="verdict bad" id="verdict">
+      现状：第三方 UI 不知道 <code>"appearance"</code> 令牌 ⇒ 起始目录退回系统默认（示例：图片目录）⇒ <b>行为随 UI 变</b>，替换测试不通过。
+    </div>
+  </div>
+  <div class="note">
+    <b>提示：</b>切到「归一后」再点一次——两边都会从 <code>userData/appearance</code> 开始，落盘值一致。
+    这就是任务 B 的验收判据：<b>第三方 UI 不看第一个作者的源码也能做对</b>。
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><b>Frame 3 · 四仓盘点（已完成 · 15 条）</b><span>详细 file:line 见 01-盘点/01–04</span></div>
+  <div class="body">
+    <table>
+      <thead><tr><th>仓</th><th>条数</th><th>主要形态</th><th>最高危的一条</th></tr></thead>
+      <tbody>
+        <tr><td>settings</td><td>6</td><td>背景目录令牌、<code>settings.json</code> 路径、<code>app.*</code> 键特判、缺 <code>pickTarget</code></td><td>V6：自拼宿主设置文件路径</td></tr>
+        <tr><td>file-tree</td><td>3</td><td>路径工具整套自写、跨属主读最近目录、字号/行高双写</td><td><b>F2：跨命名空间读 <code>app.recentFolders</code></b></td></tr>
+        <tr><td>marketplace</td><td>4</td><td>自拼 <code>linkdesk://</code> 资产 URL、头像缓存落 dataDir、两处手拼路径</td><td>M3：资产 URL 协议知识在插件</td></tr>
+        <tr><td>serial-monitor</td><td>2</td><td>自有数据域手拼路径、没有壳保存对话框</td><td>S2：壳缺 <code>dialog.save</code></td></tr>
+      </tbody>
+    </table>
+    <div class="verdict bad" style="margin-top:12px">
+      <b>判读：</b>多数不是「插件写坏」，而是<b>壳 API 没暴露</b>（settings 去 getFilePath、marketplace 拼资产 URL、serial 没有保存框）⇒ 插件只能绕。
+      任务里对应补 6 项壳 API（A1–A6），再把插件改回调壳——这才是归一化，不是骂插件。
+    </div>
+  </div>
+  <div class="note">
+    <b>正例也在同一批仓里：</b>file-tree 的打开方式/定位/终端已全部委托壳命令；marketplace 的安装/位置全走壳；
+    serial 的端口枚举走壳。⇒「搬语义」不是空想，这些仓已经做对过一部分。
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><b>Frame 4 · 防复发门禁</b><span>官方 error / 第三方 warn</span></div>
+  <div class="body">
+    <table>
+      <thead><tr><th>腿</th><th>判据</th><th>负控</th></tr></thead>
+      <tbody>
+        <tr><td>K1</td><td>插件不得拼宿主路径（appData/userData/%APPDATA%）</td><td>拼 <code>join(appData,"appearance")</code> ⇒ 红</td></tr>
+        <tr><td>K2</td><td>插件不得持有域名字符串（<code>defaultPathKind</code>）</td><td>写回 <code>"appearance"</code> ⇒ 红</td></tr>
+        <tr><td>K3</td><td>设置插件不得特判宿主配置键</td><td><code>if (key==="app.themeColor")</code> ⇒ 红</td></tr>
+        <tr><td>K4</td><td>插件不得直调系统能力（openPath/showOpenDialog）</td><td>插件自己开目录 ⇒ 红</td></tr>
+        <tr><td>K5</td><td>新宿主动作必须有命令 + AI 手册</td><td><code>appearance.pickImage</code> 缺 description ⇒ 红</td></tr>
+        <tr><td>K6</td><td>共享件零宿主知识</td><td>组件里写 <code>appearance</code> ⇒ 红</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <b>与万物皆可插件：</b>这个「最小第三方 UI」就是那个任务的预演夹具；它应当零改动通过——
+    它只消费 <code>listConfigurations()</code> 与 <code>appearance.pickImage()</code>，不碰壳内部。
+  </div>
+</div>
+
+<!-- 模拟系统选择框 -->
+<div class="overlay" id="overlay"></div>
+<div class="dlg" id="dlg" role="dialog" aria-modal="true">
+  <div class="dlg-h" id="dlgTitle">选择图片…</div>
+  <div class="dlg-b">
+    <div class="pathbar" id="pathbar"></div>
+    <div class="file sel"><span class="ico"></span><span>wallpaper.png</span></div>
+    <div style="margin-top:8px;color:var(--muted)">过滤器：图片（png / jpg / jpeg / webp）</div>
+  </div>
+  <div class="dlg-f">
+    <button class="dbtn s" id="dlgCancel">取消</button>
+    <button class="dbtn p" id="dlgOpen">打开</button>
+  </div>
+</div>
+
+<script>
+const APPEARANCE = "C:\\Users\\you\\AppData\\Roaming\\linkdesk\\appearance";
+const PICTURES   = "C:\\Users\\you\\Pictures";
+let fixed = false;
+let current = null;
+
+function setState(isFixed){
+  fixed = isFixed;
+  document.getElementById("btnNow").setAttribute("aria-pressed", String(!isFixed));
+  document.getElementById("btnFixed").setAttribute("aria-pressed", String(isFixed));
+  const v = document.getElementById("verdict");
+  if (isFixed){
+    v.className = "verdict good";
+    v.innerHTML = "归一后：两边都调 <code>appearance.pickImage({domain:\"background\",target:\"app\"})</code> ⇒ 起始目录、入库、落盘值全部一致 ⇒ <b>替换测试通过</b>。";
+  } else {
+    v.className = "verdict bad";
+    v.innerHTML = "现状：第三方 UI 不知道 <code>\"appearance\"</code> 令牌 ⇒ 起始目录退回系统默认（示例：图片目录）⇒ <b>行为随 UI 变</b>，替换测试不通过。";
+  }
+  document.getElementById("valOfficial").textContent = "（未选）";
+  document.getElementById("valThird").textContent = "（未选）";
+  current = null;
+}
+
+document.getElementById("btnNow").addEventListener("click", () => setState(false));
+document.getElementById("btnFixed").addEventListener("click", () => setState(true));
+
+document.querySelectorAll("[data-pick]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const who = btn.dataset.pick; // official | third
+    let start;
+    if (fixed) start = APPEARANCE;
+    else start = who === "official" ? APPEARANCE : PICTURES;
+    current = who;
+    document.getElementById("pathbar").textContent = start;
+    document.getElementById("dlgTitle").textContent = fixed
+      ? "选择图片…（宿主决定起始目录）"
+      : (who === "official" ? "选择图片…（插件传了 appearance 令牌）" : "选择图片…（第三方 UI：不知道令牌）");
+    document.getElementById("dlg").classList.add("show");
+    document.getElementById("overlay").classList.add("show");
+  });
+});
+
+function closeDlg(){
+  document.getElementById("dlg").classList.remove("show");
+  document.getElementById("overlay").classList.remove("show");
+}
+document.getElementById("dlgCancel").addEventListener("click", closeDlg);
+document.getElementById("overlay").addEventListener("click", closeDlg);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDlg(); });
+
+document.getElementById("dlgOpen").addEventListener("click", () => {
+  const who = current;
+  closeDlg();
+  // 归一后：任一路径都入库为受控 URL；现状：第三方 UI 从图片目录选，仍能入库，但起始目录不同
+  const url = "linkdesk-userdata://appearance/wallpaper.png";
+  if (who === "official") document.getElementById("valOfficial").textContent = url;
+  if (who === "third") document.getElementById("valThird").textContent = url;
+});
+
+setState(false);
+</script>
+</body>
+</html>
