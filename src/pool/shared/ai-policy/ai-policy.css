@@ -85,6 +85,9 @@
   margin-top: 4px;
 }
 
+/* 与 @linkdesk/ui 的次级按钮（AiPolicyPicker 的 reset）同规格：跨包各持一份样式表，
+ * 不为此把两条无关组件的类名合并（语义不同）。克隆命中按本仓惯例豁免。 */
+/* jscpd:ignore-start */
 .ldk-ai-risk-dialog-btn {
   height: var(--size-control-sm);
   padding: 0 16px;
@@ -106,6 +109,7 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+/* jscpd:ignore-end */
 
 /* ── 敏感能力一览（hostView = aiPolicy.sensitiveManager）── */
 .ldk-ai-sensitive-list {

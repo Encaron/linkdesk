@@ -47,16 +47,29 @@ function insecureSource(url: string): boolean {
   return isRemoteSource(url) && !/^https:\/\//i.test(url.trim());
 }
 
+/**
+ * 安装/更新共用的第一道闸（2026-11-24 线 1 收口 duplication）：票校 ＋ HTTPS 校。
+ * 返回**拒绝回执**或 null（= 放行）。⛔ 两处各写一遍会让「一道闸」变成两处可漂移的副本。
+ */
+function rejectUnsafeRequest(
+  req: PluginInstallRequest,
+  token: string,
+): { success: false; error: string } | null {
+  const verdict = consumeToken(token, bindingOfRequest(req));
+  // 无票/错票/过期票一律拒——对外只认 no-token 一个词（spec §3.2）
+  if (verdict !== "ok") return { success: false, error: "no-token" };
+  if (insecureSource(req.downloadUrl)) {
+    return { success: false, error: i18n.t("仅支持 HTTPS 来源的安装包") };
+  }
+  return null;
+}
+
 /** 执行端口接线——由 `registerIpcBridgeHandler` 在 loader 注册 API 之后调用（幂等） */
 export function wireInstallExecutor(api: PluginManagementAPI): void {
   setInstallExecutor({
     async install(req: PluginInstallRequest, token: string) {
-      const verdict = consumeToken(token, bindingOfRequest(req));
-      // 无票/错票/过期票一律拒——对外只认 no-token 一个词（spec §3.2）
-      if (verdict !== "ok") return { success: false, error: "no-token" };
-      if (insecureSource(req.downloadUrl)) {
-        return { success: false, error: i18n.t("仅支持 HTTPS 来源的安装包") };
-      }
+      const rejected = rejectUnsafeRequest(req, token);
+      if (rejected) return rejected;
       const res = await api.installWithProgress(req.downloadUrl, {
         pluginId: req.pluginId,
         displayName: req.display.name,
@@ -69,11 +82,8 @@ export function wireInstallExecutor(api: PluginManagementAPI): void {
       return { success: res.success, error: res.error };
     },
     async update(req: PluginInstallRequest, token: string) {
-      const verdict = consumeToken(token, bindingOfRequest(req));
-      if (verdict !== "ok") return { success: false, error: "no-token" };
-      if (insecureSource(req.downloadUrl)) {
-        return { success: false, error: i18n.t("仅支持 HTTPS 来源的安装包") };
-      }
+      const rejected = rejectUnsafeRequest(req, token);
+      if (rejected) return rejected;
       const res = await api.updatePlugin(req.pluginId, { url: req.downloadUrl, allowOlder: req.allowOlder });
       return {
         success: res.success,
