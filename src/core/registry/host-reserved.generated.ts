@@ -33,6 +33,7 @@ export const HOST_RESERVED_CONFIG_KEYS: readonly string[] = [
   "app.backgroundImage",
   "app.backgroundMask",
   "app.backgroundOpacity",
+  "app.contrastMode",
   "app.fontFamily",
   "app.fontFamilyMono",
   "app.fontTone",
