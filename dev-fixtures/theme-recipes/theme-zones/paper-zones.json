@@ -31,8 +31,6 @@
         "separator": "rgba(43, 39, 33, 0.08)",
         "icon-active": "#2B2721",
         "icon-inactive": "#9A9180",
-        "toggle-knob": "#B45309",
-        "toggle-knob-on": "#FFFFFF",
         "status-connected": "#4D7C0F",
         "status-disconnected": "#9A9180",
         "scrollbar-thumb": "rgba(180, 83, 9, 0.30)",

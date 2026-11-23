@@ -263,8 +263,6 @@ export const DEAD_PENDING = new Map([
   ["drop-indicator", "D · 死键——拖拽指示实走类名 `.ldk-icon-drop-indicator`，非色 token；主题仓清理归第 2 刀"],
   ["received", "D · 死键——三仓零消费；主题仓清理归第 2 刀"],
   ["drag-preview-shadow", "D · 死键——拖影实走 `--context-menu-shadow`；壳内 index.css 两处声明零消费（清理未排刀），主题仓清理归第 2 刀"],
-  ["toggle-knob", "D · 死键——2026-11-23 开关颜色改由有效 accent 派生，Toggle 不再消费（主题仓数据可择机清）"],
-  ["toggle-knob-on", "D · 死键——同上（ON 圆点改吃 text-on-accent）"],
 ]);
 
 /** 推导 B（引擎标尺档位）/ C（引擎组合键族）——机械可判者不手写。 */

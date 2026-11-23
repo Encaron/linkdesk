@@ -30,7 +30,6 @@
     "bg-icon-bar": "#F0F0F0",
     "bg-side-panel": "#F5F5F5",
     "bg-toolbar": "#F5F5F5",
-    "toggle-knob": "#2D2D2D",
     "hover-overlay": "rgba(0, 0, 0, 0.04)",
     "cm-timestamp": "#767676"
   }

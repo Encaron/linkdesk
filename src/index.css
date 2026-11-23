@@ -130,7 +130,6 @@
   --bg-side-panel: #1E1E22;
   --bg-toolbar: #1E1E22;
   --titlebar-close-hover: #c42b1c;
-  --toggle-knob: #FFFFFF;
   --hover-overlay: rgba(255, 255, 255, 0.06);
   /* E5.8#128 交互态 token——浮层/组件 hover 与 keycap（值 = 原硬编码真值，亮暗各锚） */
   --icon-btn-hover-bg: rgba(255, 255, 255, 0.1);  /* 图标按钮 hover 底（VS Code iconButton-hoverBackground） */
@@ -195,7 +194,6 @@
   --bg-icon-bar: #F0F0F0;
   --bg-side-panel: #F5F5F5;
   --bg-toolbar: #F5F5F5;
-  --toggle-knob: #2D2D2D;
   --hover-overlay: rgba(0, 0, 0, 0.04);
   /* E5.8#128 亮色版交互态 */
   --icon-btn-hover-bg: rgba(0, 0, 0, 0.08);
