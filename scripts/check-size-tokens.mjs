@@ -241,10 +241,11 @@ function main() {
   const official = officialPluginIds(SYNC_AGENTS);
   const repos = discoverPluginRepos(PLUGIN_CONTAINER);
   if (!repos.length) console.log(`[info] 插件容器不在场或为空（${PLUGIN_CONTAINER}）——只判壳域。`);
-  const enforced = new Set(spec.enforcedPlugins ?? []);
+  const enforced = new Set(spec.enforcedPlugins ?? []); // 兼容旧规格表；官方名单优先
   for (const repo of repos) {
     if (official && !official.has(repo.id)) continue; // 第三方：不扫不判
-    const isEnforced = enforced.has(repo.id);
+    // 强制面 = 官方 FACTS 全量（⛔ 不再靠手工名单——名单漏一个仓就静默降级成 warn）
+    const isEnforced = official ? official.has(repo.id) : enforced.has(repo.id);
     for (const file of collectCss(repo.dir)) {
       const text = readFileSync(file, "utf8");
       const relFile = file.split(sep).join("/").replace(repo.dir.split(sep).join("/") + "/", "");
