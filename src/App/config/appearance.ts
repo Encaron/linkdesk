@@ -195,8 +195,9 @@ export function registerAppearanceConfiguration(t: ConfigT): void {
         default: "followTheme",
         enum: ["followTheme", "custom"],
         enumDescriptions: [
-          t("跟随主题——外观/配色由主题配方决定"),
-          t("自定义——逐项指定外观覆盖与域来源"),
+          // 2026-11-24：枚举显示名改**短标签**——长说明留在行描述（下拉变窄，与同行伴生按钮/齿轮不溢出）
+          t("跟随主题"),
+          t("自定义"),
         ],
         title: t("外观模式"),
         description: t("外观模式——跟随主题配方整体外观 / 自定义逐项指定"),
