@@ -15,29 +15,17 @@
  * 不串行就一定丢条目（后写覆盖前写）。
  */
 
-import { read as storageRead, write as storageWrite } from "../../configuration/StorageService";
+import { write as storageWrite } from "../../configuration/StorageService";
+import { createSerializedQueue, readLedgerObject } from "./serialized";
 import type { KnownSource, SourceLedger, SourceLedgerEntry } from "./types";
 
 /** 落盘 key——本文件是全仓唯一字面量 owner（审计 grep 只命中这里） */
 const LEDGER_KEY = "plugin-source-ledger";
 
-let _writeChain: Promise<unknown> = Promise.resolve();
-
-function serialized<T>(op: () => Promise<T>): Promise<T> {
-  const run = _writeChain.then(op, op);
-  _writeChain = run.catch(() => {
-    /* 单次失败不阻塞后续写 */
-  });
-  return run;
-}
+const serialized = createSerializedQueue();
 
 async function readLedger(): Promise<SourceLedger> {
-  try {
-    const data = await storageRead<SourceLedger>(LEDGER_KEY);
-    return data && typeof data === "object" ? data : {};
-  } catch {
-    return {};
-  }
+  return readLedgerObject<SourceLedger>(LEDGER_KEY);
 }
 
 /** 取某插件的来源身份——无记录返回 null（= 首装语义，policy 据此出 first-install） */

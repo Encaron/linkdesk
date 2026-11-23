@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+/* jscpd:ignore-start */
 vi.mock("../../core/services/configuration/StorageService", async (importOriginal) => {
   const mod = await importOriginal<typeof import("../../core/services/configuration/StorageService")>();
   return { ...mod, write: vi.fn(async () => {}), getFilePath: vi.fn(async () => "C:/linkdesk/settings.json") };
@@ -13,6 +14,7 @@ vi.mock("../../core/services/files/FileService", async (importOriginal) => {
   const mod = await importOriginal<typeof import("../../core/services/files/FileService")>();
   return { ...mod, readFile: vi.fn(async () => ""), exists: vi.fn(async () => true) };
 });
+/* jscpd:ignore-end */
 
 import { registerConfiguration, clearConfigurationRegistrations, type ConfigurationProperty } from "../../core/registry/ConfigurationRegistry";
 import {

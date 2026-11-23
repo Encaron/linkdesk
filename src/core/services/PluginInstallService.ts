@@ -24,7 +24,8 @@
  *   - 纯函数（selectUserDataPlugins / reconcileDiff）不碰 I/O——单测可证，不依赖 window.linkdesk。
  */
 
-import { read as storageRead, write as storageWrite } from "./configuration/StorageService";
+import { write as storageWrite } from "./configuration/StorageService";
+import { createSerializedQueue, readLedgerObject } from "./plugins/install/serialized";
 import type { PluginDiscoveryEntry } from "../api/linkdesk-api/types";
 
 /** 账本文件名/StorageService key——本文件是全仓唯一字面量 owner（审计 grep 规则） */
@@ -143,21 +144,10 @@ export function reconcileDiff(
  * 不加锁对象、不引依赖、不排队到下一 tick——链尾吞掉异常（前一次失败不能让后续写全部连坐）。
  * 单实例（壳渲染进程）内的串行化足够：账本 owner 只有本模块，主进程不碰。
  */
-let _writeChain: Promise<unknown> = Promise.resolve();
-
-function serialized<T>(op: () => Promise<T>): Promise<T> {
-  const run = _writeChain.then(op, op);
-  _writeChain = run.catch(() => { /* 单次失败不阻塞后续写 */ });
-  return run;
-}
+const serialized = createSerializedQueue();
 
 async function readLedger(): Promise<InstalledLedger> {
-  try {
-    const data = await storageRead<InstalledLedger>(LEDGER_KEY);
-    return data && typeof data === "object" ? data : {};
-  } catch {
-    return {};
-  }
+  return readLedgerObject<InstalledLedger>(LEDGER_KEY);
 }
 
 /** 全量读账本 */
