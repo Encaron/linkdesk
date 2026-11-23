@@ -219,9 +219,11 @@ export const FONT_TONE_DARK_TEXT = ["#1A1A1A", "rgba(26, 26, 26, 0.75)", "rgba(2
 /** 文字极性覆盖目标——colorway colors 域三键（app.fontTone 显式选档写这三个 --text-*） */
 export const FONT_TONE_TEXT_KEYS = ["text-primary", "text-secondary", "text-muted"] as const;
 
-/** 强调色三键——applyAccentColor 写 :root + 广播载荷剔除共用（#84：accent 唯一来源 = accent:changed，
- *  theme:changed 载荷剔除这三键防跨帧振荡）。对齐 FONT_TONE_TEXT_KEYS 先例。 */
-export const ACCENT_TOKEN_KEYS = ["accent", "accent-hover", "accent-light"] as const;
+/** 强调色四键——applyAccentColor 写 :root + 广播载荷剔除共用（#84：accent 唯一来源 = accent:changed，
+ *  theme:changed 载荷剔除这四键防跨帧振荡）。对齐 FONT_TONE_TEXT_KEYS 先例。
+ *  2026-11-23：`text-on-accent` 并入——它必须跟**有效强调色**算，不能沿用主题为原 accent 选的值
+ *  （自定义强调色后开关 ON 圆点/主按钮文字会与轨道色系打架）。 */
+export const ACCENT_TOKEN_KEYS = ["accent", "accent-hover", "accent-light", "text-on-accent"] as const;
 
 /**
  * E5.8#50.21：app.theme 旧值归一化表（08 §4 迁移表）——旧 flat 主题名 → 壳内置配方 id。

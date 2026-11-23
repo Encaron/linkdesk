@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { applyTheme, getEffectiveAccentColor } from "../ThemeEngine";
+import { applyAccentColor, applyTheme, getEffectiveAccentColor } from "../ThemeEngine";
 import {
   applyRemoteConfigChange, clearConfigurationCache,
 } from "../../configuration/ConfigurationService";
@@ -58,6 +58,22 @@ describe("ThemeEngine — getEffectiveAccentColor 强调色独立轴（E5.8#98�
     applyRemoteConfigChange("app.accentSource", "custom");
     applyRemoteConfigChange("app.accentColor", ""); // 清除
     expect(getEffectiveAccentColor()).toBe("#ff0000");
+  });
+
+  it("自定义强调色 → text-on-accent 按亮度重算（绿→白 / 浅黄→黑）", () => {
+    applyTheme(MOCK_THEME);
+    applyRemoteConfigChange("app.accentSource", "custom");
+    applyAccentColor("#22c55e");
+    expect(document.documentElement.style.getPropertyValue("--text-on-accent")).toBe("white");
+    applyAccentColor("#ffd54a");
+    expect(document.documentElement.style.getPropertyValue("--text-on-accent")).toBe("black");
+  });
+
+  it("跟随主题 → text-on-accent 尊重主题声明（无声明才按主题 accent 重算）", () => {
+    applyTheme(MOCK_THEME);
+    applyRemoteConfigChange("app.accentSource", "followTheme");
+    applyAccentColor("#ff0000");
+    expect(document.documentElement.style.getPropertyValue("--text-on-accent")).toBe("white");
   });
 
   it("accentSource=custom + 清除 + 主题无 accent → 系统默认兜底（数据默认）", () => {

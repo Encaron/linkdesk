@@ -165,6 +165,8 @@ A theme may add four ordinary color keys (the `colors` map accepts arbitrary key
 
 🔴 **`surface-ink` is the media ink and must invert `surface-media-scrim`** (2026-11-23, real-device): it only covers text overlaid on a scrim (store hero/cover) — dark scrim ⇒ light ink, light scrim ⇒ dark ink. ⛔ Do not copy `text-primary` (in a light theme that is dark text on a dark scrim). Content surfaces (cards, floating panels) keep using `text-primary`; do not use `surface-ink` as content ink. The engine derives it from scrim luminance when omitted; when declared, the SDK's `validateThemeJson` enforces WCAG 4.5:1 (`var()` / `color-mix()` values are skipped when unparseable).
 
+🎛️ **Toggle colors are no longer driven by the theme recipe** (2026-11-23): OFF track = neutral ink alpha; OFF knob = a softened **effective accent**; ON track = effective accent; ON knob = `text-on-accent` (the engine recomputes it from the effective accent's luminance). So overriding the accent to blue/green never clashes with a gold/purple palette. `toggle-knob` / `toggle-knob-on` are **no longer consumed** (harmless if present, but do not rely on them).
+
 ```json
 "surface-reading": "rgba(10,14,20,0.62)",
 "surface-reading-strong": "rgba(10,14,20,0.72)",

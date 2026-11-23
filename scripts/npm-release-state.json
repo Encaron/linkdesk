@@ -134,8 +134,8 @@
     },
     {
       "name": "@linkdesk/ui",
-      "version": "0.2.73",
-      "contentHash": "6a86f3f1a100ff9b664294ee2e9f476936ea019fe535043aa8b8fdf94afeb4f7",
+      "version": "0.2.74",
+      "contentHash": "db227f466adec81a6de79cb7efc8000848219074d71a9ead59dfe44d5bc4e0c6",
       "fileHashes": {
         "packages/linkdesk-ui/README.md": "5f9e081557d21615",
         "packages/linkdesk-ui/src/index.ts": "7d1517f1b2c496b4",
@@ -261,14 +261,14 @@
         "src/components/shared/theme-picker/ThemePicker.css": "28a50faf75a011b2",
         "src/components/shared/theme-picker/ThemePicker.test.tsx": "5fba32182ef9ad17",
         "src/components/shared/theme-picker/ThemePicker.tsx": "d49f50e296c733c8",
-        "src/components/shared/toggle/Toggle.css": "bbd7aadf07a5a7c5",
+        "src/components/shared/toggle/Toggle.css": "beb2439dfbb304b2",
         "src/components/shared/toggle/Toggle.tsx": "c8554a52d4c9ec47"
       }
     },
     {
       "name": "@linkdesk/plugin-docs",
-      "version": "0.1.94",
-      "contentHash": "c6c9a9bd25fb8486735dd70d5aed5abecd42e20aaa6ec28e4ae618684e394737",
+      "version": "0.1.95",
+      "contentHash": "e7a4230459f65ea6cc3f31e136c0fd203bfe1ead2a30715ba3b80b2f8160f8a1",
       "fileHashes": {
         "packages/plugin-docs/README.md": "6cd51394e987a3f2",
         "packages/plugin-docs/docs/00-readme.md": "8a114a274be827f7",
@@ -296,7 +296,7 @@
         "packages/plugin-docs/docs/22-menu-contribution-points.md": "b8475624a6a079c7",
         "packages/plugin-docs/docs/23-marketplace-catalog-and-author-store.md": "4f080dc9f663ef74",
         "packages/plugin-docs/docs/themes/01-build-a-theme-plugin.md": "fb049c1a5983a3ff",
-        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "38b98bb8461d1d82",
+        "packages/plugin-docs/docs/themes/02-theme-field-index.md": "99601af069f749d1",
         "packages/plugin-docs/docs/zh/00-README.md": "138a49b8660e4af2",
         "packages/plugin-docs/docs/zh/01-插件API契约.md": "4b836a5d63e7e02f",
         "packages/plugin-docs/docs/zh/02-插件生命周期.md": "8316660f0875cf42",
@@ -323,7 +323,7 @@
         "packages/plugin-docs/docs/zh/23-市场目录与作者主页.md": "55431f1ef4585115",
         "packages/plugin-docs/docs/zh/plugin.schema.json": "0ef3ca6d760de99e",
         "packages/plugin-docs/docs/zh/主题/01-做一个主题插件.md": "5953519d0db17615",
-        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "f325426a3bd6b759"
+        "packages/plugin-docs/docs/zh/主题/02-主题字段速查.md": "e2d021a2657cb76a"
       }
     },
     {

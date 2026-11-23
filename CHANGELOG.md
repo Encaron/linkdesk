@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.61（2026-11-23）
+
+### fix
+
+- 🎛️ **开关颜色改由「有效强调色」派生**（用户实机：金/紫配色 + 自定义蓝/绿强调时，开关两半撞色系）：旧实现 OFF 轨道吃 `--border`（带配色色相）、OFF 圆点吃 `--toggle-knob`（玫瑰窗/极光把它写成配色 accent）、ON 圆点吃主题的 `toggle-knob-on`——强调色一旦独立，三处各说各话。
+  - 新契约：OFF 轨道 = 中性墨色 alpha；OFF 圆点 = **有效 accent** 柔化色；ON 轨道 = 有效 accent；ON 圆点 = `text-on-accent`。
+  - 引擎：`text-on-accent` 并入 accent 组（`accent:changed` 单源），自定义强调色时按亮度重算（浅→黑、中/深→白），跟随主题时尊重主题声明；`theme:changed` 载荷继续剔除 accent 组防跨帧振荡。
+  - `toggle-knob` / `toggle-knob-on` 退役（不再消费）；主题作者文档 02（中英）注明。
+  - 视觉实测 4 组（午后+蓝 / 晚祷+绿 / 整窗+绿 / 默认+蓝）：OFF 中性轨道 + accent 柔化圆点、ON accent 轨道 + 对比圆点，两端同色系。
+
 ## v0.2.60（2026-11-23）
 
 ### feat

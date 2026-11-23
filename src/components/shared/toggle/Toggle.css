@@ -1,8 +1,14 @@
 /* Toggle——开关（@linkdesk/ui）。E6#54b：自全局 index.css 抽入组件自 import（包自包含，
- * 消费方不依赖壳 index.css）。规则逐字节同源；.toggle 全仓仅 Toggle 组件渲染 → 抽取零行为变化。 */
+ * 消费方不依赖壳 index.css）。规则逐字节同源；.toggle 全仓仅 Toggle 组件渲染 → 抽取零行为变化。
+ *
+ * 2026-11-23 颜色契约（用户实机：换强调色后开关两半撞色系）：
+ *   - OFF 轨道 = **中性墨色** alpha（⛔ 不再用 --border：主题边框带配色色相，金/紫/白会与自定义强调色打架）
+ *   - OFF 圆点 = **有效 accent 的柔化版**（随强调色走，不再用主题的 --toggle-knob → 那是配色 accent）
+ *   - ON 轨道 = 有效 accent；ON 圆点 = text-on-accent（引擎按有效 accent 亮度重算）
+ *   ⇒ 无论强调色跟主题还是自定义，开关两端都同一色系。 */
 .ldk-toggle {
   width: 36px; height: 20px; border-radius: var(--radius-pill);
-  background: var(--border);
+  background: color-mix(in srgb, var(--text-primary) 18%, transparent);
   transition: background 150ms;
   cursor: pointer;
   position: relative;
@@ -13,16 +19,13 @@
   content: '';
   position: absolute; top: 2px; left: 2px;
   width: 16px; height: 16px; border-radius: var(--radius-pill);
-  background: var(--toggle-knob);
+  background: color-mix(in srgb, var(--accent) 72%, var(--text-secondary));
   transition: transform 150ms;
 }
 .ldk-toggle.on::after {
   transform: translateX(16px);
-  /* E5.8#144：ON 态旋钮色 fallback 语义 = text-on-accent（accent 上的可读色），不再回落 OFF 态
-     toggle-knob（那是为 border 轨道可见设计的，accent 轨道下可能同色糊——4 主题实测）。
-     链路：toggle-knob-on（主题显式）→ text-on-accent（accent 可读色）。
-     E5.8#128.9：#FFFFFF 内层 fallback 是死路径（text-on-accent :root 恒定义）→ 删除。
-     防回潮：scripts/check-theme-audit.mjs 校验 toggle-knob-on ≠ accent。 */
-  background: var(--toggle-knob-on, var(--text-on-accent));
+  /* ON 圆点只认 text-on-accent——引擎已按**有效 accent** 算好对比色。
+     ⛔ 不再吃 toggle-knob-on（主题为原 accent 选的值；自定义强调色后会与轨道打架）。 */
+  background: var(--text-on-accent);
 }
 .ldk-toggle.disabled { opacity: 0.4; cursor: not-allowed; }

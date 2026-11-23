@@ -6,6 +6,7 @@
 
 import { getConfigurationValue } from "../../configuration/ConfigurationService";
 import { ACCENT_TOKEN_KEYS } from "./constants";
+import { colorLuminance } from "./color";
 import { getCurrentTheme, setAppliedAccent } from "./state";
 
 /**
@@ -23,6 +24,18 @@ export function applyAccentColor(hexColor: string): void {
     accent: hexColor,
     "accent-hover": `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`,
     "accent-light": `rgba(${r},${g},${b},0.15)`,
+    // 2026-11-23：accent 上的可读色必须跟**有效 accent** 算。跟随主题时尊重主题为原 accent 选的值；
+    // 自定义 accent 时按亮度重算（浅 accent → 黑字，中/深 accent → 白字），否则主按钮/开关 ON 圆点
+    // 会沿用旧 accent 的对比色，出现「绿轨道 + 黑圆点」这类违和。
+    "text-on-accent": (() => {
+      const source = (getConfigurationValue("app.accentSource") as string) ?? "followTheme";
+      if (source !== "custom") {
+        const themed = getCurrentTheme()?.colors?.["text-on-accent"];
+        if (themed) return themed;
+      }
+      const lum = colorLuminance(hexColor);
+      return lum != null && lum > 0.45 ? "black" : "white";
+    })(),
   };
   for (const key of ACCENT_TOKEN_KEYS) {
     document.documentElement.style.setProperty(`--${key}`, accentValues[key]);
