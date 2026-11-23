@@ -19,7 +19,7 @@
     "glyph": { "properties": ["width", "height"], "selector": "tile|glyph|avatar" },
     "media": { "properties": ["aspect-ratio"], "selector": "." }
   },
-  "enforcedPlugins": ["marketplace", "pdf-reader", "geme-tihu-bicycle"],
+  "enforcedPlugins": ["marketplace", "pdf-reader"],
   "declaredGeometry": {
     "marketplace": {
       "tokenFile": "src/styles/store/store-cards.css",

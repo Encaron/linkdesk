@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "$comment": "token 越界豁免账本（G-N2）。只登记「当前确实存在、有主、有收口条件」的存量；⛔ 不是逃生阀。门禁 = scripts/check-token-boundary.mjs（挂 npm run check）。条目按 repo+rule+file+value 匹配，行号漂移不影响；文件里已找不到该值 = 过期条目 ⇒ 门禁红（逼清账）。",
+  "entries": [
+    {
+      "repo": "shell",
+      "rule": "radius-bespoke",
+      "file": "src/components/shared/file-associations-manager/file-associations-manager.css",
+      "value": "3px",
+      "reason": "3px 无宿主档位（2/4/6/8/16）；零视觉约束下不能归并到 2/4（±1px 会改视觉）。",
+      "owner": "调度台",
+      "until": "圆角视觉轮统一裁决：归并到最近档或补 --radius-* 档位"
+    },
+    {
+      "repo": "shell",
+      "rule": "radius-bespoke",
+      "file": "src/components/shared/object-editor/ObjectEditor.css",
+      "value": "3px",
+      "reason": "同上：3px 无宿主档位。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "shell",
+      "rule": "radius-bespoke",
+      "file": "src/components/shared/string-list-editor/StringListEditor.css",
+      "value": "3px",
+      "reason": "同上：3px 无宿主档位。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "serial-monitor",
+      "rule": "radius-bespoke",
+      "file": "src/styles/SerialMonitorSidebar.css",
+      "value": "3px",
+      "reason": "插件自写 3px 圆角；无宿主档位，零视觉下不归并。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "serial-monitor",
+      "rule": "radius-bespoke",
+      "file": "src/styles/SerialMonitorView.css",
+      "value": "3px",
+      "reason": "同上。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "settings",
+      "rule": "radius-bespoke",
+      "file": "src/views/keybinding-settings/KeybindingSettingsView.css",
+      "value": "3px",
+      "reason": "同上。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "settings",
+      "rule": "radius-bespoke",
+      "file": "src/views/SettingsView-rows.css",
+      "value": "3px",
+      "reason": "同上。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "settings",
+      "rule": "radius-bespoke",
+      "file": "src/views/SettingsView.css",
+      "value": "10px",
+      "reason": "10px 无宿主档位（8/16 之间）；零视觉下不归并。",
+      "owner": "调度台",
+      "until": "圆角视觉轮"
+    },
+    {
+      "repo": "marketplace",
+      "rule": "blur-raw",
+      "file": "src/styles/store/store-dock.css",
+      "value": "blur(16px) saturate(1.15)",
+      "reason": "市场工具条自写磨砂 = 第二套玻璃；正解是进 #ld-float-layer 或换 --surface-blur（会改视觉，零视觉步内不做）。",
+      "owner": "调度台",
+      "until": "浮层层视觉轮：迁 #ld-float-layer 或换 --surface-blur"
+    },
+    {
+      "repo": "marketplace",
+      "rule": "shadow-raw",
+      "file": "src/styles/store/store-repo.css",
+      "value": "0 0 0 0 transparent",
+      "reason": "过渡基态的空阴影（无视觉）；保留以免打断 transition。",
+      "owner": "调度台",
+      "until": "该过渡改写时顺手删"
+    }
+  ]
+}

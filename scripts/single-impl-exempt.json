@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "$comment": "同语义单实现豁免账本（G-N1）。只登记「同语义多个文件是**有意分工**」的组合：渲染器 vs 数据适配器、不同来源的徽标、hook vs 纯函数。门禁 = scripts/check-single-implementation.mjs。匹配键 = repo+semantic+files（排序后）；文件集合变了 = 账本过期 ⇒ 门禁红。",
+  "entries": [
+    {
+      "repo": "marketplace",
+      "semantic": "Collection",
+      "files": [
+        "src/views/store/CollectionRenderer.tsx",
+        "src/views/store/home/CollectionSection.tsx"
+      ],
+      "reason": "唯一渲染器 CollectionRenderer ＋ 官方首页数据适配器 CollectionSection（只解析 items 后交给渲染器，零 layout 分发）。",
+      "owner": "调度台",
+      "until": "若 CollectionSection 再长出 layout 分支则撤销（说明又成第二份实现）"
+    },
+    {
+      "repo": "marketplace",
+      "semantic": "Hero",
+      "files": [
+        "src/views/store/HeroCarousel.tsx",
+        "src/views/store/home/Hero.tsx"
+      ],
+      "reason": "HeroCarousel = 轮播渲染器；home/Hero = 首页 hero 槽的数据适配/包裹（作者店 hero 复用同一条）。",
+      "owner": "调度台",
+      "until": "若 home/Hero 再自写轮播/layout 则撤销"
+    },
+    {
+      "repo": "shell",
+      "semantic": "Badge",
+      "files": [
+        "src/components/shared/badge/Badge.tsx",
+        "src/components/shared/effective-badge/EffectiveBadge.tsx",
+        "src/components/shared/source-badge/SourceBadge.tsx"
+      ],
+      "reason": "三个不同语义：通用徽标 / 「生效值」徽标 / 「来源」徽标（各有独立数据源与消费者）。",
+      "owner": "调度台",
+      "until": "若其中两个合并为同一语义则清账"
+    },
+    {
+      "repo": "settings",
+      "semantic": "Badge",
+      "files": [
+        "src/views/SettingsView/deriveSourceBadge.ts",
+        "src/views/SettingsView/effectiveBadge.ts",
+        "src/views/SettingsView/SettingRow/useSettingRowBadges.ts"
+      ],
+      "reason": "纯派生函数 / 生效值判定 / 行级 hook——同一语义的三个不同角色，不是三份实现。",
+      "owner": "调度台",
+      "until": "若角色合并则清账"
+    }
+  ]
+}

@@ -249,7 +249,7 @@ export const PLUGIN_SURFACE = new Map([
   //      新壳自动跟随；规格表 = scripts/ui-size-spec.json，门禁 = check-size-tokens.mjs。
   ["size-control-sm", "A · 官方 pdf-reader 搜索钮 24（var 消费，fallback 24px）"],
   ["size-control-md", "A · 官方 marketplace 工具条钮 / pdf-reader tbtn 28（var 消费，fallback 28px）"],
-  ["size-control-lg", "A · 官方 geme-tihu-bicycle 主钮 32（var 消费，fallback 32px）"],
+  ["size-control-lg", "A · 第三方仓 geme-tihu-bicycle 主钮 32（容器 official/ 下、不在官方 FACTS；var 消费，fallback 32px）"],
   ["size-glyph-md", "A · 官方 marketplace 图标块 40（var 消费，fallback 40px）"],
   ["size-glyph-lg", "A · 官方 marketplace 图标块大号 48（var 消费，fallback 48px）"],
   ["size-ratio-card", "A · 官方 marketplace 卡片媒体框 3 / 2（var 消费，fallback 3 / 2）"],

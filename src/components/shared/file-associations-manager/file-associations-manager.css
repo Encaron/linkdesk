@@ -50,7 +50,7 @@
   content: "";
   width: 3px;
   height: 12px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--accent) 55%, transparent);
   flex: none;
 }
