@@ -84,38 +84,41 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(off["surface-media-scrim"]).toContain("max(var(--glass-surface-alpha), 0.68)");
   });
 
-  it("主题显式声明 surface-* 时不被派生覆盖（surface-ink 原样保留）", () => {
+  it("主题显式声明 surface-* 时不被派生覆盖（内容墨/压图墨各自原样保留）", () => {
     const tokens: Record<string, string> = {
       "bg-window": "#101014", "bg-card": "#1B1B20", "text-primary": "#FFFFFF",
       "surface-reading": "rgba(10,14,20,0.68)",
       "surface-reading-strong": "rgba(10,14,20,0.78)",
       "surface-media-scrim": "rgba(10,14,20,0.82)",
       "surface-ink": "#FFFFFF",
+      "surface-media-ink": "#F0F0F0",
     };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.5 });
     expect(tokens["surface-reading"]).toBe("rgba(10,14,20,0.68)");
     expect(tokens["surface-reading-strong"]).toBe("rgba(10,14,20,0.78)");
     expect(tokens["surface-media-scrim"]).toBe("rgba(10,14,20,0.82)");
     expect(tokens["surface-ink"]).toBe("#FFFFFF");
+    expect(tokens["surface-media-ink"]).toBe("#F0F0F0");
   });
 
-  it("只声明暗遮罩、没声明 surface-ink ⇒ 自动派生亮墨（浅色主题不再深字压深遮罩）", () => {
+  it("只声明暗遮罩、没声明 surface-media-ink ⇒ 自动派生亮墨（内容面 surface-ink 不动）", () => {
     const tokens: Record<string, string> = {
       "bg-window": "#FBF5E9", "bg-card": "#FFFCF5", "text-primary": "#1F160D",
       "text-on-accent": "#FFF8EA",
       "surface-media-scrim": "rgba(18,13,9,0.72)",
     };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.46 });
-    expect(tokens["surface-ink"]).toBe("#FFF8EA");
+    expect(tokens["surface-media-ink"]).toBe("#FFF8EA");
+    expect(tokens["surface-ink"]).toBeUndefined();
   });
 
-  it("只声明亮遮罩 ⇒ surface-ink 跟主题墨色（浅遮罩配深墨）", () => {
+  it("只声明亮遮罩 ⇒ surface-media-ink 跟主题墨色（浅遮罩配深墨）", () => {
     const tokens: Record<string, string> = {
       "bg-window": "#FBF5E9", "bg-card": "#FFFCF5", "text-primary": "#1F160D",
       "surface-media-scrim": "rgba(255,255,255,0.86)",
     };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.46 });
-    expect(tokens["surface-ink"]).toBe("#1F160D");
+    expect(tokens["surface-media-ink"]).toBe("#1F160D");
   });
 
   it("E5.8#151 稀疏合成补齐——激活 + 有锚：缺键从系统标尺锚派生（全 8 键均匀半透明，消顶栏岛）", () => {

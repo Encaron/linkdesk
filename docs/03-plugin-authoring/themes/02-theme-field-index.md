@@ -161,9 +161,9 @@ A theme may add four ordinary color keys (the `colors` map accepts arbitrary key
 | `surface-reading` | content card/floating surface |
 | `surface-reading-strong` | text band / expanded face over media |
 | `surface-media-scrim` | hero/media edge scrim |
-| `surface-ink` | ink on the content surface |
+| `surface-ink` | ink painted on `surface-media-scrim` (store hero/cover text) |
 
-🔴 **`surface-ink` must invert `surface-media-scrim`** (2026-11-23, real-device): `surface-ink` is the text color painted **on top of** `surface-media-scrim`. Dark scrim ⇒ light ink; light scrim ⇒ dark ink. ⛔ Do not copy `text-primary` — in a light theme that yields dark text on a dark scrim, and store hero/cover text all but disappears. The SDK's `validateThemeJson` enforces WCAG 4.5:1 (`var()` / `color-mix()` values are skipped when unparseable).
+🔴 **`surface-ink` is the media ink and must invert `surface-media-scrim`** (2026-11-23, real-device): it only covers text overlaid on a scrim (store hero/cover) — dark scrim ⇒ light ink, light scrim ⇒ dark ink. ⛔ Do not copy `text-primary` (in a light theme that is dark text on a dark scrim). Content surfaces (cards, floating panels) keep using `text-primary`; do not use `surface-ink` as content ink. The engine derives it from scrim luminance when omitted; when declared, the SDK's `validateThemeJson` enforces WCAG 4.5:1 (`var()` / `color-mix()` values are skipped when unparseable).
 
 ```json
 "surface-reading": "rgba(10,14,20,0.62)",

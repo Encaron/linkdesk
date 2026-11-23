@@ -457,7 +457,7 @@ function collectMediaInkErrors(path: string, data: unknown): string[] {
     const colors = (cw as { colors?: unknown }).colors;
     if (colors == null || typeof colors !== "object") continue;
     const map = colors as Record<string, unknown>;
-    const inkRaw = map["surface-ink"];
+    const inkRaw = map["surface-media-ink"];
     const scrimRaw = map["surface-media-scrim"];
     if (typeof inkRaw !== "string" || typeof scrimRaw !== "string") continue;
     const ink = parseColorLiteral(inkRaw);
@@ -467,9 +467,9 @@ function collectMediaInkErrors(path: string, data: unknown): string[] {
     if (ratio < 4.5) {
       const id = typeof (cw as { id?: unknown }).id === "string" ? ` colorway "${(cw as { id: string }).id}"` : "";
       errors.push(
-        `${basename(path)}:${id} 的 surface-ink（${inkRaw}）压 surface-media-scrim（${scrimRaw}）对比度仅 `
+        `${basename(path)}:${id} 的 surface-media-ink（${inkRaw}）压 surface-media-scrim（${scrimRaw}）对比度仅 `
         + `${ratio.toFixed(1)}:1（< 4.5:1）——商店 Hero/封面上的文字会看不清。`
-        + `暗遮罩配亮墨、亮遮罩配暗墨；⛔ 不要直接抄 text-primary。`,
+        + `暗遮罩配亮墨、亮遮罩配暗墨；⛔ 不要直接抄 text-primary。没声明时引擎会按遮罩亮度自动派生。`,
       );
     }
   }

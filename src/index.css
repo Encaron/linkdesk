@@ -34,6 +34,9 @@
   --surface-reading-strong: var(--bg-card-solid, var(--bg-card));
   --surface-media-scrim: var(--bg-window-solid, var(--bg-window));
   --surface-ink: var(--text-primary);
+  /* 压图墨色（Hero/封面，压在 --surface-media-scrim 上，必须与遮罩反极性；
+     2026-11-23：浅色主题的 text-primary 是深色，直接抄会在深遮罩上消失。引擎会按遮罩亮度派生。） */
+  --surface-media-ink: var(--text-primary);
   --system-log: #6A6A6A;
   --sent-echo: #0078D4;
   --status-connected: #4EC9B0;

@@ -24,21 +24,21 @@ function recipe(colors: Record<string, string>): string {
   return path;
 }
 
-describe("validateThemeJson — surface-ink / surface-media-scrim", () => {
+describe("validateThemeJson — surface-media-ink / surface-media-scrim", () => {
   it("深遮罩 ＋ 深墨 ⇒ 判红并给出对比度", () => {
     const r = validateThemeJson(recipe({
       "surface-media-scrim": "rgba(26,16,7,0.72)",
-      "surface-ink": "#1F160D",
+      "surface-media-ink": "#1F160D",
     }));
     expect(r.valid).toBe(false);
     expect(r.errors[0]).toContain("对比度仅");
-    expect(r.errors[0]).toContain("surface-ink");
+    expect(r.errors[0]).toContain("surface-media-ink");
   });
 
   it("深遮罩 ＋ 亮墨 ⇒ 通过", () => {
     const r = validateThemeJson(recipe({
       "surface-media-scrim": "rgba(26,16,7,0.72)",
-      "surface-ink": "#FFF7E6",
+      "surface-media-ink": "#FFF7E6",
     }));
     expect(r.valid).toBe(true);
   });
@@ -46,7 +46,7 @@ describe("validateThemeJson — surface-ink / surface-media-scrim", () => {
   it("亮遮罩 ＋ 深墨 ⇒ 通过（反向也成立）", () => {
     const r = validateThemeJson(recipe({
       "surface-media-scrim": "rgba(255,255,255,0.86)",
-      "surface-ink": "#1A2A2D",
+      "surface-media-ink": "#1A2A2D",
     }));
     expect(r.valid).toBe(true);
   });
@@ -54,7 +54,7 @@ describe("validateThemeJson — surface-ink / surface-media-scrim", () => {
   it("var()/color-mix() 解析不了 ⇒ 不判（不误伤）", () => {
     const r = validateThemeJson(recipe({
       "surface-media-scrim": "var(--scrim)",
-      "surface-ink": "color-mix(in srgb, #fff 80%, transparent)",
+      "surface-media-ink": "color-mix(in srgb, #fff 80%, transparent)",
     }));
     expect(r.valid).toBe(true);
   });
