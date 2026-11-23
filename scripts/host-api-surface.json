@@ -1520,6 +1520,7 @@
       "app.backgroundImage",
       "app.backgroundMask",
       "app.backgroundOpacity",
+      "app.contrastMode",
       "app.fontFamily",
       "app.fontFamilyMono",
       "app.fontTone",
