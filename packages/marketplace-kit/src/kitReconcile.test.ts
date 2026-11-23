@@ -128,7 +128,7 @@ const TS_COLLECTION_KEYS: Record<keyof CollectionDecl, true> = {
   order: true,
 };
 
-const TS_MORE_KEYS: Record<keyof SectionMore, true> = { label: true, target: true };
+const TS_MORE_KEYS: Record<keyof SectionMore, true> = { label: true, locales: true, target: true };
 
 const TS_HERO_SLIDE_KEYS: Record<keyof HeroSlide, true> = { plugin: true, tag: true };
 

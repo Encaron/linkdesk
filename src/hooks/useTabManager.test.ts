@@ -321,6 +321,16 @@ describe("reduceOpenOrFocus", () => {
     expect(r.focusedId).toBe("terminal-1");
   });
 
+  it("已存在标签页按 pinned:true 补 pin（预览态斜体 → 正体常驻，防被下次预览替换）", () => {
+    let state = withWelcome();
+    state = reduceCreateTab(state, "terminal").state;
+    expect(allTabs(state).find((t) => t.type === "terminal")!.pinned).toBe(false);
+
+    const r = reduceOpenOrFocus(state, "terminal", "terminal-1", { pinned: true });
+    expect(r.focusedId).toBe("terminal-1");
+    expect(allTabs(r.state).find((t) => t.type === "terminal")!.pinned).toBe(true);
+  });
+
   it("终端不存在则隐式创建", () => {
     const prev = stateWithTabs(w("PID", "pid"));
     const r = reduceOpenOrFocus(prev, "terminal");

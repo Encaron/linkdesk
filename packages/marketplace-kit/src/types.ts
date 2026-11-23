@@ -101,6 +101,8 @@ export interface CategoryRailDecl {
 /** 跳转字——target 封闭集合（category:<slug> / rank / repo:<id>），⛔ 任意 URL */
 export interface SectionMore {
   label: string;
+  /** label 的语言槽位（与合集/板块标题同一解析器：精确语言 → base → base 字段兜底） */
+  locales?: Locales;
   target: string;
 }
 

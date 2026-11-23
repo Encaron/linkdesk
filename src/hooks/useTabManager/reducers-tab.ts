@@ -107,11 +107,24 @@ export function reduceOpenOrFocus(
   if (existing.length > 0) {
     const target = existing.find((t) => t.id === lastFocusedId) ?? existing[existing.length - 1];
     const group = findGroup(prev, target.id)!;
+    // pinned:true 也要作用于「已存在」的标签页：与 reduceCreateTab Step 1 同口径。
+    // 缺这一笔时，入口传 pinned:true 只能保证新开是正体，会话里已有的预览页（斜体）会被
+    // 下一次预览打开顶掉——用户 2026-11-24 实机反馈的「Plugins Store 极容易被替换」正是此形。
+    const needPin = createOpts?.pinned === true && !target.pinned;
+    const updatedTarget = needPin ? { ...target, pinned: true } : target;
     return {
       state: {
         ...prev,
         activeGroupId: group.id,
-        groups: prev.groups.map((g) => (g.id === group.id ? { ...g, activeTabId: target.id } : g)),
+        groups: prev.groups.map((g) =>
+          g.id === group.id
+            ? {
+                ...g,
+                tabs: needPin ? g.tabs.map((t) => (t.id === target.id ? updatedTarget : t)) : g.tabs,
+                activeTabId: target.id,
+              }
+            : g
+        ),
       },
       focusedId: target.id,
     };

@@ -261,6 +261,10 @@
           "type": "string",
           "pattern": "^(category:[a-z][a-z0-9-]*|rank|repo:[A-Za-z0-9][A-Za-z0-9._-]*)$",
           "description": "Closed set, no exceptions: `category:<slug>` (category page; in an author store it lands on the global category page pre-filtered by the author, with a persistent show-all switch), `rank` (full rank page — no store-scope variant by design), `repo:<id>` (switch repo, author stores only). No arbitrary URLs, no invented pages."
+        },
+        "locales": {
+          "$ref": "#/$defs/localeTexts",
+          "description": "Localized `label` overrides for the More link (same resolver as collection/section titles)."
         }
       }
     },
@@ -284,6 +288,10 @@
             "maxLength": 600
           },
           "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "label": {
             "type": "string",
             "maxLength": 120
           },
