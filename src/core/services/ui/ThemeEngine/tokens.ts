@@ -19,10 +19,15 @@ import {
 } from "./constants";
 // E5.8#151：tint 强制半透明——配方 tint alpha >0.5 封顶（玻璃系统表面层，21-档案 §三）
 // 9.4：图标光晕极性改读生效 text-primary 亮度（解析不出回落档位）——颜色串解析与 capTintAlpha 同源
-import { capTintAlpha, colorLuminance, compositeColor, opaqueColor, readableSurfaceBase } from "./color";
+import { capTintAlpha, colorAlpha, colorLuminance, compositeColor, opaqueColor, readableSurfaceBase } from "./color";
 // E5.8 Phase 11.16：表面合成规格类型——type-only 引用（seeds 生产 getGlassSurfaceSpec，合成在 apply 层消费；
 //  erasure 后无运行时依赖，seeds⇄apply 循环仍由 state 破）
 import type { GlassSurfaceSpec } from "./seeds";
+
+/** 内容面（承载文字）子集——有底图时的可读性下限只作用于这两类，环境面（窗/栏）保持作者原样。 */
+const CONTENT_SURFACE_KEYS: readonly string[] = ["bg-card", "bg-input"];
+/** 内容面可读性下限（有底图 · 玻璃未激活）——低于此值的作者提亮叠层会被抵到合成的 solid。 */
+const CONTENT_SURFACE_FLOOR_ALPHA = 0.55;
 
 /** E5.8#104：配方圆角域 flatten——主题配方 appearance.radius → radius-* token，绝对 px 统一 clamp 进标尺
  *  [0,32]（radius-full 相对几何 50% 排除，壳管理）。recipe.ts flattenAppearance（单配方）与 mix.ts
@@ -364,6 +369,13 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
   // 暗色玻璃主题下 Monaco 补全框/悬浮框、内容面兜底全成白块。锚色本身自合成 → 原值不变。
   const solidFor = (value: string): string =>
     (anchorValue === undefined ? undefined : compositeColor(value, anchorValue)) ?? opaqueColor(value) ?? value;
+  // 2026-11-24 实机（整窗主视觉）：主题挂背景图却没声明玻璃（跟随主题路径）时，作者的低 alpha
+  // 提亮叠层会原样透到照片上——`bg-card: rgba(255,255,255,.10)` + 白字 = 字消失，串口日志/卡片全中。
+  // 规则：**有底图 + 内容面 + 低于下限的 alpha** → 按 solid（合成实色）落地到下限；
+  // 作者写实色/高于下限 → 原样（只升不降）；解析不出的值不猜。
+  // 环境面（窗/栏/侧栏）不在此列——它们本就该随图透，可读性由主题 alpha 与文本面 token 负责。
+  const backdropImage = (tokens["bg-image"] ?? "").trim();
+  const hasBackdropImage = backdropImage !== "" && backdropImage !== "none";
   for (const key of SURFACE_COLOR_KEYS) {
     const value = tokens[key];
     if (value == null || value.trim() === "") {
@@ -377,6 +389,12 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
     tokens[`${key}-solid`] = solidFor(value);
     if (spec.active) {
       tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(var(--glass-surface-alpha) * 100%), transparent)`;
+    } else if (hasBackdropImage && CONTENT_SURFACE_KEYS.includes(key)) {
+      // 未声明玻璃但有底图：内容面 alpha 低于下限 → 用合成的 solid 抵到下限（只升不降）
+      const declaredAlpha = colorAlpha(value);
+      if (declaredAlpha != null && declaredAlpha < CONTENT_SURFACE_FLOOR_ALPHA) {
+        tokens[key] = `color-mix(in srgb, var(--${key}-solid) calc(${CONTENT_SURFACE_FLOOR_ALPHA} * 100%), transparent)`;
+      }
     }
   }
   // E5.8#125：zone 切片/纹理图透明度随玻璃 alpha 合成——玻璃=系统表面层，激活时表面整层
@@ -418,12 +436,19 @@ export function synthesizeGlassSurfaces(tokens: Record<string, string>, spec: Gl
   }
   // 2026-11-23 实机：压图墨色跟遮罩极性走——暗遮罩 → 亮墨；亮遮罩 → 主题墨。
   // `surface-ink` 是**内容面**墨色（与 text-primary 同极性），⛔ 不要拿它顶压图文字。
+  // 2026-11-24 实机（整窗主视觉）：不能单看极性——暗主题的 `text-on-accent` 常是**暗色**（金底黑字），
+  // 压暗遮罩 = 黑字压黑图（市场 Hero/媒体浮层字消失）。两个候选按对遮罩的对比度取高者。
   if (!tokens["surface-media-ink"] && tokens["surface-media-scrim"]) {
     const scrimLum = colorLuminance(tokens["surface-media-scrim"]);
     if (scrimLum != null) {
-      tokens["surface-media-ink"] = scrimLum < 0.35
-        ? (tokens["text-on-accent"] ?? "var(--text-on-accent)")
-        : (tokens["text-primary"] ?? "var(--text-primary)");
+      const ratioFor = (ink: string): number => {
+        const l = colorLuminance(ink);
+        if (l == null) return -1;
+        return (Math.max(l, scrimLum) + 0.05) / (Math.min(l, scrimLum) + 0.05);
+      };
+      const primary = tokens["text-primary"] ?? "var(--text-primary)";
+      const onAccent = tokens["text-on-accent"] ?? "var(--text-on-accent)";
+      tokens["surface-media-ink"] = ratioFor(onAccent) > ratioFor(primary) ? onAccent : primary;
     }
   }
 }

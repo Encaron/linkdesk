@@ -77,6 +77,43 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     expect(tokens["glass-surface-alpha"]).toBe("0.5");
   });
 
+  it("有底图 + 未激活 + 内容面低 alpha → 抵到 solid 下限（整窗主视觉白玻璃实机）", () => {
+    const tokens: Record<string, string> = {
+      "bg-image": 'url("photo.jpg")',
+      "bg-window": "rgba(10, 14, 20, 0.30)",
+      "bg-card": "rgba(255, 255, 255, 0.10)",
+      "bg-input": "rgba(255, 255, 255, 0.14)",
+      "bg-titlebar": "rgba(8, 12, 18, 0.38)",
+    };
+    synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    // 内容面：solid（提亮叠层压到窗口基色）抵到下限，白字不再压白玻璃
+    expect(tokens["bg-card"]).toBe("color-mix(in srgb, var(--bg-card-solid) calc(0.55 * 100%), transparent)");
+    expect(tokens["bg-card-solid"]).toBe("rgb(35,38,44)");
+    expect(tokens["bg-input"]).toBe("color-mix(in srgb, var(--bg-input-solid) calc(0.55 * 100%), transparent)");
+    expect(tokens["bg-input-solid"]).toBe("rgb(44,48,53)");
+    // 环境面保持作者原样（墙纸照样透）
+    expect(tokens["bg-window"]).toBe("rgba(10, 14, 20, 0.30)");
+    expect(tokens["bg-titlebar"]).toBe("rgba(8, 12, 18, 0.38)");
+  });
+
+  it("有底图 + 内容面已是实色/高于下限 → 原值不动（只升不降）", () => {
+    const tokens: Record<string, string> = {
+      "bg-image": 'url("photo.jpg")',
+      "bg-window": "#101014",
+      "bg-card": "#23262C",
+      "bg-input": "rgba(44, 48, 53, 0.60)",
+    };
+    synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(tokens["bg-card"]).toBe("#23262C");
+    expect(tokens["bg-input"]).toBe("rgba(44, 48, 53, 0.60)");
+  });
+
+  it("无底图 → 内容面零变化（主题原生语义不破）", () => {
+    const tokens: Record<string, string> = { "bg-window": "#101014", "bg-card": "rgba(255,255,255,0.10)" };
+    synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(tokens["bg-card"]).toBe("rgba(255,255,255,0.10)");
+  });
+
   it("内容面可读性 token：激活吃 solid 基色 + alpha 下限；非激活回落实色", () => {
     const tokens: Record<string, string> = { "bg-window": "#101014", "bg-card": "#1B1B20" };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.38 });
@@ -131,6 +168,16 @@ describe("ThemeEngine — 玻璃系统标尺化（Phase 11.16）", () => {
     };
     synthesizeGlassSurfaces(tokens, { active: true, alpha: 0.46 });
     expect(tokens["surface-media-ink"]).toBe("#1F160D");
+  });
+
+  it("暗主题 + 暗 text-on-accent + 暗遮罩 ⇒ 取亮墨 text-primary（不是黑字压黑图）", () => {
+    const tokens: Record<string, string> = {
+      "bg-window": "rgba(10, 14, 20, 0.30)", "bg-card": "#23262C", "text-primary": "#FFFFFF",
+      "text-on-accent": "#10161F",
+      "surface-media-scrim": "rgba(10, 14, 20, 0.82)",
+    };
+    synthesizeGlassSurfaces(tokens, { active: false, alpha: GLASS_SURFACE_DEFAULT_ALPHA });
+    expect(tokens["surface-media-ink"]).toBe("#FFFFFF");
   });
 
   it("E5.8#151 稀疏合成补齐——激活 + 有锚：缺键从系统标尺锚派生（全 8 键均匀半透明，消顶栏岛）", () => {

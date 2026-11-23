@@ -64,6 +64,12 @@ function parseColor(color: string): ParsedColor | null {
   return { r, g, b, alpha };
 }
 
+/** 读取颜色 alpha（0–1）——「有底图时内容面可读性下限」的判据；解析不出 → null（不猜，保持作者原样）。 */
+export function colorAlpha(color: string): number | null {
+  const parsed = parseColor(color);
+  return parsed ? Math.min(1, Math.max(0, parsed.alpha)) : null;
+}
+
 /** 去掉 alpha、保留 RGB——内容面可读性下限的基色（主题可能把 bg-card 本身写成 rgba，不能当作 solid）。 */
 export function opaqueColor(color: string): string | null {
   const parsed = parseColor(color);
