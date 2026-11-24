@@ -58,3 +58,15 @@
   margin-top: 8px;
   font-size: var(--font-size-xs);
 }
+
+/* 判定 chip：表格在玻璃主题/极端壁纸上仍可读 */
+.ldk-ai-risk-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-weight: 600;
+  line-height: 1.6;
+}

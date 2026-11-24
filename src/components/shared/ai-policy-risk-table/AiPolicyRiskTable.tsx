@@ -59,8 +59,10 @@ export default function AiPolicyRiskTable({ rows, ariaLabel }: AiPolicyRiskTable
             <td className="ldk-ai-risk-what">{row.what ? t(row.what) : row.id}</td>
             <td className="ldk-ai-risk-desc">{row.why ? t(row.why) : ""}</td>
             <td className="ldk-ai-risk-level">{t(row.riskLabel ?? RISK_LABEL[row.risk])}</td>
-            <td className={`ldk-ai-risk-decision ldk-ai-risk-decision-${row.decision}`}>
-              {t(row.decision === "allow" ? "允许" : row.decision === "ask" ? "询问" : "不允许")}
+            <td className="ldk-ai-risk-decision">
+              <span className={`ldk-ai-risk-chip ldk-ai-risk-decision-${row.decision}`}>
+                {t(row.decision === "allow" ? "允许" : row.decision === "ask" ? "询问" : "不允许")}
+              </span>
             </td>
           </tr>
         ))}

@@ -42,8 +42,10 @@ export default function AiSensitiveManager({ payload }: { payload?: unknown }) {
             <tr key={row.id}>
               <td>{t(row.label)}</td>
               <td className="ldk-ai-policy-desc">{t(row.rule)}</td>
-              <td className={decisionClass(row.decision)}>
-                {t(row.decision === "allow" ? "允许" : row.decision === "ask" ? "询问" : "不允许")}
+              <td className="ldk-ai-policy-state-cell">
+                <span className={`ldk-ai-policy-state-chip ${decisionClass(row.decision)}`}>
+                  {t(row.decision === "allow" ? "允许" : row.decision === "ask" ? "询问" : "不允许")}
+                </span>
               </td>
             </tr>
           ))}

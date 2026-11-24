@@ -75,6 +75,10 @@
 /* 能力摘要：一行四个「名称 结论」，结论用文字 + 语义色（无 emoji） */
 .ldk-ai-policy-caps {
   margin: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
   display: flex;
   flex-wrap: wrap;
   gap: 4px 16px;
@@ -133,4 +137,16 @@
   cursor: pointer;
   padding: 0;
   white-space: nowrap;
+}
+
+/* 判定 chip：极端壁纸下文字仍可读（底色 + 边，颜色只作语义标记） */
+.ldk-ai-policy-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-weight: 600;
+  line-height: 1.6;
 }

@@ -140,7 +140,7 @@ export default function AiPolicyPicker({
           {capabilities.map((c, i) => (
             <span key={`${c.label}-${i}`} className="ldk-ai-policy-cap">
               <b>{translate(c.label)}</b>
-              <span className={decisionClass(c.decision)}>
+              <span className={`${decisionClass(c.decision)} ldk-ai-policy-chip`}>
                 {translate(c.decision === "allow" ? "允许" : c.decision === "ask" ? "询问" : "不允许")}
               </span>
             </span>

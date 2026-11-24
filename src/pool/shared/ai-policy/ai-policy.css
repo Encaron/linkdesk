@@ -162,3 +162,15 @@
 .ldk-ai-policy-state-deny {
   color: var(--danger);
 }
+
+/* 敏感表判定 chip：池侧独立命名，避免与共享域同名 */
+.ldk-ai-policy-state-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-weight: 600;
+  line-height: 1.6;
+}
