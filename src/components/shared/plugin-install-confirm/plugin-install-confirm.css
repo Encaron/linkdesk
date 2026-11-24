@@ -409,8 +409,11 @@
 }
 
 .ldk-pic-btn.is-danger {
-  border-color: var(--danger);
-  background: var(--danger);
+  /* 2026-11-25 实机读数：白字压在 `--danger` (#EF4444) 上只有 3.76:1（浅色主题），低于正文 AA 4.5。
+   * 危险色不换语义、只在**按钮填充**上压暗到 85% ⇒ 实测 ≈5.3:1，仍是一只「实心红」，肉眼差不出设计意图。
+   * ⛔ 不改全局 `--danger`（标记/文字/进度都还靠它）。 */
+  border-color: color-mix(in srgb, var(--danger) 85%, black);
+  background: color-mix(in srgb, var(--danger) 85%, black);
   color: var(--text-on-accent);
   font-weight: 600;
 }
@@ -418,9 +421,8 @@
 /* 🔴 危险按钮的 hover 必须仍是红的（2026-11-24 实机：hover 变绿＋红圈，很丑）。
    原因 = `.is-primary:hover` 的优先级压过 `.is-danger` 的底色；这里显式收回来。 */
 .ldk-pic-btn.is-danger:hover {
-  border-color: var(--danger);
-  background: var(--danger);
-  filter: brightness(1.12);
+  border-color: color-mix(in srgb, var(--danger) 78%, black);
+  background: color-mix(in srgb, var(--danger) 78%, black);
 }
 
 .ldk-pic-btn.is-danger:focus-visible,
