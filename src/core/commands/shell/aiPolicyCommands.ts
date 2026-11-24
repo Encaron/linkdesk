@@ -65,13 +65,14 @@ function toastSwitched(mode: AiPolicyModeDto): void {
   const label = t(modeLabelKey(mode));
   if (mode === "full") {
     // 完全访问 = 高危常驻态：一条告警回执，自动收起；同一事件只保留一条
+    // 只做「回执」：不带动作按钮（动作在设置页的告警行里，避免用户为点按钮把指针停在 toast 上
+    // 触发 hover 暂停而看起来「永不消失」）。ttl 6s，到点由池侧按 expiresAt 收起。
     showTransientToast({
       source: "ai-policy",
       severity: "warning",
       key: "ai-policy-mode",
-      ttl: 7000,
+      ttl: 6000,
       message: t("权限已改为完全访问。可随时恢复默认。"),
-      actions: [{ label: t("恢复默认"), command: "aiPolicy.setMode", args: ["auto"], onClick: () => void switchMode("auto") }],
     });
     return;
   }
