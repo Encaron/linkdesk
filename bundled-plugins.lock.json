@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-11-24T10:45:08.870Z",
+  "syncedAt": "2026-11-24T11:27:34.191Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -54,9 +54,9 @@
     {
       "id": "settings",
       "repo": "Encaron/linkdesk-plugin-settings",
-      "version": "1.0.51",
-      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.51/settings.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:819c1977b30f2fbde4ec8bc7f170b9b00b3136da6f442a2338282735a93f04c7\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-CanH-hYl.js:d9f19ca3fedbfc62acb5a44d43e55eda906d3366f70bf203a05eb09149fbedc9\ndocs/readme/en.md:4d268d6acd4e86b38bef362d332ea35083bb0e0166772acc47864eb811fb7a79\ni18n/en.json:0d9b880b48ca434fd50ca9cdcd8f8a53755d6c07bea9702563386f3fd1877b21\nindex.bundle.css:cea798870c8729e02a65fb737b92a87a6e94987283718142f04dc02a98e51315\nindex.bundle.js:47f95da1b7f8da340daead739266b6f8f3fea4b5924522c3387f142995739f64\nplugin.json:648a3fc824d73049a318ab4114aeb02d50acb42f7fcbd908841ab5a13a2224de\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:c1f3b088bff1dd9a575045ccb749613e1ee08c5977f54a0b106d955d179c7bbe",
+      "version": "1.0.53",
+      "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-settings/releases/download/v1.0.53/settings.linkdesk-plugin",
+      "fingerprint": "CHANGELOG.md:819c1977b30f2fbde4ec8bc7f170b9b00b3136da6f442a2338282735a93f04c7\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:60c6af07457cfdeefd5581fee63be64afbc717d32e2f6be1af9ac1405bfde3c1\nSettingsView-CrC8ThBt.js:ab8cb4bdbd5e0cd685979158099457a374fc2a99077e582b3d74616f12e3edca\ndocs/readme/en.md:4d268d6acd4e86b38bef362d332ea35083bb0e0166772acc47864eb811fb7a79\ni18n/en.json:0d9b880b48ca434fd50ca9cdcd8f8a53755d6c07bea9702563386f3fd1877b21\nindex.bundle.css:cea798870c8729e02a65fb737b92a87a6e94987283718142f04dc02a98e51315\nindex.bundle.js:d0e0aee2d48613cd2b85bbd501941d9363230bab57a25eb4da9c3cd04a89f8e8\nplugin.json:6f7aede12b8ba50cf0e830c2400eea4b8bf6b7edc8903288ea5fe81842f2b066\nresources/cover.svg:5b25e65f4e2665d70cb940f705c3c27a49353cffe280e71357ed03ef7e208ac7\nresources/icon-bar.svg:43bb1a604f8c29fe8170b3a5583bb5bf9f7df9898973466f3419d7f7dfe0d64e\nresources/icon.svg:5b586cb531b5bcb665a3f6db07a8eee3be03052b432501d371ea607ec356f4df\nviews/SettingsView.bundle.js:5c41d7b4592c42126efe0796ce2f1807d414f279ca85360f13496b9bdce242b1",
       "seed": true
     },
     {
