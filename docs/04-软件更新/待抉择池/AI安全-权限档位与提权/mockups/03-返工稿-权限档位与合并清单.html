@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 权限档位 · 返工稿（可点原型 v3）</title>
+<style>
+:root{
+  --bg-window:#0E0E12; --bg-card:#17161D; --bg-input:#1D1E26; --bg-elev:#20212B;
+  --text-primary:#D4D4D4; --text-secondary:#9D9D9D; --text-muted:#6E7280;
+  --accent:#8B7CF6; --accent-hover:#A69CFF; --on-accent:#FFFFFF;
+  --border:#262838; --separator:#34364A; --hover-overlay:rgba(255,255,255,.06);
+  --ok:#34D399; --warn:#FBBF24; --danger:#F87171;
+  --font-ui:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",Consolas,monospace;
+  --radius-sm:4px; --radius-md:6px; --radius-lg:8px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0A0A0E;color:var(--text-primary);font-family:var(--font-ui);font-size:13px;padding:32px;max-width:1280px;margin:0 auto}
+h1{font-size:20px;font-weight:600;letter-spacing:.02em;margin-bottom:6px}
+h1 small{font-size:13px;font-weight:400;color:var(--text-muted);display:block;margin-top:6px;line-height:1.7}
+code,.mono{font-family:var(--font-mono);font-size:11px;color:var(--accent-hover)}
+.hl{color:var(--ok)}
+.lang-switch{display:inline-flex;gap:2px;margin-top:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:3px}
+.lang-switch button{appearance:none;border:none;background:transparent;color:var(--text-secondary);font-family:inherit;font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer}
+.lang-switch button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.frame{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:18px}
+.frame-caption{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.frame-caption b{font-size:14px}
+.frame-caption span{color:var(--text-secondary);font-size:12px}
+.frame-note{padding:10px 14px;border-top:1px solid var(--border);color:var(--text-muted);font-size:12px;line-height:1.8;background:#131218}
+.frame-note b{color:var(--text-secondary)}
+
+/* ── 设置页外壳 ── */
+.settings-editor{position:relative;display:flex;flex-direction:column;height:760px;margin:20px;background:var(--bg-window);border:1px solid rgba(255,255,255,.10);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+.settings-body{display:flex;flex:1;overflow:hidden}
+.settings-nav{width:172px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:10px 0}
+.settings-nav-item{display:flex;align-items:center;justify-content:space-between;width:100%;padding:7px 20px;font-size:13px;color:var(--text-primary);background:transparent;border:none;border-left:2px solid transparent;cursor:pointer;text-align:left;font-family:inherit}
+.settings-nav-item:hover{background:var(--hover-overlay)}
+.settings-nav-item.active{background:var(--hover-overlay);font-weight:500;border-left-color:var(--accent)}
+.settings-nav-count{font-size:11px;color:var(--text-muted);background:var(--hover-overlay);padding:0 6px;border-radius:10px}
+.settings-form{flex:1;overflow-y:auto;padding:18px 24px;min-width:0}
+.settings-group-title{font-size:17px;font-weight:600;margin:0 0 6px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.settings-group-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:16px;line-height:1.6}
+.settings-sub-section{margin:18px 0 22px}
+.settings-sub-head{display:flex;align-items:center;gap:8px;padding:5px 0;margin-bottom:4px}
+.settings-sub-title{font-size:12.5px;font-weight:600;color:var(--text-secondary);letter-spacing:.02em}
+.settings-sub-head::after{content:'';flex:1;height:1px;background:var(--separator);margin-left:6px}
+.settings-sub-desc{font-size:11.5px;color:var(--text-muted);margin:2px 0 8px;line-height:1.6}
+.settings-row{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:24px}
+.settings-row:last-child{border-bottom:none}
+.settings-row-info{flex:1;min-width:0}
+.settings-row-label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;margin-bottom:3px}
+.settings-row-desc{display:block;font-size:11.5px;color:var(--text-muted);line-height:1.55}
+.settings-row-control{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0}
+
+/* ── 权限档位（核心组件）── */
+.policy-block{width:420px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--bg-input);padding:3px;border:1px solid var(--border);border-radius:var(--radius-md)}
+.seg button{appearance:none;border:none;background:transparent;color:var(--text-secondary);font-family:inherit;font-size:12px;line-height:1.2;padding:7px 4px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg button:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.seg button[aria-checked="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.policy-desc{font-size:11.5px;color:var(--text-muted);line-height:1.55;text-align:right}
+.policy-alert{display:none;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.08);border-radius:var(--radius-sm);font-size:11.5px;color:var(--warn);line-height:1.5}
+.policy-alert.show{display:flex}
+.policy-alert button{appearance:none;border:none;background:transparent;color:var(--accent-hover);font-family:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;white-space:nowrap}
+/* 能力摘要：一条横带，四个「名称＋结论」，无色块 */
+.caps{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
+.caps b{font-weight:500;color:var(--text-secondary)}
+.caps .allow{color:var(--ok)}
+.caps .ask{color:var(--warn)}
+.caps .deny{color:var(--danger)}
+
+/* ── 按钮（统一：实心主按钮 / 描边次按钮）── */
+.btn{appearance:none;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-family:inherit;font-size:12px;height:28px;padding:0 14px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--hover-overlay);border-color:var(--separator)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── 只读预览小表 ── */
+.preview{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:2px}
+.preview th,.preview td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:left}
+.preview th{color:var(--text-muted);font-weight:500;font-size:11px}
+.preview td:last-child,.preview th:last-child{text-align:right;white-space:nowrap}
+.dec-allow{color:var(--ok)}
+.dec-ask{color:var(--warn)}
+.dec-deny{color:var(--danger)}
+
+/* ── 弹窗 ── */
+.modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:center;justify-content:center;padding:32px}
+.modal-wrap.open{display:flex}
+.modal{width:760px;max-width:90vw;max-height:82vh;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:18px 24px 0}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:2px}
+.modal-sub{font-size:11.5px;color:var(--text-muted);line-height:1.6}
+.tabs{display:flex;gap:2px;padding:12px 24px 0;border-bottom:1px solid var(--border)}
+.tabs button{appearance:none;border:none;background:transparent;color:var(--text-secondary);font-family:inherit;font-size:12px;padding:7px 10px;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--text-primary);border-bottom-color:var(--accent);font-weight:600}
+.modal-body{padding:16px 24px;overflow:auto;min-height:200px}
+.table{width:100%;border-collapse:collapse;font-size:12px}
+.table th,.table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.table th{color:var(--text-muted);font-weight:500;font-size:11px}
+.table td:last-child,.table th:last-child{text-align:right;white-space:nowrap}
+.table tr:hover td{background:var(--hover-overlay)}
+.modal-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px 18px;border-top:1px solid var(--border)}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--text-muted)}
+.legend b{font-weight:500}
+.legend .allow{color:var(--ok)}
+.legend .ask{color:var(--warn)}
+.legend .deny{color:var(--danger)}
+.tabpane{display:none}
+.tabpane.active{display:block}
+
+/* ── 状态栏 / 通知 ── */
+.statusbar{display:flex;align-items:center;justify-content:space-between;height:30px;padding:0 10px;background:var(--bg-input);border-top:1px solid var(--border);font-size:11.5px;color:var(--text-secondary)}
+.statusbar .right{display:flex;align-items:center;gap:10px}
+.badge{appearance:none;border:none;background:transparent;color:var(--text-secondary);font-family:inherit;font-size:11.5px;height:100%;padding:0 7px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;border-radius:var(--radius-sm)}
+.badge:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--text-muted)}
+.badge.accent .dot{background:var(--accent)}
+.badge.full .dot{background:var(--warn);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.notif{width:340px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:10px}
+.notif-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-secondary)}
+.notif-item{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6}
+.notif-item:last-child{border-bottom:none}
+.notif-meta{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted)}
+.notif-actions{display:flex;gap:10px}
+.notif-actions button{appearance:none;border:none;background:transparent;color:var(--accent-hover);font-family:inherit;font-size:11px;cursor:pointer;padding:0}
+.toast{display:inline-flex;align-items:center;gap:8px;background:var(--bg-elev);border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.toast .dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+
+/* ── 问题对照表 ── */
+.issues{width:100%;border-collapse:collapse;font-size:12px;margin:14px 20px 24px;max-width:calc(100% - 40px)}
+.issues th,.issues td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.issues th{color:var(--text-muted);font-weight:500;font-size:11px}
+.issues td:first-child{width:44px;color:var(--text-muted)}
+.issues code{font-size:11px}
+</style>
+</head>
+<body>
+
+<h1>AI 权限档位 · 返工稿 <small>这是一张<strong>新的</strong>可点原型：按你的反馈重做版式、文案、信息架构与弹窗；先看这版，确认后再改实机。</small></h1>
+<div class="lang-switch" role="group" aria-label="语言">
+  <button id="btnZh" aria-pressed="true">中文</button>
+  <button id="btnEn" aria-pressed="false">English</button>
+</div>
+
+<!-- ═════════════ Frame 1 ═════════════ -->
+<div class="frame" id="frame1">
+  <div class="frame-caption"><b>Frame 1 · 设置页「AI 接入 → 开放范围与安全」</b><span>点四段看三种状态（自主 / 逐次确认 / 完全访问）；点「查看完整清单」看弹窗</span></div>
+  <div class="settings-editor">
+    <div class="settings-body">
+      <nav class="settings-nav">
+        <button class="settings-nav-item"><span data-k="nav.general">通用</span><span class="settings-nav-count">6</span></button>
+        <button class="settings-nav-item"><span data-k="nav.theme">主题</span><span class="settings-nav-count">1</span></button>
+        <button class="settings-nav-item"><span data-k="nav.keys">快捷键</span><span class="settings-nav-count">4</span></button>
+        <button class="settings-nav-item"><span data-k="nav.lang">语言</span><span class="settings-nav-count">2</span></button>
+        <button class="settings-nav-item active"><span data-k="nav.ai">AI 接入</span><span class="settings-nav-count" id="navCount">9</span></button>
+        <button class="settings-nav-item"><span data-k="nav.about">关于</span></button>
+      </nav>
+      <div class="settings-form">
+        <h2 class="settings-group-title" data-k="page.title">AI 接入</h2>
+        <p class="settings-group-sub" data-k="page.sub">让外部 AI（助手 / 脚本 / agent）操作本软件。关闭通道后，本机任何程序都无法连接。</p>
+
+        <div class="settings-sub-section">
+          <div class="settings-sub-head"><span class="settings-sub-title" data-k="g.channel">通道</span></div>
+          <div class="settings-sub-desc" data-k="g.channel.desc">改动后重启软件生效；右侧灰字是实时状态。</div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label"><span data-k="row.mcp">MCP 通道</span></div>
+              <span class="settings-row-desc" data-k="row.mcp.desc">允许 AI 客户端（MCP）发现并调用开放能力。</span>
+            </div>
+            <div class="settings-row-control"><span class="mono" data-k="row.mcp.state">运行中 · 127.0.0.1:9231</span></div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label"><span data-k="row.cli">CLI 通道</span></div>
+              <span class="settings-row-desc" data-k="row.cli.desc">允许命令行（linkdeskctl）操作，适合脚本与命令行 AI。</span>
+            </div>
+            <div class="settings-row-control"><span class="mono" data-k="row.cli.state">运行中</span></div>
+          </div>
+        </div>
+
+        <div class="settings-sub-section">
+          <div class="settings-sub-head"><span class="settings-sub-title" data-k="g.safety">开放范围与安全</span></div>
+          <div class="settings-sub-desc" data-k="g.safety.desc">AI 能做什么，取决于权限档位。</div>
+
+          <!-- 1. 权限档位：两行以内 -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label"><span data-k="row.tier">权限档位</span></div>
+              <span class="settings-row-desc" id="tierDesc" data-k="tier.auto.desc">日常修改由 AI 完成；安装、更新等不可撤销操作仍会询问。</span>
+            </div>
+            <div class="settings-row-control">
+              <div class="policy-block">
+                <div class="seg" role="radiogroup" aria-label="AI 权限档位" id="seg"></div>
+                <div class="policy-alert" id="fullAlert">
+                  <span data-k="tier.full.alert">完全访问已开启。所有操作不再询问。</span>
+                  <button id="resetBtn" data-k="tier.reset">恢复默认（自主）</button>
+                </div>
+                <div class="caps" id="caps"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. AI 能做什么：一个只读预览 + 一个入口（合并「当前权限一览 / 开放范围明细 / 完整操作清单 / 完整风险表 / 细分管理」） -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label"><span data-k="row.caps">AI 能做什么</span></div>
+              <span class="settings-row-desc" data-k="row.caps.desc">按当前档位列出常见操作的风险与结论；完整清单含每条命令与说明。</span>
+              <table class="preview" id="preview" aria-label="AI 操作摘要"></table>
+            </div>
+            <div class="settings-row-control">
+              <button class="btn" id="openDialog" data-k="row.caps.open">查看完整清单…</button>
+            </div>
+          </div>
+
+          <!-- 3. 接入凭据：保留，说明改清楚 -->
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <div class="settings-row-label"><span data-k="row.token">接入凭据</span></div>
+              <span class="settings-row-desc" data-k="row.token.desc">AI 客户端连接本软件时使用的凭据。重新生成后，已连接的客户端需要更新配置。</span>
+            </div>
+            <div class="settings-row-control"><button class="btn" data-k="row.token.regen">重新生成…</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="mono" data-k="sb.left">就绪</span>
+      <span class="right">
+        <button class="badge accent" id="badgeDemo" title="点击打开权限设置"><span class="dot"></span><span id="badgeLabel">AI 自主</span></button>
+        <span data-k="sb.bell">通知 1</span>
+      </span>
+    </div>
+  </div>
+  <div class="frame-note">
+    <b>改动：</b>「当前权限一览」整行删除（与档位下方的能力摘要重复）；「开放范围明细 / 完整操作清单 / 完整风险表 / 细分管理」四行合并为一行「AI 能做什么」＋一个弹窗；
+    档位块从 5 行收到 2 行（四段控件 ＋ 一行说明／告警）；打勾改文字结论，不再使用 emoji。
+  </div>
+</div>
+
+<!-- ═════════════ Frame 2 ═════════════ -->
+<div class="frame">
+  <div class="frame-caption"><b>Frame 2 · 「AI 操作与风险」弹窗</b><span>合并原「完整风险表 / 开放范围明细 / 完整操作清单 / 细分管理」；标准内边距与标准按钮</span></div>
+  <div style="padding:24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-primary" id="openDialog2" data-k="row.caps.open">查看完整清单…</button>
+    <span style="font-size:11.5px;color:var(--text-muted)" data-k="frame2.note">弹窗内容与设置页同一份数据（当前档位、风险级、判定）。</span>
+  </div>
+  <div class="frame-note"><b>改动：</b>弹窗内边距 24px；底部按钮改为标准实心按钮；图例改文字颜色；表格去掉「对勾」符号，结论用文字；页脚说明只留一句。</div>
+</div>
+
+<!-- ═════════════ Frame 3 ═════════════ -->
+<div class="frame">
+  <div class="frame-caption"><b>Frame 3 · 状态栏徽标与通知</b><span>徽标随档位与语言即时更新；切换完全访问只留一条通知，且会自动收起</span></div>
+  <div style="padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px" data-k="f3.badges">四档徽标（同一位置、同一字号）</div>
+      <div class="statusbar" style="border:1px solid var(--border);border-radius:6px">
+        <span class="mono">就绪</span>
+        <span class="right">
+          <span class="badge"><span class="dot"></span><span data-k="badge.read">AI 只读</span></span>
+          <span class="badge"><span class="dot"></span><span data-k="badge.ask">AI 询问</span></span>
+          <span class="badge accent"><span class="dot"></span><span data-k="badge.auto">AI 自主</span></span>
+          <span class="badge full"><span class="dot"></span><span data-k="badge.full">AI 全权</span></span>
+        </span>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.7" data-k="f3.badge.note">
+        徽标文案与设置页共用同一份语言资源；切换语言、切换档位都即时更新（不再需要点一下控件）。
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px" data-k="f3.notif">切换完全访问：一条通知，8 秒后自动收起</div>
+      <div class="toast"><span class="dot" style="background:var(--warn)"></span><span data-k="notif.toast">权限已改为「完全访问」。可随时恢复默认。</span></div>
+      <div class="notif">
+        <div class="notif-head"><span data-k="notif.title">通知</span><span class="notif-actions"><button data-k="notif.clear">清除已完成</button><button data-k="notif.fold">收起</button></span></div>
+        <div class="notif-item">
+          <div data-k="notif.body">权限已改为「完全访问」：所有操作不再询问。</div>
+          <div class="notif-meta"><span data-k="notif.source">来源 · 权限设置</span><span class="notif-actions"><button data-k="notif.reset">恢复默认</button></span></div>
+        </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.7" data-k="f3.notif.note">
+        同一事件只保留一条（重复切换只更新那一条）；轻提示 8 秒自动消失；通知面板不堆积重复条目。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ Frame 4 ═════════════ -->
+<div class="frame">
+  <div class="frame-caption"><b>Frame 4 · 你的问题 → 这版怎么改</b><span>逐条对应；确认后再落到实机</span></div>
+  <table class="issues">
+    <thead><tr><th>#</th><th>你反馈的问题</th><th>这版怎么处理</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>切英文后权限档位仍是中文，点一下才变</td><td>不再把「已经翻译好的字符串」缓存进组件；共享件直接拿 i18n key 渲染，语言变化即重绘（徽标同理）。</td></tr>
+      <tr><td>2</td><td>「当前权限一览」多余</td><td>删除整行；档位块下方只保留一条紧凑的能力摘要。</td></tr>
+      <tr><td>3</td><td>打勾符号像 emoji</td><td>去掉符号，改成「允许 / 询问 / 不允许」文字＋语义色；全局文案禁用 emoji（并加机械检查）。</td></tr>
+      <tr><td>4</td><td>完全访问通知不自动消失、要清两次</td><td>通知改为 8 秒自动收起；同一事件按来源去重只留一条；面板不再堆积重复项。</td></tr>
+      <tr><td>5</td><td>完全访问时档位块太高（五行）</td><td>压到两行：四段控件＋一行说明；完全访问时说明行换成一条告警＋「恢复默认」文字按钮。</td></tr>
+      <tr><td>6</td><td>这些按钮是壳提供的还是插件自己画的？</td><td>选择器是共享件（`@linkdesk/ui`），设置插件只做接线；行/按钮由设置插件的通用行渲染。换一套设置插件仍能用同一个选择器。</td></tr>
+      <tr><td>7</td><td>完整风险表贴边、按钮是透明小按钮</td><td>弹窗统一 24px 内边距；主按钮改用标准实心按钮（同「完整操作清单」的确定按钮）。</td></tr>
+      <tr><td>8</td><td>完整操作清单里全是 M1 AI#3 这类内部编号</td><td>命令说明全部改成用户语言；内部编号不进 UI。清单合并进弹窗并重新生成。</td></tr>
+      <tr><td>9</td><td>设置显示「逐次确认」，状态栏却是「AI 只读」</td><td>徽标改为从配置变更事件直接取值（不再回读文件），并与设置页共用同一份档位数据；语言变化也即时更新。</td></tr>
+      <tr><td>10</td><td>文档里「红色禁止符号」这类写法容易误解</td><td>文档与 UI 全面禁用 emoji；改用「禁止 / 注意 / 允许」等文字标签，并加机械检查防止复发。</td></tr>
+      <tr><td>11</td><td>设置 ID `ai.policy.mode` 会不会让 AI 自己升档</td><td>它是配置键，不是命令。AI 写 `ai.*` 配置一律被拒；切档命令标记为「仅限用户」，AI 调用会被拒；没有任何「批准」入口。</td></tr>
+      <tr><td>12</td><td>接入凭据是什么</td><td>AI 客户端连接用的凭据（原有能力）。说明改成一句话，按钮改成「重新生成…」。</td></tr>
+      <tr><td>13</td><td>完整风险表 / 当前权限一览 / 开放范围明细 / 完整操作清单 / 细分管理重复</td><td>合并为一行「AI 能做什么」＋一个弹窗（全部操作 / 敏感能力两个页签）。导航项从 21 项降下来一截。</td></tr>
+      <tr><td>14</td><td>文案太口语（「AI 连请求入口都没有」等）</td><td>全部改成书面语；删掉解释实现细节的句子。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═════════════ 弹窗 ═════════════ -->
+<div class="modal-wrap" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle" data-k="dlg.title">AI 操作与风险</div>
+      <div class="modal-sub" data-k="dlg.sub">风险由软件统一登记；插件声明的命令也按同一标准归类。当前档位：<span id="dlgMode">自主</span></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="all" data-k="dlg.tab.all">全部操作</button>
+      <button role="tab" aria-selected="false" data-tab="sensitive" data-k="dlg.tab.sensitive">敏感能力</button>
+    </div>
+    <div class="modal-body">
+      <div class="tabpane active" id="pane-all">
+        <table class="table">
+          <thead><tr><th data-k="col.op">操作</th><th data-k="col.desc">说明</th><th data-k="col.risk">风险</th><th data-k="col.now">当前</th></tr></thead>
+          <tbody id="riskBody"></tbody>
+        </table>
+      </div>
+      <div class="tabpane" id="pane-sensitive">
+        <table class="table">
+          <thead><tr><th data-k="col.cap">能力</th><th data-k="col.rule">规则</th><th data-k="col.now">当前</th></tr></thead>
+          <tbody id="sensitiveBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div class="legend">
+        <span><b class="allow" data-k="dec.allow">允许</b></span>
+        <span><b class="ask" data-k="dec.ask">询问</b></span>
+        <span><b class="deny" data-k="dec.deny">不允许</b></span>
+      </div>
+      <button class="btn btn-primary" id="modalClose" data-k="dlg.close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 文案字典：key → 中/英。所有渲染都走 key，切语言即重绘（对应问题 1）。 */
+const DICT = {
+  zh: {
+    'nav.general':'通用','nav.theme':'主题','nav.keys':'快捷键','nav.lang':'语言','nav.ai':'AI 接入','nav.about':'关于',
+    'page.title':'AI 接入','page.sub':'让外部 AI（助手 / 脚本 / agent）操作本软件。关闭通道后，本机任何程序都无法连接。',
+    'g.channel':'通道','g.channel.desc':'改动后重启软件生效；右侧灰字是实时状态。',
+    'row.mcp':'MCP 通道','row.mcp.desc':'允许 AI 客户端（MCP）发现并调用开放能力。','row.mcp.state':'运行中 · 127.0.0.1:9231',
+    'row.cli':'CLI 通道','row.cli.desc':'允许命令行（linkdeskctl）操作，适合脚本与命令行 AI。','row.cli.state':'运行中',
+    'g.safety':'开放范围与安全','g.safety.desc':'AI 能做什么，取决于权限档位。',
+    'row.tier':'权限档位',
+    'tier.read':'只读','tier.ask':'逐次确认','tier.auto':'自主','tier.full':'完全访问',
+    'tier.read.desc':'AI 只能查看，不能修改。',
+    'tier.ask.desc':'AI 每次修改前都会询问你。',
+    'tier.auto.desc':'日常修改由 AI 完成；安装、更新等不可撤销操作仍会询问。',
+    'tier.full.desc':'所有操作都不再询问，直到你手动改回。',
+    'tier.full.alert':'完全访问已开启。所有操作不再询问。','tier.reset':'恢复默认（自主）',
+    'cap.view':'查看','cap.open':'打开标签','cap.write':'写入文件','cap.install':'安装与更新',
+    'dec.allow':'允许','dec.ask':'询问','dec.deny':'不允许',
+    'row.caps':'AI 能做什么','row.caps.desc':'按当前档位列出常见操作的风险与结论；完整清单含每条命令与说明。','row.caps.open':'查看完整清单…',
+    'row.token':'接入凭据','row.token.desc':'AI 客户端连接本软件时使用的凭据。重新生成后，已连接的客户端需要更新配置。','row.token.regen':'重新生成…',
+    'sb.left':'就绪','sb.bell':'通知 1',
+    'badge.read':'AI 只读','badge.ask':'AI 询问','badge.auto':'AI 自主','badge.full':'AI 全权',
+    'f3.badges':'四档徽标（同一位置、同一字号）',
+    'f3.badge.note':'徽标文案与设置页共用同一份语言资源；切换语言、切换档位都即时更新（不再需要点一下控件）。',
+    'f3.notif':'切换完全访问：一条通知，8 秒后自动收起',
+    'notif.toast':'权限已改为「完全访问」。可随时恢复默认。','notif.title':'通知','notif.clear':'清除已完成','notif.fold':'收起',
+    'notif.body':'权限已改为「完全访问」：所有操作不再询问。','notif.source':'来源 · 权限设置','notif.reset':'恢复默认',
+    'f3.notif.note':'同一事件只保留一条（重复切换只更新那一条）；轻提示 8 秒自动消失；通知面板不堆积重复条目。',
+    'frame2.note':'弹窗内容与设置页同一份数据（当前档位、风险级、判定）。',
+    'dlg.title':'AI 操作与风险','dlg.sub':'风险由软件统一登记；插件声明的命令也按同一标准归类。当前档位：',
+    'dlg.tab.all':'全部操作','dlg.tab.sensitive':'敏感能力','dlg.close':'关闭',
+    'col.op':'操作','col.desc':'说明','col.risk':'风险','col.now':'当前','col.cap':'能力','col.rule':'规则',
+    'risk.view':'读取界面状态','risk.view.desc':'查看标签、通知与布局','risk.view.risk':'只读',
+    'risk.open':'打开标签页','risk.open.desc':'切换到某个页面，可取消','risk.open.risk':'可撤销',
+    'risk.write':'修改工作区文件','risk.write.desc':'修改项目中的文件','risk.write.risk':'会留改动',
+    'risk.install':'安装插件','risk.install.desc':'安装后会开始运行新代码','risk.install.risk':'不可撤销',
+    'risk.update':'安装软件更新','risk.update.desc':'重启并替换程序本体','risk.update.risk':'不可撤销',
+    'risk.protected':'修改权限设置','risk.protected.desc':'仅限你本人操作','risk.protected.risk':'受保护',
+    's.install':'安装与更新','s.rule.install':'始终需要你确认','s.protected':'权限设置','s.rule.protected':'仅限你本人操作',
+    's.debug':'调试端口','s.rule.debug':'不在 AI 可调用范围内','s.rest':'其他操作','s.rule.rest':'由当前档位决定',
+    'dlg.close':'关闭',
+  },
+  en: {
+    'nav.general':'General','nav.theme':'Theme','nav.keys':'Keybindings','nav.lang':'Language','nav.ai':'AI Access','nav.about':'About',
+    'page.title':'AI Access','page.sub':'Let outside AI (assistants, scripts, agents) operate LinkDesk. With both channels off, no local program can connect.',
+    'g.channel':'Channels','g.channel.desc':'Changes take effect after a restart; the grey text on the right is live status.',
+    'row.mcp':'MCP channel','row.mcp.desc':'Allow MCP clients to discover and call the exposed capabilities.','row.mcp.state':'Running · 127.0.0.1:9231',
+    'row.cli':'CLI channel','row.cli.desc':'Allow the command line (linkdeskctl) to operate the app.','row.cli.state':'Running',
+    'g.safety':'Scope and safety','g.safety.desc':'What the AI can do depends on the permission tier.',
+    'row.tier':'Permission tier',
+    'tier.read':'Read-only','tier.ask':'Ask each time','tier.auto':'Autonomous','tier.full':'Full access',
+    'tier.read.desc':'The AI can look, but cannot change anything.',
+    'tier.ask.desc':'The AI asks before every change.',
+    'tier.auto.desc':'Routine changes run automatically; installs and updates still ask first.',
+    'tier.full.desc':'Nothing is asked until you change this back.',
+    'tier.full.alert':'Full access is on. Nothing will be asked.','tier.reset':'Restore default (Autonomous)',
+    'cap.view':'View','cap.open':'Open tabs','cap.write':'Write files','cap.install':'Install & update',
+    'dec.allow':'Allowed','dec.ask':'Asks','dec.deny':'Not allowed',
+    'row.caps':'What the AI can do','row.caps.desc':'Common actions with their risk and current outcome; the full list includes every command.','row.caps.open':'View full list…',
+    'row.token':'Access credentials','row.token.desc':'Credentials AI clients use to connect. After regenerating, connected clients need the new value.','row.token.regen':'Regenerate…',
+    'sb.left':'Ready','sb.bell':'Notifications 1',
+    'badge.read':'AI read-only','badge.ask':'AI asks','badge.auto':'AI autonomous','badge.full':'AI full access',
+    'f3.badges':'Four badge states (same position and size)',
+    'f3.badge.note':'The badge and the settings page share one language source; both update immediately on language or tier changes.',
+    'f3.notif':'Switching to full access: one notification, auto-collapsed after 8s',
+    'notif.toast':'Permission changed to Full access. You can restore the default anytime.','notif.title':'Notifications','notif.clear':'Clear completed','notif.fold':'Collapse',
+    'notif.body':'Permission changed to Full access: nothing will be asked.','notif.source':'Source · Permission settings','notif.reset':'Restore default',
+    'f3.notif.note':'One entry per event (repeated switches update it); the toast disappears after 8s; the panel never accumulates duplicates.',
+    'frame2.note':'The dialog reads the same data as the settings page (tier, risk, outcome).',
+    'dlg.title':'AI actions and risk','dlg.sub':'Risk is registered by the app; declared plugin commands use the same scale. Current tier: ',
+    'dlg.tab.all':'All actions','dlg.tab.sensitive':'Sensitive capabilities','dlg.close':'Close',
+    'col.op':'Action','col.desc':'Description','col.risk':'Risk','col.now':'Now','col.cap':'Capability','col.rule':'Rule',
+    'risk.view':'Read UI state','risk.view.desc':'Tabs, notifications and layout','risk.view.risk':'Read-only',
+    'risk.open':'Open a tab','risk.open.desc':'Switch to a page; reversible','risk.open.risk':'Reversible',
+    'risk.write':'Edit workspace files','risk.write.desc':'Change files in your project','risk.write.risk':'Leaves changes',
+    'risk.install':'Install a plugin','risk.install.desc':'New code starts running','risk.install.risk':'Irreversible',
+    'risk.update':'Install an app update','risk.update.desc':'Restart and replace the app','risk.update.risk':'Irreversible',
+    'risk.protected':'Change permission settings','risk.protected.desc':'You only','risk.protected.risk':'Protected',
+    's.install':'Install & update','s.rule.install':'Always asks you','s.protected':'Permission settings','s.rule.protected':'You only',
+    's.debug':'Debug port','s.rule.debug':'Not callable by the AI','s.rest':'Everything else','s.rule.rest':'Follows the current tier',
+    'dlg.close':'Close',
+  }
+};
+
+let lang = 'zh';
+const t = (k) => (DICT[lang] && DICT[lang][k]) || k;
+
+const MODES = ['read','ask','auto','full'];
+const MODE_MATRIX = {
+  read: {view:'allow', open:'deny', write:'deny', install:'deny'},
+  ask:  {view:'allow', open:'ask',  write:'ask',  install:'ask'},
+  auto: {view:'allow', open:'allow',write:'allow',install:'ask'},
+  full: {view:'allow', open:'allow',write:'allow',install:'allow'},
+};
+const DEC_CLASS = {allow:'dec-allow', ask:'dec-ask', deny:'dec-deny'};
+let mode = 'auto';
+
+function decLabel(d){ return d==='allow'?t('dec.allow'):d==='ask'?t('dec.ask'):t('dec.deny'); }
+
+const RISK_ROWS = [
+  {op:'risk.view', risk:'risk.view.risk', key:'view'},
+  {op:'risk.open', risk:'risk.open.risk', key:'open'},
+  {op:'risk.write', risk:'risk.write.risk', key:'write'},
+  {op:'risk.install', risk:'risk.install.risk', key:'install'},
+  {op:'risk.update', risk:'risk.update.risk', key:'install'},
+  {op:'risk.protected', risk:'risk.protected.risk', key:'protected'},
+];
+
+function renderSeg(){
+  const seg = document.getElementById('seg');
+  seg.innerHTML = MODES.map(m =>
+    `<button role="radio" aria-checked="${m===mode}" data-mode="${m}">${t('tier.'+m)}</button>`).join('');
+}
+function renderTier(){
+  const desc = document.getElementById('tierDesc');
+  desc.textContent = t('tier.'+mode+'.desc');
+  document.getElementById('fullAlert').classList.toggle('show', mode==='full');
+  document.getElementById('badgeLabel').textContent = t('badge.'+mode);
+  document.getElementById('dlgMode').textContent = t('tier.'+mode);
+  const caps = document.getElementById('caps');
+  const axis = [['view','cap.view'],['open','cap.open'],['write','cap.write'],['install','cap.install']];
+  caps.innerHTML = axis.map(([k,label]) => {
+    const d = MODE_MATRIX[mode][k];
+    return `<span><b>${t(label)}</b> <span class="${DEC_CLASS[d]}">${decLabel(d)}</span></span>`;
+  }).join('');
+  renderPreview();
+  renderRiskBody();
+}
+function renderPreview(){
+  const rows = [RISK_ROWS[0], RISK_ROWS[2], RISK_ROWS[3]];
+  document.getElementById('preview').innerHTML =
+    `<thead><tr><th>${t('col.op')}</th><th>${t('col.now')}</th></tr></thead><tbody>` +
+    rows.map(r => {
+      const d = r.key==='protected' ? 'deny' : MODE_MATRIX[mode][r.key];
+      return `<tr><td>${t(r.op)}</td><td class="${DEC_CLASS[d]}">${decLabel(d)}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+function renderRiskBody(){
+  document.getElementById('riskBody').innerHTML = RISK_ROWS.map(r => {
+    const d = r.key==='protected' ? 'deny' : MODE_MATRIX[mode][r.key];
+    return `<tr><td>${t(r.op)}</td><td style="color:var(--text-muted)">${t(r.op+'.desc')}</td>
+      <td style="color:var(--text-secondary)">${t(r.risk)}</td>
+      <td class="${DEC_CLASS[d]}">${decLabel(d)}</td></tr>`;
+  }).join('');
+  document.getElementById('sensitiveBody').innerHTML = [
+    ['s.install','s.rule.install', MODE_MATRIX[mode].install],
+    ['s.protected','s.rule.protected','deny'],
+    ['s.debug','s.rule.debug','deny'],
+    ['s.rest','s.rule.rest', MODE_MATRIX[mode].write],
+  ].map(([cap,rule,d]) => `<tr><td>${t(cap)}</td><td style="color:var(--text-muted)">${t(rule)}</td>
+      <td class="${DEC_CLASS[d]}">${decLabel(d)}</td></tr>`).join('');
+}
+function setMode(m){ mode = m; renderSeg(); renderTier(); }
+function renderTexts(){
+  document.querySelectorAll('[data-k]').forEach(el => { el.textContent = t(el.dataset.k); });
+  renderSeg(); renderTier();
+  document.getElementById('badgeLabel').textContent = t('badge.'+mode);
+  document.querySelectorAll('.lang-switch button').forEach(b => {
+    b.setAttribute('aria-pressed', String((b.id==='btnZh') === (lang==='zh')));
+  });
+}
+
+/* 交互 */
+document.getElementById('seg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-mode]');
+  if (b) setMode(b.dataset.mode);
+});
+document.getElementById('resetBtn').addEventListener('click', () => setMode('auto'));
+document.querySelectorAll('#openDialog,#openDialog2').forEach(btn => btn.addEventListener('click', () => {
+  document.getElementById('modal').classList.add('open');
+}));
+document.getElementById('modalClose').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('open');
+});
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x===b)));
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + b.dataset.tab));
+}));
+document.getElementById('btnZh').addEventListener('click', () => { lang='zh'; renderTexts(); });
+document.getElementById('btnEn').addEventListener('click', () => { lang='en'; renderTexts(); });
+
+renderTexts();
+</script>
+</body>
+</html>
