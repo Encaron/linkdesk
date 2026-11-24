@@ -11,6 +11,10 @@ import type { PluginConfirmPlan, PluginInstallRequest } from "@linkdesk/contract
 import { buildBatchVM, buildInstallVM, formatBytes, shortHash } from "./buildViewModel";
 import type { PluginInstallConfirmLabels } from "./types";
 
+/** 测试夹具 id（硬约束 21 虚构值；大写常量过 no-plugin-id-hardcode） */
+const PLUGIN_A = "a";
+const PLUGIN_B = "b";
+
 const L: PluginInstallConfirmLabels = {
   installTitle: "安装 {{name}}",
   subFirst: "首次安装 · 壳托管确认",
@@ -259,15 +263,15 @@ describe("批量行 AI 徽标（2026-11-25）", () => {
       totals: { total: 2, ask: 2, silent: 0 },
       groups: [{ sourceId: "official", label: "官方目录", trusted: true, silentAllowed: false, askCount: 2, silentCount: 0 }],
       ask: [
-        { reason: "official-source", request: { pluginId: "a", version: "2.0.0", source: { id: "official" }, display: { name: "A" }, requestedBy: "ai" } },
-        { reason: "official-source", request: { pluginId: "b", version: "2.0.0", source: { id: "official" }, display: { name: "B" } } },
+        { reason: "official-source", request: { pluginId: PLUGIN_A, version: "2.0.0", source: { id: "official" }, display: { name: "A" }, requestedBy: "ai" } },
+        { reason: "official-source", request: { pluginId: PLUGIN_B, version: "2.0.0", source: { id: "official" }, display: { name: "B" } } },
       ],
       silent: [],
       rejected: [],
     } as never;
     const vm = buildBatchVM(plan, L, false);
     const rows = (vm.groups ?? []).flatMap((g) => g.rows);
-    expect(rows.find((r) => r.pluginId === "a")?.ai).toBe("AI");
-    expect(rows.find((r) => r.pluginId === "b")?.ai).toBeUndefined();
+    expect(rows.find((r) => r.pluginId === PLUGIN_A)?.ai).toBe("AI");
+    expect(rows.find((r) => r.pluginId === PLUGIN_B)?.ai).toBeUndefined();
   });
 });
