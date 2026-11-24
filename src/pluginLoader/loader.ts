@@ -25,8 +25,7 @@ import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/Plu
 import { initLifecycleConsumers } from "./lifecycle/lifecycle";
 // E5.8#11：状态机——watcher 卸载走 unloadPlugin（唯一卸载路径）+ 启动收尾失败诊断日志
 // E5.8#24 回归：watcher 跳过已失败/已挂起插件需要 getLoadDiagnostics 读状态机
-import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics, markLoadFailed } from "./resolution/loadState";
-import { versionGte } from "../core/utils/plugin/semverUtils";
+import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./resolution/loadState";
 // E5.8#61 审计#2：watcher 手动删目录卸载路径补 revert（原只有 lifecycle-ops 正规卸载走）——
 // lifecycle-ops 不 import loader（无环），此处反向 import 安全
 import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload } from "./lifecycle/lifecycle-ops";
@@ -94,16 +93,6 @@ export async function initPluginLoader(): Promise<void> {
   //    纯浏览器预览（无 pluginsApi）discoverInstalled 内回退 eager ?raw glob 种子，行为同旧（仅浏览器，Electron 零消费）。
   const discovered = await discoverInstalled();
 
-  // 1.5 壳版本（加载期兼容门）——插件声明 minAppVersion 高于本壳 ⇒ **不执行入口**
-  //     （插件可能 import 了本壳还没导出的共享件/命名空间；执行入口 = 链接期抛错 = 整块 UI 白屏）。
-  //     宁可明确显示「不适配 + 需要哪个版本」，也不让设置页这类核心面静默变白。
-  let shellVersion: string | null = null;
-  try {
-    shellVersion = (await linkdesk()?.app?.getVersion()) ?? null;
-  } catch {
-    shellVersion = null; // 读不到版本 → 跳过兼容门（⛔ 不误判为不适配）
-  }
-
   // 2. 加载每个已发现插件（跳过禁用）
   for (const entry of discovered) {
     const pluginId = entry.pluginId;
@@ -112,14 +101,6 @@ export async function initPluginLoader(): Promise<void> {
       log.appendLine(`插件 "${pluginId}" 已禁用——跳过`);
       // B2 fix: 种子缓存——禁用插件元数据入缓存，marketplace 不依赖文件系统（manifest 已在 listAll 结果中）
       cachePluginMetadata(pluginId, manifest, "disabled");
-      continue;
-    }
-    // 兼容门：声明的最低壳版本高于当前壳 ⇒ 不加载（入口 import 会在链接期抛错 ⇒ 整块 UI 白屏）
-    if (shellVersion && manifest.minAppVersion && !versionGte(shellVersion, manifest.minAppVersion)) {
-      const reason = `需要 LinkDesk ${manifest.minAppVersion}+（当前 ${shellVersion}）——已跳过加载`;
-      markLoadFailed(pluginId, reason);
-      errors.push(`${pluginId}: ${reason}`);
-      log.appendLine(`⛔ 插件 "${pluginId}" 不适配：${reason}`);
       continue;
     }
     try {

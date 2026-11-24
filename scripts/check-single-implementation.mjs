@@ -155,20 +155,13 @@ function main() {
   const official = officialPluginIds(SYNC_AGENTS);
   const repos = discoverPluginRepos(CONTAINER);
   if (!repos.length) console.log(`[info] 插件容器不在场或为空（${CONTAINER}）——只判壳域。`);
-  // 账本里插件仓的条目只在“那个仓在场”时才可能匹配；容器缺席的 CI 里不能把它们判成过期
-  const scanned = new Set(["shell"]);
   for (const repo of repos) {
     if (official && !official.has(repo.id)) continue; // 第三方：不扫不判
-    scanned.add(repo.id);
     scanRepo(repo.id, repo.dir, repo.dir, true);
   }
 
   for (const k of ledgerKeys) {
     if (matched.has(k)) continue;
-    if (!scanned.has(k.split("|")[0])) {
-      console.log(`[info] 账本条目 ${k} 所属仓不在场——本轮不判过期（本机全量再验）`);
-      continue;
-    }
     console.error(`[error] scripts/single-impl-exempt.json → 期望「条目仍能在实况匹配」；实际「${k} 已找不到」；示例修法：删掉该条（分工已变/已合并），或核对 files 集合。`);
     errors++;
   }

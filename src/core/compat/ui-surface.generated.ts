@@ -20,7 +20,7 @@ export interface UiSurfaceLedger {
 }
 
 export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
-  shellVersion: "0.2.64",
+  shellVersion: "0.2.63",
   components: {
     "AiPolicyPicker": { since: "0.2.62" },
     "AiPolicyRiskLegend": { since: "0.2.63" },

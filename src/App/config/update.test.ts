@@ -33,7 +33,7 @@ describe("「更新」两键（并入「通用」组，同 pluginId 二次注册
 
     // 单独注册 ⇒ 本贡献就是 APP_PLUGIN_ID 的首个注册者，title 取 t("更新")；
     // 运行时 startup.ts 先注册「通用」，merge 时彼处 title 生效、此处只并属性（E2c #19g）
-    expect(contrib?.title).toBe("软件更新");
+    expect(contrib?.title).toBe("更新");
     expect(Object.keys(contrib?.properties ?? {})).toEqual(["app.update.mode", "app.update.showReleaseNotes"]);
   });
 
@@ -46,7 +46,7 @@ describe("「更新」两键（并入「通用」组，同 pluginId 二次注册
     // 枚举逐项必须有说明文案（设置页下拉的副标题）——少一条就有一条选项是哑的
     expect(prop?.enumDescriptions).toHaveLength(2);
     // 组内二级标题（E5.8#78）：归并后两键共用「更新」节（04-软件更新「设置页通用归类」）
-    expect(prop?.group).toBe("软件更新");
+    expect(prop?.group).toBe("更新");
   });
 
   it("app.update.showReleaseNotes：boolean + 默认 true", () => {
@@ -54,7 +54,7 @@ describe("「更新」两键（并入「通用」组，同 pluginId 二次注册
 
     expect(prop?.type).toBe("boolean");
     expect(prop?.default).toBe(true);
-    expect(prop?.group).toBe("软件更新");
+    expect(prop?.group).toBe("更新");
   });
 
   it("默认值能被 `getDefaults()` 收走（值真值表：auto / true，不是 undefined）", () => {

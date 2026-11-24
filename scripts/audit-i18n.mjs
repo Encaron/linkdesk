@@ -299,11 +299,6 @@ for (const root of ["src", "plugins"]) {
   walkDir(root, (full) => processFile(full, full.replace(/\\/g, "/")));
 }
 
-// 主进程也有 UI 文案键：AI 权限档位的 DTO **只返 i18n key**，由渲染方 t() 翻译。
-// 不扫这些文件 ⇒ 缺译永远不红（2026-11-24 实机：能力摘要/表行在英文界面夹中文）。
-const MAIN_UI_KEY_FILES = ["electron/services/aiBridge/policy/state.ts"];
-for (const rel of MAIN_UI_KEY_FILES) processFile(rel, rel);
-
 // ── 2b. 🔥 E6#161：manifest 声明串——按「谁的仓谁译文」判（归属腿） ──
 // 判据本体住 SDK（`own-dict-coverage.mjs`，作者侧 `ci-verify` ⑧ 段引的是同一份）；
 // 仓清单 = `scripts/lib/plugin-repos.mjs`（官方名单的唯一真相源，⛔ 不写死 id）。

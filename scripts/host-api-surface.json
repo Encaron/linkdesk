@@ -1653,6 +1653,7 @@
       "followTheme"
     ],
     "commandPrefixes": [
+      "aiPolicy.",
       "app.",
       "core.",
       "theme.",

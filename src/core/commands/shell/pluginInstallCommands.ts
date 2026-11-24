@@ -102,6 +102,21 @@ async function readCatalogRaw(catalogUrl: string): Promise<string> {
   return api.packageReadCatalog(catalogUrl);
 }
 
+
+/**
+ * 入参归一——命令面**两种调用形态都接**：
+ *   ① 位置参数 `executeCommand(id, url, query)`（`params[]` 的声明顺序，命令面板/快捷键走这条）；
+ *   ② 单个对象 `executeCommand(id, { catalogUrl, query })`（AI / 脚本常用，也是文档里的写法）。
+ * 🔴 只写一种就会「点了没反应，也不报错」——历史上踩过（菜单载荷形状失配）。
+ */
+function pick(args: unknown[], key: string, index: number): unknown {
+  const first = args[0];
+  if (first && typeof first === "object" && !Array.isArray(first)) {
+    return (first as Record<string, unknown>)[key];
+  }
+  return args[index];
+}
+
 export function registerPluginInstallCommands(): void {
   registerCommand(PID, {
     id: "plugins.listCatalog",
@@ -111,10 +126,11 @@ export function registerPluginInstallCommands(): void {
       { name: "catalogUrl", type: "string", required: true, description: t("目录源地址（marketplace.json 的 HTTPS 直链）") },
       { name: "query", type: "string", required: false, description: t("按 id / 名称 / 描述过滤") },
     ],
-    handler: async (args) => {
-      const a = (args ?? {}) as { catalogUrl?: string; query?: string };
-      if (!a.catalogUrl) throw new Error(t("缺少 catalogUrl"));
-      return selectCatalogEntries(await readCatalogRaw(a.catalogUrl), a.query);
+    handler: async (...args: unknown[]) => {
+      const catalogUrl = pick(args, "catalogUrl", 0);
+      const query = pick(args, "query", 1);
+      if (typeof catalogUrl !== "string" || !catalogUrl) throw new Error(t("缺少 catalogUrl"));
+      return selectCatalogEntries(await readCatalogRaw(catalogUrl), typeof query === "string" ? query : undefined);
     },
   });
 
@@ -134,11 +150,15 @@ export function registerPluginInstallCommands(): void {
         description: t("显式同意：跳过确认卡（只跳确认，不跳 HTTPS/哈希/minApp 校验）；仅本次生效"),
       },
     ],
-    handler: async (args) => {
-      const a = (args ?? {}) as { catalogUrl?: string; pluginId?: string; yes?: boolean };
-      if (!a.catalogUrl || !a.pluginId) throw new Error(t("缺少 catalogUrl 或 pluginId"));
-      const entry = selectCatalogEntries(await readCatalogRaw(a.catalogUrl)).find((e) => e.id === a.pluginId);
-      if (!entry) throw new Error(t("目录里没有这个插件：{{id}}", { id: a.pluginId }));
+    handler: async (...args: unknown[]) => {
+      const catalogUrl = pick(args, "catalogUrl", 0);
+      const pluginId = pick(args, "pluginId", 1);
+      const yes = pick(args, "yes", 2) === true;
+      if (typeof catalogUrl !== "string" || !catalogUrl || typeof pluginId !== "string" || !pluginId) {
+        throw new Error(t("缺少 catalogUrl 或 pluginId"));
+      }
+      const entry = selectCatalogEntries(await readCatalogRaw(catalogUrl)).find((e) => e.id === pluginId);
+      if (!entry) throw new Error(t("目录里没有这个插件：{{id}}", { id: pluginId }));
       if (!entry.downloadUrl) throw new Error(t("目录条目缺下载地址"));
 
       const req: PluginInstallRequest = {
@@ -147,11 +167,11 @@ export function registerPluginInstallCommands(): void {
         version: entry.version,
         downloadUrl: entry.downloadUrl,
         sha256: entry.sha256,
-        source: { id: sourceIdOfCatalog(a.catalogUrl), url: a.catalogUrl },
+        source: { id: sourceIdOfCatalog(catalogUrl), url: catalogUrl },
         display: { name: entry.name, description: entry.description, size: entry.size },
       };
 
-      if (a.yes === true) {
+      if (yes) {
         consentLog().appendLine(
           `consent yes: plugin=${req.pluginId} version=${req.version} sha256=${req.sha256 ?? "(none)"} source=${req.source.url}`,
         );
@@ -180,8 +200,9 @@ export function registerPluginInstallCommands(): void {
     title: t("添加市场源"),
     description: t("把一个市场目录源登记进设置（不安装任何东西）。登记后各市场与浏览面可读到它。"),
     params: [{ name: "catalogUrl", type: "string", required: true, description: t("目录源地址（marketplace.json 的 HTTPS 直链）") }],
-    handler: async (args) => {
-      const url = ((args ?? {}) as { catalogUrl?: string }).catalogUrl?.trim();
+    handler: async (...args: unknown[]) => {
+      const raw = pick(args, "catalogUrl", 0);
+      const url = typeof raw === "string" ? raw.trim() : "";
       if (!url) throw new Error(t("缺少 catalogUrl"));
       if (!/^https:\/\//i.test(url)) throw new Error(t("仅支持 HTTPS 目录源"));
       const id = sourceIdOfCatalog(url);
