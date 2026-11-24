@@ -45,14 +45,11 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
   /* ── R0 读 ── */
   "workbench.action.getConfiguration": { risk: "R0", what: "读取配置", why: "只看当前值，不改任何东西" },
   "workbench.action.listConfigurations": { risk: "R0" },
-  // P1 零插件路径：列目录只读，不装、不改状态——read 档必须允许
-  "plugins.listCatalog": { risk: "R0", what: "列出市场目录", why: "只读取目录，不安装、不改任何状态" },
 
   /* ── R1 可撤销写 ── */
   // 写非安全键可撤回；`ai.*` 另有 L1 拒写（settingsCommands.ts 的 WRITE_BLOCKED_PREFIXES）
   "workbench.action.setConfiguration": { risk: "R1", what: "修改设置", why: "改的是设置值，可改回来；权限设置本身不在其中" },
   "workbench.action.openKeybindingsSettings": { risk: "R1" },
-  "core.closeTab": { risk: "R1", what: "关闭标签页", why: "可撤销：用「重新打开已关闭的编辑器」恢复；不会删除文件或数据" },
 
   /* ── R2 有副作用写 ── */
   "workbench.action.clearConfiguration": { risk: "R2", what: "清除设置覆盖", why: "把改过的设置恢复默认（可以重新设置）" },
@@ -65,25 +62,9 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
   // 能改门本身的命令：userOnly（L2 先拦，AI 永远够不着）；登记 R3 只为账本/自述口径完整
   "aiPolicy.setMode": { risk: "R3", what: "切换 AI 权限档位", why: "改的就是门本身——只许用户操作" },
   "aiPolicy.resetToDefault": { risk: "R3", what: "恢复默认权限", why: "改的就是门本身——只许用户操作" },
-  // 插件安装/卸载是「陌生代码」与「删已装代码」——⛔ 不许按未登记命令兜底成 R1
-  "plugins.installFromCatalog": {
-    risk: "R3",
-    what: "从市场目录安装插件",
-    why: "插件是陌生代码，装上就会运行；可卸载，但插件数据可能一并丢失",
-  },
-  "plugins.retryInstall": {
-    risk: "R3",
-    what: "重试安装插件",
-    why: "仍然会运行陌生代码；确认与校验不因重试而跳过",
-  },
-  "marketplace.uninstall": {
-    risk: "R3",
-    what: "卸载插件",
-    why: "会删除已安装的插件代码，插件数据可能一并丢失；重装不等于恢复数据",
-  },
   "update.openUpdateFlow": {
     risk: "R3",
-    what: "处理主软件更新（有新版本会先下载，下载完重启并安装）",
+    what: "处理主软件更新（有新版本会先下载，下载完**重启并装**）",
     why: "装更新 = 换掉正在跑的程序本体，不可回退",
   },
 };

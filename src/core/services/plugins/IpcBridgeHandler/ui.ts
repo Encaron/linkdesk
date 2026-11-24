@@ -31,8 +31,6 @@ import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
 import i18n from "../../../../i18n";
 import type { LinkDeskAPI, MenuItemDescriptor, PluginToastAction } from "../../../api/linkdesk-api";
 import type { DialogContentOpenOptions, DialogI18nText } from "../../../types/ipc/dialogs"; // E6#71c 富内容确认打开参数 · 2026-11-24 主进程确认框只传 key
-import type { AiConfirmDialogRequest } from "../../../types/ipc/aiConfirm";
-import { AI_CONFIRM_HOST_VIEW } from "../../../types/ipc/aiConfirm";
 
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
@@ -83,22 +81,8 @@ export async function handleDialogChannel(channel: string, args: unknown[]): Pro
   switch (channel) {
     // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
     case "dialog:confirm": {
-      const [message] = args as [string | DialogI18nText | AiConfirmDialogRequest];
-      // AI 确认卡：结构化载荷 → 同一 DialogHost 内容槽（⛔ 不新造弹窗机制）
-      if (
-        message &&
-        typeof message === "object" &&
-        "hostView" in message &&
-        message.hostView === AI_CONFIRM_HOST_VIEW
-      ) {
-        const fallback = i18n.t(message.payload.titleKey);
-        return confirmContent({
-          title: "",
-          message: fallback,
-          content: { hostView: AI_CONFIRM_HOST_VIEW, payload: message.payload },
-        });
-      }
-      return confirm({ title: "", message: resolveDialogText(message as string | DialogI18nText) });
+      const [message] = args as [string | DialogI18nText];
+      return confirm({ title: "", message: resolveDialogText(message) });
     }
     // ── E6#71c：富内容确认——插件自绘确认内容（content 视图 + 不透明 payload）。
     //    壳 DialogService.confirmContent → bridges 解析 content 视图 renderPath → 推池 DialogHost；
