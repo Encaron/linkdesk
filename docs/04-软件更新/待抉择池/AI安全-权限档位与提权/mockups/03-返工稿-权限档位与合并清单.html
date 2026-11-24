@@ -64,9 +64,14 @@ h1 small{font-size:13px;font-weight:400;color:var(--text-muted);display:block;ma
 .policy-alert{display:none;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.08);border-radius:var(--radius-sm);font-size:11.5px;color:var(--warn);line-height:1.5}
 .policy-alert.show{display:flex}
 .policy-alert button{appearance:none;border:none;background:transparent;color:var(--accent-hover);font-family:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;white-space:nowrap}
-.caps{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
-.caps b{font-weight:500;color:var(--text-secondary)}
+.caps{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11.5px;color:var(--text-secondary);line-height:1.6}
+.caps b{font-weight:500;color:var(--text-secondary);margin-right:4px}
 .allow{color:var(--ok)} .ask{color:var(--warn)} .deny{color:var(--danger)}
+/* 判定 chip：实心底 + 掏空字（字色取面板底色）——任何壁纸下都能读 */
+.cap-chip{display:inline-flex;align-items:center;padding:0 8px;border-radius:4px;font-weight:600;line-height:1.7;white-space:nowrap}
+.cap-chip.allow{background:var(--ok);color:var(--bg-window)}
+.cap-chip.ask{background:var(--warn);color:var(--bg-window)}
+.cap-chip.deny{background:var(--danger);color:var(--bg-window)}
 
 /* 按钮 */
 .btn{appearance:none;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-family:inherit;font-size:12px;height:28px;padding:0 14px;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap}
@@ -493,14 +498,16 @@ function renderDecisions(){
   });
 }
 function renderTier(){
-  document.getElementById('tierDesc').textContent = t('tier.'+mode+'.desc');
+  const descEl=document.getElementById('tierDesc');
+  descEl.textContent = t('tier.'+mode+'.desc');
+  descEl.style.display = mode==='full' ? 'none' : '';
   document.getElementById('fullAlert').classList.toggle('show', mode==='full');
   document.getElementById('badgeLabel').textContent = t('badge.'+mode);
   document.getElementById('badgeDemo').className = 'badge ' + (mode==='full'?'full':mode==='auto'?'accent':'');
   const axis = [['view','cap.view'],['open','cap.open'],['write','cap.write'],['install','cap.install']];
   document.getElementById('caps').innerHTML = axis.map(([k,label]) => {
     const d = MODE_MATRIX[mode][k];
-    return `<span><b>${t(label)}</b> <span class="${decClass(d)}">${decLabel(d)}</span></span>`;
+    return `<span><b>${t(label)}</b><span class="cap-chip ${decClass(d)}">${decLabel(d)}</span></span>`;
   }).join('');
   renderDecisions();
 }

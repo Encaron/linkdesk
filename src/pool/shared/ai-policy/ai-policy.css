@@ -168,9 +168,23 @@
   display: inline-flex;
   align-items: center;
   padding: 0 8px;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-input);
   font-weight: 600;
-  line-height: 1.6;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.ldk-ai-policy-state-chip.ldk-ai-policy-state-allow {
+  background: var(--success);
+  color: var(--bg-window);
+}
+
+.ldk-ai-policy-state-chip.ldk-ai-policy-state-ask {
+  background: var(--warning);
+  color: var(--bg-window);
+}
+
+.ldk-ai-policy-state-chip.ldk-ai-policy-state-deny {
+  background: var(--danger);
+  color: var(--bg-window);
 }

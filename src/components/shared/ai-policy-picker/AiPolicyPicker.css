@@ -75,10 +75,6 @@
 /* 能力摘要：一行四个「名称 结论」，结论用文字 + 语义色（无 emoji） */
 .ldk-ai-policy-caps {
   margin: 0;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-input);
   display: flex;
   flex-wrap: wrap;
   gap: 4px 16px;
@@ -139,14 +135,28 @@
   white-space: nowrap;
 }
 
-/* 判定 chip：极端壁纸下文字仍可读（底色 + 边，颜色只作语义标记） */
+/* 判定 chip：实心底 + 掏空字（字色 = 面板底色）——任何壁纸下都能读 */
 .ldk-ai-policy-chip {
   display: inline-flex;
   align-items: center;
   padding: 0 8px;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-input);
   font-weight: 600;
-  line-height: 1.6;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.ldk-ai-policy-chip.ldk-ai-policy-allow {
+  background: var(--success);
+  color: var(--bg-window);
+}
+
+.ldk-ai-policy-chip.ldk-ai-policy-ask {
+  background: var(--warning);
+  color: var(--bg-window);
+}
+
+.ldk-ai-policy-chip.ldk-ai-policy-deny {
+  background: var(--danger);
+  color: var(--bg-window);
 }
