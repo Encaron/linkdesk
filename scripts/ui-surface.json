@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-10-05T16:26:14.762Z",
-  "shellVersion": "0.2.63",
+  "shellVersion": "0.2.64",
   "components": {
     "AiPolicyPicker": { "since": "0.2.62" },
     "AiPolicyRiskLegend": { "since": "0.2.63" },

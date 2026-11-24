@@ -163,7 +163,9 @@
   color: var(--danger);
 }
 
-/* 敏感表判定 chip：池侧独立命名，避免与共享域同名 */
+/* 敏感表判定 chip：池侧独立命名，避免与共享域同名。与共享件 chip 同视觉规格，
+ * 跨包各持一份样式表（语义不同，不合并类名）；克隆命中按本仓惯例豁免。 */
+/* jscpd:ignore-start */
 .ldk-ai-policy-state-chip {
   display: inline-flex;
   align-items: center;
@@ -188,3 +190,4 @@
   background: var(--danger);
   color: var(--bg-window);
 }
+/* jscpd:ignore-end */

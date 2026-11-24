@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 102 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 105 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -183,11 +183,14 @@
 | `workbench.action.selectLanguage` | 选择语言 | 打开语言选择器切换界面语言 | —— | —— |
 | `workbench.action.setConfiguration` | 写入配置项 | 写一个配置键的用户值（user scope）——先按声明面校验（键是否声明／类型／枚举／上下界／是否显示槽／是否 ai.* 禁写），写完当场回读，回执带写入前后值。⛔ 它不替你想「该写什么值」：键名与默认值看 workbench.acti… | `ctx`: object 必填 — { key: string; value: unknown }——value 按该键声明类型给（字符串/数字/布尔/数组/对象直接给，⛔ 不必包成对象）；也可逐位写成 ("键名", 值) | —— |
 
-### （未分类）（6）
+### （未分类）（9）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
 | `app.aboutCopy` | About: Copy | 把关于页的全部字段以 key: value 多行文本复制到剪贴板 | —— | `false` |
+| `plugins.addSource` | 添加市场源 | 把一个市场目录源登记进设置（不安装任何东西）。登记后各市场与浏览面可读到它。 | `catalogUrl`: string 必填 — 目录源地址（marketplace.json 的 HTTPS 直链） | —— |
+| `plugins.installFromCatalog` | 从市场目录安装插件 | 从某个市场目录源安装/更新一个插件。默认弹壳确认卡；非交互调用（AI/脚本）必须显式传 yes:true，否则拒绝执行。 | `catalogUrl`: string 必填 — 目录源地址（marketplace.json 的 HTTPS 直链）<br>`pluginId`: string 必填 — 要装的插件 id（目录条目 id）<br>`yes`: boolean 可选 — 显式同意：跳过确认卡（只跳确认，不跳 HTTPS/哈希/minApp 校验）；仅本次生效 | —— |
+| `plugins.listCatalog` | 列出市场目录 | 只读：拉取一个市场目录源并列出插件（可按关键词过滤）。不安装、不改任何状态。 | `catalogUrl`: string 必填 — 目录源地址（marketplace.json 的 HTTPS 直链）<br>`query`: string 可选 — 按 id / 名称 / 描述过滤 | —— |
 | `quickpick.show` | QuickPick | 弹出选择列表让用户选一项，并把选中项返回给调用方（取消返回 undefined） | `options`: object 必填 — { title?: string; items: { label: string; description?: string }[] }——候选列表与浮层标题 | `false` |
 | `update.releaseNotesDismissBanner` | Release Notes: Dismiss Banner | 收掉发行说明横幅（只关横幅，不记已读版本） | —— | `false` |
 | `update.releaseNotesRefresh` | Release Notes: Refresh | 绕过 24 小时缓存重新拉取发行说明列表（保持当前所选版本） | —— | `false` |
@@ -200,7 +203,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**19 个域接口 → 51 个命名空间 / 281 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**19 个域接口 → 51 个命名空间 / 286 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -238,7 +241,7 @@
 | `pluginAssets` | PluginAssetsAPI | 1 | `getUrl` | —— |
 | `pluginManager` | PluginsAPI | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), … |
 | `pluginState` | DataAPI | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persistence |
-| `plugins` | PluginsAPI | 22 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
+| `plugins` | PluginsAPI | 27 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageReadCatalog`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `prepareInstall`° `prepareUpdateBatch`° `commitInstall`° `discardInstall`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
 | `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + se… |
 | `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main process). parseLine/detect are stripped before returning (J… |
 | `quickPick` | UiAPI | 1 | `show` | plugin quickPick picker — local bridge inside the pool (zero IPC, rendered by QuickPickHost). A settle of null → undefi… |

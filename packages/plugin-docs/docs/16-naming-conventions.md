@@ -97,7 +97,7 @@ The table below is **reconciled name by name** against it (gate `scripts/check-r
 
 | Family | Reserved name | What happens if you take it |
 |:--|:--|:--|
-| Host command prefix | `app.`、`aiPolicy.`、`core.`、`theme.`、`update.`、`view.`、`workbench.` | Your command id lands in the host's own segment — in the command palette and the keybindings page it looks like a host feature |
+| Host command prefix | `app.`、`core.`、`theme.`、`update.`、`view.`、`workbench.` | Your command id lands in the host's own segment — in the command palette and the keybindings page it looks like a host feature |
 | Host protocol id | `bracket` | Same name as the host's bracket-matching protocol handler ⇒ one of the two never runs, with no error |
 | Allowed external protocols (openExternal) | `http`、`https`、`mailto`、`vscode` | The plugin-facing `shell.openExternal(url)` admits only these four protocols the host **recognizes** (`vscode:` is the sample of a constant-registered protocol; a third-party editor works the same way — add a line if you need it). A protocol outside the table means your request is **refused on the spot** (the Promise rejects; it is not silent) — adding one is a public-surface decision (change the shell constant and regenerate the ledger). ⚠️ `file:` / `javascript:` / `data:` are **explicitly refused**; don't try them |
 | Host pseudo plugin id | `app`、`appearance`、`ai-bridge`、`file-associations` | The host registers as a "plugin" too (shell core / appearance / AI integration / default-open-with section; the former "update" group merged into General on 2026-09-26 — `update` is retired & logged) ⇒ these ids read as the host itself; its config keys (`ai.*`) are under the same protected-zone rules |
