@@ -10,7 +10,7 @@
  * 写「已校验」是假话（校验发生在下载分段，失败即拒并清暂存）。
  */
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { PluginConfirmVM } from "./types";
 import "./plugin-install-confirm.css";
 import { RememberCheck } from "./pieces/RememberCheck";
@@ -41,6 +41,8 @@ function ShieldIcon({ warn }: { warn: boolean }) {
 
 export default function PluginInstallConfirm({ vm, onConfirm, onCancel, onRememberChange }: PluginInstallConfirmProps) {
   const titleId = useId();
+  // AI 说明默认 3 行折叠（长理由不该把按钮顶出视野）；点「展开」看全文
+  const [aiExpanded, setAiExpanded] = useState(false);
   const danger = vm.footer.tone === "danger";
   const warnIcon = vm.kind === "install" && vm.warn !== undefined;
 
@@ -86,6 +88,19 @@ export default function PluginInstallConfirm({ vm, onConfirm, onCancel, onRememb
           <div className="ldk-pic-warn" role="note">
             {vm.warn}
           </div>
+        )}
+
+        {vm.aiNote && (
+          <section className="ldk-pic-ainote" aria-label={vm.aiNote.title}>
+            <div className="ldk-pic-ainote-head">
+              <span className="ldk-pic-ainote-title">{vm.aiNote.title}</span>
+              <span className="ldk-pic-ainote-hint">{vm.aiNote.hint}</span>
+            </div>
+            <p className={aiExpanded ? "ldk-pic-ainote-body" : "ldk-pic-ainote-body is-clamped"}>{vm.aiNote.body}</p>
+            <button type="button" className="ldk-pic-ainote-more" onClick={() => setAiExpanded((v) => !v)}>
+              {aiExpanded ? vm.aiNote.less : vm.aiNote.more}
+            </button>
+          </section>
         )}
 
         {vm.remember && (

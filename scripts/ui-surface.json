@@ -1,8 +1,7 @@
 {
   "generatedAt": "2026-10-05T16:26:14.762Z",
-  "shellVersion": "0.2.64",
+  "shellVersion": "0.2.63",
   "components": {
-    "AiConfirmCard": { "since": "0.2.64" },
     "AiPolicyPicker": { "since": "0.2.62" },
     "AiPolicyRiskLegend": { "since": "0.2.63" },
     "BackgroundImagePicker": { "since": "0.2.40" },
@@ -88,11 +87,6 @@
     "urlSourceKey": { "since": "0.2.13" }
   },
   "types": {
-    "AiConfirmCardPayload": { "since": "0.2.64" },
-    "AiConfirmCardProps": { "since": "0.2.64" },
-    "AiConfirmKind": { "since": "0.2.64" },
-    "AiConfirmRow": { "since": "0.2.64" },
-    "AiConfirmTarget": { "since": "0.2.64" },
     "AiPolicyCapability": { "since": "0.2.63" },
     "AiPolicyDecision": { "since": "0.2.63" },
     "AiPolicyOption": { "since": "0.2.62" },
@@ -138,5 +132,5 @@
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 129
+  "count": 123
 }

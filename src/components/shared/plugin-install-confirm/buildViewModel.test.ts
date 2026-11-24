@@ -57,6 +57,12 @@ const L: PluginInstallConfirmLabels = {
   actionConfirmBatch: "确认更新 {{n}} 个",
   actionRunBatch: "直接更新 {{n}} 个",
   actionCancelBatch: "取消",
+  originLabel: "发起方",
+  originAI: "AI",
+  aiNoteTitle: "AI 说明",
+  aiNoteHint: "由发起请求的 AI 提供",
+  aiNoteMore: "展开",
+  aiNoteLess: "收起",
 };
 
 function req(over: Partial<PluginInstallRequest> = {}): PluginInstallRequest {

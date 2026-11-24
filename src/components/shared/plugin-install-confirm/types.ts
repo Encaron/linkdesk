@@ -10,58 +10,11 @@
  * 占位符用 `{{name}}`，替换由 `format()` 做（唯一实现）。
  */
 
-import type { PluginConfirmPlan, PluginInstallRequest } from "@linkdesk/contracts";
-
-/** 文案包——壳侧 t() 解析后整体下发；`{{x}}` 为占位符 */
-export interface PluginInstallConfirmLabels {
-  /* ── 单项安装/更新卡 ── */
-  installTitle: string; // 安装 {{name}}
-  subFirst: string;
-  subSourceChanged: string;
-  subDowngrade: string;
-  subOfficial: string;
-  subUpdate: string;
-  noteFirst: string;
-  noteSourceChanged: string;
-  noteDowngrade: string;
-  kvPlugin: string;
-  kvPublisher: string;
-  kvSource: string;
-  kvVersion: string;
-  kvSize: string;
-  kvIntegrity: string;
-  kvOldSource: string;
-  kvNewSource: string;
-  integrityToVerify: string; // sha256 {{hash}} · 下载后校验
-  integrityMissing: string;
-  warnSourceChanged: string;
-  rememberSource: string;
-  actionInstall: string;
-  actionUpdate: string;
-  actionUpdateAnyway: string;
-  actionCancel: string;
-  unknownPublisher: string;
-  unknownSize: string;
-  /* ── 批量卡 ── */
-  batchTitle: string;
-  batchSub: string;
-  statTotal: string;
-  statAsk: string;
-  statSilent: string;
-  groupAsk: string; // {{n}} 个需要确认
-  groupSilent: string; // {{n}} 个免问
-  groupSilentSummary: string; // {{label}} {{n}} 个
-  badgeOfficial: string;
-  badgeThird: string;
-  silentLine: string; // {{summary}}按设置免问，将随本批一起执行。
-  silentAction: string; // 改为逐个确认
-  rememberOfficial: string;
-  batchEmpty: string;
-  batchNote: string;
-  actionConfirmBatch: string; // 确认更新 {{n}} 个
-  actionRunBatch: string; // 直接更新 {{n}} 个
-  actionCancelBatch: string;
-}
+/* 🔴 2026-11-25（D8′ 市场自绘）：文案包与可渲染载荷**归契约**——壳默认卡与市场自绘卡吃同一份。
+ * 分别定义两份 = 迟早漂移（一处加了行、另一处没有）。此处只做 re-export，⛔ 不再本地定义。 */
+export type { PluginInstallConfirmLabels, PluginConfirmViewPayload } from "@linkdesk/contracts";
+/** 兼容别名：本包既有消费方（壳 renderer / 池注册表）仍按旧名取 */
+export type { PluginConfirmViewPayload as PluginConfirmDialogPayload } from "@linkdesk/contracts";
 
 /** 键值行（单项卡的「插件/发布者/来源/版本/大小/完整性」） */
 export interface PluginConfirmKvRow {
@@ -102,25 +55,14 @@ export interface PluginConfirmVM {
   rows: PluginConfirmKvRow[];
   integrity?: { k: string; text: string; ok: boolean };
   warn?: string;
+  /** 发起方（AI 发起的安装）——壳下发的 `requestedBy==="ai"` 才有；⛔ 渲染体不自己猜 */
+  aiNote?: { title: string; hint: string; body: string; more: string; less: string };
   remember?: { label: string; checked: boolean };
   stats?: { total: number; ask: number; silent: number; labels: { total: string; ask: string; silent: string } };
   groups?: PluginConfirmBatchGroup[];
   silentLine?: { text: string; action: string };
   emptyText?: string;
   footer: { confirm: string; cancel: string; tone?: "danger" };
-}
-
-/** 确认卡弹窗载荷（壳 → 池，结构化克隆） */
-export interface PluginConfirmDialogPayload {
-  kind: "install" | "batch";
-  labels: PluginInstallConfirmLabels;
-  plan: PluginConfirmPlan;
-  /** 安装卡的当前版本（null/缺省 = 首装） */
-  fromVersion?: string | null;
-  /** 当前策略快照——批量卡的「以后官方源不再询问」勾选取它做初值（⛔ 渲染体自己去读配置） */
-  policy?: { silentOfficial: boolean; silentTrustedSources: boolean };
-  /** 本批原始请求——改设置后就地重算要全量（`plan.silent` 是摘要行，装不下下载地址） */
-  reqs?: PluginInstallRequest[];
 }
 
 /**

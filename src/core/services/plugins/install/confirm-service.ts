@@ -33,6 +33,7 @@ import { getSourceIdentity, recordSourceIdentity } from "./ledger";
 import { dropPlanHandle, putPlanHandle, takePlanHandle, type PlanHandle } from "./plan-handles";
 import { bindingOfRequest, issueToken } from "./token";
 import { getUpdatePolicy, isSourceTrusted, sourceLabel } from "./trust";
+import { buildConfirmPayload } from "./view-payload";
 import { getShellExposed } from "../../../api/linkdesk-api/surfaces";
 import type {
   ConfirmPresentInfo,
@@ -215,7 +216,12 @@ export async function requestInstall(req: PluginInstallRequest): Promise<PluginI
   const ctx = await buildContext([req]);
   const plan = buildConfirmPlan([req], ctx);
   const handle = putPlanHandle("install", [req], plan);
-  const prepared: PluginInstallPrepared = { planId: handle.planId, plan, expiresAt: handle.expiresAt };
+  const prepared: PluginInstallPrepared = {
+    planId: handle.planId,
+    plan,
+    view: buildConfirmPayload(plan, "install", { fromVersion: ctx.facts(req.pluginId).installedVersion }),
+    expiresAt: handle.expiresAt,
+  };
 
   // 直接被拒（同版本 / 未放行降级）：不弹卡、不签票
   if (plan.totals.total === 0) {
@@ -254,7 +260,9 @@ export async function prepareInstall(req: PluginInstallRequest): Promise<PluginI
   const ctx = await buildContext([req]);
   const plan = buildConfirmPlan([req], ctx);
   const handle = putPlanHandle("install", [req], plan);
-  return { planId: handle.planId, plan, expiresAt: handle.expiresAt };
+  /* D8′：市场自绘卡要的载荷（文案/策略/旧版本）与壳默认卡**同一份**构造器 */
+  const view = buildConfirmPayload(plan, "install", { fromVersion: ctx.facts(req.pluginId).installedVersion });
+  return { planId: handle.planId, plan, view, expiresAt: handle.expiresAt };
 }
 
 /** 批量第一跳（一张计划的 ask/silent/分组全在返回值里） */
@@ -262,7 +270,8 @@ export async function prepareUpdateBatch(reqs: PluginInstallRequest[]): Promise<
   const ctx = await buildContext(reqs);
   const plan = buildConfirmPlan(reqs, ctx);
   const handle = putPlanHandle("batch", reqs, plan);
-  return { planId: handle.planId, plan, expiresAt: handle.expiresAt };
+  const view = buildConfirmPayload(plan, "batch", { reqs });
+  return { planId: handle.planId, plan, view, expiresAt: handle.expiresAt };
 }
 
 /**

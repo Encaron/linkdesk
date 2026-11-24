@@ -2544,6 +2544,14 @@ export interface PluginInstallRequest {
     /** 缺依赖解析目录（同 PluginInstallRequestOpts.catalogUrl 语义）——壳在同一 job 内自动装依赖用。
      *  🔴 市场**必须**带上（旧链靠它做依赖自动安装，漏了 = 依赖装不上、插件 parked）。 */
     catalogUrl?: string;
+    /**
+     * 发起方（2026-11-25 线 1 拍板：AI 发起的安装必须可辨认）——缺省 `user`。
+     * 进 `plan.items[].request` ⇒ 壳默认卡 / 市场自绘卡 / 命令面**三处同源**都能显示"发起方：AI"。
+     * ⛔ 不由渲染体自己猜（它拿不到"谁发起的"这个事实）。
+     */
+    requestedBy?: "user" | "ai";
+    /** AI 发起时的一句话理由（仅 `requestedBy === "ai"` 有意义；壳按 500 字硬截断，⛔ 不信任调用方长度）。 */
+    aiReason?: string;
     /** 目录条目声明的最低壳版本——壳**自己**再判一次（spec §四：不满足直接拦，不进入确认）。
      *  市场照抄目录条目即可；不带 = 不判（旧目录条目没有该字段）。 */
     minAppVersion?: string;
@@ -2619,6 +2627,90 @@ export interface PluginConfirmPlan {
     };
 }
 /**
+ * 确认卡**文案包**——壳 t() 解析后随载荷整体下发（`{{x}}` 为占位符）。
+ *
+ * 🔴 为什么在契约里而不在 UI 包里：文案是**壳的单一来源**（硬约束 2），而消费者有两个——
+ * 壳默认卡（D8）与**市场自绘卡**（D8′）。市场拿不到壳的 `t()`，只能吃壳下发好的字符串；
+ * 载荷要过结构化克隆（IPC），所以是字符串而不是函数。
+ */
+export interface PluginInstallConfirmLabels {
+    /* ── 单项安装/更新卡 ── */
+    installTitle: string; // 安装 {{name}}
+    subFirst: string;
+    subSourceChanged: string;
+    subDowngrade: string;
+    subOfficial: string;
+    subUpdate: string;
+    noteFirst: string;
+    noteSourceChanged: string;
+    noteDowngrade: string;
+    kvPlugin: string;
+    kvPublisher: string;
+    kvSource: string;
+    kvVersion: string;
+    kvSize: string;
+    kvIntegrity: string;
+    kvOldSource: string;
+    kvNewSource: string;
+    integrityToVerify: string; // sha256 {{hash}} · 下载后校验
+    integrityMissing: string;
+    warnSourceChanged: string;
+    rememberSource: string;
+    actionInstall: string;
+    actionUpdate: string;
+    actionUpdateAnyway: string;
+    actionCancel: string;
+    unknownPublisher: string;
+    unknownSize: string;
+    /* ── 批量卡 ── */
+    batchTitle: string;
+    batchSub: string;
+    statTotal: string;
+    statAsk: string;
+    statSilent: string;
+    groupAsk: string; // {{n}} 个需要确认
+    groupSilent: string; // {{n}} 个免问
+    groupSilentSummary: string; // {{label}} {{n}} 个
+    badgeOfficial: string;
+    badgeThird: string;
+    silentLine: string; // {{summary}}按设置免问，将随本批一起执行。
+    silentAction: string; // 改为逐个确认
+    rememberOfficial: string;
+    batchEmpty: string;
+    batchNote: string;
+    actionConfirmBatch: string; // 确认更新 {{n}} 个
+    actionRunBatch: string; // 直接更新 {{n}} 个
+    actionCancelBatch: string;
+    /* ── 发起方（2026-11-25）：AI 发起的安装/更新要能一眼看出来 ── */
+    originLabel: string; // 发起方
+    originAI: string; // AI（专名不译）
+    aiNoteTitle: string; // AI 说明
+    aiNoteHint: string; // 由发起请求的 AI 提供
+    aiNoteMore: string; // 展开
+    aiNoteLess: string; // 收起
+}
+/**
+ * 确认卡的**可渲染载荷**——壳默认卡（D8）与市场自绘卡（D8′）吃的是**同一份**。
+ *
+ * 分工：`plan` 是壳算的事实（来源/版本/哈希/风险），`labels` 是壳解析的文案，`policy` 决定勾选框初值。
+ * ⛔ 渲染体不许自己拼来源/版本/哈希，也不许自己判"要不要问"——只画这份。
+ * ⛔ 载荷**不含令牌**（token 永不过 IPC / 不进契约）。
+ */
+export interface PluginConfirmViewPayload {
+    kind: "install" | "batch";
+    labels: PluginInstallConfirmLabels;
+    plan: PluginConfirmPlan;
+    /** 安装卡的当前版本（null/缺省 = 首装） */
+    fromVersion?: string | null;
+    /** 当前策略快照——批量卡「以后官方源不再询问」勾选的初值（⛔ 渲染体自己去读配置） */
+    policy?: {
+        silentOfficial: boolean;
+        silentTrustedSources: boolean;
+    };
+    /** 本批原始请求——批内改设置后就地重算要全量（`plan.silent` 是摘要行，装不下下载地址） */
+    reqs?: PluginInstallRequest[];
+}
+/**
  * `prepareInstall` / `prepareUpdateBatch` 的产物——**两步确认的第一跳**（2026-11-24 D1′）。
  * 壳只算计划、⛔ 不弹任何 UI、零副作用；`planId` 短 TTL（5 分钟）且绑定请求指纹。
  * 市场拿 `plan` 自己画卡（可用共享件、可完全自绘）；用户点确认后再调 `commitInstall(planId)`。
@@ -2628,6 +2720,12 @@ export interface PluginInstallPrepared {
     planId: string;
     /** 壳算出的确认计划（来源/发布者/版本/哈希/风险唯一来源，⛔ 市场不许自造） */
     plan: PluginConfirmPlan;
+    /**
+     * 直接可渲染的载荷（labels ＋ plan ＋ policy ＋ reqs）——市场自绘卡**原样喂**给
+     * `@linkdesk/ui` 的 `buildInstallVM` / `buildBatchVM` 即可，⛔ 不用自己拼文案或事实。
+     * 与壳默认卡推给渲染槽的 payload 是**同一份**（`renderer.ts` 构造），此处提前给，市场不必等弹窗。
+     */
+    view: PluginConfirmViewPayload;
     /** 句柄到期时刻（ms）——到点后 commit 返回 `expired` */
     expiresAt: number;
 }

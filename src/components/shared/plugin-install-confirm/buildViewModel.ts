@@ -99,6 +99,8 @@ export function buildInstallVM(
     v: fromVersion ? `${fromVersion} → ${request.version}` : request.version,
   });
   rows.push({ k: labels.kvSize, v: formatBytes(request.display.size, labels.unknownSize) });
+  // 发起方（2026-11-25）：AI 发起的安装必须一眼可辨——事实来自 request（壳收口的），⛔ 不在这里猜
+  if (request.requestedBy === "ai") rows.push({ k: labels.originLabel, v: labels.originAI, tone: "warn" });
 
   const hasHash = !!request.sha256;
   const integrityText = hasHash
@@ -120,6 +122,10 @@ export function buildInstallVM(
     rows,
     integrity: { k: labels.kvIntegrity, text: integrityText, ok: hasHash },
     warn: reason === "source-changed" ? labels.warnSourceChanged : undefined,
+    aiNote:
+      request.requestedBy === "ai" && request.aiReason
+        ? { title: labels.aiNoteTitle, hint: labels.aiNoteHint, body: request.aiReason, more: labels.aiNoteMore, less: labels.aiNoteLess }
+        : undefined,
     // 官方来源恒信任（fixed）——不给「记住」勾选（勾了也没意义）
     remember:
       request.source.id === "official"

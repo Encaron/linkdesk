@@ -100,6 +100,17 @@ beforeEach(() => {
 });
 
 describe("prepareInstall / commitInstall", () => {
+  it("prepare 回执带 `view`（D8′：市场自绘卡与壳默认卡同一份载荷）", async () => {
+    setInstallExecutor(executor("1.0.0"));
+    const { view, plan } = await prepareInstall({ ...REQ, mode: "update", version: "2.0.0" });
+    expect(view.kind).toBe("install");
+    expect(view.plan).toBe(plan); // 同一份计划，⛔ 第二份推导
+    expect(view.labels.installTitle).toBe("安装 {{name}}");
+    expect(view.labels.originLabel).toBe("发起方");
+    expect(view.fromVersion).toBe("1.0.0"); // 旧版本由壳从账本读，市场不用自己查
+    expect(view.policy).toEqual({ silentOfficial: true, silentTrustedSources: false });
+  });
+
   it("prepare 零副作用：不执行、不记账", async () => {
     const ex = executor(null);
     setInstallExecutor(ex);

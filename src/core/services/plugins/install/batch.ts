@@ -45,6 +45,20 @@ function silentAllowedFor(sourceId: string, ctx: PolicyContext): boolean {
  * @param reqs 市场提交的原始请求（顺序 = 目录顺序，⛔ 不重排组内项）
  * @param ctx  预取好的事实 + 策略
  */
+/** AI 理由硬上限——与 AI 安全线口径一致（`aiReason` 500 字，超出截断） */
+const AI_REASON_MAX = 500;
+
+/**
+ * 请求归一——**唯一**一处把不可信的自由文本（AI 理由）收口：
+ * 计划、卡片载荷、执行器拿到的都是这一份。⛔ 别在渲染体里再截一次（第二处归一）。
+ */
+function sanitizeRequest(req: PluginInstallRequest): PluginInstallRequest {
+  if (req.requestedBy !== "ai" || typeof req.aiReason !== "string") return req;
+  const text = req.aiReason.trim();
+  if (!text) return { ...req, aiReason: undefined };
+  return { ...req, aiReason: text.length > AI_REASON_MAX ? `${text.slice(0, AI_REASON_MAX)}…` : text };
+}
+
 export function buildConfirmPlan(reqs: readonly PluginInstallRequest[], ctx: PolicyContext): PluginConfirmPlan {
   const ask: PluginConfirmItem[] = [];
   const silent: PluginConfirmSummaryRow[] = [];
@@ -84,7 +98,7 @@ export function buildConfirmPlan(reqs: readonly PluginInstallRequest[], ctx: Pol
 
     if (decision.kind === "ask") {
       ask.push({
-        request: req,
+        request: sanitizeRequest(req),
         reason: decision.reason,
         previous: decision.previous,
         // 🔴 旧来源的显示名由壳解析（同一份 sourceLabel）——契约里有这个字段但此前没人填，
@@ -95,7 +109,7 @@ export function buildConfirmPlan(reqs: readonly PluginInstallRequest[], ctx: Pol
     } else if (ctx.forceAsk) {
       // 预览用「全都问一遍」——把免问项原地提升为需确认（⛔ 不改设置、不落盘；原因按来源性质给）
       ask.push({
-        request: req,
+        request: sanitizeRequest(req),
         reason: sourceId === OFFICIAL_SOURCE_ID ? "official-source" : "untrusted-source",
       });
       group.askCount += 1;
