@@ -31,19 +31,13 @@ export function buildFileAssociationFace(ipcRenderer: IpcRenderer, events: Event
       ipcRenderer.invoke(IPC.fileAssociation.getOverrides),
     /** 2026-11-24（A6）：覆盖表变更订阅——事件到达后重读快照（归一化后回调） */
     onDidChangeOverrides: (cb: (overrides: FileAssociationOverrides) => void): (() => void) =>
-      events.on(FILE_ASSOCIATION_OVERRIDES_CHANGED, () => {
-        void ipcRenderer
-          .invoke(IPC.fileAssociation.getOverrides)
-          .then((table: FileAssociationOverrides) => {
-            try {
-              cb(table);
-            } catch {
-              /* contextBridge 回调静默失败 */
-            }
-          })
-          .catch(() => {
-            /* 读失败 = 等下一次变更 */
-          });
+      events.on(FILE_ASSOCIATION_OVERRIDES_CHANGED, (payload: { overrides?: FileAssociationOverrides } | undefined) => {
+        const table = payload?.overrides;
+        try {
+          if (table) cb(table);
+        } catch {
+          /* contextBridge 回调静默失败 */
+        }
       }),
     setDefault: (ext: string, pluginId: string | null): Promise<void> =>
       ipcRenderer.invoke(IPC.fileAssociation.setDefault, ext, pluginId),

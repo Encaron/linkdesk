@@ -136,6 +136,7 @@ export class IpcBridge {
     //  decorations:getDecoration 已随 E5.7#60 整删——注册表池内化，池内直答零 IPC）
     // T2 写面（第 3 波）：覆盖表唯一写口——代理到壳 ConfigurationService 单写者（D1/E31；
     //  ⚠️ setDefault 必须走壳：settings.json 的写路径归 ConfigurationService，主进程自写 = 第二写者）
+    IPC.fileAssociation.getOverrides, // 2026-11-24 A6：读面归壳渲染进程（ConfigurationService 内存值，非落盘滞后）
     IPC.fileAssociation.setDefault,
     IPC.fileAssociation.setDefaultBulk,
     IPC.workspace.setActive,

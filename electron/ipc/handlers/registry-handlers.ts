@@ -109,10 +109,6 @@ export function registerRegistryHandlers(): void {
     listHandlersFor(extension, await readOverrideTable())
   );
 
-  // 2026-11-24（A6）：覆盖表只读快照——UI 插件不再需要知道宿主配置键名/表形状。
-  // 写入仍走 fileAssociation:setDefault/setDefaultBulk（壳 ConfigurationService 单写者）。
-  ipcMain.handle(IPC.fileAssociation.getOverrides, async () => readOverrideTable());
-
   // E1/E2（D7）：第二竞争者出现 → 广播到壳（壳 startup 装配的提示组装弹通知）。
   // 广播时机 = 注册时间线（manifest loader 注册关联时）；启动批次落在壳订阅前被丢弃（启动不打扰）。
   onSecondContender((event) => {

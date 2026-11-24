@@ -61,10 +61,7 @@ function useConfiguration() {
   const [values, setValues] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
-    const cfg = lk().configuration;
-    void cfg.getConfigurationContributions().then(setContribs);
-    const off = cfg.onChange((key, value) => setValues((prev) => ({ ...prev, [key]: value })));
-    return off;
+    void lk().configuration.getConfigurationContributions().then(setContribs);
   }, []);
 
   const keys = useMemo(() => {
@@ -76,9 +73,20 @@ function useConfiguration() {
   useEffect(() => {
     if (keys.length === 0) return;
     const cfg = lk().configuration;
-    void Promise.all(keys.map(async (k) => [k, await cfg.get(k)] as const)).then((pairs) =>
-      setValues((prev) => ({ ...prev, ...Object.fromEntries(pairs) })),
+    let alive = true;
+    void Promise.all(keys.map(async (k) => [k, await cfg.get(k)] as const)).then((pairs) => {
+      if (alive) setValues(Object.fromEntries(pairs));
+    });
+    // 逐键订阅（池 configuration.onChange 的签名是 (key, cb)——无「全局 onChange」）
+    const unsubs = keys.map((k) =>
+      cfg.onChange(k, (v: unknown) => {
+        if (alive) setValues((prev) => ({ ...prev, [k]: v }));
+      }),
     );
+    return () => {
+      alive = false;
+      for (const off of unsubs) off();
+    };
   }, [keys]);
 
   const write = useCallback(async (key: string, value: unknown) => {
@@ -154,7 +162,7 @@ function AssociationManager() {
       {exts.map((ext) => (
         <div key={ext} className="msu-manager-row">
           <code>.{ext}</code>
-          <select value={overrides[ext] ?? ""} onChange={(e) => void pick(ext, e.target.value)}>
+          <select value={overrides[ext] ?? overrides["." + ext] ?? ""} onChange={(e) => void pick(ext, e.target.value)}>
             <option value="">（自动：宿主按声明序/角色兜底）</option>
             {(handlers[ext] ?? []).map((h) => (
               <option key={h.pluginId} value={h.pluginId}>

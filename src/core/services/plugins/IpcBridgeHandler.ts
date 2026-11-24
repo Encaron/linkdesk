@@ -66,6 +66,7 @@ export function initIpcBridgeHandler(): void {
         case "config:get":
         case "config:set":
         // T2 写面（第 3 波）：覆盖表唯一写口——读改写 workbench.fileAssociations（D1 单真相源）
+        case "fileAssociation:getOverrides":
         case "fileAssociation:setDefault":
         case "fileAssociation:setDefaultBulk":
           result = await handleConfigChannel(req.channel, req.args);

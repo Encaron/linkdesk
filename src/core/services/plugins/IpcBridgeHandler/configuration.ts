@@ -21,9 +21,19 @@ import type { ShellAPI } from "../../../api/linkdesk-api/shell";
 let _configUnsub: (() => void) | null = null;
 
 /** 2026-11-24（A6）：覆盖表变更广播——池 preload 收到后重读 getOverrides()（推归一化快照） */
+function readOverridesLive(): Record<string, string> {
+  const raw = getConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY) as Record<string, unknown> | undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw ?? {})) {
+    if (typeof v === "string" && v) out[k] = v;
+  }
+  return out;
+}
+
 function notifyOverridesChanged(): void {
   try {
-    window.linkdesk?.events?.emit(FILE_ASSOCIATION_OVERRIDES_CHANGED, {});
+    // 载荷直接带归一化快照——订阅方拿到即最新（⛔ 不等落盘/再读一次）
+    window.linkdesk?.events?.emit(FILE_ASSOCIATION_OVERRIDES_CHANGED, { overrides: readOverridesLive() });
   } catch {
     /* 无桥（单测/预览）= 无人订阅，静默 */
   }
@@ -56,6 +66,8 @@ export async function handleConfigChannel(channel: string, args: unknown[]): Pro
     // 广播 config:changed ⇒ 文件树选择器/设置页管理器（config.onChange）即时互见 = E31 双向同步。
     // ⚠️ 存储键形 = 带点小写（D1 示例 {".pdf":…}）；`normalizeAssociationOverrideKey` 归一；
     //    非法扩展名（空串）= no-op（E25 精确匹配口径下没有「模糊纠正」可言）。
+    case "fileAssociation:getOverrides":
+      return readOverridesLive();
     case "fileAssociation:setDefault": {
       const [ext, pluginId] = args as [string, string | null];
       const key = normalizeAssociationOverrideKey(ext);
