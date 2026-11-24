@@ -35,6 +35,8 @@ export interface PluginConfirmBatchRow {
   from?: string;
   to: string;
   icon?: string;
+  /** AI 发起的行徽标文案（`labels.originAI`）；缺省 = 用户发起，不画徽标 */
+  ai?: string;
 }
 
 /** 批量卡里的一组（按来源） */

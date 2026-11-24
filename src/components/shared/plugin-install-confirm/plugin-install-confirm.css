@@ -488,3 +488,16 @@
 .ldk-pic-ainote-more:hover {
   text-decoration: underline;
 }
+
+/* ── 批量行里的「AI」徽标（2026-11-25：AI 发起的项在批量里也要认得出） ── */
+.ldk-pic-row-ai {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.5;
+  vertical-align: 1px;
+}

@@ -96,7 +96,10 @@ export default function PluginUpdateBatchSummary({
                     />
                   </span>
                   <span className="ldk-pic-row-text">
-                    <span className="ldk-pic-row-name">{row.name}</span>
+                    <span className="ldk-pic-row-name">
+                      {row.name}
+                      {row.ai && <span className="ldk-pic-row-ai">{row.ai}</span>}
+                    </span>
                     <span className="ldk-pic-row-sub">{row.sub}</span>
                   </span>
                   <span className="ldk-pic-row-ver">

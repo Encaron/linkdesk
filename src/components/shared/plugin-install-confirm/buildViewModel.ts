@@ -167,6 +167,8 @@ export function buildBatchVM(
           from: undefined,
           to: i.request.version,
           icon: i.request.display.icon,
+          // AI 发起的项在批量里也要能认出来（单项卡有「发起方：AI」行）
+          ...(i.request.requestedBy === "ai" ? { ai: labels.originAI } : {}),
         })),
     }));
 

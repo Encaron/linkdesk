@@ -253,3 +253,21 @@ describe("buildBatchVM —— 批量卡（对照 batchTitle）", () => {
     expect(empty.groups).toHaveLength(0);
   });
 });
+describe("批量行 AI 徽标（2026-11-25）", () => {
+  it("requestedBy=ai 的行带徽标文案；用户发起的不带", () => {
+    const plan = {
+      totals: { total: 2, ask: 2, silent: 0 },
+      groups: [{ sourceId: "official", label: "官方目录", trusted: true, silentAllowed: false, askCount: 2, silentCount: 0 }],
+      ask: [
+        { reason: "official-source", request: { pluginId: "a", version: "2.0.0", source: { id: "official" }, display: { name: "A" }, requestedBy: "ai" } },
+        { reason: "official-source", request: { pluginId: "b", version: "2.0.0", source: { id: "official" }, display: { name: "B" } } },
+      ],
+      silent: [],
+      rejected: [],
+    } as never;
+    const vm = buildBatchVM(plan, L, false);
+    const rows = vm.groups.flatMap((g) => g.rows);
+    expect(rows.find((r) => r.pluginId === "a")?.ai).toBe("AI");
+    expect(rows.find((r) => r.pluginId === "b")?.ai).toBeUndefined();
+  });
+});
