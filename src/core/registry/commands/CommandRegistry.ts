@@ -38,7 +38,7 @@ export interface Command {
   /** M1 `AI#7`：参数结构（逐位对应 handler 实参）——无参数命令不填。契约 `LinkDeskCommandParam` 同型 */
   params?: LinkDeskCommandParam[];
   /**
-   * AI 权限档位（`docs/04-软件更新/待抉择池/AI安全-权限档位与提权/01-设计/02-执行闸与防自提权.md` §二 · L2）：
+   * AI 权限档位（`docs/04-软件更新/已落地/AI安全-权限档位与提权/01-设计/02-执行闸与防自提权.md` §二 · L2）：
    * `true` = **AI 正门永远不可调**（`runShellCommand` 一律 `EPROTECTED`），只有用户点界面能触发。
    * 用途 = 「能改门本身」的命令（切档位 / 复位默认）。
    * 🔴 判据是**元数据**，不是 id 名单（名单会漏：改名即绕过）。缺省 = false（AI 可调，受档位策略约束）。
