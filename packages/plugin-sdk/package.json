@@ -38,10 +38,6 @@
     "./check-config-titles": {
       "types": "./check-config-titles.d.ts",
       "default": "./check-config-titles.mjs"
-    },
-    "./display-text": {
-      "types": "./dist/display-text.d.ts",
-      "default": "./dist/display-text.js"
     }
   },
   "files": [
