@@ -1100,6 +1100,7 @@
     "ldk-boot-mark-wordmark",
     "ldk-button",
     "ldk-button--danger",
+    "ldk-button--danger-solid",
     "ldk-button--ghost",
     "ldk-button--sm",
     "ldk-button--success",

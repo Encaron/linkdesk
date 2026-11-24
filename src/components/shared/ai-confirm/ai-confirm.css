@@ -27,7 +27,7 @@
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
   color: var(--danger);
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -69,14 +69,14 @@
 }
 
 .ldk-ai-confirm-title {
-  font-size: 18px;
+  font-size: var(--font-size-xl);
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
 .ldk-ai-confirm-sub {
   margin-top: 5px;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.65;
   color: var(--text-muted);
 }
@@ -108,7 +108,7 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
-  font-size: 16px;
+  font-size: var(--font-size-lg);
 }
 
 .ldk-ai-confirm--danger .ldk-ai-confirm-target-icon {
@@ -122,7 +122,7 @@
 }
 
 .ldk-ai-confirm-target-title {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -144,7 +144,7 @@
 
 .ldk-ai-confirm-target-meta {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -161,7 +161,7 @@
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
   color: var(--accent);
-  font-size: 10.5px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -170,7 +170,7 @@
 .ldk-ai-confirm-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 }
 
 .ldk-ai-confirm-table th,
@@ -181,7 +181,7 @@
 }
 
 .ldk-ai-confirm-table th {
-  font-size: 10.5px;
+  font-size: var(--font-size-2xs);
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--text-muted);
@@ -217,7 +217,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.65;
   color: var(--text-secondary);
 }
@@ -259,7 +259,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   color: var(--accent);
 }
@@ -267,7 +267,7 @@
 .ldk-ai-confirm-ai-head em {
   font-style: normal;
   font-weight: 400;
-  font-size: 10.5px;
+  font-size: var(--font-size-2xs);
   color: var(--text-muted);
 }
 
@@ -276,7 +276,7 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.7;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -294,7 +294,7 @@
   padding: 0;
   margin-top: 4px;
   font-family: inherit;
-  font-size: 10.5px;
+  font-size: var(--font-size-2xs);
   color: var(--accent);
   cursor: pointer;
 }
@@ -307,7 +307,7 @@
 .ldk-ai-confirm-effect {
   display: flex;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.7;
   color: var(--text-secondary);
 }
@@ -315,7 +315,7 @@
 .ldk-ai-confirm-effect b {
   flex-shrink: 0;
   padding-top: 1px;
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-muted);
@@ -333,7 +333,7 @@
 
 .ldk-ai-confirm-note {
   max-width: 330px;
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   line-height: 1.55;
   color: var(--text-muted);
 }
@@ -345,7 +345,7 @@
 }
 
 .ldk-ai-confirm-fallback {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
 }
 

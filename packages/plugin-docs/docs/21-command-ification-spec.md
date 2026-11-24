@@ -301,6 +301,8 @@ The same command surface behaves like this under the four tiers:
   the four-tier decision matrix, the risk table and the protected commands. ⛔ Do not read `settings.json` yourself and
   do not judge risk yourself (a replacement settings UI uses the same command).
 - **Elevation**: the AI can only `requestElevation` (a dialog; it takes effect only when the user clicks "Allow" and lasts
+
+  External AIs that hit `EPOLICYDENIED` use this path: CLI `linkdeskctl request-elevation <mode> <reason>`, MCP `linkdesk_request_elevation`; plugin authors do not implement elevation UI.
   until the user changes it back). ⛔ No plugin ever gets an "approve" entry point.
 
 ---

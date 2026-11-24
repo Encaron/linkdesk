@@ -20,7 +20,7 @@
 import { HINT_ATTR } from "../hint-tip/hintAttrs";
 import "./Button.css";
 
-type ButtonVariant = "success" | "danger" | "ghost";
+type ButtonVariant = "success" | "danger" | "danger-solid" | "ghost";
 /** E6#57.11：紧凑尺寸档——30px 工具条（TitleBar）内的文字按钮 */
 type ButtonSize = "sm";
 

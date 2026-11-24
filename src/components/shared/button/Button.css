@@ -58,6 +58,15 @@
   border-color: color-mix(in srgb, var(--danger) 45%, transparent);
   color: var(--danger); /* 破坏性红 = 壳既有 --danger（ContextMenu 删除项同源） */
 }
+.ldk-button--danger-solid {
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+.ldk-button--danger-solid:hover:not(:disabled) {
+  opacity: 0.9;
+}
 .ldk-button--danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   border-color: color-mix(in srgb, var(--danger) 75%, transparent);

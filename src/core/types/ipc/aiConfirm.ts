@@ -8,9 +8,6 @@
 
 export type {
   AiConfirmCardPayload,
-  AiConfirmKind,
-  AiConfirmRow,
-  AiConfirmTarget,
   AiConfirmDialogRequest,
 } from "../../../components/shared/ai-confirm/types";
 export { AI_CONFIRM_HOST_VIEW } from "../../../components/shared/ai-confirm/types";

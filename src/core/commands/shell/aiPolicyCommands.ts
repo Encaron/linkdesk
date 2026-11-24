@@ -18,8 +18,11 @@ import { registerCommand, getCommands, executeCommand } from "../../registry/com
 import i18n from "../../../i18n";
 import { getShellExposed } from "../../api/linkdesk-api/surfaces";
 import { setConfigurationValue } from "../../services/configuration/ConfigurationService/settings-io";
+import { getConfigurationValue } from "../../services/configuration/ConfigurationService/value-access";
 import { showTransientToast } from "../../services/ui/toast";
-import { confirm, confirmContent } from "../../services/ui/DialogService";
+import { confirmContent } from "../../services/ui/DialogService";
+import { AI_CONFIRM_HOST_VIEW } from "../../types/ipc/aiConfirm";
+import { buildFullAccessCard } from "../../../components/shared/ai-confirm/fullAccessCard";
 import {
   AI_POLICY_MODE_KEY,
   AI_POLICY_RISK_TABLE_HOST_VIEW,
@@ -50,8 +53,13 @@ async function readViewState(): Promise<AiPolicyViewState | null> {
     raw = null;
   }
   if (!raw) return null;
+  // 🔴 档位以**壳内实时配置**为准：setConfigurationValue 先改内存、落盘是去抖后置；
+  //    读主进程 settings.json 会拿到旧值（实机：全权 toast 已出、设置页仍显示自主）。
+  const live = getConfigurationValue<unknown>(AI_POLICY_MODE_KEY);
+  const mode = MODES.includes(live as AiPolicyModeDto) ? (live as AiPolicyModeDto) : raw.mode;
   return {
     ...raw,
+    mode,
     protectedCommands: getCommands()
       .filter((c) => c.userOnly === true)
       .map((c) => c.id)
@@ -98,20 +106,20 @@ function modeLabelKey(mode: AiPolicyModeDto): string {
 }
 
 /** 写档位（唯一写点）——GUI 与提权框都走这里 */
-async function switchMode(mode: AiPolicyModeDto): Promise<{ mode: AiPolicyModeDto }> {
+async function switchMode(mode: AiPolicyModeDto): Promise<{ mode: AiPolicyModeDto; confirmed: boolean }> {
   if (!MODES.includes(mode)) throw new Error(`${t("未知的权限档位")}: ${String(mode)}`);
   if (mode === "full") {
-    // D8：升到完全访问必须二次确认（常驻事实写进文案，⛔ 不藏）
-    const ok = await confirm({
-      title: t("开启完全访问"),
-      message: t("完全访问开启后，所有操作都不再询问。每一步操作都有记录，可随时恢复默认。确定开启吗？"),
-      type: "warning",
+    // 手动切换：同一张 v5 红色全权卡（与 AI 提权卡同源，不再有第二套文字框）
+    const ok = await confirmContent({
+      title: "",
+      message: t("开启完全访问"),
+      content: { hostView: AI_CONFIRM_HOST_VIEW, payload: buildFullAccessCard() },
     });
-    if (!ok) return { mode: (await readViewState())?.mode ?? "auto" };
+    if (!ok) return { mode: (await readViewState())?.mode ?? "auto", confirmed: false };
   }
   await setConfigurationValue(AI_POLICY_MODE_KEY, mode, "user");
   toastSwitched(mode);
-  return { mode };
+  return { mode, confirmed: true };
 }
 
 /** 敏感能力弹窗（表格：能力 / 规则 / 当前）——数据来自 getState，文案由视图翻译 */
@@ -142,7 +150,7 @@ export function registerAiPolicyCommands(): void {
     id: "aiPolicy.setMode",
     title: "切换 AI 权限档位",
     category: "首选项",
-    description: "切换 AI 权限档位（read|ask|auto|full）。完全访问需二次确认；设置持续到你改回。仅限用户操作（userOnly），AI 不可调",
+    description: "切换 AI 权限档位（read|ask|auto|full）。完全访问需在高危确认卡上明确确认；设置持续到你改回。仅限用户操作（userOnly），AI 不可调",
     params: [{ name: "mode", type: "string", required: true, description: "目标档位：read | ask | auto | full" }],
     userOnly: true,
     handler: async (mode) => switchMode(mode as AiPolicyModeDto),

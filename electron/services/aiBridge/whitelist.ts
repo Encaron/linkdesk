@@ -32,6 +32,7 @@ import { IPC } from '../../ipc/channels.js';
 import { pickPendingCommands, settleCommandSurface, type DeclaredCommandSource, type PendingCommand } from './commandSurface.js';
 import { coded, POLICY_DENIED, PROTECTED } from './errors.js';
 import { askUser } from './sensitive.js';
+import { buildActionCard } from './policy/cards.js';
 import {
   askFirstCatalog,
   askTextForCommand,
@@ -147,16 +148,44 @@ function findNotifItem(layout: unknown, notificationId: string): { actions: Arra
   return null;
 }
 
+/** 以 tabId 为首参的命令——确认卡要显示「哪个标签页」，而不是一串 id */
+const TAB_TARGET_COMMANDS = new Set([
+  'core.closeTab',
+  'core.closeOtherTabs',
+  'core.closeRightTabs',
+  'core.duplicateTab',
+  'core.togglePin',
+  'core.splitRight',
+  'core.splitDown',
+  'core.openInNewWindow',
+  'core.mergeBackToMain',
+]);
+
 /**
- * 敏感动作的确认正文——从**风险登记表**取（⛔ 不手抄第二份；R3 的 what/why 住 `policy/risk.ts`）。
- * `what/why` 缺失时退回命令 id（未登记却被判 R3 的极端情形）。
+ * 解析确认卡的作用对象（标签页标题）。
+ * 🔴 只读一次 `listTabs`，失败就退回「标签页」——⛔ 不因为查不到标题就不弹卡。
  */
-function askSubjectForCommand(commandId: string): { what: string; subject: string } {
-  const text = askTextForCommand(commandId);
-  return {
-    what: `执行敏感命令「${commandId}」`,
-    subject: `${text.what ?? commandId}${text.why ? `\n（问一声的原因：${text.why}）` : ''}`,
-  };
+async function resolveCommandTarget(
+  ctx: BridgeOpContext,
+  commandId: string,
+  args: unknown[],
+): Promise<{ title?: string; metaKey?: string; icon?: string } | undefined> {
+  if (!TAB_TARGET_COMMANDS.has(commandId)) return undefined;
+  const first = args[0];
+  const tabId =
+    first && typeof first === 'object' ? (first as { tabId?: unknown }).tabId : undefined;
+  if (typeof tabId !== 'string' || !tabId) return undefined;
+  try {
+    const snap = (await ctx.shellRequest(IPC.plugins.call, ['listTabs'])) as {
+      windows?: { groups?: { tabs?: { id?: unknown; title?: unknown }[] }[] }[];
+    };
+    const tabs = (snap?.windows ?? []).flatMap((w) => (w.groups ?? []).flatMap((g) => g.tabs ?? []));
+    const tab = tabs.find((t) => t.id === tabId);
+    const title = tab && typeof tab.title === 'string' ? tab.title : undefined;
+    return { ...(title ? { title } : {}), metaKey: '标签页', icon: '▤' };
+  } catch {
+    return { metaKey: '标签页', icon: '▤' };
+  }
 }
 
 /** 档位不允许时的统一话术——告诉 AI「可请求提权」，⛔ 别让它原样重试 */
@@ -164,7 +193,7 @@ function policyDenied(mode: string, risk: string, target: string): Error & { cod
   return coded(
     POLICY_DENIED,
     `当前权限「${POLICY_MODE_LABEL[mode as keyof typeof POLICY_MODE_LABEL] ?? mode}」不允许${target}（风险 ${risk}）`
-      + '——可调 requestElevation 说明理由请求用户提高权限；⛔ 不要原样重试',
+      + '——可调 requestElevation 说明理由请求用户提高权限（CLI: linkdeskctl request-elevation <mode> <reason>；MCP: linkdesk_request_elevation）；批准后再重试原动作一次；⛔ 不要原样重试',
   );
 }
 
@@ -200,8 +229,13 @@ async function runShellCommand(
   const decision = decide(snapshot.mode, risk);
   if (decision === 'deny') throw policyDenied(snapshot.mode, risk, `执行「${commandId}」`);
   if (decision === 'ask') {
-    const { what, subject } = askSubjectForCommand(commandId);
-    await askUser(ctx, what, subject);
+    // 确认卡：动作名取风险表的 what（未登记才退回命令标题），作用对象由命令参数解析。
+    // ⛔ 不把命令 id 塞进人眼；id 只进账本。
+    const text = askTextForCommand(commandId);
+    const title = (commands.find((c) => c && c.id === commandId) as { title?: unknown } | undefined)?.title;
+    const what = text.what ?? (typeof title === 'string' && title ? title : '执行操作');
+    const target = await resolveCommandTarget(ctx, commandId, args);
+    await askUser(ctx, what, buildActionCard(what, text.why, risk, target));
   }
   return ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...args]);
 }
@@ -263,6 +297,19 @@ export const OPS: Record<string, BridgeOp> = {
     run: async (req, ctx) => {
       const type = req.type;
       if (typeof type !== 'string' || !type) throw coded('EARGS', 'openTab 需要 type（非空 string）');
+      // 档位闸（与 exec / install 同一个 decide）——此前这个入口漏了，read/ask 档可直接开标签
+      const snapshot = getPolicySnapshot();
+      const risk = riskOfOp('openTab', 'write');
+      const decision = decide(snapshot.mode, risk);
+      if (decision === 'deny') throw policyDenied(snapshot.mode, risk, '打开标签页');
+      if (decision === 'ask') {
+        const text = askTextForOp('openTab');
+        await askUser(
+          ctx,
+          text.what ?? '打开标签页',
+          buildActionCard(text.what ?? '打开标签页', text.why, risk, { title: type, metaKey: '标签页' }),
+        );
+      }
       const opts = req.opts && typeof req.opts === 'object' ? req.opts : undefined;
       // 开之前的命令面——用来算「这一开新挂牌了哪些命令」
       const before = (await listShellCommands(ctx)).map((c) => c.id);
@@ -281,7 +328,7 @@ export const OPS: Record<string, BridgeOp> = {
   exec: {
     name: 'exec',
     kind: 'write',
-    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。注意：describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（可调 requestElevation 说明理由，别原样重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
+    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。注意：describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（用 requestElevation 说明理由请求用户提权；CLI 子命令 request-elevation，MCP 工具 linkdesk_request_elevation；批准后再重试一次，别原样硬重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
       { name: 'args', type: 'array', required: false, description: '透传给命令的实参（逐位平铺，或一个具名对象——键名照该命令的 params[].name）' },

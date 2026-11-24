@@ -189,7 +189,7 @@ export function registerAiBridgeCommands(): void {
     params: [],
     handler: async () => {
       await window.linkdesk.clipboard.writeText(
-        i18n.t("请用 linkdeskctl 命令行工具操作 LinkDesk——先运行「linkdeskctl --help」查看全部能力，再按说明调用。"),
+        i18n.t("请用 linkdeskctl 命令行工具操作 LinkDesk——先运行「linkdeskctl --help」查看全部能力，再按说明调用。若返回 EPOLICYDENIED（权限不够），不要重试原动作：先运行「linkdeskctl request-elevation <目标档位> <理由>」请求提权，并提醒我回 LinkDesk 点「允许」；批准后再重试一次。"),
       );
       pushToastCopied();
     },

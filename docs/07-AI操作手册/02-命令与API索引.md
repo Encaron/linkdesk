@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 102 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 105 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -160,7 +160,7 @@
 | `aiPolicy.openOps` | 操作清单 | 打开操作清单：AI 可以调用的操作、风险等级，以及当前档位下的结论（表格） | —— | —— |
 | `aiPolicy.openSettings` | 打开 AI 权限设置 | 打开设置页的「AI 接入 → 开放范围与安全」分节（状态栏徽标点击的落点） | —— | —— |
 | `aiPolicy.resetToDefault` | 恢复默认权限（自主） | 把 AI 权限恢复到默认档「自主」。仅限用户操作（userOnly），AI 不可调 | —— | —— |
-| `aiPolicy.setMode` | 切换 AI 权限档位 | 切换 AI 权限档位（read\|ask\|auto\|full）。完全访问需二次确认；设置持续到你改回。仅限用户操作（userOnly），AI 不可调 | `mode`: string 必填 — 目标档位：read \| ask \| auto \| full | —— |
+| `aiPolicy.setMode` | 切换 AI 权限档位 | 切换 AI 权限档位（read\|ask\|auto\|full）。完全访问需在高危确认卡上明确确认；设置持续到你改回。仅限用户操作（userOnly），AI 不可调 | `mode`: string 必填 — 目标档位：read \| ask \| auto \| full | —— |
 | `appearance.pickImage` | 选择背景图片 | 弹出系统图片选择框，把选中的图片拷入受控外观存储并返回受控 URL（起始目录/过滤器由宿主决定；取消返回 picked:false） | `options`: object 必填 — { domain: string; target: string }——两个值都取自配置 schema 的 assetDomain / pickTarget（如 { domain:"appearance", target:"app" }） | —— |
 | `core.resetSettingsToBuiltin` | 回退内置设置页 | 把设置槽的激活套回退到内置设置页（= 声明 factoryRole:"settings" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次 | —— | —— |
 | `storage.cacheDirStatus` | 缓存目录 | 当前生效的缓存目录路径（只读数据源，供设置页状态行取用） | —— | —— |
@@ -183,11 +183,14 @@
 | `workbench.action.selectLanguage` | 选择语言 | 打开语言选择器切换界面语言 | —— | —— |
 | `workbench.action.setConfiguration` | 写入配置项 | 写一个配置键的用户值（user scope）——先按声明面校验（键是否声明／类型／枚举／上下界／是否显示槽／是否 ai.* 禁写），写完当场回读，回执带写入前后值。⛔ 它不替你想「该写什么值」：键名与默认值看 workbench.acti… | `ctx`: object 必填 — { key: string; value: unknown }——value 按该键声明类型给（字符串/数字/布尔/数组/对象直接给，⛔ 不必包成对象）；也可逐位写成 ("键名", 值) | —— |
 
-### （未分类）（6）
+### （未分类）（9）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
 | `app.aboutCopy` | About: Copy | 把关于页的全部字段以 key: value 多行文本复制到剪贴板 | —— | `false` |
+| `plugins.addSource` | 添加市场源 | 把一个市场目录源登记进设置（不安装任何东西）。登记后各市场与浏览面可读到它。 | `catalogUrl`: string 必填 — 目录源地址（marketplace.json 的 HTTPS 直链） | —— |
+| `plugins.installFromCatalog` | 从市场目录安装插件 | 从某个市场目录源安装/更新一个插件。默认弹壳确认卡；非交互调用（AI/脚本）必须显式传 yes:true，否则拒绝执行。 | `catalogUrl`: string 必填 — 目录源地址（marketplace.json 的 HTTPS 直链）<br>`pluginId`: string 必填 — 要装的插件 id（目录条目 id）<br>`yes`: boolean 可选 — 显式同意：跳过确认卡（只跳确认，不跳 HTTPS/哈希/minApp 校验）；仅本次生效 | —— |
+| `plugins.listCatalog` | 列出市场目录 | 只读：拉取一个市场目录源并列出插件（可按关键词过滤）。不安装、不改任何状态。 | `catalogUrl`: string 必填 — 目录源地址（marketplace.json 的 HTTPS 直链）<br>`query`: string 可选 — 按 id / 名称 / 描述过滤 | —— |
 | `quickpick.show` | QuickPick | 弹出选择列表让用户选一项，并把选中项返回给调用方（取消返回 undefined） | `options`: object 必填 — { title?: string; items: { label: string; description?: string }[] }——候选列表与浮层标题 | `false` |
 | `update.releaseNotesDismissBanner` | Release Notes: Dismiss Banner | 收掉发行说明横幅（只关横幅，不记已读版本） | —— | `false` |
 | `update.releaseNotesRefresh` | Release Notes: Refresh | 绕过 24 小时缓存重新拉取发行说明列表（保持当前所选版本） | —— | `false` |
@@ -200,7 +203,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**19 个域接口 → 51 个命名空间 / 281 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**19 个域接口 → 51 个命名空间 / 286 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -238,7 +241,7 @@
 | `pluginAssets` | PluginAssetsAPI | 1 | `getUrl` | —— |
 | `pluginManager` | PluginsAPI | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader functions. Pool-authoritative (consumed by marketplace plugins), … |
 | `pluginState` | DataAPI | 3 | `get` `set` `onChange` | plugin persistent storage — centralized cache + file persistence |
-| `plugins` | PluginsAPI | 22 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
+| `plugins` | PluginsAPI | 27 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageReadCatalog`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `prepareInstall`° `prepareUpdateBatch`° `commitInstall`° `discardInstall`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exists identically on both; the read surface (listDirs/listAll/re… |
 | `pool` | ShellAPI | 32 | `pushLayout` `onReady` `toggleDevTools` `onSidebarAction` `onTabAction` `onTabBarRects` `onDragPosition` `pushAdsorbHint` `onAdsorbIndex` `pushQuickPick` `onQuickPickAction` `pushDialog` `onDialogAction` `pushFloatingPanel` `onFloatingPanelAction` `onMemoryPressure` `createWindow` `closeWindow` `onWindowClosed` `onWindowBoundsChanged` `getLayout` `onLayout` `ready` `sidebarAction` `tabAction` `tabBarRects` `dragPosition` `onAdsorbHint` `adsorbIndex` `registerBeforeClose` `unregisterBeforeClose` `beforeClose` | Pool control — shell preload: pushes layout + registers pool→shell action callbacks; pool preload: receives layout + se… |
 | `protocol` | EditorAPI | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main process). parseLine/detect are stripped before returning (J… |
 | `quickPick` | UiAPI | 1 | `show` | plugin quickPick picker — local bridge inside the pool (zero IPC, rendered by QuickPickHost). A settle of null → undefi… |

@@ -432,7 +432,7 @@
 /* ── AI 说明块（2026-11-25：AI 发起的安装要把理由摆在卡上，⛔ 不藏进日志） ──
    默认 3 行折叠 + 展开；颜色只用语义 token，深/浅/高对比主题都靠它们走。 */
 .ldk-pic-ainote {
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);

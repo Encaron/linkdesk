@@ -45,11 +45,13 @@ const CONFIRM_OK = { [IPC.dialog.confirm]: true };
 const CONFIRM_NO = { [IPC.dialog.confirm]: false };
 
 describe("确认回路与话术（AI#29）", () => {
-  it("确认框正文统一形状：what + subject + 「不点 = 不执行」", () => {
+  it("确认框正文统一形状：what + subject + 「不点 = 不执行」——只给 key，渲染侧翻译", () => {
     const text = confirmPrompt("安装插件", "E:/tmp/demo.linkdesk-plugin");
-    expect(text).toContain("AI 请求安装插件");
-    expect(text).toContain("E:/tmp/demo.linkdesk-plugin");
-    expect(text).toContain("不点 = 不执行");
+    expect(text.key).toContain("AI 请求{{what}}");
+    expect(text.key).toContain("{{subject}}");
+    expect(text.key).toContain("不点 = 不执行");
+    expect(text.params).toEqual({ what: "安装插件", subject: "E:/tmp/demo.linkdesk-plugin" });
+    expect(text.keyParams).toEqual(["what"]); // subject 是路径/ID，原样显示
   });
 
   it("未点头的错误带机读 code（客户端按 code 分类，⛔ 不是 EERROR、更不是成功）", () => {

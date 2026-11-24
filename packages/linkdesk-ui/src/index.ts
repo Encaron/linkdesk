@@ -7,7 +7,7 @@
  *
  * 导出面 = 插件实际消费集（E6#54c 锚点：4 内置插件 33 处 import 收敛于此）+ 必备类型。
  * 🔴 计数与 scripts/ui-surface.json 的 count 互为对账（E6#121 起机械校验，改导出面必同笔改这里）：
- *   - 51 组件（41 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch / AiPolicyRiskLegend 具名
+ *   - 52 组件（42 个 default 导出 + InlineInput / PluginIcon / FileIconResolver / SegmentPreviewText / SegmentPreviewSwatch / AiPolicyRiskLegend 具名
  *       + parseColor / formatColor / isCssVariableExpression 颜色工具）
  *   - 4 hooks（useClickPreview / useClipboardKeys / useDebouncedInput / useStatusPolling）
  *   - 24 helpers（pickIdentityArt / DEFAULT_PLUGIN_IDENTITY_URI / inferSliderStep / urlSourceKey /
@@ -16,7 +16,7 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 44 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 46 类型（AiConfirmCardProps / AiConfirmCardPayload / AiPolicyOption / AiPolicyPickerProps / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
@@ -135,6 +135,8 @@ export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUt
 //     · 第三方渲染方两路任选：共享聚合 ＋ 共享件自组（零重推导）／只拿数据全画。
 //   🔴 聚合与件套件**不认识任何命令 id**：齿轮菜单项由消费方注入（`*GearItems`）——数据入、事件出。
 export { default as AiPolicyPicker } from "@shared/ai-policy-picker/AiPolicyPicker";
+export { default as AiConfirmCard } from "@shared/ai-confirm/AiConfirmCard";
+export type { AiConfirmCardProps, AiConfirmCardPayload } from "@shared/ai-confirm/AiConfirmCard";
 export { default as AiPolicyRiskTable, AiPolicyRiskLegend } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
 export type { AiPolicyRiskTableProps, AiPolicyRiskTableRow } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
 export type { AiPolicyCapability, AiPolicyDecision, AiPolicyOption, AiPolicyPickerProps } from "@shared/ai-policy-picker/AiPolicyPicker";

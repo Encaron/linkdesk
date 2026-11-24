@@ -153,6 +153,8 @@
   --warning-bg: rgba(255, 200, 0, 0.12);
   --text-on-accent: #FFFFFF;
   --danger: #EF4444;
+  /* 实心危险按钮底：白字对比度 ≥4.5（浅色 #C62828 / 深色 #D32F2F） */
+  --danger-solid: #D32F2F;
 }
 
 [data-theme="light"] {
@@ -203,6 +205,7 @@
   --warning-bg: rgba(200, 150, 0, 0.08);
   --text-on-accent: #FFFFFF;
   --danger: #D32F2F;
+  --danger-solid: #C62828;
   /* E6#30.12 补 light 缺失语义色——亮底「同 hue 暗档」惯例：
      error #B3261E = M3 error（songti-print 亮主题实证）/ warning #B45309 = amber-700 深金（songti-print 实证）/
      success #388A34 = #4CAF50 暗档（同 light --status-connected 值，token 独立） */

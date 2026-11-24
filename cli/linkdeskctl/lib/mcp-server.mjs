@@ -38,11 +38,12 @@ const OP_TOOL_MAP = {
   install: "linkdesk_install",
   notifications: "linkdesk_notifications",
   notifyAction: "linkdesk_notify_action",
+  requestElevation: "linkdesk_request_elevation",
   log: "linkdesk_log",
 };
 const TOOL_OP_MAP = Object.fromEntries(Object.entries(OP_TOOL_MAP).map(([op, tool]) => [tool, op]));
 
-/** 离线静态表——与内核 `whitelist.ts` 的 9 条操作一一对应（漂移由在线派生对账兜住） */
+/** 离线静态表——与内核 `whitelist.ts` 的 10 条操作一一对应（漂移由在线派生对账兜住） */
 const STATIC_TOOLS = [
   { op: "describe", description: "自查：本实例支持的操作（白名单）＋ 可执行的命令面（运行期派生）——零源码环境 AI 的自举点", params: [] },
   { op: "ping", description: "认人：谁在服务（pid / 通道 / 版本 / 已跑多久）", params: [] },
@@ -63,6 +64,10 @@ const STATIC_TOOLS = [
     { name: "notificationId", type: "string", required: true, description: "通知 id（linkdesk_notifications 的返回里有）" },
     { name: "action", type: "string", required: true, description: "按钮 label 或序号（从 0 起）" },
   ] },
+  { op: "requestElevation", description: "权限不够（EPOLICYDENIED）时向用户请求提权：软件里弹提权框，用户点「允许」才生效并常驻；批准后再重试原动作一次", params: [
+    { name: "mode", type: "string", required: true, description: "目标档位：read | ask | auto | full（只能比当前高）" },
+    { name: "reason", type: "string", required: true, description: "为什么需要更高权限——会显示给用户" },
+  ] },
   { op: "log", description: "读最近操作账（先记后判——被拒的调用也在账上）", params: [
     { name: "limit", type: "number", required: false, description: "返回最近几条（默认 20）" },
   ] },
@@ -73,7 +78,7 @@ const WAITABLE_CODES = new Set(["NO_RECORD", "APP_EXITED", "REFUSED"]); // 等 �
 
 /** 会**停下来等用户点头**的动作（AI#29）——确认框等人以分钟计，秒级超时会把「在等人」误报成超时。
  *  ⚠️ 给长预算，不是放宽错误：内核侧普通命令仍由自己的 8s 封顶，这里只是不许客户端先放弃。 */
-const ASKABLE_OPS = new Set(["exec", "install", "notifyAction"]);
+const ASKABLE_OPS = new Set(["exec", "install", "notifyAction", "requestElevation"]);
 const ASK_TIMEOUT_MS = 600_000;
 
 /* ── stdio 收发（一行一条 JSON；⛔ stdout 只许放协议报文）── */

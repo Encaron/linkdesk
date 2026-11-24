@@ -34,6 +34,8 @@ interface Call {
 function fakeCtx(opts: {
   commands?: Array<{ id: string; userOnly?: boolean }>;
   dialog?: boolean | (() => unknown);
+  /** commands.execute 的回执（默认 {ok:true}；测「红卡被取消」时给 {confirmed:false}） */
+  executeResult?: unknown;
 }) {
   const calls: Call[] = [];
   const commands = opts.commands ?? [{ id: "update.openUpdateFlow" }, { id: "core.closeTab" }];
@@ -44,6 +46,7 @@ function fakeCtx(opts: {
       if (channel === IPC.dialog.confirm) {
         return typeof opts.dialog === "function" ? opts.dialog() : (opts.dialog ?? true);
       }
+      if (channel === IPC.commands.execute && opts.executeResult !== undefined) return opts.executeResult;
       return { ok: true };
     },
   };
@@ -167,12 +170,17 @@ describe("档位闸：read 档拒绝、ask 档弹框、auto 档静默", () => {
 describe("提权回路：只问不答，批准写档位", () => {
   const target: PolicyMode = "auto";
 
-  it("提权框正文写清「当前档 → 目标档 / 原因 / 常驻」（D2 不藏常驻事实）", () => {
-    const text = elevationPrompt("ask", target, "需要连续整理 12 个主题插件的资料");
-    expect(text).toContain("逐次确认");
-    expect(text).toContain("自主");
-    expect(text).toContain("需要连续整理 12 个主题插件的资料");
-    expect(text).toContain("一直有效");
+  it("提权卡写清「当前档 → 目标档 / 原因 / 常驻」（D2 不藏常驻事实）——只给 key，渲染侧翻译", () => {
+    const card = elevationPrompt("ask", target, "需要连续整理 12 个主题插件的资料");
+    expect(card.kind).toBe("elevation");
+    expect(card.titleKey).toBe("提高 AI 权限");
+    expect(card.target.fromKey).toBe("逐次确认");
+    expect(card.target.toKey).toBe("自主");
+    expect(card.aiReason).toBe("需要连续整理 12 个主题插件的资料");
+    expect(card.effectKey).toContain("持续生效");
+    // 能力表由 decide 派生：日常修改 ask→auto 变成允许；安装/更新仍询问
+    expect(card.rows?.find((r) => r.labelKey.includes("日常修改"))?.toKey).toBe("允许");
+    expect(card.rows?.find((r) => r.labelKey.includes("安装"))?.toKey).toBe("询问");
   });
 
   it("S7：用户允许 ⇒ 经壳命令 aiPolicy.setMode 写档位（不是 AI 能调的命令面）", async () => {
@@ -183,7 +191,7 @@ describe("提权回路：只问不答，批准写档位", () => {
     const execs = executed(calls);
     expect(execs).toHaveLength(1);
     expect(execs[0]!.args.slice(0, 3)).toEqual([POLICY_SET_MODE_COMMAND, undefined, "auto"]);
-    expect(execs[0]!.args[3]).toMatchObject({ via: "elevation" });
+    expect(execs[0]!.args[3]).toMatchObject({ source: "user" });
   });
 
   it("用户拒绝 ⇒ {granted:false}，不写档位", async () => {
@@ -207,22 +215,21 @@ describe("提权回路：只问不答，批准写档位", () => {
     });
   });
 
-  it("D8：升到 full 要两次确认（第一次说明后果，第二次确认常驻）", async () => {
+  it("升到 full：本层只弹 1 张提权卡；红卡由 setMode 命令弹（本层不重复）", async () => {
     setMode("auto");
     let confirmations = 0;
-    const { ctx } = fakeCtx({ dialog: () => { confirmations += 1; return true; } });
+    const { ctx, calls } = fakeCtx({ dialog: () => { confirmations += 1; return true; } });
     const out = await requestElevationFlow(ctx as never, { mode: "full", reason: "需要连续执行 R3" });
     expect(out).toEqual({ granted: true, mode: "full" });
-    expect(confirmations).toBe(2);
+    expect(confirmations).toBe(1);
+    expect(executed(calls)).toHaveLength(1);
   });
 
-  it("升到 full 时第二次确认被拒 ⇒ 不写档位", async () => {
+  it("setMode 的红卡被取消（回执 confirmed:false）⇒ granted:false，不认为已批准", async () => {
     setMode("auto");
-    let confirmations = 0;
-    const { ctx } = fakeCtx({ dialog: () => { confirmations += 1; return confirmations === 1; } });
+    const { ctx } = fakeCtx({ dialog: true, executeResult: { confirmed: false } });
     const out = await requestElevationFlow(ctx as never, { mode: "full", reason: "x" });
     expect(out).toEqual({ granted: false, code: "EUSERDENIED" });
-    expect(confirmations).toBe(2);
   });
 
   it("请求同档 ⇒ 直接 granted（不打扰用户）", async () => {

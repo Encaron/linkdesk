@@ -41,6 +41,7 @@ import { renderStatus, resolvedServedBy } from "./lib/status-report.mjs";
 const SUBCOMMAND_OPS = {
   describe: "describe", ping: "ping", tabs: "tabs", "open-tab": "openTab", exec: "exec",
   install: "install", notifications: "notifications", "notify-action": "notifyAction", log: "log",
+  "request-elevation": "requestElevation",
 };
 
 const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk（AI 接入正门的 CLI 皮）
@@ -62,6 +63,9 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
   install <source>              安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装
   notifications                 读通知面板（按钮的 command 事实随行）
   notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号；按钮背后是敏感命令时同样要点头）
+  request-elevation <模式> <理由>
+                                权限不够（EPOLICYDENIED）时向用户请求提权：软件里弹提权框，
+                                用户点「允许」才生效并常驻；批准后再重试原动作一次
   log                           读最近操作账（正门三件套之「账本」的读取面）
   mcp                           起 MCP stdio server（给 AI 客户端配置用——⛔ 别在终端里直接跑）
   mcp config [--for <client>]   生成 MCP 配置片段（--for codex = Codex TOML 形；缺省 = 通用 JSON）。
@@ -126,7 +130,7 @@ function dirsOf(opts) {
  * 自省读不到就退回默认预算（那时连命令面都读不到，`exec` 本来就会以连接错误收场）。
  */
 async function asksForUser(opts, subcommand, args) {
-  if (subcommand === "install" || subcommand === "notify-action") return true; // 装插件＝名单内；按钮背后是哪条命令读前不可知
+  if (subcommand === "install" || subcommand === "notify-action" || subcommand === "request-elevation") return true; // 装插件＝名单内；按钮背后是哪条命令读前不可知
   if (subcommand !== "exec") return false;
   const [commandId] = args;
   if (!commandId) return false;
@@ -186,6 +190,18 @@ function buildRequest(subcommand, args, opts) {
       const [source] = args;
       if (!source) throw new BridgeError("EUSAGE", "install 要一个 source（插件包 URL 或本地路径）", "确认对话框会在软件里弹出——去软件里点头。");
       return { source };
+    }
+    case "request-elevation": {
+      const [mode, ...reasonParts] = args;
+      const reason = reasonParts.join(" ").trim();
+      if (!mode || !reason) {
+        throw new BridgeError(
+          "EUSAGE",
+          "request-elevation 需要 <模式> 和 <理由>",
+          "模式: read|ask|auto|full；理由会显示给用户。如：request-elevation auto \"需要连续处理多个插件\"",
+        );
+      }
+      return { mode, reason };
     }
     case "notify-action": {
       const [notificationId, action] = args;

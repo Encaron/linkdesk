@@ -29,6 +29,8 @@
 
 import { IPC } from '../../ipc/channels.js';
 import { coded } from './errors.js';
+import type { DialogI18nText } from '../../../src/core/types/ipc/dialogs';
+import type { AiConfirmCardPayload } from '../../../src/core/types/ipc/aiConfirm';
 
 /** 内核侧等用户点头的预算——人可能在走开，10 分钟不算长 */
 export const ASK_TIMEOUT_MS = 600_000;
@@ -37,16 +39,23 @@ export const ASK_TIMEOUT_MS = 600_000;
 export const USER_DENIED = 'EUSERDENIED';
 
 /**
- * 确认框正文——**统一话术**（所有入口问出来的是同一个形状）。
+ * 确认框正文——**只给 i18n key 与参数**（⛔ 不在这里拼成品句子）。
+ * 主进程没有 i18n 实例；成品中文句会让英文界面整段中文，且静态审计看不见（根本没走 t()）。
+ * 渲染侧 `IpcBridgeHandler/ui.ts` 的 `resolveDialogText` 负责翻译——「谁能翻译，谁拼句子」。
  * 纯函数：自测直接打它，不必起对话框。
  */
-export function confirmPrompt(what: string, subject: string): string {
-  return `AI 请求${what}：\n${subject}\n\n允许吗？（不点 = 不执行）`;
+export function confirmPrompt(what: string, subject: string): DialogI18nText {
+  return {
+    key: 'AI 请求{{what}}：\n{{subject}}\n\n允许吗？（不点 = 不执行）',
+    params: { what, subject },
+    // what 是动作名（i18n key）；subject 是路径 / 插件 id / 用户数据——原样显示
+    keyParams: ['what'],
+  };
 }
 
 /** 未点头的错误——`EUSERDENIED`（机读）＋ 一句人读原因（含「没点头就不做」的承诺） */
-export function userDenied(what: string, subject: string): Error & { code: string } {
-  return coded(USER_DENIED, `用户未确认「${what}」（${subject}）——没点头就不执行`);
+export function userDenied(what: string, subject?: string): Error & { code: string } {
+  return coded(USER_DENIED, `用户未确认「${what}」${subject ? `（${subject}）` : ''}——没点头就不执行`);
 }
 
 /** 本模块只用到 ctx 的这一个能力（结构型——不 import `whitelist.ts`，避免循环依赖） */
@@ -69,13 +78,30 @@ export interface AskContext {
  *   · `EUSERDENIED`——用户明确取消/关掉了框；
  *   · `ESHELLTIMEOUT`——壳没应答（拿不到答复 ≠ 得到同意）。
  */
-export async function askUser(ctx: AskContext, what: string, subject: string): Promise<void> {
+export async function askUser(
+  ctx: AskContext,
+  what: string,
+  subject: string | DialogI18nText | AiConfirmCardPayload,
+): Promise<void> {
   // 进相位（AI#60）：从这一刻起「在等用户点头」就是事实——期间那条确认框请求**不许**把相位
   // 改写成 `shell`（改写规则在内核：`index.ts` 的 `opContextFor`）。人可能在走开，这段时间以分钟计。
   ctx.phase?.('ask-user', what);
+  // 三种正文：普通动作套统一话术 / 已带 key 的完整正文 / 结构化确认卡（统一卡片槽）
+  const isCard =
+    typeof subject === 'object' && subject !== null && 'kind' in subject && 'target' in subject;
+  const prompt = isCard
+    ? { hostView: 'ai-confirm' as const, payload: subject as AiConfirmCardPayload }
+    : typeof subject === 'string'
+      ? confirmPrompt(what, subject)
+      : subject;
   try {
-    const confirmed = await ctx.shellRequest(IPC.dialog.confirm, [confirmPrompt(what, subject)], ASK_TIMEOUT_MS);
-    if (confirmed !== true) throw userDenied(what, subject);
+    const confirmed = await ctx.shellRequest(IPC.dialog.confirm, [prompt], ASK_TIMEOUT_MS);
+    // EUSERDENIED 是给 AI 的机读错误：结构化正文/卡片用其 key 作人读标识
+    if (confirmed !== true) {
+      // 卡片：what 已是可读动作名，不再重复括号
+      const label = typeof subject === 'string' ? subject : 'titleKey' in subject ? undefined : subject.key;
+      throw userDenied(what, label);
+    }
   } finally {
     // 出相位：问完了（点头 / 没点头 / 壳超时）——回到「在办」，后续真请求会再标 `shell`
     ctx.phase?.('op');

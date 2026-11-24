@@ -36,6 +36,7 @@ export const UI_SURFACE = [
   "packages/linkdesk-ui/README.md",
   "src/components/shared/badge/**",
   // 2026-11-24 AI 权限档位（线 1）：四段选择器 + 风险表（barrel 已导出）
+  "src/components/shared/ai-confirm/**",
   "src/components/shared/ai-policy-picker/**",
   "src/components/shared/ai-policy-risk-table/**",
   // 2026-11-24 安装确认（线 3）：富内容确认渲染件套件（barrel 已导出）

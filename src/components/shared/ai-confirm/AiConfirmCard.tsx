@@ -15,7 +15,6 @@ import Button from "../button/Button";
 import type { AiConfirmCardPayload } from "./types";
 import "./ai-confirm.css";
 
-export type { AiConfirmCardPayload, AiConfirmKind, AiConfirmRow, AiConfirmTarget } from "./types";
 
 function asPayload(payload: unknown): AiConfirmCardPayload | null {
   const p = payload as AiConfirmCardPayload | null;
@@ -75,7 +74,7 @@ export default function AiConfirmCard({ payload, onConfirm, onCancel }: AiConfir
         <div className="ldk-ai-confirm-kicker">
           <span className="ldk-ai-confirm-kicker-dot" aria-hidden="true" />
           {t(
-            data.kind === "full" ? "第二步确认" : data.kind === "elevation" ? "需要确认" : "AI 操作确认",
+            data.kind === "full" ? "需要确认" : data.kind === "elevation" ? "需要确认" : "AI 操作确认",
           )}
         </div>
         <h2 className="ldk-ai-confirm-title">{t(data.titleKey)}</h2>
@@ -165,7 +164,7 @@ export default function AiConfirmCard({ payload, onConfirm, onCancel }: AiConfir
         <div className="ldk-ai-confirm-note">{t(data.responsibilityKey)}</div>
         <div className="ldk-ai-confirm-actions">
           <Button onClick={() => onCancel()}>{t(data.cancelKey)}</Button>
-          <Button variant={data.danger ? "danger" : undefined} onClick={() => onConfirm()}>
+          <Button variant={data.danger ? "danger-solid" : undefined} onClick={() => onConfirm()}>
             {t(data.confirmKey)}
           </Button>
         </div>

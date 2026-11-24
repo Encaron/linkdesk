@@ -308,12 +308,17 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detac
 
     const confirmRenderer = (options: DialogOptions): Promise<boolean> =>
       new Promise<boolean>((resolve) => {
+        // 🔴 单槽：后开覆盖前开，但**前一条必须先结算为 false**（fail-closed）——
+        // 不能像旧实现那样只覆盖 settle 闭包（前一条 Promise 永不结算，实机悬空 104 秒）。
+        const prev = pending;
         pending = { settle: resolve };
+        prev?.settle(false);
         pushOpen(options, false);
       });
 
     const alertRenderer = (options: DialogOptions): Promise<void> =>
       new Promise<void>((resolve) => {
+        pending?.settle(false);
         pending = { settle: () => resolve() };
         pushOpen(options, true);
       });

@@ -20,6 +20,8 @@ import { coded } from "../errors.js";
 import { askUser, ASK_TIMEOUT_MS, USER_DENIED, type AskContext } from "../sensitive.js";
 import { isPolicyMode, modeRank, POLICY_MODE_LABEL, type PolicyMode } from "./modes.js";
 import { getPolicySnapshot } from "./policyState.js";
+import { buildElevationCard } from "./cards.js";
+import type { AiConfirmCardPayload } from "../../../../src/core/types/ipc/aiConfirm";
 
 /**
  * 批准后写档位用的壳命令 id。
@@ -43,25 +45,14 @@ export interface ElevationResult {
   code?: string;
 }
 
-/** 提权框正文（纯函数——单测直接打，不必起对话框） */
+/** 提权卡（纯函数——单测直接打，不必起对话框）。
+ *  🔴 返回统一确认卡载荷：档位变化/能力表都走 key，AI 理由原样显示在独立色块。 */
 export function elevationPrompt(
   current: PolicyMode,
   target: PolicyMode,
   reason: string,
-): string {
-  const grant =
-    target === "full"
-      ? "允许后，AI 的所有操作都不再询问，直到你在设置里改回来。"
-      : target === "auto"
-        ? "允许后，AI 可以自己完成日常修改；装更新、删数据这类操作仍会先问你。"
-        : "允许后，AI 会在每一步修改前先问你。";
-  return [
-    `AI 想从「${POLICY_MODE_LABEL[current]}」升到「${POLICY_MODE_LABEL[target]}」。`,
-    `原因：${reason}`,
-    "",
-    grant,
-    "这个设置会一直有效，直到你在设置里改回来。",
-  ].join("\n");
+): AiConfirmCardPayload {
+  return buildElevationCard(current, target, reason);
 }
 
 /**
@@ -90,11 +81,9 @@ export async function requestElevationFlow(
   if (target === current) return { granted: true, mode: current };
 
   try {
+    // AI 提权：第一张讲「当前→目标 + 能力变化 + AI 理由」；full 的第二张红卡由
+    // 随后的 setMode 命令自己弹（命令是唯一写点，任何调用方都跳不过红卡）。
     await askUser(ctx, "提高权限", elevationPrompt(current, target, reason));
-    if (target === "full") {
-      // D8：升到完全访问 = 二次确认（第一次说明后果，第二次确认常驻事实）
-      await askUser(ctx, "确认开启完全访问", "确认后 AI 的所有操作都不再询问，直到你在设置里改回来。确定开启吗？");
-    }
   } catch (e) {
     const err = e as Error & { code?: string };
     if (err.code === USER_DENIED) return { granted: false, code: USER_DENIED };
@@ -102,10 +91,11 @@ export async function requestElevationFlow(
   }
 
   // 批准 = 写档位（用户动作；⛔ 不经 AI 可调的命令面）
-  await ctx.shellRequest(
+  const result = (await ctx.shellRequest(
     IPC.commands.execute,
-    [POLICY_SET_MODE_COMMAND, undefined, target, { via: "elevation", source: "user" }],
+    [POLICY_SET_MODE_COMMAND, undefined, target, { source: "user" }],
     ASK_TIMEOUT_MS,
-  );
+  )) as { confirmed?: boolean };
+  if (result?.confirmed === false) return { granted: false, code: USER_DENIED };
   return { granted: true, mode: target };
 }

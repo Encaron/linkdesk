@@ -11,7 +11,7 @@
  */
 
 /** 卡片种类——只影响文案槽位与配色，不改变确认语义 */
-export type AiConfirmKind = "action" | "elevation" | "full";
+type AiConfirmKind = "action" | "elevation" | "full";
 
 /** 表格一行（「现在 → 之后」；tone 决定右侧颜色） */
 export interface AiConfirmRow {
@@ -24,7 +24,7 @@ export interface AiConfirmRow {
   tone?: "allow" | "ask" | "deny" | "plain";
 }
 
-export interface AiConfirmTarget {
+interface AiConfirmTarget {
   /** 单字符图标（不是 emoji；如 ▤ / ◈ / ⇧） */
   icon: string;
   /** 单行标题：二选一 */

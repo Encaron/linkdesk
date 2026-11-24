@@ -21,7 +21,7 @@ import type { ConfirmPresentInfo } from "./types";
  * 文案包——**壳侧唯一出处**（`t()` 在这里解析一次）。
  * 键的中文原文即 i18n key；英文译名住 lang-defaults（`audit-i18n --strict` 会盯）。
  */
-export function buildLabels(): PluginInstallConfirmLabels {
+function buildLabels(): PluginInstallConfirmLabels {
   const t = (key: string) => i18n.t(key);
   return {
     installTitle: t("安装 {{name}}"),

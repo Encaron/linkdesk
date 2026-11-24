@@ -41,7 +41,7 @@
   cursor: pointer;
 }
 
-.ldk-ai-policy-segbtn:hover:not(:disabled) {
+.ldk-ai-policy-segbtn:hover:not(:disabled):not([aria-checked="true"]) {
   background: var(--hover-overlay);
   color: var(--text-primary);
 }
