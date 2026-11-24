@@ -88,7 +88,9 @@ function readTrustedIds(): string[] {
 /** 某来源是否被信任——官方恒 true（fixed）；其余看配置数组 */
 export function isSourceTrusted(sourceId: string): boolean {
   if (sourceId === OFFICIAL_SOURCE_ID) return true;
-  return readTrustedIds().includes(sourceId);
+  // 大小写不敏感（来源 id 是 `owner/repo`，市场统一小写；用户手写的可能混合大小写）
+  const key = sourceId.trim().toLowerCase();
+  return readTrustedIds().some((id) => id.trim().toLowerCase() === key);
 }
 
 /**
