@@ -74,6 +74,15 @@ export class IpcBridge {
     "installFromDirectory", // R4-1.2（I16）：本地安装——zip 解压/文件夹复制同属长任务（10s 墙钟与它无关）
     "reinstall",
     "update",
+    // 🔴 P1 安装确认（2026-11-24 实机）：这三条**要么在等用户点确认卡、要么在跑整条安装**——
+    //    与 `dialog.confirm` 同类（E6#74 的教训逐字适用）：卡停超过 10s 就桥超时 ⇒ 池侧先收到
+    //    「请求超时」而卡还在屏幕上，用户之后点确认装上了、调用方却当成失败。
+    "requestInstall",
+    "requestUpdateBatch",
+    "commitInstall",
+    // 零插件命令面的两条（命令也走 plugins:call）：installFromCatalog 会弹卡＋跑完安装；
+    // prepareUpdateBatch/previewUpdatePlan 只是算计划（快），不必豁免。
+    "installFromCatalog",
   ]);
 
   /** 该请求是否不设超时——用户阻塞通道（等用户回答）∨ 长任务安装调用（等网络/磁盘） */

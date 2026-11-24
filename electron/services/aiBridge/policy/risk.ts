@@ -64,7 +64,7 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
   "aiPolicy.resetToDefault": { risk: "R3", what: "恢复默认权限", why: "改的就是门本身——只许用户操作" },
   "update.openUpdateFlow": {
     risk: "R3",
-    what: "处理主软件更新（有新版本会先下载，下载完重启并安装）",
+    what: "处理主软件更新（有新版本会先下载，下载完**重启并装**）",
     why: "装更新 = 换掉正在跑的程序本体，不可回退",
   },
 };

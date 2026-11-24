@@ -6,24 +6,6 @@
  * plugin API re-export (keeping the existing import path) + preload + main process, three ends import type.
  */
 
-/** 2026-11-24（翻译根治）：主进程发起的确认框正文——**只传 i18n key + 参数，不传成品句子**。
- *
- *  病灶：主进程（Electron main）没有 i18n 实例，`dialog:confirm` 长期收的是**已拼好的中文句**
- *  ⇒ 英文界面里 AI 确认/提权框整段中文，且静态审计查不到（不是源码里的中文串缺译，是根本没走 t()）。
- *  判据：**谁能翻译，谁拼句子**。主进程只声明 key 与参数，渲染侧（IpcBridgeHandler，持 i18n）解析。
- *
- *  `keyParams` 列出的参数名是 **i18n key**（如「安装插件」「自主」）——渲染侧先 t() 再插值；
- *  未列出的参数是**用户数据**（路径 / 插件 id / AI 给的理由），原样插入，⛔ 不翻译。
- */
-export interface DialogI18nText {
-  /** i18n key（中文原文）——与全仓 key 约定同源 */
-  key: string;
-  /** 插值参数 */
-  params?: Record<string, string>;
-  /** 其中哪些参数本身是 i18n key（渲染侧二次 t()） */
-  keyParams?: string[];
-}
-
 export interface DialogOpenOptions {
   title?: string;
   /** true = pick a directory; defaults to picking a file */
