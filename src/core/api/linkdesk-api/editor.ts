@@ -6,6 +6,18 @@
 
 import type { FileDecoration, FileDecorationProvider } from "./types";
 
+/** 文件关联候选（`listHandlersFor` 元素）——`title` = 插件显示名，`displayName` = 文件类型显示名 */
+export interface FileHandlerCandidate {
+  pluginId: string;
+  title: string;
+  displayName: string;
+  /** 宿主按「覆盖表 → 声明序 → 角色兜底」算出的当前默认 */
+  isCurrent: boolean;
+}
+
+/** 覆盖表快照——`ext（无点小写） → pluginId`；无覆盖 = 空表 */
+export type FileAssociationOverrides = Record<string, string>;
+
 /** File decoration / association / language definition / LSP / protocol / view container namespace surfaces — editor companion services (answered directly by the main process / in-pool) */
 export interface EditorAPI {
   /** E5.7#60: file decorations — a local in-pool registry (zero IPC). Shape modeled after contract §3.24 */
@@ -40,12 +52,14 @@ export interface EditorAPI {
      * `title` = the **plugin** display name (manifest.name ?? pluginId); `displayName` = the **file type** display name
      * (the displayName in the declaration, e.g. .rs → "Rust") — the two differ semantically; naming surfaces use `title`.
      */
-    listHandlersFor(ext: string): Promise<Array<{
-      pluginId: string;
-      title: string;
-      displayName: string;
-      isCurrent: boolean;
-    }>>;
+    listHandlersFor(ext: string): Promise<FileHandlerCandidate[]>;
+    /** 覆盖表**只读快照**（2026-11-24 A6）：`ext → pluginId`，无覆盖 = 空表。
+     *  UI 插件不再需要知道宿主配置键名/表形状（旧路 `configuration.get("workbench.fileAssociations")` 退役）；
+     *  写入仍走 `setDefault` / `setDefaultBulk`（唯一单写者）。 */
+    getOverrides(): Promise<FileAssociationOverrides>;
+    /** 覆盖表变更订阅（2026-11-24 A6）——宿主写入后推送**归一化快照**；返回退订函数。
+     *  旧壳无本方法 ⇒ 调用方 feature-detect 后降级（本档 K2/K10 豁免账本登记到期条件）。 */
+    onDidChangeOverrides(cb: (overrides: FileAssociationOverrides) => void): () => void;
     /** The override table's only write port — `pluginId: null` = restore automatic (deletes the override key); config:changed is broadcast immediately after writing (E31) */
     setDefault(ext: string, pluginId: string | null): Promise<void>;
     /** Same as above, **writes N types at once** (E32/E34 aggregation: `pluginId: null` = delete per type) — invalid/duplicate extensions are skipped within the write surface */

@@ -122,8 +122,10 @@
       "setActive"
     ],
     "fileAssociation": [
+      "getOverrides",
       "getPluginFor",
       "listHandlersFor",
+      "onDidChangeOverrides",
       "setDefault",
       "setDefaultBulk"
     ],
@@ -525,8 +527,10 @@
       "setActive"
     ],
     "fileAssociation": [
+      "getOverrides",
       "getPluginFor",
       "listHandlersFor",
+      "onDidChangeOverrides",
       "setDefault",
       "setDefaultBulk"
     ],
@@ -1411,6 +1415,7 @@
     "ldk-pic-link",
     "ldk-pic-note",
     "ldk-pic-row",
+    "ldk-pic-row-ai",
     "ldk-pic-row-icon",
     "ldk-pic-row-icon-inner",
     "ldk-pic-row-name",

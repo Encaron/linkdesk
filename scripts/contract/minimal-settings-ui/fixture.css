@@ -1,0 +1,111 @@
+/* 最小第三方设置 UI 夹具——自有命名空间（msu-），颜色/圆角/字号全吃宿主 token。 */
+.msu-root {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  height: 100%;
+  box-sizing: border-box;
+}
+.msu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+.msu-nav button,
+.msu-btn {
+  text-align: left;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.msu-nav button.is-on {
+  border-color: var(--accent);
+  background: var(--bg-selection);
+}
+.msu-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+}
+.msu-main h1 {
+  font-size: var(--font-size-lg);
+  margin: 0 0 12px;
+}
+.msu-group {
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 0;
+}
+.msu-group h2 {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+.msu-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+}
+.msu-label {
+  color: var(--text-secondary);
+}
+.msu-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.msu-inline input[type="text"],
+.msu-inline input:not([type]),
+.msu-row input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+.msu-row select,
+.msu-row textarea {
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: inherit;
+}
+.msu-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+.msu-seg button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.msu-seg button.is-on {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+.msu-muted {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+.msu-status {
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.msu-manager {
+  margin-bottom: 8px;
+}
+.msu-manager-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}

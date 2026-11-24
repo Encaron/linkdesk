@@ -98,6 +98,8 @@ export const IPC = {
     getPluginFor: 'fileAssociation:getPluginFor',
     // T2 只读面：列该扩展名全部声明者＋当前默认标记（「打开方式…」选择器数据源，01 §T2.1）
     listHandlersFor: 'fileAssociation:listHandlersFor',
+    // 2026-11-24（A6）：覆盖表只读快照——插件不再读宿主配置键（写仍走 setDefault/setDefaultBulk）
+    getOverrides: 'fileAssociation:getOverrides',
     // T2 写面：覆盖表唯一写口（代理到壳 ConfigurationService 单写者，D1/E31）
     setDefault: 'fileAssociation:setDefault',
     // 第 4 波写面：E32/E34 聚合格批量写——同一次读改写覆盖 N 个扩展名（「恢复自动（本格 N 类）」）

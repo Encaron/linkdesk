@@ -157,7 +157,7 @@ const events = createEventSystem(ipcRenderer, {
  */
 function buildShellFileAssociation() {
   return {
-    ...buildFileAssociationFace(ipcRenderer),
+    ...buildFileAssociationFace(ipcRenderer, events), // 2026-11-24 A6：+ getOverrides/onDidChangeOverrides
     onSecondContender: (cb: (event: { ext: string; pluginId: string; displayName: string }) => void) =>
       events.on(IPC.fileAssociation.secondContender, cb),
   };

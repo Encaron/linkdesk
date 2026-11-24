@@ -144,7 +144,7 @@ try {
     app: buildApp(), // E6#57.2b：产品身份只读面（getVersion）
     encoding: buildEncoding(),
     search: buildSearch(),
-    fileAssociation: buildFileAssociation(),
+    fileAssociation: buildFileAssociation(events), // 2026-11-24 A6：+ 覆盖表快照/订阅
 
     // ── 工作区/交互域（4d）──
     workspace: buildWorkspace(events),

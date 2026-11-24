@@ -49,6 +49,13 @@ export function inspectFixture(fixtureDir = FIXTURE_DIR) {
       continue;
     }
     files++;
+    // 🔴 夹具的立身之本：零壳 UI 库、零壳内部模块
+    if (/from\s+["']@linkdesk\/ui["']/.test(src)) {
+      errors.push(`夹具 import 了壳 UI 库（应完全自绘）：${path.relative(fixtureDir, f)}`);
+    }
+    if (/from\s+["']@\/(?:src)\//.test(src) || /from\s+["']@src\//.test(src)) {
+      errors.push(`夹具 import 了壳内部模块：${path.relative(fixtureDir, f)}`);
+    }
     // repo 传 "settings" 以启用 K3（夹具同样不许出现 app.* 键名）
     for (const h of scanPluginSource(src, { repo: "settings", file: path.relative(fixtureDir, f), official: true })) {
       if (["K1", "K2", "K3", "K9", "K10"].includes(h.rule)) {
@@ -67,6 +74,7 @@ const SCENARIOS = [
   ["R5", "AI 权限档位（任务 A）", "切四档", "ai.policy.mode 落盘；风险摘要一致；userOnly 命令仍拒 AI"],
   ["R6", "只读状态行", "看 AI 接入", "状态来自运行时命令，不是写死"],
   ["R7", "旧壳兼容", "壳无新命令", "夹具降级为只读，不崩"],
+  ["R8", "文件关联覆盖表（A6）", "打开管理器改默认并恢复自动", "getOverrides/onDidChangeOverrides 与官方页同步；⛔ 不读宿主配置键"],
 ];
 
 if (SELF_TEST) {
@@ -78,10 +86,13 @@ if (SELF_TEST) {
   const tmp = fs.mkdtempSync(path.join(ROOT, "scratch", "replaceability-selftest-"));
   try {
     fs.writeFileSync(path.join(tmp, "plugin.json"), JSON.stringify({ pluginId: "bad-fixture", factoryRole: "settings", entry: "x.ts" }));
-    fs.writeFileSync(path.join(tmp, "x.ts"), 'const p = window.linkdesk.path.join(window.linkdesk.path.appDataDir(), "settings.json");');
+    fs.writeFileSync(
+      path.join(tmp, "x.ts"),
+      ['import { Button } from "@linkdesk/ui";', 'const p = window.linkdesk.path.join(window.linkdesk.path.appDataDir(), "settings.json");'].join("\n"),
+    );
     const bad = inspectFixture(tmp);
-    const okBad = bad.errors.some((e) => e.includes("K1") || e.includes("K10"));
-    console.log(`${okBad ? "✓" : "✗"} 负控：夹具自拼宿主路径被拦下`);
+    const okBad = bad.errors.some((e) => e.includes("K1") || e.includes("K10")) && bad.errors.some((e) => e.includes("UI 库"));
+    console.log(`${okBad ? "✓" : "✗"} 负控：夹具自拼宿主路径 / import 壳 UI 库 均被拦下`);
     if (!okGood || !okBad) process.exit(1);
     console.log("\n✅ 可替换性夹具自测通过");
   } finally {

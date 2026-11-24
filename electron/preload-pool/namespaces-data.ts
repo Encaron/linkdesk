@@ -134,6 +134,6 @@ export function buildSearch() {
  * T2（第 3 波）：listHandlersFor = 选择器只读面（主进程直答）；setDefault = 覆盖表唯一写口
  * （PROXY_CHANNELS 代理到壳 ConfigurationService 单写者——settings.json 写路径归壳，D1/E31）。
  * 方法实现单源 = 共享工厂（jscpd 抓过双 preload 各写一份的克隆）。 */
-export function buildFileAssociation() {
-  return buildFileAssociationFace(ipcRenderer);
+export function buildFileAssociation(events: EventSystemApi) {
+  return buildFileAssociationFace(ipcRenderer, events);
 }

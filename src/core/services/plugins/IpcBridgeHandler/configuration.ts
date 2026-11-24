@@ -15,9 +15,19 @@ import {
   WORKBENCH_FILE_ASSOCIATIONS_KEY,
 } from "../../files/FileAssociationService";
 import { getMergedSchema, getConfigurationContributions } from "../../../registry/ConfigurationRegistry";
+import { FILE_ASSOCIATION_OVERRIDES_CHANGED } from "../../../types/ipc/fileAssociationEvents";
 import type { ShellAPI } from "../../../api/linkdesk-api/shell";
 
 let _configUnsub: (() => void) | null = null;
+
+/** 2026-11-24（A6）：覆盖表变更广播——池 preload 收到后重读 getOverrides()（推归一化快照） */
+function notifyOverridesChanged(): void {
+  try {
+    window.linkdesk?.events?.emit(FILE_ASSOCIATION_OVERRIDES_CHANGED, {});
+  } catch {
+    /* 无桥（单测/预览）= 无人订阅，静默 */
+  }
+}
 
 /** 配置变更订阅——SettingsView 直调 setConfigurationValue 绕过 IPC proxy，需要此通道补齐 */
 export function subscribeConfiguration(bridge: NonNullable<ShellAPI["bridge"]>): void {
@@ -56,6 +66,7 @@ export async function handleConfigChannel(channel: string, args: unknown[]): Pro
       if (pluginId) table[key] = pluginId;
       else delete table[key];
       await setConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY, table, "user");
+      notifyOverridesChanged();
       break;
     }
     // 第 4 波写面（E32/E34）：聚合格批量——「恢复自动（本格 N 类）」/「整格下拉」一次落 N 个键。
@@ -71,6 +82,7 @@ export async function handleConfigChannel(channel: string, args: unknown[]): Pro
         pluginId ?? null
       );
       await setConfigurationValue(WORKBENCH_FILE_ASSOCIATIONS_KEY, next, "user");
+      notifyOverridesChanged();
       break;
     }
     default:

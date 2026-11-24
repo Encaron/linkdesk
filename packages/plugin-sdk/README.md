@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**19 domain interfaces → 51 namespaces / 286 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**19 domain interfaces → 51 namespaces / 288 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -53,7 +53,7 @@ npm install -D @linkdesk/plugin-sdk
 | `search` | 1 | `searchFiles` | file search — full-text search/replace (executed via IPC in… |
 | `encoding` | 4 | `detect` `decode` `encode` `isBinary` | encoding detection/conversion (main-process EncodingService) |
 | `decorations` | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | file decorations — a local in-pool registry (zero IPC). Sha… |
-| `fileAssociation` | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly … |
+| `fileAssociation` | 6 | `getPluginFor` `listHandlersFor` `getOverrides` `onDidChangeOverrides` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly … |
 | `langDef` | 1 | `get` | langDef — language definition registry (answered directly b… |
 | `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP bridge — autocompletion/F12/diagnostics/rename |
 | `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main… |
