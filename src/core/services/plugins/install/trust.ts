@@ -138,10 +138,10 @@ export async function trustSource(entry: {
   publisher?: string;
 }): Promise<PluginSourceTrustEntry[]> {
   if (entry.sourceId === OFFICIAL_SOURCE_ID) return listSourceTrust();
-  const known = await listKnownSources();
-  if (!known.some((s) => s.sourceId === entry.sourceId)) {
-    throw new Error(i18n.t("未知来源：{{id}}", { id: entry.sourceId }));
-  }
+  // 🔴 允许**账本里还没有**的来源（2026-11-24 实机）：确认卡上的「以后此来源不再询问」出现在
+  // **首装**时——那时这个来源还没装过任何插件 ⇒ 账本没有它。若这里抛「未知来源」，
+  // 用户勾了等于没勾（还被吞掉一个 promise）。信任清单只存 id，先记下即可；
+  // 等首装成功、账本学到该来源后，清单自然会把它显示出来（来源变更仍会自动回到必问）。
   const trusted = readTrustedIds();
   if (!trusted.includes(entry.sourceId)) {
     await setConfigurationValue(POLICY_KEYS.trustedSources, [...trusted, entry.sourceId]);
