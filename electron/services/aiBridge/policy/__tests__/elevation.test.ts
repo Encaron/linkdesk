@@ -167,12 +167,17 @@ describe("档位闸：read 档拒绝、ask 档弹框、auto 档静默", () => {
 describe("提权回路：只问不答，批准写档位", () => {
   const target: PolicyMode = "auto";
 
-  it("提权框正文写清「当前档 → 目标档 / 原因 / 常驻」（D2 不藏常驻事实）", () => {
+  it("提权框正文写清「当前档 → 目标档 / 原因 / 常驻」（D2 不藏常驻事实）——只给 key，渲染侧翻译", () => {
     const text = elevationPrompt("ask", target, "需要连续整理 12 个主题插件的资料");
-    expect(text).toContain("逐次确认");
-    expect(text).toContain("自主");
-    expect(text).toContain("需要连续整理 12 个主题插件的资料");
-    expect(text).toContain("一直有效");
+    expect(text.key).toContain("{{current}}");
+    expect(text.key).toContain("{{target}}");
+    expect(text.key).toContain("一直有效");
+    expect(text.params).toMatchObject({
+      current: "逐次确认",
+      target: "自主",
+      reason: "需要连续整理 12 个主题插件的资料",
+    });
+    expect(text.keyParams).toEqual(["current", "target", "grant"]); // reason 是 AI 给的数据，不翻译
   });
 
   it("S7：用户允许 ⇒ 经壳命令 aiPolicy.setMode 写档位（不是 AI 能调的命令面）", async () => {

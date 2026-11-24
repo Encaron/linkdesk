@@ -30,7 +30,7 @@ import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
 import i18n from "../../../../i18n";
 import type { LinkDeskAPI, MenuItemDescriptor, PluginToastAction } from "../../../api/linkdesk-api";
-import type { DialogContentOpenOptions } from "../../../types/ipc/dialogs"; // E6#71c 富内容确认打开参数
+import type { DialogContentOpenOptions, DialogI18nText } from "../../../types/ipc/dialogs"; // E6#71c 富内容确认打开参数 · 2026-11-24 主进程确认框只传 key
 
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
@@ -64,13 +64,25 @@ export function unsubscribeUi(): void {
   _openKeybindingsUnsub = null;
 }
 
+/** dialog:confirm / alert 的正文解析——字符串原样；`{key,params}` 在**持 i18n 的这一侧**翻译。
+ *  主进程只给 key（它没有 i18n 实例），见 `DialogI18nText` 的注释。 */
+function resolveDialogText(text: string | DialogI18nText): string {
+  if (typeof text === "string") return text;
+  if (!text || typeof text.key !== "string") return "";
+  const params: Record<string, string> = { ...text.params };
+  for (const name of text.keyParams ?? []) {
+    if (typeof params[name] === "string") params[name] = i18n.t(params[name]);
+  }
+  return i18n.t(text.key, params);
+}
+
 /** dialog:* channel 处理器——插件调壳的 ConfirmDialog（E6#71c 富内容确认同域委派） */
 export async function handleDialogChannel(channel: string, args: unknown[]): Promise<unknown> {
   switch (channel) {
     // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
     case "dialog:confirm": {
-      const [message] = args as [string];
-      return confirm({ title: "", message });
+      const [message] = args as [string | DialogI18nText];
+      return confirm({ title: "", message: resolveDialogText(message) });
     }
     // ── E6#71c：富内容确认——插件自绘确认内容（content 视图 + 不透明 payload）。
     //    壳 DialogService.confirmContent → bridges 解析 content 视图 renderPath → 推池 DialogHost；
@@ -87,8 +99,8 @@ export async function handleDialogChannel(channel: string, args: unknown[]): Pro
       });
     }
     case "dialog:alert": {
-      const [message] = args as [string];
-      await alert({ title: "", message });
+      const [message] = args as [string | DialogI18nText];
+      await alert({ title: "", message: resolveDialogText(message) });
       break;
     }
     default:
