@@ -167,12 +167,17 @@ describe("档位闸：read 档拒绝、ask 档弹框、auto 档静默", () => {
 describe("提权回路：只问不答，批准写档位", () => {
   const target: PolicyMode = "auto";
 
-  it("提权框正文写清「当前档 → 目标档 / 原因 / 常驻」（D2 不藏常驻事实）", () => {
-    const text = elevationPrompt("ask", target, "需要连续整理 12 个主题插件的资料");
-    expect(text).toContain("逐次确认");
-    expect(text).toContain("自主");
-    expect(text).toContain("需要连续整理 12 个主题插件的资料");
-    expect(text).toContain("一直有效");
+  it("提权卡写清「当前档 → 目标档 / 原因 / 常驻」（D2 不藏常驻事实）——只给 key，渲染侧翻译", () => {
+    const card = elevationPrompt("ask", target, "需要连续整理 12 个主题插件的资料");
+    expect(card.kind).toBe("elevation");
+    expect(card.titleKey).toBe("提高 AI 权限");
+    expect(card.target.fromKey).toBe("逐次确认");
+    expect(card.target.toKey).toBe("自主");
+    expect(card.aiReason).toBe("需要连续整理 12 个主题插件的资料");
+    expect(card.effectKey).toContain("持续生效");
+    // 能力表由 decide 派生：日常修改 ask→auto 变成允许；安装/更新仍询问
+    expect(card.rows?.find((r) => r.labelKey.includes("日常修改"))?.toKey).toBe("允许");
+    expect(card.rows?.find((r) => r.labelKey.includes("安装"))?.toKey).toBe("询问");
   });
 
   it("S7：用户允许 ⇒ 经壳命令 aiPolicy.setMode 写档位（不是 AI 能调的命令面）", async () => {

@@ -22,6 +22,7 @@ export interface UiSurfaceLedger {
 export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
   shellVersion: "0.2.64",
   components: {
+    "AiConfirmCard": { since: "0.2.64" },
     "AiPolicyPicker": { since: "0.2.62" },
     "AiPolicyRiskLegend": { since: "0.2.63" },
     "BackgroundImagePicker": { since: "0.2.40" },
@@ -107,6 +108,7 @@ export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
     "urlSourceKey": { since: "0.2.13" },
   },
   types: {
+    "AiConfirmCardProps": { since: "0.2.64" },
     "AiPolicyCapability": { since: "0.2.63" },
     "AiPolicyDecision": { since: "0.2.63" },
     "AiPolicyOption": { since: "0.2.62" },
