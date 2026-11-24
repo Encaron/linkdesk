@@ -321,18 +321,18 @@ async function executePlan(handle: PlanHandle): Promise<PluginInstallCommitResul
  * `INSTALL_CONCURRENCY = 3` 槽位把关（D4：3 是并发槽，不是条数上限）。
  */
 export async function requestUpdateBatch(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult> {
-  if (reqs.length === 0) return { confirmed: true, jobIds: [] };
+  if (reqs.length === 0) return { confirmed: true };
 
   const prepared = await prepareUpdateBatch(reqs);
   if (prepared.plan.ask.length > 0) {
     const accepted = await presentedSerialized(prepared.plan, "batch", { reqs });
     if (!accepted) {
       discardInstall(prepared.planId);
-      return { confirmed: false, cancelled: true, jobIds: [], rejected: prepared.plan.rejected };
+      return { confirmed: false, cancelled: true, rejected: prepared.plan.rejected };
     }
   }
   const r = await commitInstall(prepared.planId);
-  return { confirmed: r.confirmed, cancelled: r.cancelled, jobIds: [], rejected: prepared.plan.rejected };
+  return { confirmed: r.confirmed, cancelled: r.cancelled, rejected: prepared.plan.rejected };
 }
 
 /**

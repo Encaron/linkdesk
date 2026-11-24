@@ -144,8 +144,6 @@ export interface PluginInstallConfirmResult {
   ok?: boolean;
   error?: string;
   cancelled?: boolean;
-  /** 确认后壳已入队；进度/终态走 `plugin:installJobs` 全量快照 */
-  jobId?: string;
   /** `invalid` = 请求本身不成立（同版本重装 / 未放行降级 / 重复请求） */
   reason?: "user-cancelled" | "source-changed" | "integrity-failed" | "min-app" | "no-token" | "up-to-date" | "invalid";
 }
@@ -164,7 +162,7 @@ export interface PluginInstallPrepared {
   expiresAt: number;
 }
 
-/** `commitInstall` 回执——`confirmed:true` = 用户已确认且已交执行（成败看 job 表） */
+/** `commitInstall` 回执——`confirmed:true` = 用户已确认且已交执行体（成败看 `ok`） */
 export interface PluginInstallCommitResult {
   confirmed: boolean;
   /** 🔴 **执行结果**（confirmed 只表示"用户同意了"）：false = 已确认但没装成（下载/校验/落盘失败）。
@@ -172,18 +170,15 @@ export interface PluginInstallCommitResult {
   ok?: boolean;
   error?: string;
   cancelled?: boolean;
-  jobId?: string;
   /** `unknown-plan` = planId 不存在/已用过/已过期（统一一个词，⛔ 不细分） */
   reason?: "unknown-plan" | "rejected" | "user-cancelled" | "no-token";
 }
 
-/** `requestUpdateBatch` 回执——`confirmed:false` = **整批取消**（0 个入队，spec §五.4） */
+/** `requestUpdateBatch` 回执——`confirmed:false` = **整批取消**（0 个执行，spec §五.4）。
+ *  🔴 壳不建 job 表：这里的 `confirmed` 只回答「用户同不同意」，逐项成败走完成通知（轻 toast ＋ 铃铛面板）。 */
 export interface PluginUpdateBatchResult {
   confirmed: boolean;
   cancelled?: boolean;
-  /** 确认后 ask ＋ silent 全部入队（按请求顺序）；`batchId` 是壳侧汇总键，**不是 job 表字段** */
-  jobIds: string[];
-  batchId?: string;
-  /** 被直接拒的项（不弹卡、不进 jobIds） */
+  /** 被直接拒的项（不弹卡、不执行） */
   rejected?: PluginConfirmRejected[];
 }
