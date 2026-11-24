@@ -107,6 +107,8 @@ export const UI_SURFACE_LEDGER: UiSurfaceLedger = {
     "urlSourceKey": { since: "0.2.13" },
   },
   types: {
+    "AiPolicyCapability": { since: "0.2.63" },
+    "AiPolicyDecision": { since: "0.2.63" },
     "AiPolicyOption": { since: "0.2.62" },
     "AiPolicyPickerProps": { since: "0.2.62" },
     "AiPolicyRiskTableProps": { since: "0.2.63" },

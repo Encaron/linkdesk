@@ -9,7 +9,7 @@
  *    `protectedCommands` 由**壳命令**补（命令面归壳）。
  */
 
-/** 风险表弹窗的宿主内容视图 id（壳命令 → DialogHost 内容模式；注册处 = 池 HostDialogView 注册表） */
+/** 敏感能力弹窗的宿主内容视图 id（壳命令 → DialogHost 内容模式；注册处 = 池 HostDialogView 注册表） */
 export const AI_POLICY_SENSITIVE_VIEW = "aiPolicy.sensitiveManager";
 
 /** 风险表弹窗的宿主内容视图 id（壳命令 → DialogHost 内容模式；注册处 = 池 HostDialogView 注册表） */
@@ -31,12 +31,18 @@ export type AiPolicyDecisionDto = "allow" | "ask" | "deny";
 export type AiPolicyMatrixDto = Record<AiPolicyModeDto, Record<AiPolicyRiskDto, AiPolicyDecisionDto>>;
 
 /** 一段可选项（四段控件每段 = 一条） */
-export interface AiPolicyOptionDto {
+interface AiPolicyOptionDto {
   value: AiPolicyModeDto;
   /** 段标题（i18n key） */
   label: string;
   /** 一句人话（i18n key）——与设置声明 enumDescriptions 同文 */
   description: string;
+}
+
+/** 档位块下方的能力摘要（名称 + 当前判定；名称是 i18n key；随档位变） */
+export interface AiPolicyCapabilityDto {
+  label: string;
+  decision: AiPolicyDecisionDto;
 }
 
 /** 风险表一行（`decision` = **当前档位下**的判定，随档变化） */
@@ -51,6 +57,16 @@ export interface AiPolicyRiskRowDto {
   why?: string;
 }
 
+/** 敏感能力一行（规则是固定语义；`decision` 仍按当前档位给） */
+export interface AiPolicySensitiveRowDto {
+  id: string;
+  /** 能力名（i18n key） */
+  label: string;
+  /** 规则说明（i18n key） */
+  rule: string;
+  decision: AiPolicyDecisionDto;
+}
+
 export interface AiPolicyStateDto {
   mode: AiPolicyModeDto;
   /** true = 配置损坏/值非法，已按 fail-closed 档（ask）处理 */
@@ -62,7 +78,12 @@ export interface AiPolicyStateDto {
   /** 四档 × 四级判定（唯一来源 = 主进程 `decide`，⛔ 不二次实现） */
   matrix: AiPolicyMatrixDto;
   options: AiPolicyOptionDto[];
+  /** 档位块下方的摘要（4 条；随档位变） */
+  capabilities: AiPolicyCapabilityDto[];
+  /** 操作清单（表格行） */
   riskTable: AiPolicyRiskRowDto[];
+  /** 敏感能力（表格行） */
+  sensitive: AiPolicySensitiveRowDto[];
   /** `userOnly` 命令 id（AI 永远不可调）——由壳命令补，主进程返回空数组 */
   protectedCommands: string[];
 }

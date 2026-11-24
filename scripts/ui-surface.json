@@ -87,6 +87,8 @@
     "urlSourceKey": { "since": "0.2.13" }
   },
   "types": {
+    "AiPolicyCapability": { "since": "0.2.63" },
+    "AiPolicyDecision": { "since": "0.2.63" },
     "AiPolicyOption": { "since": "0.2.62" },
     "AiPolicyPickerProps": { "since": "0.2.62" },
     "AiPolicyRiskTableProps": { "since": "0.2.63" },
@@ -130,5 +132,5 @@
     "SourceBadgeProps": { "since": "0.2.40" },
     "SourceBadgeSource": { "since": "0.2.40" }
   },
-  "count": 121
+  "count": 123
 }

@@ -16,7 +16,7 @@
  *       buildManagerModel / normalizeExt / normalizeExtList / overrideKeyOf / readOverride /
  *       extractDeclaredExtensions / extLabelHead / EXT_LABEL_MAX /
  *       orderRows / filterRows / hitKindOf）
- *   - 42 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
+ *   - 44 类型（AiPolicyOption / AiPolicyPickerProps / AiPolicyRiskTableProps / AiPolicyRiskTableRow / IconDescriptor / InlineInputHandle / ContextMenuProps / ManifestIconShape / ResolvedIcon / HintTipProps /
  *       RunStatusCommand / BackgroundImagePickerProps / EffectiveBadgeProps / SourceBadgeSource / SourceBadgeKind / SourceBadgeProps /
  *       OpenWithRequest / OpenWithHandler / OpenWithPickerProps /
  *       DeclaredExtension / DeclaredPlugin / HandlerSnapshot / RowState / RowSortMode / RowOption / ExtRowModel / CardModel /
@@ -137,7 +137,7 @@ export type { ManifestIconShape, ResolvedIcon } from "@shared/plugin-icon/iconUt
 export { default as AiPolicyPicker } from "@shared/ai-policy-picker/AiPolicyPicker";
 export { default as AiPolicyRiskTable, AiPolicyRiskLegend } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
 export type { AiPolicyRiskTableProps, AiPolicyRiskTableRow } from "@shared/ai-policy-risk-table/AiPolicyRiskTable";
-export type { AiPolicyOption, AiPolicyPickerProps } from "@shared/ai-policy-picker/AiPolicyPicker";
+export type { AiPolicyCapability, AiPolicyDecision, AiPolicyOption, AiPolicyPickerProps } from "@shared/ai-policy-picker/AiPolicyPicker";
 export { default as ManagerView } from "@shared/file-associations-manager/ManagerView";
 export { default as CardRow } from "@shared/file-associations-manager/pieces/CardRow";
 export { default as ContestedRow } from "@shared/file-associations-manager/pieces/ContestedRow";

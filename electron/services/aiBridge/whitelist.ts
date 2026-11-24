@@ -247,7 +247,7 @@ export const OPS: Record<string, BridgeOp> = {
   tabs: {
     name: 'tabs',
     kind: 'read',
-    help: '读标签快照（经壳读取面 plugins:call "listTabs"——M1 AI#3；壳是标签权威，无第二份）',
+    help: '读标签快照（经壳读取面 plugins:call "listTabs"——壳是标签权威，无第二份）',
     params: [],
     run: async (_req, ctx) => ctx.shellRequest(IPC.plugins.call, ['listTabs']),
   },
@@ -281,7 +281,7 @@ export const OPS: Record<string, BridgeOp> = {
   exec: {
     name: 'exec',
     kind: 'write',
-    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（可调 requestElevation 说明理由，⛔ 别原样重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
+    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。注意：describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（可调 requestElevation 说明理由，别原样重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
       { name: 'args', type: 'array', required: false, description: '透传给命令的实参（逐位平铺，或一个具名对象——键名照该命令的 params[].name）' },
@@ -315,7 +315,7 @@ export const OPS: Record<string, BridgeOp> = {
   requestElevation: {
     name: 'requestElevation',
     kind: 'write',
-    help: '请求用户提高 AI 权限档位（只是**请求**：软件里弹提权框，用户点「允许」才生效、且常驻到用户自己改回；⛔ AI 没有任何「自己批准」的通道）。被 EPOLICYDENIED 拒绝后用它说明理由，⛔ 不要原样重试',
+    help: '请求用户提高 AI 权限档位（只是**请求**：软件里弹提权框，用户点「允许」才生效、且常驻到用户自己改回；AI 没有任何「自己批准」的通道）。被 EPOLICYDENIED 拒绝后用它说明理由，不要原样重试',
     params: [
       { name: 'mode', type: 'string', required: true, description: '目标档（read|ask|auto|full；只能比当前档高）' },
       { name: 'reason', type: 'string', required: true, description: '为什么需要更高权限（这句话会显示给用户）' },
@@ -327,7 +327,7 @@ export const OPS: Record<string, BridgeOp> = {
   install: {
     name: 'install',
     kind: 'write',
-    help: '安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（装 = 问一声，AI#29；⛔ 不绕确认回路）；用户不点头 = EUSERDENIED、不装',
+    help: '安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装（装 = 问一声，不绕确认回路）；用户不点头 = EUSERDENIED、不装',
     params: [
       { name: 'source', type: 'string', required: true, description: '插件包 URL（…linkdesk-plugin / zip）或本地路径' },
     ],
@@ -361,7 +361,7 @@ export const OPS: Record<string, BridgeOp> = {
   notifications: {
     name: 'notifications',
     kind: 'read',
-    help: '读通知面板（经壳读取面 plugins:call "listNotifications"——M1 AI#1；按钮的 command 事实随行，M1 AI#2）',
+    help: '读通知面板（经壳读取面 plugins:call "listNotifications"——按钮的 command 事实随行）',
     params: [],
     run: async (_req, ctx) => ctx.shellRequest(IPC.plugins.call, ['listNotifications']),
   },
@@ -369,7 +369,7 @@ export const OPS: Record<string, BridgeOp> = {
   notifyAction: {
     name: 'notifyAction',
     kind: 'write',
-    help: '执行通知上的按钮（按钮 = 命令——照 M1 AI#2 的 command/args 走 commands.execute，与手点同一条命令路径）。⚠️ 按钮背后是敏感命令时同样要用户点头（AI#29）',
+    help: '执行通知上的按钮（按钮 = 命令——按 command/args 走 commands.execute，与手点同一条命令路径）。注意：按钮背后是敏感命令时同样要用户点头',
     params: [
       { name: 'notificationId', type: 'string', required: true, description: '通知 id（notifications 操作的返回里有）' },
       { name: 'action', type: 'string', required: true, description: '按钮 label 或序号（从 0 起）' },
@@ -400,7 +400,7 @@ export const OPS: Record<string, BridgeOp> = {
   log: {
     name: 'log',
     kind: 'read',
-    help: '读最近操作账（正门三件套之「账本」的读取面；先记后判——被拒的调用也在账上，AI#43）',
+    help: '读最近操作账（正门三件套之「账本」的读取面；先记后判——被拒的调用也在账上）',
     params: [
       { name: 'limit', type: 'number', required: false, description: '返回最近几条（默认 20）' },
     ],

@@ -1,31 +1,25 @@
 /**
- * AI 敏感能力一览弹窗（池 · hostView = `aiPolicy.sensitiveManager`）。
+ * 敏感能力弹窗（池 · hostView = `aiPolicy.sensitiveManager`）。
  *
- * 规格：`01-设计/03-UI与交互规格.md` §2.5 的**状态面**——按当前真实规则列出 AI 能做/不能做哪类事。
- *
- * 🔴 本版**不画开关**：逐能力开关需要一套「能力 → 命令/操作」的分类法（插件侧尚无声明字段），
- *   凭空造开关等于第二套策略。这里只如实呈现：固定规则 + 受保护命令 + 其余由档位决定。
- *   外壳/兜底共用 `AiPolicyDialogShell`；关框只发 `cancel`。
+ * 返工 v4：表格三列（能力 / 规则 / 当前）；与操作清单分开，弹窗内不再二次切换。
+ * 规则是固定语义；「当前」随档位（数据来自壳，本视图不判）。
  */
 
 import { useTranslation } from "react-i18next";
 import AiPolicyDialogShell, { AiPolicyDialogFallback } from "./AiPolicyDialogShell";
+import type { AiPolicySensitiveRowDto } from "../../../core/types/ipc/aiPolicy";
 
-interface AiSensitiveRow {
-  label: string;
-  value: string;
-  /** 语义色调：fixed = 固定规则（不可调）；tier = 随档位；protected = 只有用户 */
-  tone: "fixed" | "tier" | "protected";
+export interface AiPolicySensitivePayload {
+  rows: AiPolicySensitiveRowDto[];
 }
 
-export interface AiSensitiveManagerPayload {
-  note?: string;
-  rows: AiSensitiveRow[];
-}
-
-function asPayload(payload: unknown): AiSensitiveManagerPayload | null {
-  const p = payload as AiSensitiveManagerPayload | null;
+function asPayload(payload: unknown): AiPolicySensitivePayload | null {
+  const p = payload as AiPolicySensitivePayload | null;
   return p && Array.isArray(p.rows) ? p : null;
+}
+
+function decisionClass(d: string): string {
+  return d === "allow" ? "ldk-ai-policy-state-allow" : d === "ask" ? "ldk-ai-policy-state-ask" : "ldk-ai-policy-state-deny";
 }
 
 export default function AiSensitiveManager({ payload }: { payload?: unknown }) {
@@ -34,18 +28,27 @@ export default function AiSensitiveManager({ payload }: { payload?: unknown }) {
   if (!data) return <AiPolicyDialogFallback />;
 
   return (
-    <AiPolicyDialogShell
-      title={t("细分管理")}
-      note={t(data.note ?? "这些规则由权限档位统一决定；它们不会绕过上面的权限档位。")}
-    >
-      <ul className="ldk-ai-sensitive-list">
-        {data.rows.map((row) => (
-          <li key={row.label} className="ldk-ai-sensitive-row" data-tone={row.tone}>
-            <span className="ldk-ai-sensitive-label">{t(row.label)}</span>
-            <span className="ldk-ai-sensitive-value">{t(row.value)}</span>
-          </li>
-        ))}
-      </ul>
+    <AiPolicyDialogShell title={t("敏感能力")} note={t("这些规则由权限档位统一决定，不会绕过档位。")} legend>
+      <table className="ldk-ai-policy-table" aria-label={t("敏感能力")}>
+        <thead>
+          <tr>
+            <th scope="col">{t("能力")}</th>
+            <th scope="col">{t("规则")}</th>
+            <th scope="col">{t("当前")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.rows.map((row) => (
+            <tr key={row.id}>
+              <td>{t(row.label)}</td>
+              <td className="ldk-ai-policy-desc">{t(row.rule)}</td>
+              <td className={decisionClass(row.decision)}>
+                {t(row.decision === "allow" ? "允许" : row.decision === "ask" ? "询问" : "不允许")}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </AiPolicyDialogShell>
   );
 }

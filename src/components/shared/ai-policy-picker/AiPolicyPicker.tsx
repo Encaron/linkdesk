@@ -1,54 +1,66 @@
 /**
- * AiPolicyPicker——AI 权限四段选择器（`@linkdesk/ui` 共享件 · 2026-11-24）。
+ * AiPolicyPicker——AI 权限四段选择器（`@linkdesk/ui` 共享件 · 2026-11-24 · 返工 v4）。
  *
- * 规格：`docs/04-软件更新/待抉择池/AI安全-权限档位与提权/01-设计/03-UI与交互规格.md` §2.2
+ * 规格：`01-设计/03-UI与交互规格.md` §2.2（v4 更新：文案走 key + 能力摘要；无 emoji）
  *
- * 🔴 三条纪律（判据 A：消费宿主声明的件住共享层）：
- *   ① **受控、零桥**：不 import `@/core`、不调 `window.linkdesk`；值/文案由调用方注入，
- *      `onChange` 只上报（⛔ 不自己写配置——写点只有壳命令 `aiPolicy.setMode`）；
- *   ② **档位词表由宿主声明传入**（`options`），组件里没有 `"auto"` 之类的业务字面量分支；
- *   ③ **零 hex / 零裸 px**：颜色与圆角全部吃 token（硬约束 1/16），类名 `ldk-` 前缀（硬约束 23）。
+ * 🔴 三条纪律：
+ *   ① **受控、零桥**：不 import `@/core`、不调 `window.linkdesk`；`onChange` 只上报；
+ *   ② **文案不缓存**：`label` / `description` / `note` / `resetLabel` 都是 **i18n key**，
+ *      由调用方传入的 `translate`（通常来自 `useTranslation`）翻译——语言切换即时重绘；
+ *   ③ **零 hex / 零裸 px**：颜色与圆角全吃 token；类名 `ldk-` 前缀。
  *
- * 无障碍：`role="radiogroup"`＋每段 `role="radio"`＋`aria-checked`；←/→/Home/End 移动并选中，
- * 聚焦环走 token，不打断方向键在设置页的行内语义。
+ * 无障碍：`role="radiogroup"` + 每段 `role="radio"`；←/→/Home/End 移动并选中；聚焦环走 token。
+ * 判定色只作辅助，结论一律用文字（允许 / 询问 / 不允许），不使用 emoji。
  */
 
 import { useCallback, useId, useRef } from "react";
 import "./AiPolicyPicker.css";
 
 type AiPolicyValue = "read" | "ask" | "auto" | "full";
+export type AiPolicyDecision = "allow" | "ask" | "deny";
 
 export interface AiPolicyOption {
   value: AiPolicyValue;
-  /** 段标题（已 t()） */
+  /** 段标题（i18n key） */
   label: string;
-  /** 该档的判定摘要（已算好、已 t()——数据来自宿主 getState，⛔ 组件不自己算） */
-  summary: string;
+  /** 一句人话（i18n key，可选） */
+  description?: string;
+}
+
+/** 档位下方的能力摘要（label 是 i18n key；decision 来自宿主） */
+export interface AiPolicyCapability {
+  label: string;
+  decision: AiPolicyDecision;
 }
 
 export interface AiPolicyPickerProps {
   value: AiPolicyValue;
   options: AiPolicyOption[];
+  /** 档位块下方的能力摘要（可选） */
+  capabilities?: AiPolicyCapability[];
   disabled?: boolean;
   /** 只上报，不写配置 */
   onChange(value: AiPolicyValue): void;
-  /** 当前档的一句人话（已 t()；缺省则不显示该行） */
-  description?: string;
-  /** 选中 `full` 时的常驻提示条（已 t()；缺省则不显示） */
+  /** key → 文案（缺省恒等；调用方传 react-i18next 的 t 即获得语言响应式） */
+  translate?: (key: string) => string;
+  /** 选中 `full` 时的常驻提示（i18n key；缺省不显示） */
   note?: string;
-  /** 「改成自主」按钮——只为 `full` 提供；缺省则不画 */
+  /** 「恢复默认」动作（只为 `full` 提供；缺省不画） */
   onReset?: () => void;
   resetLabel?: string;
-  /** 无障碍组名（缺省「AI 权限档位」由调用方传已译文案） */
+  /** 无障碍组名（i18n key） */
   ariaLabel?: string;
 }
+
+const identity = (key: string) => key;
 
 export default function AiPolicyPicker({
   value,
   options,
+  capabilities,
   disabled = false,
   onChange,
-  description,
+  translate = identity,
   note,
   onReset,
   resetLabel,
@@ -84,12 +96,15 @@ export default function AiPolicyPicker({
   const current = options.find((o) => o.value === value);
   const showNote = value === "full" && !!note;
 
+  const decisionClass = (d: AiPolicyDecision) =>
+    d === "allow" ? "ldk-ai-policy-allow" : d === "ask" ? "ldk-ai-policy-ask" : "ldk-ai-policy-deny";
+
   return (
     <div className="ldk-ai-policy-picker">
       <div
         className="ldk-ai-policy-seg"
         role="radiogroup"
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ? translate(ariaLabel) : undefined}
         aria-disabled={disabled || undefined}
         onKeyDown={onKeyDown}
       >
@@ -107,29 +122,37 @@ export default function AiPolicyPicker({
               className="ldk-ai-policy-segbtn"
               disabled={disabled}
               onClick={() => select(i)}
-              data-hint={o.summary}
             >
-              {o.label}
+              {translate(o.label)}
             </button>
           );
         })}
       </div>
 
-      {current && description && (
+      {current?.description && (
         <p className="ldk-ai-policy-current" id={`${groupId}-desc`}>
-          {description}
+          {translate(current.description)}
         </p>
       )}
 
-      {current && (
-        <p className="ldk-ai-policy-summary">{current.summary}</p>
+      {!!capabilities?.length && (
+        <p className="ldk-ai-policy-caps">
+          {capabilities.map((c, i) => (
+            <span key={`${c.label}-${i}`} className="ldk-ai-policy-cap">
+              <b>{translate(c.label)}</b>
+              <span className={decisionClass(c.decision)}>
+                {translate(c.decision === "allow" ? "允许" : c.decision === "ask" ? "询问" : "不允许")}
+              </span>
+            </span>
+          ))}
+        </p>
       )}
 
-      {showNote && <div className="ldk-ai-policy-note" role="status">{note}</div>}
+      {showNote && <div className="ldk-ai-policy-note" role="status">{translate(note)}</div>}
 
       {showNote && onReset && resetLabel && (
         <button type="button" className="ldk-ai-policy-reset" onClick={onReset} disabled={disabled}>
-          {resetLabel}
+          {translate(resetLabel)}
         </button>
       )}
     </div>

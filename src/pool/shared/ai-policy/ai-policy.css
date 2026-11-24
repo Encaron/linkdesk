@@ -1,7 +1,6 @@
-/* AiPolicyBadge——状态栏 AI 权限徽标（池）。
- * 视觉基线 = 状态栏既有条目（`.ldk-status-bar-btn` 的高度/字号），只多一个状态圆点。
- * 🔴 零 hex / 零裸 px：颜色走 token（硬约束 1）；类名 `ldk-` 前缀（硬约束 23）。
- * `full` 档呼吸 = 常驻高危态的可感知提醒；`prefers-reduced-motion` 下退化为常亮（不闪）。 */
+/* AiPolicyBadge + AI 权限两个清单弹窗（池）。
+ * 视觉基线：状态栏既有条目 / 设置页表格；零 hex、零裸 px，类名 `ldk-` 前缀。
+ * `full` 档呼吸 = 常驻高危态的可感知提醒；`prefers-reduced-motion` 下退化为常亮。 */
 
 .ldk-ai-badge {
   display: inline-flex;
@@ -40,6 +39,10 @@
   background: var(--accent);
 }
 
+.ldk-ai-badge-full .ldk-ai-badge-dot {
+  background: var(--warning);
+}
+
 /* 完全访问：常亮 + 呼吸（"还在全权"一眼可见） */
 .ldk-ai-badge-live .ldk-ai-badge-dot {
   animation: ldk-ai-badge-pulse 1.6s ease-in-out infinite;
@@ -56,94 +59,106 @@
   }
 }
 
-/* ── 风险表弹窗内容视图（hostView = aiPolicy.riskTable）──
- * DialogHost 给外壳（居中/遮罩/Esc）；这里只管内容排布与「关闭」按钮。 */
-.ldk-ai-risk-dialog {
+/* ── 两个清单弹窗（hostView = aiPolicy.riskTable / aiPolicy.sensitiveManager）──
+ * DialogHost 给外壳（居中/遮罩/Esc）；这里只管内容排布、表格与标准按钮。
+ * 内边距 24px：弹窗内容槽没有自带 padding，不给就会贴边。 */
+.ldk-ai-policy-dialog {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
+  padding: 24px;
 }
 
-.ldk-ai-risk-dialog-title {
+.ldk-ai-policy-dialog-title {
   margin: 0;
   font-size: var(--font-size-md);
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.ldk-ai-risk-dialog-note {
+.ldk-ai-policy-dialog-body {
+  min-width: 0;
+  max-height: 52vh;
+  overflow: auto;
+}
+
+.ldk-ai-policy-dialog-note {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.6;
 }
 
-.ldk-ai-risk-dialog-foot {
+.ldk-ai-policy-dialog-foot {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-/* 与 @linkdesk/ui 的次级按钮（AiPolicyPicker 的 reset）同规格：跨包各持一份样式表，
- * 不为此把两条无关组件的类名合并（语义不同）。克隆命中按本仓惯例豁免。 */
-/* jscpd:ignore-start */
-.ldk-ai-risk-dialog-btn {
-  height: var(--size-control-sm);
-  padding: 0 16px;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-}
-
-.ldk-ai-risk-dialog-btn:hover {
-  background: var(--hover-overlay);
-  color: var(--text-primary);
-}
-
-.ldk-ai-risk-dialog-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-/* jscpd:ignore-end */
-
-/* ── 敏感能力一览（hostView = aiPolicy.sensitiveManager）── */
-.ldk-ai-sensitive-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ldk-ai-sensitive-row {
-  display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 2px;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--font-size-sm);
 }
 
-.ldk-ai-sensitive-label {
-  color: var(--text-primary);
-}
-
-.ldk-ai-sensitive-value {
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.ldk-ai-sensitive-row[data-tone="fixed"] .ldk-ai-sensitive-value {
+/* 判定图例（文字 + 语义色，无 emoji） */
+.ldk-ai-policy-legend {
+  display: flex;
+  gap: 14px;
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
 }
 
-.ldk-ai-sensitive-row[data-tone="protected"] .ldk-ai-sensitive-value {
+.ldk-ai-policy-legend .ldk-ai-policy-state-allow,
+.ldk-ai-policy-legend .ldk-ai-policy-state-ask,
+.ldk-ai-policy-legend .ldk-ai-policy-state-deny {
+  font-weight: 500;
+}
+
+/* 表格 */
+.ldk-ai-policy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.ldk-ai-policy-table th,
+.ldk-ai-policy-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ldk-ai-policy-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: var(--font-size-xs);
+}
+
+.ldk-ai-policy-table td:last-child,
+.ldk-ai-policy-table th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ldk-ai-policy-table tbody tr:hover td {
+  background: var(--hover-overlay);
+}
+
+.ldk-ai-policy-desc {
+  color: var(--text-muted);
+}
+
+.ldk-ai-policy-risk {
+  color: var(--text-secondary);
+}
+
+/* 判定色（表格 / 图例共用） */
+.ldk-ai-policy-state-allow {
+  color: var(--success);
+}
+
+.ldk-ai-policy-state-ask {
+  color: var(--warning);
+}
+
+.ldk-ai-policy-state-deny {
   color: var(--danger);
 }

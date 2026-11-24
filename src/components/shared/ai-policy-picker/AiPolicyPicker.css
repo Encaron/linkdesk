@@ -72,11 +72,38 @@
 }
 
 /* 判定摘要（四段各一段，☑/询问/不允许） */
-.ldk-ai-policy-summary {
+/* 能力摘要：一行四个「名称 结论」，结论用文字 + 语义色（无 emoji） */
+.ldk-ai-policy-caps {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.6;
+}
+
+.ldk-ai-policy-cap {
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ldk-ai-policy-cap b {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ldk-ai-policy-allow {
+  color: var(--success);
+}
+
+.ldk-ai-policy-ask {
+  color: var(--warning);
+}
+
+.ldk-ai-policy-deny {
+  color: var(--danger);
 }
 
 /* 完全访问的常驻提示条——危险语气，但颜色仍走 token */

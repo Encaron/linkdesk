@@ -10,10 +10,7 @@
  * 02-设置页-AI接入分区-落地版.html；组件映射 = 同夹 03-任务档案/M4-设置页.md §0.7）：
  *   · 开关 ×4（`ai.mcp.enabled` / `ai.cli.enabled` / `ai.debug.remoteDebugging` / `ai.auditLog.enabled`）
  *     —— **各带一件伴生只读**（`statusCommand` 指壳命令），主控件右侧同排显示实时状态
- *   · 只读状态 ×1（`renderHint:"readonly"` ＋ `statusCommand`——`AI#38.12` 通用件，值来自运行时
- *     数据源 ⛔ 不写死字符串。仅 `ai.scope.summary`：多行明细，且**没有可挂的主控件**
- *     ——⛔ 不为它新增枚举键，故仍独立成行）
- *   · 按钮 ×9（`renderHint:"action"` ＋ `actionCommand`；**按钮文案 = `description`**——action 行
+ *   · 按钮（`renderHint:"action"` ＋ `actionCommand`；**按钮文案 = `description`**——action 行
  *     只有这一个字符串可承载文案，先例 `appearance.ts` 里的外观复位入口（2026-11-24 起改齿轮菜单））
  *
  * 🔴 设置行案 D4（2026-10-03 用户拍板 · 2026-10-04 落仓）：原本「开关一行 ＋ 状态一行」的四对
@@ -23,7 +20,7 @@
  *     ① `statusMcp` / `statusCli` → 「运行中 · 127.0.0.1:9231」单行短句 ⇒ **并**；
  *     ② `statusDebug` → 「已开启 · 9333」⇒ **并**；
  *     ③ `statusAuditLog` → 「记录中」两字，原描述亦自述「跟着上面的开关走」⇒ **并**；
- *     ④ `scopeSummary` → 「读：…／做：…／不开放任意代码执行」**三行明细**，且开放范围无对应
+ *     ④ 开放范围明细（已并入权限档位的「操作清单」；v4 返工删除该独立行）
  *        开关键可挂 ⇒ **留独立行**（合并的前置是「有一个主控件」，不是「能塞下就算」）。
  *   🔴 **2026-10-04 补丁（用户实报：「这个键我明明关了，右边怎么还写运行中」）**：**读数＝实况、
  *     开关＝意图，两者可以不同**——内核只在启动时读开关（`resolveBridgeConfig` 读一次
@@ -150,7 +147,7 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         description: t("打开 AI 操作手册"),
       },
 
-      /* ── 分节③：开放范围与安全（7 键；2026-11-24 加权限档位三键）── */
+      /* ── 分节③：开放范围与安全（4 键；v4 返工：档位 / 操作清单 / 敏感能力 / 接入凭据）── */
       // 🔴 权限档位（AI 安全 · 权限档位与提权）：主控件 = 四段选择器（共享件 AiPolicyPicker）。
       //    档位值与判定只在主进程算；设置插件只按 uiHint 渲染 + 调命令，⛔ 不判风险、不写档位字面量。
       //    键名取自主进程同一常量（`AI_POLICY_MODE_KEY`）——壳侧唯一常量源。
@@ -162,49 +159,22 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         // 四句人话逐字取自规格 03 §2.1；与 `policy/state.ts` 的段说明同文（改文案两处同笔）
         enumDescriptions: [
           t("AI 只能查看，不能修改。"),
-          t("AI 每次要修改，都会先问你。"),
-          t("日常修改 AI 自己完成；装更新、删数据这类操作仍会先问你。"),
-          t("所有操作都不再询问，直到你在这里改回来。"),
+          t("AI 每次修改前都会询问你。"),
+          t("日常修改由 AI 完成；安装、更新等不可撤销操作仍会询问。"),
+          t("所有操作都不再询问，直到你手动改回。"),
         ],
         uiHint: "aiPolicy",
         title: t("权限档位"),
-        description: t("AI 现在能做什么、哪些会先问你。改动立即生效，且会一直有效到你改回来"),
-      },
-      "ai.policy.summary": {
-        type: "string",
-        group: t("开放范围与安全"),
-        default: "",
-        renderHint: "readonly",
-        statusCommand: "aiPolicy.statusSummary",
-        title: t("当前权限一览"),
-        description: t("AI 现在能做什么、哪些会先问你。"),
+        description: t("AI 能做什么，取决于权限档位。改动立即生效。"),
       },
       "ai.policy.openRiskTable": {
         type: "string",
         group: t("开放范围与安全"),
         default: "",
         renderHint: "action",
-        actionCommand: "aiPolicy.openRiskTable",
-        title: t("完整风险表"),
-        description: t("查看风险表"),
-      },
-      "ai.scope.summary": {
-        type: "string",
-        group: t("开放范围与安全"),
-        default: "",
-        renderHint: "readonly",
-        statusCommand: "aiBridge.scopeSummary",
-        title: t("开放范围明细"),
-        description: t("开放范围明细——从白名单唯一真相源生成，与 linkdeskctl --help 同一份数据"),
-      },
-      "ai.scope.openList": {
-        type: "string",
-        group: t("开放范围与安全"),
-        default: "",
-        renderHint: "action",
-        actionCommand: "aiBridge.openScopeList",
-        title: t("完整操作清单"),
-        description: t("查看完整操作清单"),
+        actionCommand: "aiPolicy.openOps",
+        title: t("操作清单"),
+        description: t("查看操作清单"),
       },
       // token 明文永不进设置页（mockup 也没画）——只提供重新生成；查看走通道详情 / CLI
       "ai.token.regenerate": {
@@ -222,8 +192,8 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         default: "",
         renderHint: "action",
         actionCommand: "aiBridge.openSensitiveManager",
-        title: t("细分管理"),
-        description: t("管理细分…"),
+        title: t("敏感能力"),
+        description: t("查看敏感能力"),
       },
 
       /* ── 分节④：记录（2 键·状态已并进开关）── */

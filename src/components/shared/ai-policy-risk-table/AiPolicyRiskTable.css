@@ -26,6 +26,10 @@
   color: var(--text-primary);
 }
 
+.ldk-ai-risk-desc {
+  color: var(--text-muted);
+}
+
 .ldk-ai-risk-level {
   color: var(--text-secondary);
   white-space: nowrap;

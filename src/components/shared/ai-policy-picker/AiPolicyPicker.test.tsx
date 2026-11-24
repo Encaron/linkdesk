@@ -6,19 +6,23 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import AiPolicyPicker, { type AiPolicyOption } from "./AiPolicyPicker";
+import AiPolicyPicker, { type AiPolicyCapability, type AiPolicyOption } from "./AiPolicyPicker";
 
 // 文案常量放 JSX 之外（fixture 不走 t()；⚠️ 只为本文件断言用）
 const ARIA = "AI 权限档位";
 const NOTE = "会一直有效";
 const RESET = "改成自主";
-const DESC = "日常修改直接执行。Ｚ";
 
 const OPTIONS: AiPolicyOption[] = [
-  { value: "read", label: "只读", summary: "查看 ✅ · 打开 不允许" },
-  { value: "ask", label: "逐次确认", summary: "查看 ✅ · 打开 询问" },
-  { value: "auto", label: "自主", summary: "查看 ✅ · 打开 ✅" },
-  { value: "full", label: "完全访问", summary: "查看 ✅ · 打开 ✅" },
+  { value: "read", label: "只读", description: "AI 只能查看，不能修改。" },
+  { value: "ask", label: "逐次确认", description: "AI 每次修改前都会询问你。" },
+  { value: "auto", label: "自主", description: "日常修改由 AI 完成。" },
+  { value: "full", label: "完全访问", description: "所有操作都不再询问。" },
+];
+
+const CAPS: AiPolicyCapability[] = [
+  { label: "查看", decision: "allow" },
+  { label: "打开标签", decision: "deny" },
 ];
 
 describe("AiPolicyPicker", () => {
@@ -78,11 +82,19 @@ describe("AiPolicyPicker", () => {
     expect(onReset).toHaveBeenCalledTimes(1);
   });
 
-  it("当前档说明与摘要都渲染（文案由调用方传入，⛔ 组件不内建话术）", () => {
+  it("当前档说明与能力摘要都渲染（文案由调用方传入，⛔ 组件不内建话术）", () => {
     render(
-      <AiPolicyPicker value="auto" options={OPTIONS} onChange={() => {}} description={DESC} />,
+      <AiPolicyPicker value="auto" options={OPTIONS} capabilities={CAPS} onChange={() => {}} />,
     );
-    expect(screen.getByText(DESC)).toBeTruthy();
-    expect(screen.getByText("查看 ✅ · 打开 ✅")).toBeTruthy();
+    expect(screen.getByText("日常修改由 AI 完成。")).toBeTruthy();
+    expect(screen.getByText("允许")).toBeTruthy();
+    expect(screen.getByText("不允许")).toBeTruthy();
+  });
+
+  it("能力摘要不出现 emoji（结论一律文字）", () => {
+    const { container } = render(
+      <AiPolicyPicker value="auto" options={OPTIONS} capabilities={CAPS} onChange={() => {}} />,
+    );
+    expect(/[🌀-🫿☀-➿]/u.test(container.textContent ?? "")).toBe(false);
   });
 });

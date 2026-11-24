@@ -50,7 +50,7 @@
 
 <!-- BEGIN COMMAND-INDEX -->
 
-**宿主命令 105 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
+**宿主命令 102 条 / 8 个分类**——插件命令不在本表（运行时用 `getCommands()` 查）。
 
 ### 帮助（7）
 
@@ -141,7 +141,7 @@
 | `workbench.action.toggleSidebarVisibility` | 切换侧栏可见性 | 显示/隐藏主侧栏 | —— | —— |
 | `workbench.action.toggleViewVisibility` | 切换视图可见性 | 显示/隐藏指定视图 | `ctx`: object 必填 — { viewId: string; containerId?: string }——目标视图 id，containerId 用于同 viewId 消歧 | —— |
 
-### 首选项（40）
+### 首选项（37）
 
 | 命令 id | 标题 | 说明 | 参数（调用实参） | when 门控 |
 |:--|:--|:--|:--|:--|
@@ -150,20 +150,17 @@
 | `aiBridge.copyMcpConfig` | 复制 MCP 配置 | 复制 MCP 客户端配置片段到剪贴板（与 linkdeskctl mcp config --for 同一生成器，逐字一致） | —— | —— |
 | `aiBridge.mcpDetails` | 打开通道详情 | 打开通道详情对话框（连接地址、凭据存放位置、连不上的原因对照） | —— | —— |
 | `aiBridge.openLog` | 查看日志 | 打开操作日志对话框（谁在何时调了什么、结果如何；被拒的调用也在账上） | —— | —— |
-| `aiBridge.openScopeList` | 查看完整操作清单 | 打开完整操作清单对话框（每条白名单能力一条，写明怎么调；条数 = 白名单条数） | —— | —— |
 | `aiBridge.openSensitiveManager` | 管理敏感能力细分 | 打开敏感能力一览：按当前权限档位列出 AI 能做/不能做哪类事（含固定规则与受保护命令） | —— | —— |
 | `aiBridge.regenerateToken` | 重新生成凭据 | 重新生成 AI 接入凭据（旧凭据立即失效；明文不显示，客户端重读 ai-bridge.token 接上） | —— | —— |
-| `aiBridge.scopeSummary` | 开放范围明细 | 开放范围只读明细（只读数据源：读/做两栏从白名单 kind 派生，与 linkdeskctl --help 同源） | —— | —— |
 | `aiBridge.statusAuditLog` | 操作日志状态 | 操作日志落盘开关状态（只读数据源，跟随 ai.auditLog.enabled 配置值） | —— | —— |
 | `aiBridge.statusCli` | CLI 通道状态 | CLI 通道实时状态（只读数据源：CLI 与 MCP 共用同一个内核监听，状态同源） | —— | —— |
 | `aiBridge.statusDebug` | 调试端口状态 | CDP 调试端口实况（只读数据源：argv 是唯一真相，与命令行实况一致不猜） | —— | —— |
 | `aiBridge.statusMcp` | MCP 通道状态 | MCP 通道实时状态（只读数据源：返回「运行中 · 地址」等状态文本，供设置页状态行取用） | —— | —— |
-| `aiPolicy.getState` | AI 权限档位 | 读取 AI 权限策略：当前档位、四档各自的判定摘要（矩阵）、风险表（当前档下允许/询问/不允许）、受保护命令。只读 | —— | —— |
-| `aiPolicy.openRiskTable` | 查看完整风险表 | 打开完整风险表：每一项操作的风险，以及 AI 在当前档位下能不能做 | —— | —— |
+| `aiPolicy.getState` | AI 权限档位 | 读取 AI 权限策略：当前档位、档位矩阵、能力摘要、操作清单、敏感能力、受保护命令。只读 | —— | —— |
+| `aiPolicy.openOps` | 操作清单 | 打开操作清单：AI 可以调用的操作、风险等级，以及当前档位下的结论（表格） | —— | —— |
 | `aiPolicy.openSettings` | 打开 AI 权限设置 | 打开设置页的「AI 接入 → 开放范围与安全」分节（状态栏徽标点击的落点） | —— | —— |
-| `aiPolicy.resetToDefault` | 恢复默认权限（自主） | 把 AI 权限恢复到默认档「自主」。⚠️ 只许用户操作（userOnly），AI 不可调 | —— | —— |
-| `aiPolicy.setMode` | 切换 AI 权限档位 | 切换 AI 权限档位（read\|ask\|auto\|full）。完全访问需二次确认；设置常驻到用户改回。⚠️ 只许用户操作（userOnly），AI 不可调 | `mode`: string 必填 — 目标档位：read \| ask \| auto \| full | —— |
-| `aiPolicy.statusSummary` | 当前权限一览 | 设置页只读行：一行说明 AI 现在能做什么、哪些会先问你（按当前档位实时生成） | —— | —— |
+| `aiPolicy.resetToDefault` | 恢复默认权限（自主） | 把 AI 权限恢复到默认档「自主」。仅限用户操作（userOnly），AI 不可调 | —— | —— |
+| `aiPolicy.setMode` | 切换 AI 权限档位 | 切换 AI 权限档位（read\|ask\|auto\|full）。完全访问需二次确认；设置持续到你改回。仅限用户操作（userOnly），AI 不可调 | `mode`: string 必填 — 目标档位：read \| ask \| auto \| full | —— |
 | `appearance.pickImage` | 选择背景图片 | 弹出系统图片选择框，把选中的图片拷入受控外观存储并返回受控 URL（起始目录/过滤器由宿主决定；取消返回 picked:false） | `options`: object 必填 — { domain: string; target: string }——两个值都取自配置 schema 的 assetDomain / pickTarget（如 { domain:"appearance", target:"app" }） | —— |
 | `core.resetSettingsToBuiltin` | 回退内置设置页 | 把设置槽的激活套回退到内置设置页（= 声明 factoryRole:"settings" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次 | —— | —— |
 | `storage.cacheDirStatus` | 缓存目录 | 当前生效的缓存目录路径（只读数据源，供设置页状态行取用） | —— | —— |

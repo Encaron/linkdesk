@@ -41,7 +41,7 @@ export interface AiBridgeInfo {
   /** Audit-log-to-disk switch config value (`ai.auditLog.enabled`) */
   auditLogEnabled: boolean;
   logFileExists: boolean;
-  /** Whitelisted operations table (the data source for `ai.scope.summary` / the full list) */
+  /** Whitelisted operations table (the source of the AI-side op catalog / manual) */
   ops: AiBridgeOpDesc[];
   ledger: AiBridgeLedgerEntry[];
   /** Credential file name (name only; the plaintext never leaves the main process) */

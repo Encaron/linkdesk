@@ -56,7 +56,7 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
 
   /* ── R3 不可回退 / 动本体 ── */
   "aiPolicy.getState": { risk: "R0", what: "读取 AI 权限档位", why: "只看当前档位与风险表" },
-  "aiPolicy.statusSummary": { risk: "R0" },
+  "aiPolicy.openOps": { risk: "R0", what: "操作清单", why: "只读表格" },
   "aiPolicy.openRiskTable": { risk: "R0", what: "查看完整风险表", why: "只读表格" },
   "aiPolicy.openSettings": { risk: "R0" },
   // 能改门本身的命令：userOnly（L2 先拦，AI 永远够不着）；登记 R3 只为账本/自述口径完整

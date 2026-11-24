@@ -2,7 +2,7 @@
  * 「AI 接入」壳命令（M4 `AI#38.5`/`#38.6`/`#38.8`–`#38.11` ＋ `#38.4` 状态数据出口）。
  *
  * 分工：
- *   · **状态五条**（`aiBridge.statusMcp/statusCli/statusDebug/statusAuditLog/scopeSummary`）——
+ *   · **状态四条**（`aiBridge.statusMcp/statusCli/statusDebug/statusAuditLog`）——
  *     只读、**返回字符串**：设置页的只读状态行（`#38.12` 通用件）按声明里的 `statusCommand` 调它们取值。
  *     数据源 = `app:getAiBridge`（main 直答，`getShellExposed().app.getAiBridge`，surfaces.ts 第四例）；
  *     **这里出人话（t()），主进程只出数据**——显示文字不进主进程（硬约束 2 的分工）。
@@ -135,20 +135,6 @@ export function registerAiBridgeCommands(): void {
       getConfigurationValue<boolean>("ai.auditLog.enabled") === true ? i18n.t("记录中") : i18n.t("未开启"),
   });
 
-  registerCommand(PID, {
-    id: "aiBridge.scopeSummary",
-    title: "开放范围明细",
-    category: "首选项",
-    description: "开放范围只读明细（只读数据源：读/做两栏从白名单 kind 派生，与 linkdeskctl --help 同源）",
-    params: [],
-    handler: async () => {
-      const info = await infoOrNull();
-      if (!info) return "";
-      const namesOf = (kind: "read" | "write") =>
-        info.ops.filter((o) => o.kind === kind).map((o) => o.name).join(" · ");
-      return `${i18n.t("读")}：${namesOf("read")}\n${i18n.t("做")}：${namesOf("write")}\n${i18n.t("不开放任意代码执行")}`;
-    },
-  });
 
   // ── 动作七条（设置页 action 按钮的落点）──
   registerCommand(PID, {
@@ -221,26 +207,6 @@ export function registerAiBridgeCommands(): void {
     },
   });
 
-  registerCommand(PID, {
-    id: "aiBridge.openScopeList",
-    title: "查看完整操作清单",
-    category: "首选项",
-    description: "打开完整操作清单对话框（每条白名单能力一条，写明怎么调；条数 = 白名单条数）",
-    params: [],
-    handler: async () => {
-      const info = await infoOrNull();
-      if (!info) return;
-      const lines = info.ops.map((o) => {
-        const ps = o.params.map((p) => `${p.name}${p.required ? "" : "?"}:${p.type}`).join(", ");
-        return `${o.kind === "read" ? i18n.t("读") : i18n.t("做")} · ${o.name}（${ps || i18n.t("无参数")}）——${o.help}`;
-      });
-      const { alert } = await import("../../services/ui/DialogService");
-      await alert({
-        title: i18n.t("完整操作清单"),
-        message: [i18n.t("AI 只能执行下面这些白名单操作（不开放任意代码执行）："), ...lines].join("\n"),
-      });
-    },
-  });
 
   registerCommand(PID, {
     id: "aiBridge.regenerateToken",

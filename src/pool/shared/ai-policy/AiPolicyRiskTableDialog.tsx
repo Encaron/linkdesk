@@ -1,41 +1,46 @@
 /**
- * AI 风险表弹窗内容视图（池 · 宿主内置 hostView = `aiPolicy.riskTable`）。
+ * 操作清单弹窗（池 · hostView = `aiPolicy.riskTable`）。
  *
- * 壳命令 `aiPolicy.openRiskTable` 用 `DialogService.confirmContent({ content: { hostView, payload } })`
- * 打开；本视图只画表（外壳/兜底共用 `AiPolicyDialogShell`），关框只发 `cancel`。
+ * 返工 v4：表格四列（操作 / 说明 / 风险 / 当前），24px 内边距，标准实心按钮；
+ * 文案键由本视图翻译（语言切换即时重绘）；判定与数据全部来自壳。
  */
 
 import { useTranslation } from "react-i18next";
-import AiPolicyRiskTable, {
-  type AiPolicyRiskTableRow,
-} from "../../../components/shared/ai-policy-risk-table/AiPolicyRiskTable";
-import { AiPolicyRiskLegend } from "../../../components/shared/ai-policy-risk-table/AiPolicyRiskTable";
 import AiPolicyDialogShell, { AiPolicyDialogFallback } from "./AiPolicyDialogShell";
+import AiPolicyRiskTable from "../../../components/shared/ai-policy-risk-table/AiPolicyRiskTable";
+import type { AiPolicyRiskRowDto } from "../../../core/types/ipc/aiPolicy";
 
-export interface AiPolicyRiskTablePayload {
-  title?: string;
-  rows: AiPolicyRiskTableRow[];
-  /** 底部一句图例说明（i18n key；缺省用共享默认句） */
-  note?: string;
+export interface AiPolicyOpsPayload {
+  rows: AiPolicyRiskRowDto[];
 }
 
-function asPayload(payload: unknown): AiPolicyRiskTablePayload | null {
-  const p = payload as AiPolicyRiskTablePayload | null;
+function asPayload(payload: unknown): AiPolicyOpsPayload | null {
+  const p = payload as AiPolicyOpsPayload | null;
   return p && Array.isArray(p.rows) ? p : null;
 }
 
-export default function AiPolicyRiskTableDialog({ payload }: { payload?: unknown }) {
+export default function AiPolicyOpsDialog({ payload }: { payload?: unknown }) {
   const { t } = useTranslation();
   const data = asPayload(payload);
   if (!data) return <AiPolicyDialogFallback />;
 
   return (
     <AiPolicyDialogShell
-      title={t(data.title ?? "完整风险表")}
-      note={t(data.note ?? "风险由软件统一登记；插件自己的命令也要声明。")}
+      title={t("操作清单")}
+      note={t("风险等级由软件统一登记；插件声明的命令按同一标准归类。")}
+      legend
     >
-      <AiPolicyRiskTable rows={data.rows} ariaLabel={t("完整风险表")} />
-      <AiPolicyRiskLegend />
+      <AiPolicyRiskTable
+        ariaLabel={t("操作清单")}
+        rows={data.rows.map((row) => ({
+          id: row.id,
+          what: row.what,
+          why: row.why,
+          risk: row.risk,
+          riskLabel: row.id === "(user-only)" ? "受保护" : undefined,
+          decision: row.decision,
+        }))}
+      />
     </AiPolicyDialogShell>
   );
 }
