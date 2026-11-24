@@ -179,6 +179,18 @@ describe("sameSourceIdentity", () => {
     expect(sameSourceIdentity(SOURCE_THIRD, { ...SOURCE_THIRD, id: "renamed" })).toBe(true);
   });
 
+  it("URL / repo 大小写不敏感（市场归一成小写，账本可能混合大小写 ⇒ 逐字节比会假判来源变更）", () => {
+    const known: PluginSourceIdentity = { id: "official", url: "https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json", repo: "encaron/linkdesk-marketplace", publisher: "Encaron" };
+    const next: PluginSourceIdentity = { id: "official", url: "https://raw.githubusercontent.com/Encaron/linkdesk-marketplace/main/marketplace.json", repo: "Encaron/linkdesk-marketplace", publisher: "Encaron" };
+    expect(sameSourceIdentity(known, next)).toBe(true);
+  });
+
+  it("publisher 仍大小写敏感（是人名）", () => {
+    const a: PluginSourceIdentity = { id: "s", url: "https://a.dev/x", publisher: "Lab" };
+    const b: PluginSourceIdentity = { id: "s", url: "https://a.dev/x", publisher: "lab" };
+    expect(sameSourceIdentity(a, b)).toBe(false);
+  });
+
   it("缺失可选字段按空串比（undefined 与缺省等价）", () => {
     const a: PluginSourceIdentity = { id: "s", url: "https://a.dev" };
     const b: PluginSourceIdentity = { id: "s", url: "https://a.dev", repo: undefined };

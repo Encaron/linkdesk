@@ -34,7 +34,13 @@ export const OFFICIAL_SOURCE_ID = "official";
  */
 export function sameSourceIdentity(known: PluginSourceIdentity | null, next: PluginSourceIdentity): boolean {
   if (!known) return true;
-  return known.url === next.url && (known.repo ?? "") === (next.repo ?? "") && (known.publisher ?? "") === (next.publisher ?? "");
+  // 🔴 URL / repo 按**大小写不敏感**比（2026-11-24 实机）：市场把 GitHub 地址归一成小写
+  //   （`raw.githubusercontent.com/encaron/...`），而账本可能是别的来源写的混合大小写 ⇒ 逐字节比会
+  //   把「同一个源」判成「来源变更」，用户每次更新都被红卡拦。publisher 保持大小写敏感（是人名）。
+  const norm = (s?: string) => (s ?? "").trim().toLowerCase();
+  return norm(known.url) === norm(next.url)
+    && norm(known.repo) === norm(next.repo)
+    && (known.publisher ?? "") === (next.publisher ?? "");
 }
 
 /**

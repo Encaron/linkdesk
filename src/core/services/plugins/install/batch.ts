@@ -83,7 +83,14 @@ export function buildConfirmPlan(reqs: readonly PluginInstallRequest[], ctx: Pol
     }
 
     if (decision.kind === "ask") {
-      ask.push({ request: req, reason: decision.reason, previous: decision.previous });
+      ask.push({
+        request: req,
+        reason: decision.reason,
+        previous: decision.previous,
+        // 🔴 旧来源的显示名由壳解析（同一份 sourceLabel）——契约里有这个字段但此前没人填，
+        //    实机表现就是「来源已变更 · 旧来源：未知发布者」。
+        previousLabel: decision.previous ? ctx.labelOf(decision.previous) : undefined,
+      });
       group.askCount += 1;
     } else if (ctx.forceAsk) {
       // 预览用「全都问一遍」——把免问项原地提升为需确认（⛔ 不改设置、不落盘；原因按来源性质给）
