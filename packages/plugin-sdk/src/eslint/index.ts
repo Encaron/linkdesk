@@ -5,7 +5,7 @@
  *   "lint": "linkdesk-plugin-sdk lint"          // 两条腿全跑 + 打印报告（bin）
  *   // 或编程：linkdeskPluginLintConfig() 展开进作者自配 eslint.config.js
  *
- * 全量门禁 = eslint 规则腿 + **十二条** check 扫描腿（lint.ts 编排；条数 = 其 `legs` 数组长度，
+ * 全量门禁 = eslint 规则腿 + **十三条** check 扫描腿（lint.ts 编排；条数 = 其 `legs` 数组长度，
  * 今天 12——加腿时同笔订正本句与 lint.ts 头部同句）。规则 id 与 disable 注释格式
  * 见 src/eslint/rules.ts 头注（双源注记）。除下面这组**审计入口**外不暴露内部 check 函数——
  * bin lint 已聚合。（审计入口逐个带「不是第二条判据路径」的注记——腿用的就是同一个函数。）

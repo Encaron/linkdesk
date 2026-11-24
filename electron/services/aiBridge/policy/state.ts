@@ -21,7 +21,7 @@ import type {
 } from "../../../../src/core/types/ipc/aiPolicy.js";
 import { decide } from "./decide.js";
 import { POLICY_MODES, type PolicyMode } from "./modes.js";
-import { COMMAND_RISK, OP_RISK, RISKS, riskOfCommand, riskOfOp } from "./risk.js";
+import { COMMAND_RISK, OP_RISK, RISKS, riskOfOp, riskOfShellCommand } from "./risk.js";
 import { getChannelsEnabled, getPolicySnapshot } from "./policyState.js";
 
 /** 段标题（i18n key）——四档人话的**唯一文案源**（设置声明的 enumDescriptions 引用同一批 key） */
@@ -67,7 +67,7 @@ const SYNTHETIC_ROWS: Record<string, { what: string; why: string }> = {
 
 function riskOf(row: (typeof RISK_TABLE_ROWS)[number]): AiPolicyRiskDto {
   if (row.risk) return row.risk;
-  return row.kind === "op" ? (riskOfOp(row.id, "write") as AiPolicyRiskDto) : (riskOfCommand(row.id) as AiPolicyRiskDto);
+  return row.kind === "op" ? (riskOfOp(row.id, "write") as AiPolicyRiskDto) : (riskOfShellCommand(row.id).risk as AiPolicyRiskDto);
 }
 
 function textOf(id: string, kind: "op" | "command" | "synthetic"): { what?: string; why?: string } {

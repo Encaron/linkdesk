@@ -109,11 +109,12 @@ describe("OPS 白名单（AI#33：自省面从同一张表派生）", () => {
     expect(catalog.every((e) => e.params.every((p) => typeof p.name === "string" && typeof p.type === "string"))).toBe(true);
   });
 
-  it("白名单面 = 本棒语义操作（两张皮共账；2026-11-24 新增 requestElevation = 只请求、不批准）", () => {
+  it("白名单面 = 本棒语义操作（两张皮共账；2026-11-24 requestElevation；2026-11-25 opStatus = S6 相位查询）", () => {
     expect(Object.keys(OPS).sort()).toEqual(
-      ["describe", "exec", "install", "log", "notifications", "notifyAction", "openTab", "ping", "requestElevation", "tabs"].sort(),
+      ["describe", "exec", "install", "log", "notifications", "notifyAction", "openTab", "opStatus", "ping", "requestElevation", "tabs"].sort(),
     );
-    expect(WHITELIST_VERSION).toBe(1);
+    // S6/T11 新增只读 op：形状变更 ⇒ 版本递增（客户端据此判断自省结果新旧）
+    expect(WHITELIST_VERSION).toBe(2);
   });
 
   it("exec / install / notifyAction 的必填参数声明与 run 的校验对得上（describe 说的就是实现的）", () => {

@@ -12,19 +12,47 @@ import type { EventSystemApi } from '../ipc/event-system';
 // ── E5.6#11.5a：池侧命令注册表——Path B 关键设计 ──
 // 池内插件需要注册命令（file-tree ~20 + marketplace ~5 + serial-monitor ~5）。
 // handler 是函数闭包——引用池侧 React state/DOM，壳无法执行。
-// 因此池 preload 在 contextBridge 隔离世界内维护 Map<string, Function>。
+// 因此池 preload 在 contextBridge 隔离世界内维护 Map<string, PoolCommandEntry>。
 // executeCommand 先查池侧注册表，未找到则 fallback 到壳侧 IPC。
 // 🔥 真相源分工（与壳 CommandRegistry 的唯一权威声明一致）：
 //   _poolCommands（本表）= 执行真相源——handler 永不离开本进程；
 //   壳 CommandRegistry = 显示真相源——title/category/when 只读壳那份。
 //   meta 单向同步（commands:register IPC）只回传显示面，壳侧执行走 executeInPool 转发桥。
-const _poolCommands = new Map<string, Function>();
+// S4/T6（作用域分区）：条目带注册时刻的 activation/scope——视图卸载只摘 view:* ，
+//   plugin 作用域常驻；同一 commandId 只允许一个作用域（⛔ 谁最后注册谁赢）。
+interface PoolCommandEntry {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handler 入参类型由插件调用方决定（同 registerCommand 的 ...args: any[] 契约）
+  handler: (...args: any[]) => any;
+  /** S4：注册上下文——entry 顶层（含 on-command 激活 import）= "entry"；视图挂载期间 = "view" */
+  activation: "entry" | "view";
+  /** S4/T6：作用域——"plugin" = 插件存活期常驻；"view:<viewInstanceId>" = 该实例卸载即摘 */
+  scope: string;
+}
+const _poolCommands = new Map<string, PoolCommandEntry>();
+
+// ── S4：激活上下文栈（同步压弹）——PluginComponent mount 压 viewInstanceId、unmount 弹；
+// registerCommand 只读栈顶（⛔ 自己维护挂载判断）。空栈 = entry 上下文（默认）。
+const _activationStack: string[] = [];
+
+/** 视图挂载：压栈（栈顶即当前视图上下文） */
+function enterViewContext(viewInstanceId: string): void {
+  if (_activationStack[_activationStack.length - 1] !== viewInstanceId) _activationStack.push(viewInstanceId);
+}
+
+/** 视图卸载：弹栈 ＋ 只摘该实例的 view:* 作用域命令（⛔ 不碰 plugin 作用域） */
+function leaveViewContext(viewInstanceId: string): void {
+  const at = _activationStack.lastIndexOf(viewInstanceId);
+  if (at >= 0) _activationStack.splice(at, 1);
+  for (const [id, entry] of _poolCommands) {
+    if (entry.scope === `view:${viewInstanceId}`) _poolCommands.delete(id);
+  }
+}
 
 /** 查池侧 handler 并执行——handler 存在返回 Promise，不存在返回 null（调用方决定 fallback 壳 / reject）。E5.8#1c 去重 */
 function callPoolHandler(id: string, args: unknown[]): Promise<unknown> | null {
-  const handler = _poolCommands.get(id);
-  if (!handler) return null;
-  return Promise.resolve(handler(...args));
+  const entry = _poolCommands.get(id);
+  if (!entry) return null;
+  return Promise.resolve(entry.handler(...args));
 }
 
 /** E6#62e 池侧 on-command 激活钩——池 renderer 注册的属主插件入口 import 回调。
@@ -101,12 +129,29 @@ export function buildCommands(events: EventSystemApi) {
      * 不传 meta 的旧调用向后兼容（纯池内命令，壳侧不可见）。
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
-    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }) => {
-      _poolCommands.set(id, handler);
+    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[]; async?: boolean }) => {
+      // S4：读激活上下文栈顶定 activation/scope——entry 顶层注册 = plugin 作用域；视图挂载期间 = view:<id>
+      const viewInstanceId = _activationStack[_activationStack.length - 1];
+      const activation: "entry" | "view" = viewInstanceId ? "view" : "entry";
+      const scope = viewInstanceId ? `view:${viewInstanceId}` : "plugin";
+      const existing = _poolCommands.get(id);
+      if (existing && existing.scope !== scope) {
+        // T6：同一 commandId 只允许一个作用域——跨层双注册 ⇒ 诊断 ＋ 后者不覆盖（⛔ 谁最后注册谁赢）。
+        // 视图态晚于插件级 ⇒ 保留首注册；插件的双注册由各仓收敛（02 §2.2 的验收对象）。
+        console.warn(
+          `[preload-pool] 命令 "${id}" 双注册被拒——已有 scope=${existing.scope}（activation=${existing.activation}），`
+          + `新注册 scope=${scope}（activation=${activation}）——同一 id 只允许一个作用域，保留首注册。`,
+        );
+        return;
+      }
+      // 同作用域重注册 = meta/标题刷新（动态 toggle 标题）——handler/meta 更新，activation 以首注册为准
+      _poolCommands.set(id, { handler, activation: existing?.activation ?? activation, scope });
       // E6#111b ②：注册方显式申报的真身份——优先于名字推定（照 notifications.source 先例）
       if (meta?.pluginId) _poolCommandOwners.set(id, meta.pluginId);
+      // S4：activation（运行期真值）随 meta 回传壳注册表——describe 输出与错误码映射都靠它
+      const syncedMeta = { ...meta, activation }; // async 随 meta 原样透传（声明式，S6）
       // E6#111b ①：壳回执带回归属（声明面查表结果）——池侧只消费，不自己从名字推
-      ipcRenderer.invoke(IPC.commands.register, id, meta ?? null)
+      ipcRenderer.invoke(IPC.commands.register, id, syncedMeta ?? null)
         .then((res) => {
           const r = res as { pluginId?: string; source?: string } | null;
           if (r && typeof r.pluginId === 'string' && r.source !== 'inferred') _poolCommandOwners.set(id, r.pluginId);
@@ -115,10 +160,11 @@ export function buildCommands(events: EventSystemApi) {
           console.error(`[preload-pool] commands:register 回传失败 (${id}):`, e);
         });
     },
-    /** 注销某插件的全部命令——**按真属主摘**（E6#111b 判据⑤/H2）。真属主未知（无申报且壳回执未到）
-     *  时才退回名字前缀推定（1.32 前的行为，兼容档）。 */
+    /** 注销某插件的全部**插件级**命令——S4/T6 后只摘 scope="plugin"（按真属主摘，E6#111b 判据⑤/H2）；
+     *  ⛔ 不碰 view:* 条目（视图实例卸载由 _leaveViewContext 摘）。真属主未知时才退回名字前缀推定（兼容档）。 */
     unregisterCommands: (pluginId: string) => {
-      for (const [id] of _poolCommands) {
+      for (const [id, entry] of _poolCommands) {
+        if (entry.scope !== "plugin") continue;
         const owner = _poolCommandOwners.get(id) ?? commandOwnerId(id);
         if (owner === pluginId) {
           _poolCommands.delete(id);
@@ -151,6 +197,9 @@ export function buildCommands(events: EventSystemApi) {
     _setCommandMissHandler: (handler: (pluginId: string) => Promise<boolean>): void => {
       _commandMissHandler = handler;
     },
+    /** S4 内部面——PluginComponent mount/unmount 压弹激活上下文栈（非插件作者 API，⛔ 插件自己调） */
+    _enterViewContext: enterViewContext,
+    _leaveViewContext: leaveViewContext,
     getCommands: () => ipcRenderer.invoke(IPC.plugins.call, 'getCommands'),
   };
 
@@ -163,7 +212,7 @@ export function buildCommands(events: EventSystemApi) {
   // E6#62e：miss 先经 on-command 激活（import 属主入口）重试一次，仍 miss → reject。
   const executeLocal = (id: string, ...args: unknown[]): Promise<unknown> =>
     callPoolHandlerWithActivation(id, args, () => Promise.reject(new Error(`命令 "${id}" 未在池内注册`)));
-  const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string }): void => {
+  const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string; code?: string; hint?: string }): void => {
     ipcRenderer.invoke(IPC.commands.executeResult, requestId, result).catch((e) => {
       console.error(`[preload-pool] commands:executeResult 回传失败 (${requestId}):`, e);
     });
@@ -179,7 +228,17 @@ export function buildCommands(events: EventSystemApi) {
       const result = await executeLocal(commandId, ...(Array.isArray(args) ? args : []));
       sendExecuteResult(requestId, { result });
     } catch (e) {
-      sendExecuteResult(requestId, { error: e instanceof Error ? e.message : String(e) });
+      // S2/T14：插件错误**原样透传 code/hint**（结构化错误只有一个构造点 = SDK `pluginError`）；
+      // 裸 Error（无 code）⇒ `EUNKNOWN`——⛔ 由壳猜语义归到某个已有码。message 只作人读。
+      const err = e as { code?: unknown; message?: unknown; hint?: unknown };
+      const code = typeof err?.code === 'string' && err.code ? err.code : 'EUNKNOWN';
+      // message 取字符串形态优先（pluginError 若返回带 code 的普通对象也照样可取，⛔ [object Object]）
+      const message = typeof err?.message === 'string' ? err.message : (e instanceof Error ? e.message : String(e));
+      sendExecuteResult(requestId, {
+        error: message,
+        code,
+        ...(typeof err?.hint === 'string' && err.hint ? { hint: err.hint } : {}),
+      });
     }
   });
 

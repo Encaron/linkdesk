@@ -11,14 +11,14 @@
  * no generic envelope layer (D6—the existing-API-first principle).
  */
 
-/** Open serial port config—plugin API input + consumed by the main-process serial-service */
+/** Open serial port config—plugin API input + consumed by the main-process serial-service.
+ *  No `encoding`: the shell only moves bytes; receive-decoding is the plugin's job (D2). */
 export interface OpenPortConfig {
   portName: string;
   baudRate: number;
   dataBits?: number;
   stopBits?: number;
   parity?: string;
-  encoding?: string;
   /** E5.8#26 D8—resource ownership declaration: declared by the plugin itself at openPort (pool WCV means multiple plugins share one JS context,
    *  so the main process cannot identify the plugin from the sender); on unload, closePortsByOwner reclaims the hardware resources by it. */
   ownerPluginId?: string;
@@ -31,12 +31,17 @@ export interface SerialStatus {
   baudRate: number;
 }
 
-/** Serial data payload—the serial.data push (E5.8#28: evolved from the original port-name-less string—D6 payload objectification). */
+/** Serial data payload—the serial.data push (E5.8#28: evolved from the original port-name-less string—D6 payload objectification).
+ *  D1: the shell marks direction at its read/write boundary and passes raw bytes through; decoding belongs to the plugin (D2). */
 export interface SerialDataPayload {
   /** Data-source port = routing key—consumers receive their own port's data by portName (multiple ports coexist, each receiving its own) */
   portName: string;
-  /** Decoded line text */
-  text: string;
+  /** Direction marked by the shell boundary: rx = received from the device, tx = written by us */
+  dir: "rx" | "tx";
+  /** Raw bytes—never pre-decoded (no second decoder in the shell) */
+  data: Uint8Array;
+  /** Timestamp (ms since epoch) of this chunk's arrival/write */
+  at: number;
 }
 
 /** Serial stats payload—the serial.stats push (E5.8#28: evolved from the original port-name-less SerialStats—the data source for the S10 per-port counters).

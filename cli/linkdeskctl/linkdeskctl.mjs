@@ -52,14 +52,19 @@ const STATIC_USAGE = `linkdeskctl——一条命令控制运行中的 LinkDesk�
 
 子命令（离线静态表；连得上时下面会附「运行中实例自省」）:
   status                        状态分诊——离线可用（读记录文件；在线时附 ping 详情）
+  doctor [--list | -k <id>]     门外自检（S5）：按外部 AI 的真实路径跑一遍通用不变式断言
+                                （--profile file-tree = 非硬件领域；--json 给每条 期望/实际/复现）
   ping                          认人：谁在服务（pid / 通道 / 版本 / 已跑多久）
-  describe                      自省：白名单操作 ＋ 可执行命令面（运行期派生）
+  describe [--filter JSON] [--limit N] [--cursor C]
+                                自省：白名单操作 ＋ 可执行命令面（运行期派生）；大命令面可筛选/分页（缺省全量）
   tabs                          读标签快照（窗口/分组/标签树）
   open-tab <type>               开一个标签页（type = 视图/插件 id；可加 --opts '{"k":"v"}'）
   exec <commandId> [args…]      执行壳命令（能执行的 = describe 里 commands 清单那些；严格回传真结果）
                                 ⚠️ describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，
                                 用户不点头 = EUSERDENIED、不执行
                                 实参两种写法等价：逐位平铺，或一个具名对象（键名 = describe 里该命令的 params[].name）
+  exec --status <opId>          查异步命令相位（S6）：exec 回 pending+opId 之后用它读
+                                running/done/failed/expired（⛔ 别干等、⛔ 别重试原命令；10 分钟过期 ⇒ EOPEXPIRED）
   install <source>              安装插件（zip 包 URL 或本地路径）——确认对话框在软件里弹出，用户点头才装
   notifications                 读通知面板（按钮的 command 事实随行）
   notify-action <id> <action>   执行通知上的按钮（action = 按钮 label 或序号；按钮背后是敏感命令时同样要点头）
@@ -96,7 +101,7 @@ const OFFLINE_NOTE = `
 /* ── 参数解析（CLI 参数折成一条请求——解析与通道分离，前者可单测后者要真机） ── */
 
 function parseArgv(argv) {
-  const opts = { json: false, userDataDir: null, timeoutMs: null, token: undefined, identityCheck: true, help: false, optsJson: null, limit: null, forClient: null };
+  const opts = { json: false, userDataDir: null, timeoutMs: null, token: undefined, identityCheck: true, help: false, optsJson: null, limit: null, forClient: null, list: false, only: null, profile: null, statusOpId: null, filterJson: null, cursor: null };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -108,7 +113,13 @@ function parseArgv(argv) {
     else if (a === "--no-identity-check") opts.identityCheck = false;
     else if (a === "--opts") opts.optsJson = argv[++i];
     else if (a === "--limit") opts.limit = Number(argv[++i]);
+    else if (a === "--filter") opts.filterJson = argv[++i]; // describe 筛选（S3a）
+    else if (a === "--cursor") opts.cursor = argv[++i]; // describe 分页游标（不透明）
     else if (a === "--for") opts.forClient = argv[++i]; // mcp config --for <client>（AI#40）
+    else if (a === "--list") opts.list = true; // doctor --list（S5）
+    else if (a === "-k") opts.only = argv[++i]; // doctor -k <断言 id>
+    else if (a === "--profile") opts.profile = argv[++i]; // doctor --profile file-tree
+    else if (a === "--status") { opts.statusRequested = true; opts.statusOpId = argv[++i] ?? null; } // exec --status <opId>（S6 异步相位）
     else if (a.startsWith("--")) throw new BridgeError("EUSAGE", `未知选项 ${a}`, "看 `--help`。");
     else rest.push(a);
   }
@@ -149,12 +160,26 @@ async function budgetOf(opts, subcommand, args = []) {
   return (await asksForUser(opts, subcommand, args)) ? 600_000 : 5000;
 }
 
-/** 子命令 → 一条内核操作请求；返回 null = 本地子命令（status），不发网络 */
+/** 子命令 → 一条内核操作请求；返回 null = 本地子命令（status/doctor），不发网络 */
 function buildRequest(subcommand, args, opts) {
   switch (subcommand) {
     case "status":
+    case "doctor":
       return null;
-    case "describe":
+    case "describe": {
+      // S3a：筛选/分页原样透传给内核（唯一实现在 aiBridge/whitelist.ts，⛔ CLI 自己过滤）
+      const out = {};
+      if (opts.filterJson !== null) {
+        try {
+          out.filter = JSON.parse(opts.filterJson);
+        } catch {
+          throw new BridgeError("EUSAGE", "--filter 必须是合法 JSON", `例：--filter '{"pluginId":"serial-monitor","query":"port"}'`);
+        }
+      }
+      if (Number.isFinite(opts.limit) && opts.limit > 0) out.limit = opts.limit;
+      if (opts.cursor) out.cursor = opts.cursor;
+      return out;
+    }
     case "ping":
     case "tabs":
     case "notifications":
@@ -347,8 +372,17 @@ async function main() {
   }
 
   let payload;
+  let opName; // S6：`exec --status` 实际调 opStatus（用户可见子命令名不变）
   try {
-    payload = buildRequest(subcommand, rest.slice(1), opts);
+    // S6：`exec --status <opId>` 走 opStatus（不是 exec）——相位查询是独立读面
+    if (subcommand === "exec" && (opts.statusRequested || opts.statusOpId)) {
+      if (!opts.statusOpId) throw new BridgeError("EUSAGE", "exec --status 需要 opId", "如 `exec --status op_7f3a91c4`（opId 来自 exec 的 pending 回执）。");
+      payload = { opId: opts.statusOpId };
+      opName = "opStatus";
+    } else {
+      payload = buildRequest(subcommand, rest.slice(1), opts);
+      opName = SUBCOMMAND_OPS[subcommand];
+    }
   } catch (e) {
     if (opts.json) console.log(JSON.stringify({ ok: false, code: e.code, message: e.message, hint: e.hint ?? null }));
     else console.error(`linkdeskctl: ${e.message}` + (e.hint ? `\n  ${e.hint}` : ""));
@@ -369,6 +403,35 @@ async function main() {
   };
 
   try {
+    // doctor = 门外自检（S5）——本地编排、复用一个 callBridge 客户端（05 铁律：⛔ 另写一套 HTTP 处理）
+    if (subcommand === "doctor") {
+      const { runDoctor, DOCTOR_ASSERTIONS } = await import("./lib/doctor.mjs");
+      if (opts.list) {
+        const rows = DOCTOR_ASSERTIONS.map((a) => ({ id: a.id, name: a.name, source: a.source }));
+        if (opts.json) console.log(JSON.stringify({ ok: true, subcommand, assertions: rows }, null, 2));
+        else console.log(rows.map((r) => `${r.id.padEnd(16)}${r.name}\n${" ".repeat(16)}防回归：${r.source}`).join("\n"));
+        process.exit(0);
+      }
+      const call = (op2, payload2) => callBridge(op2, payload2, callOpts).then((x) => x.result);
+      const profile = opts.profile ?? "serial";
+      const results = await runDoctor({ call, profile, only: opts.only });
+      const failed = results.filter((r) => !r.pass);
+      if (opts.json) {
+        console.log(JSON.stringify({ ok: failed.length === 0, subcommand, profile, results }, null, 2));
+      } else {
+        for (const r of results) {
+          const extra = r.skip
+            ? `  ⏭ 跳过：${r.note}`
+            : !r.pass
+              ? `\n  期望 ${r.expected}\n  实际 ${r.actual}\n  复现 ${r.repro}`
+              : "";
+          console.log(`${r.pass ? "✅" : "🔴"} ${r.id.padEnd(16)}${r.name}${extra}`);
+        }
+        console.log(`\n[doctor] ${failed.length === 0 ? "全部断言通过" : `${failed.length} 条红`}（${results.length} 条，profile=${profile}）`);
+      }
+      process.exit(failed.length > 0 ? 2 : 0);
+    }
+
     // status = 客户端分诊 + 在线 ping 详情（离线可用是它的存在意义）
     if (subcommand === "status") {
       const found = readRecord({ userDataDirs: callOpts.userDataDirs });
@@ -392,13 +455,13 @@ async function main() {
       process.exit(0);
     }
 
-    const { result, record, servedBy } = await callBridge(SUBCOMMAND_OPS[subcommand], payload, callOpts);
+    const { result, record, servedBy } = await callBridge(opName, payload, callOpts);
     if (opts.json) {
       // 🔴 AI#59：`servedBy` = **谁在服务**，⛔ 不许拿记录 pid 兜底——`ping` 有意跳过认人，
       //    错配时记录 pid 是假的，真应答者在 `result.pid`（人读形态本来就印它）。
-      console.log(JSON.stringify({ ok: true, subcommand, op: SUBCOMMAND_OPS[subcommand], servedBy: resolvedServedBy(servedBy, result, record), recordPid: record.pid, result }, null, 2));
+      console.log(JSON.stringify({ ok: true, subcommand, op: opName, servedBy: resolvedServedBy(servedBy, result, record), recordPid: record.pid, result }, null, 2));
     } else {
-      console.log(render(SUBCOMMAND_OPS[subcommand], result));
+      console.log(render(opName, result));
     }
     process.exit(0);
   } catch (e) {

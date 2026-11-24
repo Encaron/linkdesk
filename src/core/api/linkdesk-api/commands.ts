@@ -40,7 +40,17 @@ export interface CommandsAPI {
       commandId: string,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- command handler argument types are decided by the plugin caller, modeled after VS Code registerCommand's (...args: any[]) => any
       handler: (...args: any[]) => Promise<unknown> | unknown,
-      meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: LinkDeskCommandParam[] },
+      meta?: {
+        title?: string;
+        category?: string;
+        when?: string;
+        pluginId?: string;
+        description?: string;
+        params?: LinkDeskCommandParam[];
+        /** S6/T11: declare this command as async — exec answers `{pending:true, opId}` and the result is read via `opStatus`.
+         *  Same semantics as `LinkDeskCommand.async`; describe surfaces it. Additive. */
+        async?: boolean;
+      },
     ): void;
     /** Unregister a plugin's pool-resident commands (convention: command ID format "pluginId.commandName") — called on view unmount */
     unregisterCommands(pluginId: string): void;
@@ -51,6 +61,11 @@ export interface CommandsAPI {
     /** E6#62e: pool-preload-only internal hook — the pool renderer registers the on-command activation callback (command miss → import the owning plugin entry).
      *  Underscore internal surface (modeled after _executeShellLocal), not a plugin-author API — the wiring point for on-demand activation of pure command plugins. */
     _setCommandMissHandler?(handler: (pluginId: string) => Promise<boolean>): void;
+    /** S4: pool-preload-only internal hooks — PluginComponent mount/unmount pushes/pops the activation context stack,
+     *  so registerCommand records activation:"view" + scope:"view:<id>" for view-mounted commands (entry-level registrations stay activation:"entry").
+     *  Underscore internal surface, not a plugin-author API — ⛔ plugins must not call these. */
+    _enterViewContext?(viewInstanceId: string): void;
+    _leaveViewContext?(viewInstanceId: string): void;
   };
 
   /** Configuration — the new name — modeled after VS Code vscode.workspace.getConfiguration */

@@ -113,6 +113,7 @@ Below it the **loader refuses to load you** (toast "requires app version ≥X" +
 - Shared components are **served by the shell** (only the shell's copy exists at runtime, see [19 §2](19-component-cheatsheet.md)); "which shell first shipped this export" is a **fact** — that is exactly [the table in 19 §2.1](19-component-cheatsheet.md) (generated from the shell repo's export-surface ledger, ⛔ not hand-written).
 - You **imported** an export statically ⇒ you need at least the shell that first had it. Take the **maximum** `since` over all imported names — that is your floor.
 - **You never compute it yourself**: `@linkdesk/plugin-sdk` does. `npm run lint` prints the number to use; `npm run verify` turns CI red; `build` / `publish` block **before writing a distribution artifact** (⛔ a dishonest declaration should never be packaged). ⚠️ `lint` is **WARN-level and never fails** — it tells you, it does not stop you; do not read "lint ran clean" as "the declaration is right".
+- **Command shapes count too**: besides `@linkdesk/ui` imports, **a command shape that only newer shells understand** raises the floor as well — today `meta.async` (`{ async: true }` in the `registerCommand` meta) ⇒ floor **0.2.65** (the shell wraps such commands into ops from that version). The tooling folds these "field/shape floors" into the same computation (max with the UI floor); use the number `npm run lint` reports.
 
 **Three things that catch people out:**
 

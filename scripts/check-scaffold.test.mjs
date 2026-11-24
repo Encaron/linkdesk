@@ -182,7 +182,12 @@ function floorSelfTestCases() {
 
   const manifestPath = join(genDir, "plugin.json");
   const srcPath = join(genDir, "src", "index.tsx");
-  const originals = { manifest: readFileSync(manifestPath, "utf8"), src: readFileSync(srcPath, "utf8") };
+  const cmdsPath = join(genDir, "src", "commands.ts");
+  const originals = {
+    manifest: readFileSync(manifestPath, "utf8"),
+    src: readFileSync(srcPath, "utf8"),
+    cmds: readFileSync(cmdsPath, "utf8"),
+  };
   const sha = (s) => createHash("sha256").update(s, "utf8").digest("hex");
 
   // ① 正控：真生成物 —— 声明值必须 == 算出来的地板（不是「≥ 就行」：抄高也会被拦）
@@ -212,17 +217,22 @@ function floorSelfTestCases() {
   );
   writeFileSync(manifestPath, originals.manifest); // 先还原声明，让 ③ 只考验导入轴
 
-  // ③ 负控 B：导入名换成一个更晚才有的导出（声明不动）⇒ 地板必须跟着账本变、判据必须红
+  // ③ 负控 B：导入名换成一个更晚才有的导出（声明不动）⇒ 地板必须跟着账本变、判据必须红。
+  //    ⚠️ 模板同时用了 `meta.async`（字段地板 0.2.65）⇒ 必须同笔去掉该形态，才能让 **UI 账本** 成为驱动。
   const swapped = originals.src.replace(/(import\s*\{)[^}]*(\}\s*from\s*"@linkdesk\/ui")/, "$1 PluginCard $2");
-  const mutatedImport = swapped !== originals.src;
+  const cmdsNoAsync = originals.cmds
+    .replace(/import\s+type\s+\{\s*AsyncCommandMeta\s*\}\s+from\s+"@linkdesk\/plugin-sdk\/runtime";\s*\r?\n/, "")
+    .replace(/\{\s*async:\s*true\s*\}\s*satisfies\s+AsyncCommandMeta/, "{}");
+  const mutatedImport = swapped !== originals.src && cmdsNoAsync !== originals.cmds;
   writeFileSync(srcPath, swapped);
+  writeFileSync(cmdsPath, cmdsNoAsync);
   const badImport = checkMinAppVersionFloor(genDir, api);
   const movedFloor = badImport.floor !== clean.floor;
   push(
     "断言 13 负控 B（换成一个更晚的导出 PluginCard）",
     mutatedImport && movedFloor && badImport.problems.length > 0,
     badImport.problems.length,
-    `换掉导入名（声明不动）⇒ 地板必须从 ${clean.floor} 抬到 ${badImport.floor} 并判红——证明地板跟着账本走、不是常量`,
+    `换掉导入名并去掉 async 形态（声明不动）⇒ 地板必须从 ${clean.floor} 变到 ${badImport.floor} 并判红——证明地板跟着账本＋使用面走、不是常量`,
     mutatedImport
       ? `实得地板 ${badImport.floor}（原 ${clean.floor}），红了 ${badImport.problems.length} 条`
       : "变异没生效——生成物 src/index.tsx 里找不到对 @linkdesk/ui 的具名导入（模板改形了？同笔改这里）",
@@ -230,8 +240,10 @@ function floorSelfTestCases() {
 
   // ④ 还原：逐字节 + 判据回绿
   writeFileSync(srcPath, originals.src);
+  writeFileSync(cmdsPath, originals.cmds);
   const byteIdentical =
     sha(readFileSync(manifestPath, "utf8")) === sha(originals.manifest) &&
+    sha(readFileSync(cmdsPath, "utf8")) === sha(originals.cmds) &&
     sha(readFileSync(srcPath, "utf8")) === sha(originals.src);
   const again = checkMinAppVersionFloor(genDir, api);
   push(

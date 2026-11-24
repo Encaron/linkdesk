@@ -468,7 +468,8 @@
             "type": "object",
             "required": [
               "id",
-              "title"
+              "title",
+              "risk"
             ],
             "properties": {
               "id": {
@@ -494,7 +495,49 @@
               "risk": {
                 "type": "string",
                 "enum": ["R0", "R1", "R2", "R3"],
-                "description": "Risk level for the AI permission tiers — R0 read-only / R1 reversible write / R2 side-effecting write / R3 irreversible. The host built-in table always wins; an unknown value is reported and falls back to R1. Optional (omit = fallback R1)."
+                "description": "Plugin-command risk declaration — the ONLY source for a plugin command's risk. R0 read-only / R1 reversible write / R2 side-effecting write / R3 irreversible or touches the body — e.g. physical reset, continuous sending, interrupting a live connection, deleting data or replacing running code. The host built-in table covers shell commands only and never overrides a plugin declaration. Missing or invalid ⇒ treated as R2; the loader rejection gate is pending (official 6 repos aligned; my-cool-plugin demo deferred). Required: declare \"R0\" explicitly when a command is truly read-only."
+              },
+              "activation": {
+                "type": "string",
+                "enum": ["entry", "view"],
+                "description": "Where the real handler is registered: entry = plugin-level (callable with no view open) / view = registered by a mounted view instance (needs that view). The host auto-detects the runtime truth at registration time; this declaration is used by describe() to tell the AI in advance. Conflict with the runtime truth ⇒ runtime wins + loader diagnostic. Required in the author contract (see 21-插件命令化规范)."
+              },
+              "async": {
+                "type": "boolean",
+                "description": "Declarative async hint: true = a long-running command whose exec returns { pending:true, opId } and is queried via opStatus. Purely additive — omit = unchanged. The runtime registration meta (registerCommand meta async) overrides this declaration, same as activation."
+              },
+              "returns": {
+                "type": "array",
+                "description": "Return-shape field table (first-level keys, optionally one nested level) — NOT a full JSON Schema. Lets the AI compose assertions without trial and error; doctor --blind samples real receipts to catch drift.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "type"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Field name in the receipt"
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Field type — e.g. string / number / boolean / object / array"
+                    },
+                    "optional": {
+                      "type": "boolean",
+                      "description": "Whether the field may be absent. Defaults to false."
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "One sentence on what this field means"
+                    }                  },
+                  "additionalProperties": false
+                }
+              },
+              "example": {
+                "type": "object",
+                "description": "A single request-body example that can be executed directly (request side only — use returns for the response shape). doctor samples it against the real command."
               },
               "params": {
                 "type": "array",

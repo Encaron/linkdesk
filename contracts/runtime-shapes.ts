@@ -274,7 +274,9 @@ function chkSerialDataPayload(v: unknown, p: string, errs: string[]): void {
   else {
     const _t48 = v as Record<string, unknown>;
     if (typeof _t48.portName !== "string") errs.push(((p) + ".portName") + ": 期望 string，实收 " + typeof _t48.portName);
-    if (typeof _t48.text !== "string") errs.push(((p) + ".text") + ": 期望 string，实收 " + typeof _t48.text);
+    if (!(_t48.dir === "rx" || _t48.dir === "tx")) errs.push(((p) + ".dir") + ": 期望 rx|tx");
+    if (!(_t48.data instanceof Uint8Array)) errs.push(((p) + ".data") + ": 期望 Uint8Array");
+    if (typeof _t48.at !== "number") errs.push(((p) + ".at") + ": 期望 number，实收 " + typeof _t48.at);
   }
 }
 function chkSerialStatsPayload(v: unknown, p: string, errs: string[]): void {

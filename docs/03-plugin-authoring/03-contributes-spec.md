@@ -78,10 +78,14 @@
         "category": "CAD",
         "when": "activeEditor == 'cad'",
         "description": "Import CAD geometry from a DXF file into the current project",
+        "activation": "view",
+        "risk": "R2",
         "params": [
           { "name": "layerFilter", "type": "string", "description": "Import only this layer (omit for all)" },
           { "name": "explodeBlocks", "type": "boolean", "description": "Explode blocks into primitive entities" }
-        ]
+        ],
+        "returns": [{ "name": "imported", "type": "number", "description": "Number of imported entities" }],
+        "example": { "layerFilter": "WALLS" }
       }
     ]
   }
@@ -96,6 +100,11 @@
 | `when` | ❌ | context key when condition. Without `when` the command is visible in any context |
 | `description` | ❌ | **what this command does** — the intent from the user/AI perspective (an i18n key, same rule as `title`). ⛔ Do not restate the `id`. Omitted = no description |
 | `params` | ❌ | **parameter structure** — an array corresponding positionally to the handler's arguments. Omitted = a command without parameters |
+| `activation` | ❌ | **where the handler lives**: `"entry"` (registered at the entry top level — callable with no view) \| `"view"` (registered inside a view component — needs that view). The host records the **registration context** as the runtime truth; the declaration is only the "tell AI before activation" hint. Authors should fill it in (optional in the current schema; tightened once the official repos catch up) |
+| `async` | ❌ | **long-running declaration hint** (purely additive): `true` = the command's exec returns `{ pending, opId }` and the result is queried via `opStatus`. The **runtime `meta.async` overrides the declaration** (same as `activation`); omit = unchanged |
+| `risk` | ✅ | **AI risk level**: `"R0"` read / `"R1"` reversible write / `"R2"` side-effecting write / `"R3"` irreversible or **physical** (reset / continuous sending / interrupting a connection / deleting data / replacing running code). A plugin command uses **only this declaration**; missing or invalid ⇒ fallback **R2** |
+| `returns` | ❌ | **receipt field table** (not a JSON Schema): `[{ name, type, optional?, description? }]`, first-level keys only; `[]` when nothing is returned |
+| `example` | ❌ | **one request body that can run as-is** (`{}` when there are no parameters) — AI composes the call from it, ⛔ no trial and error |
 
 **`params` item fields (positionally matching the handler's arguments):**
 
@@ -106,17 +115,22 @@
 | `required` | ❌ | whether the parameter is required. Defaults to `false` (optional) |
 | `description` | ❌ | one sentence on what this parameter is (omit when the name speaks for itself) |
 
-> **`description` / `params` travel through `getCommands()` into the contract** (`LinkDeskCommand.description` / `LinkDeskCommand.params`) — consumers (the command palette, automation, AI) can build `executeCommand(id, ...params)` straight from `params` **instead of reading source code to guess the arguments**. The same optional fields exist on **runtime registration** (`registerCommand(id, handler, meta)`); the two are synonymous (declaring them once is enough — a runtime registration usually does not repeat them).
+> **`description` / `params` / `activation` / `risk` / `returns` / `example` travel through `getCommands()` into the contract** (`LinkDeskCommand.*`). A long-running command puts `{ async: true }` in the **runtime registration meta** (`AsyncCommandMeta`): the shell answers `{ pending, opId }` and tracks the op (see the command-ification spec); ⛔ there is no `runAsync` API — consumers (the command palette, automation, AI) build `executeCommand(id, ...params)` from `params` and judge the response shape from `returns` **instead of reading source code to guess**. The same fields exist on **runtime registration** (`registerCommand(id, handler, meta)`); the two are synonymous (declaring them once is enough — a runtime registration usually does not repeat them).
 
-**Declaring registers metadata (a placeholder):** `contributes.commands` only registers command metadata (id/title/category/when); **the real handler is registered on the pool side** (pool-side `_poolCommands` wins). A command whose handler was never registered is a no-op when invoked (with a diagnostic warn).
+**Declaring registers metadata (a placeholder):** `contributes.commands` only registers command metadata (id/title/category/when/description/params/activation/risk/returns/example); **the real handler is registered on the pool side** (pool-side `_poolCommands` wins). When no handler is registered: invoking an `entry` command triggers **lazy activation** (the entry is imported and its top-level side effects register it); a `view` command with no view in place yields `EVIEWREQUIRED` (⛔ no more silent no-op).
 
 ```typescript
-// register the real handler on the pool side (when the component mounts)
+// entry-level (activation:"entry"): register at the module top level — on-command activation
+// imports the entry, so it is callable with no view
+window.linkdesk.commands.registerCommand("cad.importDxf", async () => {
+  const paths = await window.linkdesk.dialog.openFile({ filters: [{ name: "DXF files", extensions: ["dxf"] }] });
+  // ...
+});
+
+// view-level (activation:"view"): register inside the component; the scope is removed
+// automatically when the view unmounts — ⛔ do not unregisterCommands(pluginId) wholesale.
 useEffect(() => {
-  window.linkdesk.commands.registerCommand("cad.importDxf", async () => {
-    const paths = await window.linkdesk.dialog.openFile({ filters: [{ name: "DXF files", extensions: ["dxf"] }] });
-    // ...
-  });
+  window.linkdesk.commands.registerCommand("cad.pickLayer", async () => { /* ... */ });
 }, []);
 ```
 

@@ -21,8 +21,9 @@
   // 你从 @linkdesk/ui 每静态导入一个导出，就欠这个导出一个下限：旧壳里没有那个导出时，插件
   // **整只加载失败**（不是「那个组件不显示」）。这个数不用你查表——工具按你实际导入的名字算：
   // 改完代码跑一次 `npm run lint`，照它报的值改这一行。
-  // 本模板只静态导入了 HintTip（该导出自 0.2.20 起提供）⇒ 下面这个数就是算出来的地板。
-  "minAppVersion": "0.2.20",
+  // 本模板导入了 HintTip（0.2.20 起提供）并用了 meta.async（0.2.65 起壳才把命令自动包成 op）
+  // ⇒ 地板取 max = 0.2.65。改完代码跑 `npm run lint`，照它报的值改这一行。
+  "minAppVersion": "0.2.65",
   "description": "{{displayName}}——我的第一个 LinkDesk 插件", // 一句话描述（插件详情页展示）
   "author": "{{author}}", // 作者名
   // ── 图标——三图模型（完整规则见作者面 06 号《plugin.json 规范》§marketIcon）──
@@ -79,9 +80,46 @@
         "id": "{{pluginName}}.hello",
         "title": "打招呼",
         "description": "返回一句问候（本插件的命令样板）。可无参数执行（向 world 问好），也可给 { name } 指定对象；返回 { message, plugin } 读数。",
+        // activation：宿主在「注册那一刻」自动判定运行期真值；这里的声明用于插件尚未激活时提前告知。
+        "activation": "entry",
+        // risk 必填：R0 读 / R1 可撤销写 / R2 有副作用写 / R3 不可回退或物理动作（复位/持续发送/中断）。
+        "risk": "R0",
         "params": [
           { "name": "args", "type": "object", "required": false, "description": "{ name?: string }——向谁问好；省略 = world" }
-        ]
+        ],
+        // returns：回执字段表（只到第一层键），不是 JSON Schema；没有返回值就写 []。
+        "returns": [
+          { "name": "message", "type": "string", "description": "问候语" },
+          { "name": "plugin", "type": "string", "description": "插件 id" }
+        ],
+        // example：一条可以直接执行的请求体（无参数命令写 {}）。
+        "example": { "name": "LinkDesk" }
+      },
+      {
+        // 视图态命令样板：handler 在 src/index.tsx 的视图组件内注册（随视图挂载）。
+        // 没开视图时调用它 ⇒ EVIEWREQUIRED；AI 从 describe 的 activation 就能预判。
+        "id": "{{pluginName}}.viewGreeting",
+        "title": "视图内问候",
+        "description": "只在插件视图打开时可用：返回一句问候。无视图调用会得到 EVIEWREQUIRED。",
+        "activation": "view",
+        "risk": "R0",
+        "params": [],
+        "returns": [{ "name": "message", "type": "string", "description": "问候语" }],
+        "example": {}
+      },
+      {
+        // 长任务样板：handler 在 src/commands.ts 的 meta 里写 async:true；exec 立即回 {pending,opId}。
+        "id": "{{pluginName}}.longTask",
+        "title": "长任务样板",
+        "description": "模拟一个约 1 秒的长任务：演示 meta.async——exec 立即回 pending+opId，结果用 opStatus 查。",
+        "activation": "entry",
+        "risk": "R0",
+        "params": [],
+        "returns": [
+          { "name": "message", "type": "string", "description": "完成提示" },
+          { "name": "waitedMs", "type": "number", "description": "实际等待毫秒数" }
+        ],
+        "example": {}
       }
     ],
     // ── 需要「侧栏 / 底部面板 / 辅助侧栏」分区视图时：取消注释，在 src/views/ 放对应组件，

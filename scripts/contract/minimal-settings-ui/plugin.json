@@ -26,5 +26,12 @@
         }
       ]
     }
+  },
+  "appearsIn": {
+    "tabBar": true,
+    "standaloneOpenable": true
+  },
+  "tabBehavior": {
+    "singleton": true
   }
 }

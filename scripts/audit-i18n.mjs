@@ -98,8 +98,9 @@ const EXCLUDE_RANGES = {
  * 本规则必须撤销并把那些串补译——那时它们就是 UI 文字了。
  */
 const METADATA_VALUE_PROP = "description";
-/** 命中串的**紧邻前缀**是不是 `description:`（即「这个中文串是那个字段的值」） */
-const METADATA_VALUE_PREFIX_RE = /(?:^|[\s,{[])description:\s*$/;
+/** 命中串的**紧邻前缀**是不是 `description:` / `note:`（即「这个中文串是那个字段的值」）。
+ *  `note` = `describe.askFirst` 的自述（AI 清单元数据，零渲染消费方）——同一条裁决。 */
+const METADATA_VALUE_PREFIX_RE = /(?:^|[\s,{[])(?:description|note):\s*$/;
 
 // ── 1. 加载所有翻译 key ──
 // 2026-09-05 塌平单根：plugins/<id>（builtin/user 前缀全删）
@@ -263,7 +264,7 @@ function processFile(filePath, relPath) {
       }
       // console/throw/reportError/.appendLine 调用起行（单行或多行起）——
       // .appendLine = 内部日志（loader log），非用户可见 UI（E5.8#37.9）
-      if (/console\.\w+\s*\(|throw\s+new\s+\w+\s*\(|reportError\s*\(|\.appendLine\s*\(/.test(eff)) {
+      if (/console\.\w+\s*\(|throw\s+new\s+\w+\s*\(|coded\s*\(|reportError\s*\(|\.appendLine\s*\(/.test(eff)) {
         const d = parenDelta(eff);
         if (d > 0) logDepth = d; // 多行调用——续行跳过
         continue;
@@ -298,6 +299,50 @@ function processFile(filePath, relPath) {
 for (const root of ["src", "plugins"]) {
   walkDir(root, (full) => processFile(full, full.replace(/\\/g, "/")));
 }
+
+// ── 2a. 主进程 UI 文案键（2026-11-24 返工：**去掉逐文件白名单，改为全域扫属性值**）──
+// 主进程 DTO 只返 i18n key，由渲染方 t() 翻译 ⇒ 这些 key 不在 src 里，上一趟扫不到。
+// 曾经的修法是「把 policy/state.ts 加进白名单」——那只是把同一个病灶挪到下一个文件：
+// 实机立刻复现（risk.ts 的「安装插件 / 处理更新」仍是中文），因为白名单天生滞后于代码。
+// 🔴 根治判据：主进程里**任何** UI 属性值（label/what/why/rule/riskLabel/title/key）就是 UI 文案，
+//    不认住在哪个文件。属性名即域（与 §0 的 `description` 元数据排除同源、方向相反）。
+//    `key` = `DialogI18nText` 的 i18n key（主进程确认框只传 key，渲染侧翻译）。
+//    新增文案只要落在这七种字段里，缺译当场红——⛔ 不需要再来改本文件。
+const MAIN_UI_PROP_RE =
+  /(?:^|[\s,{(\[])(label|what|why|rule|riskLabel|title|key)\s*:\s*(["'])((?:\\.|(?!\2)[^\\\r\n])*)\2/g;
+
+/** 主进程单文件：注释抹成空格（保行号）→ 只收 UI 属性值里的中文 */
+function processMainUiFile(filePath, relPath) {
+  let code;
+  try {
+    code = readFileSync(filePath, "utf-8");
+  } catch {
+    return;
+  }
+  code = code.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+  code = code.replace(/(?<!:)\/\/[^\r\n]*/g, (m) => " ".repeat(m.length));
+  const lineOf = (idx) => code.slice(0, idx).split("\n").length;
+  MAIN_UI_PROP_RE.lastIndex = 0;
+  let m;
+  while ((m = MAIN_UI_PROP_RE.exec(code)) !== null) {
+    const text = unescapeStr(m[3]).trim();
+    if (text.length < 2 || !/[一-鿿]/.test(text) || text.includes("${")) continue;
+    const lineNo = lineOf(m.index);
+    const lineText = code.split("\n")[lineNo - 1] ?? "";
+    // 诊断/日志行不是 UI（与 processFile 同一条域界）
+    if (/console\.\w+\s*\(|throw\s+new|reportError\s*\(|\.appendLine\s*\(/.test(lineText)) continue;
+    if (!found.has(text)) found.set(text, []);
+    found.get(text).push(relPath + ":" + lineNo);
+  }
+}
+
+walkDir("electron", (full) => {
+  const rel = full.replace(/\\/g, "/");
+  // AI 权限策略模块的中文**全是 UI 文案**（DTO key / 风险表 what·why），无诊断串：
+  // 整个目录按普通源码口径收，连字段名都不依赖——未来新增 `hint` / `caption` 也漏不掉。
+  if (rel.startsWith("electron/services/aiBridge/policy/")) processFile(full, rel);
+  else processMainUiFile(full, rel);
+});
 
 // ── 2b. 🔥 E6#161：manifest 声明串——按「谁的仓谁译文」判（归属腿） ──
 // 判据本体住 SDK（`own-dict-coverage.mjs`，作者侧 `ci-verify` ⑧ 段引的是同一份）；

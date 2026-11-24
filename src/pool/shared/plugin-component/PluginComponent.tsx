@@ -11,7 +11,7 @@
  *    （E5.8#24.8 护栏统一——取 monaco 只能走 getMonaco()）。
  */
 
-import React, { Suspense, useEffect, useMemo, useRef } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { cssUrlForRenderPath, retainPluginCss, releasePluginCss } from "./bundleCss"; // E6#15：bundle 插件 css <link>（池=视图挂载文档）
 import { useTranslation } from "react-i18next";
 import { ViewSkeleton } from "../view-skeleton/ViewSkeleton"; // 04「启动过场」④C：内容加载骨架
@@ -31,6 +31,9 @@ import FallbackFace, { type FallbackScale } from "../fallback/FallbackFace"; // 
 type PluginViewProps = { isActive: boolean; tabId?: string; sourceId?: string };
 type PluginModule = { default?: React.ComponentType<PluginViewProps> };
 const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
+
+// S4：无 tabId/sourceId 的视图实例（dev 预览等）用递增序号做作用域键——同一次挂载内稳定即可
+let _viewScopeSeq = 0;
 
 /**
  * 「插件不可用」占位——E6#162 归一化：**同步判空**（无 loader：坏 pluginId／无 plugins API）与
@@ -228,6 +231,20 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     }
     return release;
   }, [pluginId, renderPath]);
+
+  // S4：激活上下文栈压弹——视图挂载期间，池侧 registerCommand 读栈顶记 activation:"view"、scope:"view:<id>"；
+  // 卸载只摘该实例的 view:* 命令（⛔ 插件级命令常驻，见 preload-pool/commands.ts）。
+  // 🔴 用 useLayoutEffect（⛔ useEffect）：父 layout effect 先于子 effect（含 StrictMode 二次挂载）——
+  // 视图命令在 hook 里注册时上下文已是 view；cleanup 父后于子——子注销完，父才弹栈摘 view:* 残留。
+  // instanceKey：主区 tab 用 tabId（每 tab 实例唯一）；侧栏用 sourceId；都没有（预览态）用递增序号。
+  useLayoutEffect(() => {
+    const instanceKey = tabId ?? sourceId ?? `view-${++_viewScopeSeq}`;
+    const cmds = window.linkdesk?.commands;
+    if (cmds && typeof cmds._enterViewContext === "function") cmds._enterViewContext(instanceKey);
+    return () => {
+      if (cmds && typeof cmds._leaveViewContext === "function") cmds._leaveViewContext(instanceKey);
+    };
+  }, [tabId, sourceId]);
 
   if (!LazyComponent) {
     return <PluginUnavailable pluginId={pluginId} />;

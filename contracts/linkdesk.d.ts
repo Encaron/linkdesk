@@ -98,6 +98,21 @@ export interface LinkDeskCommandParam {
     /** One-sentence description of what this parameter is (omitted = the name is self-explanatory) */
     description?: string;
 }
+/**
+ * S3b/T12: return-shape field table entry — **first-level keys** (optionally one nested level via description),
+ * ⛔ not a full JSON Schema. Lets the AI compose assertions without trial and error; `doctor` samples real
+ * receipts to catch drift. Mirrors manifest `contributes.commands[].returns[]`.
+ */
+export interface LinkDeskCommandReturnField {
+    /** Field name in the receipt */
+    name: string;
+    /** Field type — e.g. string / number / boolean / object / array */
+    type: string;
+    /** Whether the field may be absent (defaults to false) */
+    optional?: boolean;
+    /** One sentence on what this field means */
+    description?: string;
+}
 export interface LinkDeskCommand {
     id: string;
     title: string;
@@ -117,9 +132,23 @@ export interface LinkDeskCommand {
     userOnly?: boolean;
     /**
      * Declared risk level (2026-11-24 · AI permission tiers) — mirrors `contributes.commands[].risk`.
-     * Merge order: host built-in table > this declaration > fallback R1. Purely additive.
+     * S7 merge: host built-in table covers **shell commands only**; a plugin command's risk is its
+     * declaration; undeclared ⇒ conservative R2 fallback (never silently allowed). Purely additive.
      */
     risk?: "R0" | "R1" | "R2" | "R3";
+    /**
+     * S4 reachability — runtime truth from the registration context (pool registration), or the manifest
+     * declaration while the command is not yet registered. "entry" = plugin-level (callable with no view open,
+     * lazily activated on command miss); "view" = registered by a mounted view instance (needs that view).
+     * Additive — describe() surfaces it so the AI can plan without trial and error.
+     */
+    activation?: "entry" | "view";
+    /** S6: async command — exec answers `{pending:true, opId}` and the result is read via `opStatus`. Additive. */
+    async?: boolean;
+    /** S3b/T12: return-shape field table (manifest `contributes.commands[].returns`) — first-level keys. Additive. */
+    returns?: LinkDeskCommandReturnField[];
+    /** S3b/T12: request-body example (manifest `contributes.commands[].example`) — request side only. Additive. */
+    example?: Record<string, unknown>;
 }
 /** Recipe contribution domains—shared by theme metadata domains (mix-and-match source filtering) and the theme:changed payload (domain-level fine-grained refresh) (06 §2/§6.2).
  *  Five domains: colors (colorways always contribute) + the four appearance style domains (radius/glass/font/background).
@@ -254,6 +283,9 @@ export interface CommandsAPI {
             pluginId?: string;
             description?: string;
             params?: LinkDeskCommandParam[];
+            /** S6/T11: declare this command as async — exec answers `{pending:true, opId}` and the result is read via `opStatus`.
+             *  Same semantics as `LinkDeskCommand.async`; describe surfaces it. Additive. */
+            async?: boolean;
         }): void;
         /** Unregister a plugin's pool-resident commands (convention: command ID format "pluginId.commandName") — called on view unmount */
         unregisterCommands(pluginId: string): void;
@@ -264,6 +296,11 @@ export interface CommandsAPI {
         /** pool-preload-only internal hook — the pool renderer registers the on-command activation callback (command miss → import the owning plugin entry).
          *  Underscore internal surface (modeled after _executeShellLocal), not a plugin-author API — the wiring point for on-demand activation of pure command plugins. */
         _setCommandMissHandler?(handler: (pluginId: string) => Promise<boolean>): void;
+        /** S4: pool-preload-only internal hooks — PluginComponent mount/unmount pushes/pops the activation context stack,
+         *  so registerCommand records activation:"view" + scope:"view:<id>" for view-mounted commands (entry-level registrations stay activation:"entry").
+         *  Underscore internal surface, not a plugin-author API — ⛔ plugins must not call these. */
+        _enterViewContext?(viewInstanceId: string): void;
+        _leaveViewContext?(viewInstanceId: string): void;
     };
     /** Configuration — the new name — modeled after VS Code vscode.workspace.getConfiguration */
     configuration: {
@@ -1957,24 +1994,29 @@ export interface SerialStatus {
     portName: string;
     baudRate: number;
 }
-/** Open serial port config—plugin API input + consumed by the main-process serial-service */
+/** Open serial port config—plugin API input + consumed by the main-process serial-service.
+ *  No `encoding`: the shell only moves bytes; receive-decoding is the plugin's job (D2). */
 export interface OpenPortConfig {
     portName: string;
     baudRate: number;
     dataBits?: number;
     stopBits?: number;
     parity?: string;
-    encoding?: string;
     /** D8—resource ownership declaration: declared by the plugin itself at openPort (pool WCV means multiple plugins share one JS context,
      *  so the main process cannot identify the plugin from the sender); on unload, closePortsByOwner reclaims the hardware resources by it. */
     ownerPluginId?: string;
 }
-/** Serial data payload—the serial.data push ( evolved from the original port-name-less string—D6 payload objectification). */
+/** Serial data payload—the serial.data push ( evolved from the original port-name-less string—D6 payload objectification).
+ *  D1: the shell marks direction at its read/write boundary and passes raw bytes through; decoding belongs to the plugin (D2). */
 export interface SerialDataPayload {
     /** Data-source port = routing key—consumers receive their own port's data by portName (multiple ports coexist, each receiving its own) */
     portName: string;
-    /** Decoded line text */
-    text: string;
+    /** Direction marked by the shell boundary: rx = received from the device, tx = written by us */
+    dir: "rx" | "tx";
+    /** Raw bytes—never pre-decoded (no second decoder in the shell) */
+    data: Uint8Array;
+    /** Timestamp (ms since epoch) of this chunk's arrival/write */
+    at: number;
 }
 /** Serial stats payload—the serial.stats push ( evolved from the original port-name-less SerialStats—the data source for the S10 per-port counters).
  *  tx/rx are push deltas (not cumulative values)—consumers accumulate on their own. */

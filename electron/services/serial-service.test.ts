@@ -7,11 +7,16 @@
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// serialport mock——实例级 open/close/flush 状态机 + list 静态。工厂内自含（vi.mock hoisted）。
+// serialport mock——实例级 open/close/flush 状态机 + list 静态 + 事件发射（D1 原始字节断言用）。工厂内自含（vi.mock hoisted）。
 vi.mock("serialport", () => {
   class MockSerialPort {
     static list = vi.fn(async () => []);
+    static instances: MockSerialPort[] = [];
     isOpen = false;
+    private handlers = new Map<string, Array<(...args: unknown[]) => void>>();
+    constructor() {
+      MockSerialPort.instances.push(this);
+    }
     open(cb: (err: Error | null) => void): void {
       this.isOpen = true;
       cb(null);
@@ -29,24 +34,41 @@ vi.mock("serialport", () => {
     set(_opts: unknown, cb: (err: Error | null) => void): void {
       cb(null);
     }
-    on(): MockSerialPort {
+    on(ev: string, fn: (...args: unknown[]) => void): MockSerialPort {
+      const list = this.handlers.get(ev) ?? [];
+      list.push(fn);
+      this.handlers.set(ev, list);
       return this;
+    }
+    emit(ev: string, ...args: unknown[]): void {
+      for (const fn of this.handlers.get(ev) ?? []) fn(...args);
     }
   }
   return { SerialPort: MockSerialPort };
 });
 
 type SerialServiceModule = typeof import("./serial-service");
+interface MockPort {
+  emit: (ev: string, ...args: unknown[]) => void;
+}
+type SerialDataPayload = import("../../src/core/types/ipc/serial").SerialDataPayload;
 
 let serialService: SerialServiceModule["serialService"];
 let systems: string[];
+let datas: SerialDataPayload[];
+let mockPorts: MockPort[];
 
 beforeEach(async () => {
   vi.resetModules();
   ({ serialService } = await import("./serial-service"));
+  const sp = await import("serialport");
+  mockPorts = (sp.SerialPort as unknown as { instances: MockPort[] }).instances;
   systems = [];
+  datas = [];
   serialService.setCallbacks({
-    onData: () => {},
+    onData: (payload) => {
+      datas.push(payload);
+    },
     onStats: () => {},
     // E5.8#28：载荷对象化——取 payload.message（原 string 直存）
     onSystem: (payload) => {
@@ -128,5 +150,37 @@ describe("serial-service 多口 Map 化（E5.8#26）", () => {
     await open("COM4"); // 无归属（壳/老调用）
 
     expect(serialService.getPortOwners()).toEqual(["a-plugin"]);
+  });
+
+  it("D1：读口原始字节透传——不解码、不拆行（0x80+ 原样）", async () => {
+    await open("COM3");
+    const port = mockPorts[mockPorts.length - 1];
+
+    const chunk = Buffer.from([0xff, 0xfe, 0x41, 0x0a, 0x42]);
+    port.emit("data", chunk);
+
+    expect(datas).toHaveLength(1);
+    expect(datas[0].portName).toBe("COM3");
+    expect(datas[0].dir).toBe("rx");
+    // 字节逐位一致——若壳仍按 UTF-8 解码，0xff/0xfe 会变成替换字符
+    expect(Array.from(datas[0].data)).toEqual([0xff, 0xfe, 0x41, 0x0a, 0x42]);
+    expect(typeof datas[0].at).toBe("number");
+
+    // 下一块单独推——壳不累积、不按 \n 拆（拆行/拼行归插件）
+    port.emit("data", Buffer.from([0x43]));
+    expect(datas).toHaveLength(2);
+    expect(Array.from(datas[1].data)).toEqual([0x43]);
+  });
+
+  it("D1：写口打 dir:\"tx\"——sendData/sendText 的字节原样进回调", async () => {
+    await open("COM3");
+
+    serialService.sendData([0xff, 0x41], "COM3");
+    expect(datas[0]).toMatchObject({ portName: "COM3", dir: "tx" });
+    expect(Array.from(datas[0].data)).toEqual([0xff, 0x41]);
+
+    serialService.sendText("A", "UTF-8", "COM3");
+    expect(datas[1]).toMatchObject({ portName: "COM3", dir: "tx" });
+    expect(Array.from(datas[1].data)).toEqual([0x41]);
   });
 });

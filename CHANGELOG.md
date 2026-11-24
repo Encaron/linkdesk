@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.2.65（2026-11-25）
+
+### feat
+
+- 🧭 **AI 门外契约面补齐（S7 / S4 / S6 / S3b / S2）**：命令风险改为「插件命令只认声明、未声明兜底 R2」并输出 `riskSource`；命令可达性按注册上下文自动判定 `activation`（entry/view），无视图调用回 `EVIEWREQUIRED`/`ENOTACTIVE`/`EUNKNOWNCOMMAND`；长任务在 `registerCommand` meta 声明 `async:true`，壳自动包 op（exec 回 `{pending,opId}`、`opStatus` 查四态、过期 `EOPEXPIRED`、`log` 增 `op.completed`）；`describe` 输出 `returns`/`example`/`activation`/`risk`/`riskSource` 与顶层 `apiVersion`，并支持 `filter`/`limit`/`cursor`（缺省全量）。
+- 🛠️ **作者面连锁**：`@linkdesk/plugin-sdk` 新增 `runtime` 子路径（`pluginError`/`decodeBytes`/`SERIAL_CODINGS`）与 `AsyncCommandMeta` 类型；新增 `check-error-envelope` 门禁（裸 `throw new Error` 黄灯、自造壳保留码红点，保留码源 = contracts `SHELL_ERROR_CODES`）；脚手架模板四件套 ＋ entry/view/longTask 三形示例，`minAppVersion` 模板地板 0.2.65（`meta.async`）。
+- 📚 **文档**：作者文档 21/02/03/04 中英双树刷新（四件套、risk 语义、activation、async 形态地板）；AI 手册 01/02/03/07 刷新（activation、三码＋`EOPEXPIRED`、async/opStatus、`describe` 筛选分页）。
+
+### fix
+
+- 🧯 **风险兜底与语义**：未声明 `risk` 不再落 R1（改 R2，保守问一声）；R3 补物理复位/持续发送/中断连接语义；壳内建表不再覆盖插件声明（S7 真相源收敛）。T3 的 loader 硬拒绝暂缓，缺失声明仍按 R2 判。
+- 🧩 **错误信封**：插件业务错误统一走 SDK `pluginError`（`code` 必填非空、`E` 前缀仅建议），壳/CLI 原样透传 `code`，裸 Error ⇒ `EUNKNOWN`。
+
+## v0.2.64（2026-11-24）
+
+> **本次一并发布 v0.2.61–v0.2.64（自 v0.2.60 起累积）**：主题极性归一化 Phase 1/3（0.2.61）；降级脸家族 `ldk-fallback`（0.2.62）；插件安装/更新确认收归壳 P1（0.2.63）；AI 权限档位返工 v4 ＋ 加载期兼容门 ＋ 翻译修复（0.2.64）。
+
+### feat
+
+- 🛡️ **AI 权限档位返工 v4**：设置分节收成四行（权限档位 / 操作清单 / 敏感能力 / 接入凭据），删除四个重复入口；操作清单与敏感能力为两个独立弹窗（无页签、24px 内边距、标准实心按钮、四列表格）；档位块三行（四段控件 / 说明或告警 / 能力摘要）。
+  - 文案响应式：`aiPolicy.getState` 只返 i18n key，共享件用注入的 `translate` 渲染——语言切换即时生效；状态栏徽标改 `useTranslation`。
+  - 判定可读性：允许/询问/不允许改实心 chip + 掏空字，极端壁纸下仍可读；能力条去掉外圈底。
+  - 回执：完全访问只留一条 6s 轻提示（无动作）；「恢复默认」在设置页告警行内。
+  - 同步：设置行订阅 `aiPolicy.onChange`，外部改档即时刷新。
+
+### fix
+
+- 🔒 **加载期兼容门**：插件 `minAppVersion` 高于当前壳 ⇒ 不执行入口（记录「需要 LinkDesk X+」并跳过），堵住旧壳加载新插件导致整块 UI 白屏；设置插件最低壳版本修正为 0.2.63。
+- ✂️ **文案去内部编号与符号**：op help 去掉 `AI#`/`M1`/禁用符号；新增 `audit-emoji` 门禁（UI 文案零 emoji，挂 `npm run check`）。
+- 🌐 **翻译补齐**：lang-defaults 1.0.77（25 条），官方目录已收录、出厂种子已追新。
+
 ## v0.2.63（2026-11-24）
 
 ### feat

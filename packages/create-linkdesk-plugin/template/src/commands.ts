@@ -16,6 +16,8 @@
  * 改命令名/参数时：`plugin.json` 与本文件**同笔改**。
  */
 
+import type { AsyncCommandMeta } from "@linkdesk/plugin-sdk/runtime";
+
 /** hello 命令的参数——形状同时写在 plugin.json 那条声明的 params 里 */
 export interface HelloArgs {
   /** 向谁问好（可省——省略就向 world 问好） */
@@ -37,5 +39,13 @@ export function registerPluginCommands(): number {
     return { message: `Hello, ${name}!`, plugin: "{{pluginName}}" };
   });
 
-  return 1;
+  // 长任务样板（契约：meta.async）——壳自动把这条命令包成 op：exec 立即回 {pending, opId}，
+  // handler 在后台跑；调用方用 opStatus 查 running|done|failed|expired。⛔ 自建状态机、⛔ 调 runAsync（无此 API）。
+  reg("{{pluginName}}.longTask", async () => {
+    const started = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return { message: "长任务完成", waitedMs: Date.now() - started };
+  }, { async: true } satisfies AsyncCommandMeta);
+
+  return 2;
 }

@@ -1,6 +1,6 @@
 /**
- * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + **十二条** check 扫描腿双轨。
- * ⚠️ 条数 = 下面 `legs` 数组的长度（今天 12）——本行历史上漂过（曾写「七条」而实为 11），
+ * `runPluginLint()`——`npm run lint` 门禁编排（E6#54d）：eslint 规则腿 + **十三条** check 扫描腿双轨。
+ * ⚠️ 条数 = 下面 `legs` 数组的长度（今天 13）——本行历史上漂过（曾写「七条」而实为 11），
  *    加腿时**同笔订正**这句话；`index.ts` 头部同一句同步。
  *
  * E6#109h-b①：`check-css-namespace` 腿升级为**双判据**——「裸定义类名/关键帧必须以本仓 `<pluginId>-`
@@ -18,7 +18,7 @@
  * 规则正文见 32 号档 §一（R0–R3）；1.25 实测插件侧存量 **0**（18 仓 ＋ 夹具）⇒ 纯预防、零重发成本。
  *
  * 对标壳 check 同款双轨（07 §六·载体双轨）：eslint（`preset.ts` 的 `rules` 块 12 项注册规则，全 WARN）
- * 管 ts/tsx；**十二条移植脚本腿**管整工程（eslint 到不了 .css，ts/tsx 的 rgb()/hsl() 也归
+ * 管 ts/tsx；**十三条移植脚本腿**管整工程（eslint 到不了 .css，ts/tsx 的 rgb()/hsl() 也归
  * css-hardcode 补）——逐腿 id 见下方 `legs` 数组，此处不复列（历史上抄漏过一次）。
  * jscpd = 项目级可选（文档引导，不进编排）。
  *
@@ -28,6 +28,7 @@
  */
 import { ESLint } from "eslint";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { linkdeskPluginLintConfig, type PluginLintOptions } from "./preset.js";
 import { runCssHardcodeCheck } from "./checks/css-hardcode.js";
@@ -41,6 +42,7 @@ import { runKeyframeRefCheck } from "./checks/keyframe-refs.js";
 import { runDanglingNameCheck } from "./checks/dangling-names.js";
 import { runDanglingOwnClassCheck } from "./checks/dangling-own-classes.js";
 import { runGlobalKeyListenerCheck } from "./checks/no-global-key-listener.js";
+import { runErrorEnvelopeCheck } from "./checks/error-envelope.js";
 import { runNativeTitleCheck } from "./checks/no-native-title.js";
 import { runMenuSlotCheck } from "./checks/menu-slots.js";
 import { runRetiredNameHint, type RetiredNameHint } from "./checks/retired-names.js";
@@ -49,8 +51,28 @@ import { runConfigOwnershipCheck } from "./checks/config-ownership.js";
 import { runAppearanceOwnershipCheck } from "./checks/appearance-ownership.js";
 import { runContextOwnershipCheck } from "./checks/context-ownership.js";
 import { runUiCssImportCheck } from "./checks/ui-css-import.js";
-import { runUiMinAppVersionCheck } from "./checks/ui-min-app-version.js";
+import { runMinAppVersionFloorCheck } from "./checks/ui-min-app-version.js";
 import { type CheckViolation } from "./checks/scan.js";
+
+/**
+ * 壳保留错误码——唯一来源 = `@linkdesk/contracts` 的 `SHELL_ERROR_CODES`。
+ * TODO(T14 · 2026-11-25)：contracts 当前是 types-only，尚无运行时导出 ⇒ 判据空转（报告如实标注）。
+ * B 落地运行时常量后本函数自动接上；⛔ 在 SDK 另存一份字面量表（第二份名单）。
+ * 若 contracts 以 ESM-only 发布而 `require` 读不到，改为带 sidecar JSON 的同步读取（不改成异步——
+ * `runPluginLint` 是同步 API）。
+ */
+function loadShellErrorCodes(): { codes: readonly string[]; source: string } {
+  try {
+    const require = createRequire(import.meta.url);
+    const mod = require("@linkdesk/contracts") as { SHELL_ERROR_CODES?: unknown };
+    if (Array.isArray(mod?.SHELL_ERROR_CODES) && mod.SHELL_ERROR_CODES.every((x) => typeof x === "string")) {
+      return { codes: mod.SHELL_ERROR_CODES as string[], source: "@linkdesk/contracts" };
+    }
+  } catch {
+    // types-only / 无运行时入口——空默认
+  }
+  return { codes: [], source: "absent" };
+}
 
 /** 示例用的门禁 id（打印知情绕行格式）；伪 id 与 check 脚本 CHECK_IDS 同源 */
 const LEG_HINT_ID = "linkdesk/no-hardcoded-hex";
@@ -73,7 +95,7 @@ export interface EslintRow {
 export interface PluginLintReport {
   files: number; // eslint 实际 lint 文件数
   eslintRows: EslintRow[]; // eslint 腿逐条偏离（含真 error——退出码依据）
-  legs: LintLeg[]; // **十二条** check 扫描腿（条数 = `runPluginLint` 里 `legs` 数组长度；id 见各自 CHECK_IDS，此处不复列——历史上抄漏过）
+  legs: LintLeg[]; // **十三条** check 扫描腿（条数 = `runPluginLint` 里 `legs` 数组长度；id 见各自 CHECK_IDS，此处不复列——历史上抄漏过）
   totalCheckViolations: number;
   tsconfigUsed: string | null; // 实际喂 import-x resolver 的 tsconfig（无则 null）
   /** 本仓 pluginId（命名空间腿的前缀来源；取不到 ⇒ null 且该腿 fail-closed 报红） */
@@ -84,6 +106,14 @@ export interface PluginLintReport {
   tokenAdvisories: CheckViolation[];
   /** token 作用域判据的计数（红 = 进了腿报点；黄 = advisories） */
   tokenCounts: { red: number; yellow: number };
+  /** T14：错误信封腿——裸 throw 只提示不拦；保留码红点；清单缺席时判据空转必须可见 */
+  errorEnvelopeAdvisories: CheckViolation[];
+  errorEnvelopeCounts: {
+    bareThrows: number;
+    reservedCodes: number;
+    reservedCodesAvailable: boolean;
+    reservedCodesSource: string;
+  };
   /** 选择器形态判据的计数（E6#109o-b）：S2 禁无锚 / S3 跨方命中不带自有锚——**都进腿报点** */
   selectorFormCounts: { anchorless: number; crossParty: number };
   /** 🔴 E6#112（2026-09-18）：关键帧引用腿读数（refs = 引用点总数；dangling = 悬空；allowed = 允许集大小） */
@@ -235,7 +265,7 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *      是语义错误不是合法偏离。⚠️ 刻意独立成腿不并入 ui-css-import：判据物是**声明面**
    *      （plugin.json 的 minAppVersion），那边是 import specifier，独立统计/独立收紧。
    */
-  const uiMinAppVersion = runUiMinAppVersionCheck(absRoot);
+  const uiMinAppVersion = runMinAppVersionFloorCheck(absRoot);
   /**
    * 命名空间腿 = **前缀判据 ⊕ 宿主保留名判据**（E6#109h-b①，详案 15 §二选项 (A)：并入现腿、同一个
    * `CHECK_IDS.cssNamespace`、同一条 `check-css-namespace` 腿，不是两条腿）。
@@ -378,6 +408,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
    *      且它的输入是**旗子两段**，与命令腿读的前缀栏、配置腿读的 configKeys 栏各不相干。
    */
   const contextOwnership = runContextOwnershipCheck(absRoot);
+  const shellErrorCodes = loadShellErrorCodes();
+  const errorEnvelope = runErrorEnvelopeCheck(absRoot, {
+    reservedCodes: shellErrorCodes.codes,
+    reservedCodesSource: shellErrorCodes.source,
+  });
   const prefixKeys = new Set(prefix.violations.map((v) => `${v.file}:${v.line}`));
   const tokenKeys = new Set(tokenScope.violations.map((v) => `${v.file}:${v.line}`));
   const formKeys = new Set(selectorForm.violations.map((v) => `${v.file}:${v.line}`));
@@ -468,6 +503,11 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
       label: "check-menu-slot-case",
       violations: menuSlots.violations,
     },
+    {
+      id: "linkdesk/no-reserved-shell-error-code（插件不得自造壳保留错误码——壳码由壳产生，插件只用自己的业务码）",
+      label: "check-error-envelope",
+      violations: errorEnvelope.violations,
+    },
   ];
   const totalCheckViolations =
     css.length +
@@ -482,7 +522,8 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     uiMinAppVersion.length +
     globalKeys.violations.length +
     nativeTitle.violations.length +
-    menuSlots.violations.length;
+    menuSlots.violations.length +
+    errorEnvelope.violations.length;
 
   return {    files: results.length,
     eslintRows,
@@ -493,6 +534,13 @@ export async function runPluginLint(root: string, options: PluginLintOptions = {
     pluginIdNote: prefix.pluginIdNote,
     tokenAdvisories: tokenScope.advisories,
     tokenCounts: { red: tokenScope.red.length, yellow: tokenScope.yellow.length },
+    errorEnvelopeAdvisories: errorEnvelope.advisories,
+    errorEnvelopeCounts: {
+      bareThrows: errorEnvelope.bareThrows,
+      reservedCodes: errorEnvelope.violations.length,
+      reservedCodesAvailable: errorEnvelope.reservedCodesAvailable,
+      reservedCodesSource: errorEnvelope.reservedCodesSource,
+    },
     selectorFormCounts: { anchorless: selectorForm.anchorless.length, crossParty: selectorForm.crossParty.length },
     keyframeRefCounts: {
       refs: keyframeRefs.refs,
@@ -607,6 +655,23 @@ export function renderPluginLintReport(report: PluginLintReport): string {
     );
     for (const v of report.tokenAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
   }
+
+  // 🟡 T14 错误信封：裸 throw 只提示不拦；保留码判据是否空转必须让作者看见（⛔ 静默）
+  if (report.errorEnvelopeAdvisories.length > 0) {
+    lines.push(
+      `\n🟡 check-error-envelope：${report.errorEnvelopeAdvisories.length} 处裸 \`throw new Error\`（**提示、不拦**）——` +
+        `业务失败改用 \`pluginError({ code, message, hint? })\`（@linkdesk/plugin-sdk/runtime）：` +
+        `裸 Error 到门外只剩 EUNKNOWN，AI 只能从中文猜。`,
+    );
+    for (const v of report.errorEnvelopeAdvisories) lines.push(`    ${v.file}:${v.line}  ${v.message}`);
+  }
+  const ee = report.errorEnvelopeCounts;
+  lines.push(
+    `\n${ee.reservedCodesAvailable ? (ee.reservedCodes === 0 ? "✅" : "⚠") : "🟡"} check-error-envelope（保留码）：` +
+      (ee.reservedCodesAvailable
+        ? `自造壳保留码 ${ee.reservedCodes} 处（来源 ${ee.reservedCodesSource}）。`
+        : `判据**空转**——壳保留码清单还没接到（等 @linkdesk/contracts 的 SHELL_ERROR_CODES）；SDK ⛔ 本地另存字面量表。`),
+  );
 
   // 选择器形态判据的计数（E6#109o-b）——两条都进腿报点 ⇒ 这里只在**零违规**时补一句确认
   const sf = report.selectorFormCounts;

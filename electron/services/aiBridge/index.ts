@@ -65,6 +65,7 @@ import * as net from 'node:net';
 import * as path from 'node:path';
 import { IPC } from '../../ipc/channels.js';
 import { OPS, coded, type BridgeOpContext, type BridgePhase, type LedgerEntry } from './whitelist.js';
+import { createOpRegistry } from './opRegistry.js';
 import { setPolicySettingsFile } from './policy/index.js';
 
 /** 通道记录文件名（userData 下）。客户端（cli/linkdeskctl/lib/bridge-client.mjs）按同名找它——改名两处同笔 */
@@ -252,6 +253,8 @@ interface PendingShellRequest {
 }
 
 const ledger: LedgerEntry[] = [];
+/** S6/T11：异步 op 注册表——**唯一一份**（memory-only；TTL 10 分钟 / 上限 500） */
+const opRegistry = createOpRegistry();
 const pendingShell = new Map<string, PendingShellRequest>();
 let shellSeq = 0;
 let record: BridgeRecord | null = null;
@@ -374,6 +377,31 @@ const opContext: BridgeOpContext = {
     servedShellWindow,
   }),
   ledgerEntries: () => ledger,
+  appVersion: () => app.getVersion(),
+  ops: opRegistry,
+  recordOpCompleted: ({ opId, commandId, state, code, ms }) => {
+    // S6/T11 事件面：op 结算追加一行（字段与 opStatus 终态一致；`log` 操作的读取面自动带上）
+    const entry: LedgerEntry = {
+      ts: new Date().toISOString(),
+      op: "op.completed",
+      arg: commandId,
+      ok: state === "done",
+      code,
+      ms,
+      opId,
+      commandId,
+      state,
+    };
+    ledger.push(entry);
+    if (ledger.length > LEDGER_CAP) ledger.shift();
+    if (auditLogEnabled && logFile) {
+      try {
+        fs.appendFileSync(logFile, JSON.stringify(entry) + "\n");
+      } catch (e) {
+        log("⚠️ 写操作日志失败:", e instanceof Error ? e.message : String(e));
+      }
+    }
+  },
 };
 
 /**

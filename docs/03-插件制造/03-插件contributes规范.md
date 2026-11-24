@@ -78,10 +78,14 @@
         "category": "CAD",
         "when": "activeEditor == 'cad'",
         "description": "从 DXF 文件导入图形到当前工程",
+        "activation": "view",
+        "risk": "R2",
         "params": [
           { "name": "layerFilter", "type": "string", "description": "只导入该图层（省略 = 全部）" },
           { "name": "explodeBlocks", "type": "boolean", "description": "块是否炸开为基本图元" }
-        ]
+        ],
+        "returns": [{ "name": "imported", "type": "number", "description": "导入的图元数量" }],
+        "example": { "layerFilter": "WALLS" }
       }
     ]
   }
@@ -96,6 +100,11 @@
 | `when` | ❌ | context key when 条件。不加 `when` = 任何上下文可见 |
 | `description` | ❌ | **这条命令干什么**——用户/AI 视角的意图（i18n key，同 `title` 规矩）。⛔ 不复述 `id`。缺省 = 无说明 |
 | `params` | ❌ | **参数结构**——数组，逐位对应 handler 实参。缺省 = 无参数命令 |
+| `activation` | ❌ | **handler 住在哪**：`"entry"`（入口顶层注册，无视图可调）\| `"view"`（视图组件内注册，需要该视图）。宿主以**注册上下文**为运行期真值，声明只用于「未激活时提前告知」；作者规范要求填全（当前 schema 可选，官方各仓补齐后收紧） |
+| `async` | ❌ | **长任务声明提示**（纯 additive）：`true` = 该命令 exec 回 `{pending,opId}`、结果用 `opStatus` 查。**运行期 `meta.async` 覆盖声明**（同 `activation`）；不填 = 不变 |
+| `risk` | ✅ | **AI 风险级**：`"R0"` 读 / `"R1"` 可撤销写 / `"R2"` 有副作用写 / `"R3"` 不可回退或**物理动作**（复位/持续发送/中断/删数据/换运行代码）。插件命令**只认此声明**；缺失或非法 ⇒ 兜底 **R2** |
+| `returns` | ❌ | **回执字段表**（不是 JSON Schema）：`[{ name, type, optional?, description? }]`，只到第一层键；无返回写 `[]` |
+| `example` | ❌ | **一条可直接执行的请求体**（无参写 `{}`）——AI 照它拼调用，⛔ 不试错 |
 
 **`params` 条目字段（逐位对应 handler 实参）：**
 
@@ -106,17 +115,21 @@
 | `required` | ❌ | 是否必填。缺省 `false`（可选） |
 | `description` | ❌ | 一句话说明这个参数是什么（省略 = 名字已自明） |
 
-> **`description` / `params` 随 `getCommands()` 出契约**（`LinkDeskCommand.description` / `LinkDeskCommand.params`）——消费方（命令面板、自动化、AI）照 `params` 拼 `executeCommand(id, ...params)` 即可，**不必读源码猜参数**。同名字段在**运行时注册**（`registerCommand(id, handler, meta)`）上同样可选，两处同义（声明面写一次即可，运行时注册通常不必重复）。
+> **`description` / `params` / `activation` / `risk` / `returns` / `example` 随 `getCommands()` 出契约**（`LinkDeskCommand.*`）。长任务在**运行时注册的 meta** 写 `{ async: true }`（`AsyncCommandMeta`）：壳自动回 `{ pending, opId }` 并跟踪 op（见 21 规范）；⛔ 调 `runAsync`（无此 API）——消费方（命令面板、自动化、AI）照 `params` 拼 `executeCommand(id, ...params)`、照 `returns` 判断回执形状，**不必读源码猜**。同名字段在**运行时注册**（`registerCommand(id, handler, meta)`）上同样可选，两处同义（声明面写一次即可，运行时注册通常不必重复）。
 
-**声明即注册元数据（placeholder）：** `contributes.commands` 只注册命令元数据（id/title/category/when/description/params），**真实 handler 在池侧注册**（池侧 `_poolCommands` 优先）。不注册 handler 的命令被调用 → no-op（诊断 warn）。
+**声明即注册元数据（placeholder）：** `contributes.commands` 只注册命令元数据（id/title/category/when/description/params/activation/risk/returns/example），**真实 handler 在池侧注册**（池侧 `_poolCommands` 优先）。未注册 handler 时：`entry` 命令调用触发**懒激活**（import 入口，顶层副作用注册）；`view` 命令视图不在场 ⇒ `EVIEWREQUIRED`（⛔ 不再是静默 no-op）。
 
 ```typescript
-// 池侧注册真实 handler（组件 mount 时）
+// entry 级（activation:"entry"）：模块顶层注册——无视图也能被 on-command 激活后调起
+window.linkdesk.commands.registerCommand("cad.importDxf", async () => {
+  const paths = await window.linkdesk.dialog.openFile({ filters: [{ name: "DXF 文件", extensions: ["dxf"] }] });
+  // ...
+});
+
+// view 级（activation:"view"）：组件内注册；视图卸载时作用域分区自动摘除，
+// ⛔ 不要 unregisterCommands(pluginId) 整片摘。
 useEffect(() => {
-  window.linkdesk.commands.registerCommand("cad.importDxf", async () => {
-    const paths = await window.linkdesk.dialog.openFile({ filters: [{ name: "DXF 文件", extensions: ["dxf"] }] });
-    // ...
-  });
+  window.linkdesk.commands.registerCommand("cad.pickLayer", async () => { /* ... */ });
 }, []);
 ```
 

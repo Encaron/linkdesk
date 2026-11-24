@@ -20,6 +20,10 @@ import {
   loadUiSurfaceLedger,
   collectUiImportNames,
   runUiMinAppVersionCheck,
+  detectFeatureFloors,
+  maxAppVersion,
+  runFeatureFloorCheck,
+  runMinAppVersionFloorCheck,
 } from "./ui-min-app-version.js";
 
 function withPlugin(files: Record<string, string>, fn: (root: string) => void): void {
@@ -337,5 +341,55 @@ describe("runUiMinAppVersionCheck", () => {
         expect(v[0]?.message).not.toContain("不在"); // 子路径的 `css` 不当「账本里没有的名字」报
       },
     );
+  });
+});
+
+describe("FEATURE_FLOORS（meta.async · T23 裁定 #21/②）", () => {
+  const manifest = (v: string) =>
+    JSON.stringify({ pluginId: "demo-plugin", name: "Demo", version: "1.0.0", minAppVersion: v });
+  const ASYNC_SRC = 'const m: AsyncCommandMeta = { async: true };\nregisterCommand("demo-plugin.x", h, m);\n';
+
+  it("使用 meta.async 且 minAppVersion 低 ⇒ 红，报文给 0.2.65", () => {
+    withPlugin({ "plugin.json": manifest("0.2.64"), "src/a.ts": ASYNC_SRC }, (root) => {
+      const v = runFeatureFloorCheck(root);
+      expect(v).toHaveLength(1);
+      expect(v[0].message).toContain("0.2.65");
+      expect(v[0].message).toContain("meta.async");
+    });
+  });
+
+  it("minAppVersion 0.2.65 ⇒ 绿", () => {
+    withPlugin({ "plugin.json": manifest("0.2.65"), "src/a.ts": ASYNC_SRC }, (root) => {
+      expect(runFeatureFloorCheck(root)).toHaveLength(0);
+    });
+  });
+
+  it("未使用 async ⇒ 不产生字段/形态地板", () => {
+    withPlugin({ "plugin.json": manifest("0.1.0"), "src/a.ts": 'console.log("hi");\n' }, (root) => {
+      expect(runFeatureFloorCheck(root)).toHaveLength(0);
+      expect(detectFeatureFloors(root).floor).toBeNull();
+    });
+  });
+
+  it("detectFeatureFloors 给 driver 位置（文件 + 行）", () => {
+    withPlugin({ "plugin.json": manifest("0.2.65"), "src/a.ts": ASYNC_SRC }, (root) => {
+      const f = detectFeatureFloors(root);
+      expect(f.floor).toBe("0.2.65");
+      expect(f.drivers[0].file).toBe("src/a.ts");
+      expect(f.drivers[0].line).toBe(1);
+    });
+  });
+
+  it("maxAppVersion 取较大（null 视为无约束）", () => {
+    expect(maxAppVersion("0.2.20", "0.2.65")).toBe("0.2.65");
+    expect(maxAppVersion(null, "0.2.65")).toBe("0.2.65");
+    expect(maxAppVersion("0.2.20", null)).toBe("0.2.20");
+  });
+
+  it("总入口合并两条腿：不消费 @linkdesk/ui 也能抓 async", () => {
+    withPlugin({ "plugin.json": manifest("0.2.64"), "src/a.ts": ASYNC_SRC }, (root) => {
+      expect(runUiMinAppVersionCheck(root)).toHaveLength(0); // 无 ui 消费 ⇒ UI 腿静默
+      expect(runMinAppVersionFloorCheck(root)).toHaveLength(1); // 字段/形态腿仍抓
+    });
   });
 });

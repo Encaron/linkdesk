@@ -211,3 +211,42 @@ describe("callBridge 超时整跳（第二次 ping 回读相位）", () => {
     expect(PROBE_TIMEOUT_MS).toBeLessThanOrEqual(2000); // 探活预算不许变成第二轮长等待
   });
 });
+
+/* ── ③ S1/T13 负控：多包输入只解一层（回执深度恒 1） ──
+ * 立案：B1-6「回执嵌套 1 层 / 2 层不一致」。live 复现（2026-11-25）：CLI 与 MCP 对同一命令的
+ * **内层回执 deep-equal**（两者共用本文件 callBridge 的单次解包）⇒ 不复现、按决策销账。
+ * 本负控钉住「以后谁把解包写成递归 / 或多解一层，这里先红」：
+ * 内核回 `{ok:true, result:{ok:true, result:{deep:1}}}` ⇒ 客户端必须**原样**返回内层那个信封，
+ * ⛔ 不许把里面的 result 再扒一层（那样 2 层输入会得到 1 层输出 = 两种情况深度不一致）。
+ */
+describe("S1 负控：多包输入只解一层（⛔ 递归解包）", () => {
+  it("双信封输入 ⇒ 返回的仍是完整内层信封（只解一层）", async () => {
+    const bridge = await startFakeBridge((req) => {
+      if (req.op === "ping") return { ok: true, result: { pid: process.pid } }; // 认人先过
+      if (req.op !== "exec") return null;
+      return { ok: true, result: { ok: true, result: { deep: 1 } } };
+    });
+    bridges.push(bridge);
+    const dir = fixtureDir(bridge.port);
+    dirs.push(dir);
+
+    const out = await callBridge("exec", { commandId: "demo.two-envelopes" }, { userDataDirs: [dir], timeoutMs: 5000 });
+    expect(out.result).toEqual({ ok: true, result: { deep: 1 } });
+    // 反面证据：如果实现递归解包，这里会变成 {deep:1}
+    expect(out.result.result).toEqual({ deep: 1 });
+  });
+
+  it("单层回执原样返回（不多解、不加工）", async () => {
+    const bridge = await startFakeBridge((req) => {
+      if (req.op === "ping") return { ok: true, result: { pid: process.pid } };
+      if (req.op !== "exec") return null;
+      return { ok: true, result: { commandId: "demo.one", result: null } };
+    });
+    bridges.push(bridge);
+    const dir = fixtureDir(bridge.port);
+    dirs.push(dir);
+
+    const out = await callBridge("exec", { commandId: "demo.one" }, { userDataDirs: [dir], timeoutMs: 5000 });
+    expect(out.result).toEqual({ commandId: "demo.one", result: null });
+  });
+});

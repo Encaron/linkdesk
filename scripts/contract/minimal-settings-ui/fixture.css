@@ -109,3 +109,33 @@
   gap: 10px;
   padding: 4px 0;
 }
+
+/* ── 快捷键页 ── */
+.msu-keys input {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.msu-keytable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.msu-keytable th,
+.msu-keytable td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+.msu-keytable kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+.msu-keyops {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.msu-warn {
+  color: var(--warning);
+}

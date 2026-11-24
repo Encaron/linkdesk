@@ -90,8 +90,8 @@ describe("统一确认回路 askUser（AI#29：唯一弹框出口）", () => {
 });
 
 describe("门开在动作上：exec / notifyAction 的执行出口（AI#29）", () => {
-  /** exec 先要过存在性检查（现取命令面）——桩里给一条命令面 */
-  const commandList = [{ id: "update.openUpdateFlow" }, { id: "core.closeTab" }];
+  /** exec 先要过存在性检查（现取命令面）——桩里给一条命令面（S7：壳命令带 shellOwned:true，走壳表） */
+  const commandList = [{ id: "update.openUpdateFlow", shellOwned: true }, { id: "core.closeTab", shellOwned: true }];
 
   function execCtx(dialogAnswer: boolean) {
     const calls: RecordedCall[] = [];
@@ -129,9 +129,9 @@ describe("门开在动作上：exec / notifyAction 的执行出口（AI#29）", 
     expect(calls.map((c) => c.channel)).toEqual([IPC.plugins.call, IPC.commands.execute]);
   });
 
-  it("不存在的命令 ⇒ EUNKNOWN，且**不弹框**（对不存在的命令弹框只是骚扰）", async () => {
+  it("不存在的命令 ⇒ EUNKNOWNCOMMAND，且**不弹框**（对不存在的命令弹框只是骚扰）", async () => {
     const { ctx, calls } = execCtx(true);
-    await expect(OPS.exec!.run({ commandId: "no.such.command" }, ctx as never)).rejects.toMatchObject({ code: "EUNKNOWN" });
+    await expect(OPS.exec!.run({ commandId: "no.such.command" }, ctx as never)).rejects.toMatchObject({ code: "EUNKNOWNCOMMAND" });
     expect(calls.some((c) => c.channel === IPC.dialog.confirm)).toBe(false);
   });
 

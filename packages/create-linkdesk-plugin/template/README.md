@@ -22,8 +22,8 @@ You do not need to pre-create empty folders (git does not track them). **Create 
 | `resources/` | Assets — **three preset placeholders, each with a job comment inside**: `icon.svg` (small in-app icon) / `icon-bar.svg` (Icon Bar single-colour glyph) / `cover.svg` (README cover), plus any images referenced from the README | Always (replace the placeholders) |
 | `i18n/` | `en.json` (key = the source string; **do not create `zh.json`**) | Once you have UI text |
 | `themes/` · `languages/` · `snippets/` | Payloads for data-only plugins | Data-only plugins |
-| `src/index.tsx` | Entry (the `entry` in `plugin.json`) — also calls `registerPluginCommands()` **at the top level** (command handlers must work viewless; the top-level side effect is the only registration moment) | Always for view plugins |
-| `src/commands.ts` | Command sample — a runnable `hello` command (handler here; its title/description/params live in `plugin.json`'s `contributes.commands[]` — change both in the same stroke). Spec + checklist: author doc `21-command-ification-spec.md` | Add commands here |
+| `src/index.tsx` | Entry (the `entry` in `plugin.json`) — also calls `registerPluginCommands()` **at the top level** (entry command handlers must work viewless; the top-level side effect is the only registration moment) and registers the **view-level** command inside the component (needs this view) | Always for view plugins |
+| `src/commands.ts` | Command samples — a runnable `hello` command (entry level) plus a **long-running** `longTask` sample (`meta.async`); every command declares the four contract fields (`activation` / `risk` / `returns` / `example`). Spec + checklist: author doc `21-command-ification-spec.md` | Add commands here |
 | `src/views/` | Sidebar / panel view components (the files `contributes.views` points at) | Once you have views |
 | `src/components/` | Components reused inside this plugin | When needed |
 | `src/services/` | Domain logic / IPC wrappers / data layer | When needed |
@@ -43,6 +43,22 @@ You do not need to pre-create empty folders (git does not track them). **Create 
 1. **Colors come from theme variables** — always `var(--xxx)` in CSS, **never a hard-coded hex**. Reason: LinkDesk supports full theme replacement, so a fixed color means your plugin does not follow the theme.
 2. **UI text goes through `t()`** — `t("source string")`, with English in `i18n/en.json` and **no `zh.json`** (the source string is the key and is its own fallback). **Only add keys you actually read with `t()`** — an unread key is a dead key. Code identifiers (`src/index.tsx` and friends) are not copy — do not wrap them in `t()`.
 3. **Plugin identity comes only from declared fields in `plugin.json`** — declare whatever capability you need (`contributes` / `tabBehavior` / `icon` …). **Never make other people guess what your plugin is from a directory name or file location.**
+
+## The command contract — four fields on every command
+
+Every entry under `contributes.commands[]` declares:
+
+| Field | Meaning | Example |
+|:--|:--|:--|
+| `activation` | `entry` (handler registered at module top level — callable with no view) or `view` (registered inside a mounted view — needs that view). The host records the runtime truth at registration; declare it so `describe` can tell the AI before the plugin is active. | `"entry"` |
+| `risk` | **Required.** `R0` read-only / `R1` reversible write / `R2` side-effecting write / `R3` irreversible or physical (reset, continuous sending, interrupting a live connection). Missing ⇒ treated as R2. | `"R0"` |
+| `returns` | Field table of the receipt (first-level keys). `[]` when the command returns nothing. | `[{ "name": "message", "type": "string" }]` |
+| `example` | One request body that can be executed as-is. `{}` when there are no parameters. | `{ "name": "LinkDesk" }` |
+
+- **Where the handler goes**: entry commands → module top level (`src/commands.ts`, called from `src/index.tsx`); view commands → inside the view component (`src/index.tsx`).
+- A view command called without its view yields `EVIEWREQUIRED` — the AI can predict this from `describe.activation`.
+- **Long-running commands**: pass `{ async: true }` in the registration meta (`AsyncCommandMeta` from `@linkdesk/plugin-sdk/runtime`). The shell answers `{ pending, opId }` and tracks the op (`opStatus`, `EOPEXPIRED`) — never build your own state machine, and there is no `runAsync` API.
+- Full spec + checklist: author doc `21-command-ification-spec.md`.
 
 **Dev preview note:** the dev host (`npm run dev`) gives your view a **fixed-height root container** (`#ld-root`) — write `height: 100%` on your root element with confidence and it fills the preview. You never need ResizeObserver self-healing or a "just in case" fallback layer; if your panel still renders collapsed or transparent in the preview, report it — don't code around it.
 

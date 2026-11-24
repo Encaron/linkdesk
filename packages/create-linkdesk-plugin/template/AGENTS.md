@@ -17,6 +17,7 @@ Your code runs in a renderer process: use any JS library and any Web API (Canvas
 4. **Plugin identity comes only from declarations in `plugin.json`** — never let anyone infer what your plugin is from a directory name or file location.
 5. **Context menus are declarative** (`contributes.menus` + `<ContextMenu>`); **dialogs portal into `document.body`**; **persistence goes through `window.linkdesk.configuration`** (never `localStorage`).
 6. **keep-alive architecture: every tab stays mounted** — do not blank content with `isActive`; it is only for gating "run this only while focused" side effects.
+7. **Every command declares the four contract fields** in `contributes.commands[]` — `activation`, `risk`, `returns`, `example`. Register `entry` handlers at module top level; register `view` handlers inside the mounted view. A view command called without its view yields `EVIEWREQUIRED`; a missing `risk` fails validation. For long-running commands put `{ async: true }` in the registration meta (`AsyncCommandMeta`); the shell wraps the op — ⛔ no `runAsync` API, ⛔ no local state machine.
 
 ## 3. Where to find the rules
 
@@ -24,6 +25,7 @@ Your code runs in a renderer process: use any JS library and any Web API (Canvas
 - **Offline (always available, no network)**: `node_modules/@linkdesk/plugin-sdk/schemas/plugin.schema.json` — the **field-level authority**; `theme.schema.json` next to it does the same for themes.
 - **Editor completion**: `plugin.json`'s `$schema` points at it, so you get completion and diagnostics as you type.
 - **Self-check after editing**: `npm run validate` (manifest/format validity) + `npm run lint` (SDK rule tier).
+- **Command contract**: every `contributes.commands[]` entry declares `activation` / `risk` / `returns` / `example` — see author doc `21-command-ification-spec.md`.
 - 中文版作者文档（Chinese docs, maintainer-facing original）：<https://github.com/Encaron/linkdesk/tree/electron/docs/03-插件制造>
 
 ## 4. What to do next (this project's commands, verbatim)

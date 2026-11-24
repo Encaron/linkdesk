@@ -33,7 +33,9 @@
       "writeText"
     ],
     "commands": [
+      "_enterViewContext",
       "_executeShellLocal",
+      "_leaveViewContext",
       "_setCommandMissHandler",
       "execute",
       "executeCommand",
@@ -438,7 +440,9 @@
       "writeText"
     ],
     "commands": [
+      "_enterViewContext",
       "_executeShellLocal",
+      "_leaveViewContext",
       "_setCommandMissHandler",
       "execute",
       "executeCommand",
@@ -819,8 +823,14 @@
     "category": [],
     "contributes": [],
     "contributes.commands": [],
+    "contributes.commands[].activation": [
+      "entry",
+      "view"
+    ],
+    "contributes.commands[].async": [],
     "contributes.commands[].category": [],
     "contributes.commands[].description": [],
+    "contributes.commands[].example": [],
     "contributes.commands[].id": [],
     "contributes.commands[].params": [],
     "contributes.commands[].params[].description": [],
@@ -832,6 +842,11 @@
       "object",
       "string"
     ],
+    "contributes.commands[].returns": [],
+    "contributes.commands[].returns[].description": [],
+    "contributes.commands[].returns[].name": [],
+    "contributes.commands[].returns[].optional": [],
+    "contributes.commands[].returns[].type": [],
     "contributes.commands[].risk": [
       "R0",
       "R1",

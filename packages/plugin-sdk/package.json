@@ -1,6 +1,6 @@
 {
   "name": "@linkdesk/plugin-sdk",
-  "version": "0.1.114",
+  "version": "0.1.118",
   "description": "@linkdesk/plugin-sdk——LinkDesk 插件作者 SDK（对标 @types/vscode）：window.linkdesk.* 类型 + 一键 build(.linkdesk-plugin) + dev 宿主 + plugin.json 验证 + eslint 门禁（E6#54d）。作者 npm i 后零壳源码依赖。",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,6 +13,10 @@
     "./shell-commands": {
       "types": "./dist/shell-commands.d.ts",
       "default": "./dist/shell-commands.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
     },
     "./eslint": {
       "types": "./dist/eslint/index.d.ts",
@@ -38,10 +42,6 @@
     "./check-config-titles": {
       "types": "./check-config-titles.d.ts",
       "default": "./check-config-titles.mjs"
-    },
-    "./display-text": {
-      "types": "./dist/display-text.d.ts",
-      "default": "./dist/display-text.js"
     }
   },
   "files": [
@@ -74,7 +74,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@linkdesk/contracts": "^0.1.1",
+    "@linkdesk/contracts": "^0.1.58",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^4.3.4",

@@ -156,7 +156,13 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
     // E3j #74：linkdesk API——跨进程查询壳侧注册表
     case "getCommands": {
       // 🔥 handler 是函数——结构化克隆拒绝 → 返回前剥去
-      return getCommands().map(({ handler: _h, ...rest }) => rest);
+      // S7：附注册归属（pluginId ＋ shellOwned）——AI 桥据此分流「壳命令（壳表）/ 插件命令（只认声明）」，⛔ 按 id 猜。
+      // shellOwned = 属主不是任何已装插件（含 app / ai-bridge 等壳内属主）；归属是注册上下文事实，不是名字第一段。
+      const installed = new Set(_pluginAPI!.getListPluginManifests().map((p) => p.pluginId));
+      return getCommands().map(({ handler: _h, ...rest }) => {
+        const owner = resolveCommandOwnership(rest.id).pluginId;
+        return { ...rest, pluginId: owner, shellOwned: !installed.has(owner) };
+      });
     }
     // E6#111b（H3 修点）：命令归属查询——池侧 on-command 激活取真属主。
     // 🔴 池是单进程共享 realm，preload 无从知道「这次注册/执行是哪个插件的」⇒ 归属解析只在壳一处做，

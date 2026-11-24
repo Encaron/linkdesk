@@ -30,7 +30,7 @@ silently fail on another machine or another resolution. **A command is one line 
 
 | Leg | Where it is written | What it carries |
 |:--:|:--|:--|
-| ① **Metadata** | `plugin.json` → `contributes.commands` | id / title / category / when / **description** / **params** — this is the **manifest**; it is what AI reads |
+| ① **Metadata** | `plugin.json` → `contributes.commands` | id / title / category / when / **description** / **params** / **activation** / **risk** / **returns** / **example** — this is the **manifest**; it is what AI reads |
 | ② **The real handler** | Pool-side code (when the view component mounts) | `window.linkdesk.commands.registerCommand(id, handler, meta)` — this is the **execution**; it lives only in the pool renderer |
 
 ```json
@@ -42,9 +42,13 @@ silently fail on another machine or another resolution. **A command is one line 
         "title": "New Note",
         "category": "Notes",
         "description": "Create a note and return its id",
+        "activation": "entry",
+        "risk": "R1",
         "params": [
           { "name": "title", "type": "string", "description": "Note title (omitted = untitled)" }
-        ]
+        ],
+        "returns": [{ "name": "id", "type": "string", "description": "The new note's id" }],
+        "example": { "title": "Shopping list" }
       }
     ]
   }
@@ -52,18 +56,22 @@ silently fail on another machine or another resolution. **A command is one line 
 ```
 
 ```typescript
-// Pool side: the real handler (registered when the component mounts; unregisterCommands(pluginId) on unmount)
-useEffect(() => {
-  window.linkdesk.commands.registerCommand(
-    "demo-notes.addNote",
-    (title?: string) => createNote(title), // ← the *same* action function the UI button calls
-    { description: "Create a note and return its id" },
-  );
-}, []);
+// entry-level: registered at the **module top level** (on-command activation imports the entry,
+// so this top-level side effect is the only registration moment)
+window.linkdesk.commands.registerCommand(
+  "demo-notes.addNote",
+  (title?: string) => createNote(title), // ← the *same* action function the UI button calls
+  { description: "Create a note and return its id" },
+);
+
+// view-level (`activation:"view"`): put it in the component's useEffect; the scope is removed
+// automatically when the view unmounts — ⛔ do not unregisterCommands(pluginId) wholesale.
 ```
 
-> ⚠️ **Declaring without registering a handler** = the palette shows it, nothing happens when clicked (no-op + a diagnostic warning).
+> ⚠️ **Declaring without registering a handler**: `entry` commands trigger **lazy activation** on invocation (the entry is imported and its top-level side effects register the handler); `view` commands with no view in place return `EVIEWREQUIRED` (the hint says "open-tab first"). ⛔ No more silent no-op.
 > The declaration side contributes **metadata** (a placeholder); the handler is what actually runs.
+>
+> ⚠️ **View-state commands must be declared too**, with `activation:"view"`. The manifest is the only **advance** discoverability source: `describe` reports the declared `activation` for inactive commands, so AI does not have to "crash once → guess a view is needed → retry".
 
 ### 2.1 Calling a **host** command—never hard-code its id
 
@@ -132,7 +140,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
 
 ---
 
-## 3. Five things every command should get right
+## 3. Seven things every command should get right
 
 1. **`id` carries your own prefix**: `<pluginId>.<action>` (e.g. `demo-notes.addNote`).
    Both AI and users list "what can this plugin do" by **prefix** — an id without one gets attributed to somebody else.
@@ -140,6 +148,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
    "Delete every message logged in the current session", not "the clearSession command". Without it your command is just an id to AI.
 3. **`params` written position by position** (`name` / `type` / `required` / `description`).
    Callers build `executeCommand(id, ...params)` straight from it and **never have to read your source to guess arguments**.
+   The same declaration also carries **`returns`** (a receipt field table, not a JSON Schema; first-level keys only, `[]` when nothing is returned) and **`example`** (one request body that can run as-is, `{}` when there are no parameters) — so AI can compose calls and judge the response shape without trial and error.
 4. **State must be readable back.** Once a command changes state, provide a separate read path (a list/query command, or
    `configuration.get()`) — "do it, then verify" is basic behaviour for automation and AI, and with no read path it can only retry blindly.
 5. **Read streams back by pulling, with a cursor** (serial receive / logs / progress) — ⛔ never hand the caller a subscription.
@@ -163,9 +172,14 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
      or a cursor past the end (e.g. the UI reloaded and seq restarted at 0 while the caller still holds an old cursor) ⇒
      `{ ok: false, noop: true, reason: … }`, handing back a **usable cursor**. ⛔ Never lump every case into "empty array + `ok:true`".
 
+6. **`activation` says where the handler lives**: `entry` (registered at the entry's top level — callable with no view) or `view` (registered inside a view component — needs that view). It must match the **actual registration site**: the host records the runtime truth at registration, and the declaration is only the "tell AI before activation" hint; a conflict resolves to the runtime truth (+ a diagnostic). ⛔ Never register after `setTimeout` / `await` (the context is read wrong).
+7. **`risk` is required**: `R0` read / `R1` reversible write / `R2` side-effecting write / `R3` irreversible or physical (reset, continuous sending, interrupting a connection, deleting data, replacing running code). To skip confirmation, declare `"risk": "R0"` **explicitly**; missing or invalid ⇒ fallback **R2** (it asks once). ⛔ Never guess from verbs (`send`/`list`) — a second-language name breaks it instantly.
+
+   **Long-running (async) commands**: put `{ async: true }` in the **meta** of `registerCommand` (type `AsyncCommandMeta`, imported from `@linkdesk/plugin-sdk/runtime`). The shell answers `{ commandId, pending: true, opId, startedAt }` immediately, runs the handler in the background, and records the op + emits `op.completed` on completion; callers query `opStatus` for `running|done|failed|expired`, and an expired handle yields `EOPEXPIRED`. ⛔ Do not build your own state machine or cache — and **there is no `runAsync` API**. The manifest may also declare `contributes.commands[].async` (an **advance hint**, purely additive); the runtime `meta.async` overrides the declaration (same as `activation`).
+
 ---
 
-## 4. Four things not to do (each one has actually bitten us)
+## 4. Five things not to do (each one has actually bitten us)
 
 1. **⛔ Don't let the caller bypass your plugin.** The command handler must go through **your plugin's own state chain** (your existing
    store/service). Calling a lower-level API directly behind its back produces "the command ran but the UI doesn't know" — the sidebar
@@ -176,6 +190,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
    each one needs a command behind it: gestures are **feel**, commands are **entry points**. They coexist; this is not a replacement.
 4. **⛔ Don't bury implicit preconditions in the command.** Express preconditions with `when` and spell them out in `description`
    ("requires an open serial port"), instead of relying on "some view happens to be selected right now" — the caller cannot see your focus.
+5. **⛔ Never store display copy as a value**: configuration / persistence / command arguments keep an **ASCII id** (e.g. `"auto"`, `"utf-8"`); only the display layer calls `t("Auto")`. Storing the Chinese source string as the value means every language switch, copy edit or migration has to chase stored data.
 
 ---
 
@@ -185,7 +200,9 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
 - [ ] Each has a `contributes.commands` entry (`id` + `title` required, `id` carries my prefix)
 - [ ] Each has a `description` (one plain sentence, intent first — it is how AI picks the command)
 - [ ] Anything with parameters has `params` (`name` matching the handler's parameter name, one of the four `type` values, `required` marked)
-- [ ] Each has a real handler registered pool-side (`registerCommand`), with `unregisterCommands(pluginId)` on `unmount`
+- [ ] Every command declares `risk` (`R0` explicitly); `returns` matches the real receipt; `example` executes as-is
+- [ ] The same `commandId` is not registered in two scopes (reopening a view never changes the winner)
+- [ ] Each has a real handler registered pool-side (entry: at the entry top level; view: inside the component), and `activation` matches the registration site
 - [ ] Buttons/menu items and the command handler call **the same** action function (not two implementations)
 - [ ] Anything that changes state also has a **read-back** path (list/query)
 - [ ] The reply **distinguishes three states**: done / not done but not a failure / the call itself is wrong (`reason` is a distinguishable literal)
@@ -228,9 +245,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
   element anchoring ("grab the element, then act on the element itself") — ⛔ do not derive coordinates from window
   position (those coordinates break under a different window layout).
 - ⚠️ **Three pitfalls from real runs** (hit during acceptance on 2026-09-29, written down to save the next person a round):
-  1. **Registration timing** — if you only `registerCommand` when the **view component mounts**, an external AI
-     **cannot see your commands** in the command list when the view was never opened (invoking one raises `EUNKNOWN`)
-     ⇒ if you can register at activate time, do not defer it to mount.
+  1. **Registration timing** — if a command is only registered when the **view component mounts**, an external AI can see only the declaration while the view has never been opened; invoking it yields `EVIEWREQUIRED` (`ENOTACTIVE` when the plugin is disabled or failed to load) ⇒ register at the entry top level whenever possible; if it truly needs the view, declare `activation:"view"`.
   2. **Parameter shape** — `params` are **named**, while the execution face **originally** passed arguments **positionally**
      ⇒ a caller following the named-object form **silently did nothing** (`ok=true` with no effect). **Fixed**
      (2026-09-29): the command bridge seam (shared by `exec` and pool-side `executeCommand`) now expands a **single
@@ -288,15 +303,26 @@ The same command surface behaves like this under the four tiers:
 | Auto (default) | ✅ | ✅ | ✅ | ask |
 | Full access | ✅ | ✅ | ✅ | ✅ |
 
-- **Risk levels are registered by the host** (built-in table first, then the plugin declaration, fallback = reversible write):
-  an **unregistered** command is never treated as read-only. Plugins may declare `contributes.commands[].risk`
-  (`R0`–`R3`, optional); the **host built-in table always wins**, and an unknown value is reported and falls back.
+- **A plugin command's risk comes only from your declaration**: `contributes.commands[].risk` (`R0`–`R3`) is **required**;
+  the host built-in table covers shell commands only and **never overrides** your declaration. Missing or invalid ⇒ fallback **R2**
+  (conservative: ask once, ⛔ never treat as read-only).
+  - `R0` read / `R1` reversible write / `R2` side-effecting write / `R3` irreversible or **physical** (reset, continuous sending, interrupting a connection, deleting data, replacing running code).
+  - To skip confirmation, declare `"risk": "R0"` **explicitly**; ⛔ never guess from verbs (`send`/`list`).
+  - `describe` reports `risk` together with `riskSource` (`declared` / `shell` / `fallback`) so AI can judge whether the value is trustworthy.
+  - The default tier is **`auto`**; `R3` still asks under `auto`.
+  - During the internal test period the loader does **not** reject a plugin for a missing declaration (deferred); it falls back to R2.
 - **`userOnly` is host metadata, not a manifest field**: host commands carrying it always answer `EPROTECTED` to the AI
   gateway (only the user can trigger them from the UI). ⛔ Do not look for this field in plugin.json — it governs commands
   that "change the door itself".
 - **AI-side error codes** (clients branch on the code, ⛔ never treat them as `EERROR`):
   `EPOLICYDENIED` (current tier forbids it; the AI may request elevation) · `EPROTECTED` (userOnly, never callable) ·
-  `EUSERDENIED` (the user said no) · `ESHELLTIMEOUT` (nobody answered = it never happened).
+  `EUSERDENIED` (the user said no) · `ESHELLTIMEOUT` (nobody answered = it never happened) ·
+  `EVIEWREQUIRED` (view-state command but no view in place; open the tab first) · `ENOTACTIVE` (plugin disabled / failed to load) ·
+  `EUNKNOWNCOMMAND` (not even declared) · `EOPEXPIRED` (async op handle expired).
+- **Plugin business errors go through the SDK's `pluginError({ code, message, hint?, details? })`** (import from `@linkdesk/plugin-sdk/runtime`):
+  ⛔ `throw new Error("...")`; the shell/CLI passes your `code` through verbatim, while a bare Error becomes `EUNKNOWN`.
+  `code` is required and non-empty (an `E` prefix is a recommendation, not enforced); `details` passes through verbatim (`--json` only — ⛔ never in the CLI human-readable output).
+  The shell codes above are produced by the shell — plugins ⛔ must not mint variants.
 - **How a settings UI reads the tier**: call the `aiPolicy.getState` command (read-only) — it returns the current tier,
   the four-tier decision matrix, the risk table and the protected commands. ⛔ Do not read `settings.json` yourself and
   do not judge risk yourself (a replacement settings UI uses the same command).

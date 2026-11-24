@@ -130,14 +130,22 @@ function main() {
   const official = officialPluginIds(SYNC_AGENTS);
   const repos = discoverPluginRepos(CONTAINER);
   if (!repos.length) console.log(`[info] 插件容器不在场或为空（${CONTAINER}）——只判壳域。`);
+  // 账本里插件仓库的条目只在“那个仓在场”时才可能匹配；容器缺席的 CI 里不能把它们判成过期
+  const scanned = new Set(["shell"]);
   for (const repo of repos) {
     if (official && !official.has(repo.id)) continue; // 第三方：不扫不判
+    scanned.add(repo.id);
     scanRepo(repo.id, repo.dir);
   }
 
   // 过期账本：条目在实况里已匹配不到 ⇒ 红（账本跟着实况走）
   for (const k of ledgerKeys) {
     if (matched.has(k)) continue;
+    const repoOfKey = k.split("|")[0];
+    if (!scanned.has(repoOfKey)) {
+      console.log(`[info] 账本条目 ${k} 所属仓不在场——本轮不判过期（联网/本机全量再验）`);
+      continue;
+    }
     console.error(`[error] scripts/token-boundary-exempt.json → 期望「条目仍能在实况匹配」；实际「${k} 已找不到」；示例修法：删掉该条（修好了就清账），或核对 repo/file/value 是否已改名。`);
     errors++;
   }

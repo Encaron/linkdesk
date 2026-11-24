@@ -37,6 +37,8 @@ export interface PendingCommand {
   title?: string;
   description?: string;
   pluginId: string;
+  /** S4：声明面 activation——未注册时给 AI 的提前告知（view ⇒ 先 open-tab；entry ⇒ 插件未启用/入口加载失败） */
+  activation?: "entry" | "view";
   /** 人话指引：这条为什么现在不能执行、要做什么（AI 照做即可，不必猜） */
   needs: string;
 }
@@ -68,10 +70,13 @@ export function pickPendingCommands(
       if (have.has(id) || out.has(id)) continue;
       const title = (raw as { title?: unknown }).title;
       const description = (raw as { description?: unknown }).description;
+      const activation = (raw as { activation?: unknown }).activation;
+      const declaredActivation = activation === "entry" || activation === "view" ? activation : undefined;
       out.set(id, {
         id,
         ...(typeof title === "string" && title ? { title } : {}),
         ...(typeof description === "string" && description ? { description } : {}),
+        ...(declaredActivation ? { activation: declaredActivation } : {}),
         pluginId,
         needs: `先 open-tab ${pluginId}（该插件的视图挂载后才注册）`,
       });

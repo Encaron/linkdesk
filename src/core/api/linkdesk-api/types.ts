@@ -27,6 +27,22 @@ export interface LinkDeskCommandParam {
   description?: string;
 }
 
+/**
+ * S3b/T12: return-shape field table entry — **first-level keys** (optionally one nested level via description),
+ * ⛔ not a full JSON Schema. Lets the AI compose assertions without trial and error; `doctor` samples real
+ * receipts to catch drift. Mirrors manifest `contributes.commands[].returns[]`.
+ */
+export interface LinkDeskCommandReturnField {
+  /** Field name in the receipt */
+  name: string;
+  /** Field type — e.g. string / number / boolean / object / array */
+  type: string;
+  /** Whether the field may be absent (defaults to false) */
+  optional?: boolean;
+  /** One sentence on what this field means */
+  description?: string;
+}
+
 export interface LinkDeskCommand {
   id: string;
   title: string;
@@ -46,9 +62,23 @@ export interface LinkDeskCommand {
   userOnly?: boolean;
   /**
    * Declared risk level (2026-11-24 · AI permission tiers) — mirrors `contributes.commands[].risk`.
-   * Merge order: host built-in table > this declaration > fallback R1. Purely additive.
+   * S7 merge: host built-in table covers **shell commands only**; a plugin command's risk is its
+   * declaration; undeclared ⇒ conservative R2 fallback (never silently allowed). Purely additive.
    */
   risk?: "R0" | "R1" | "R2" | "R3";
+  /**
+   * S4 reachability — runtime truth from the registration context (pool registration), or the manifest
+   * declaration while the command is not yet registered. "entry" = plugin-level (callable with no view open,
+   * lazily activated on command miss); "view" = registered by a mounted view instance (needs that view).
+   * Additive — describe() surfaces it so the AI can plan without trial and error.
+   */
+  activation?: "entry" | "view";
+  /** S6: async command — exec answers `{pending:true, opId}` and the result is read via `opStatus`. Additive. */
+  async?: boolean;
+  /** S3b/T12: return-shape field table (manifest `contributes.commands[].returns`) — first-level keys. Additive. */
+  returns?: LinkDeskCommandReturnField[];
+  /** S3b/T12: request-body example (manifest `contributes.commands[].example`) — request side only. Additive. */
+  example?: Record<string, unknown>;
 }
 
 export interface LinkDeskTheme {

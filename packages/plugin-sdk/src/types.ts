@@ -10,3 +10,6 @@
  * dependencies 转发即可，不必复制生成物。dev 过渡态 = file: 本地引用；#2.5 真发布后改 ^0.1.0（registry）。
  */
 export type * from "@linkdesk/contracts";
+
+/** S6/T11：AI bridge 命令结果（pending/opId/opStatus）——单一来源在 contracts，SDK 只转发。 */
+export type * from "@linkdesk/contracts/ai-bridge";

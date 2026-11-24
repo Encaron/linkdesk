@@ -12,13 +12,14 @@
  * 🔴 两条纪律（越了就是第二套名单）：
  *   ① 原 `ASK_FIRST_COMMANDS` / `ASK_FIRST_OPS` **已并入本表**——「要问一声」= `risk:"R3"`
  *      （`ask` / `auto` 档对 R3 都问）。⛔ 不要再建一张 `ASK_FIRST_*`。
- *   ② 未登记命令 ⇒ **R1**（保守，不阻断）；未登记 op ⇒ `kind:"write"` 按 **R2**、`read` 按 R1。
+ *   ② 未登记命令 ⇒ **R2**（保守兜底，⛔ 不静默放行成 R0/R1）；未登记 op ⇒ `kind:"write"` 按 **R2**、`read` 按 R1。
  *      不登记成 R0——「不知道」不等于「无害」。
  *
- * 合并优先级（`riskOfCommand` 的唯一实现）：
- *   壳内建 `COMMAND_RISK`（安全关键命令，壳说了算）
- *     > manifest `contributes.commands[].risk`（作者声明，schema 落地后才接）
- *     > 兜底 R1
+ * 风险来源分层（S7 · `riskOfCommand` 的唯一实现）：
+ *   壳命令（注册属主 = `APP_PLUGIN_ID`）⇒ 壳内建 `COMMAND_RISK`，表外 ⇒ R2；
+ *   插件命令 ⇒ 只认 manifest `contributes.commands[].risk` 声明，未声明/非法 ⇒ R2；
+ *   🔴 壳表**不覆盖**插件命令（冲突以声明为准 + loader 诊断）——语义归插件，壳不认识业务。
+ *   每条判定带 `riskSource`（`shell` / `declared` / `fallback`）供 describe 自述与 doctor 断言。
  */
 
 /** 风险级——**字符串只许出现在本文件**（判红见 `scripts/check-ai-policy.mjs` P4/P5） */
@@ -40,7 +41,7 @@ export interface RiskEntry {
   why?: string;
 }
 
-/** 壳命令的风险登记（按命令 id）——安全关键命令的壳内裁决，优先级最高 */
+/** 壳命令的风险登记（按命令 id）——**只对壳命令生效**（插件命令只认声明，⛔ 别把插件命令写进来） */
 export const COMMAND_RISK: Record<string, RiskEntry> = {
   /* ── R0 读 ── */
   "workbench.action.getConfiguration": { risk: "R0", what: "读取配置", why: "只看当前值，不改任何东西" },
@@ -67,7 +68,7 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
   // 能改门本身的命令：userOnly（L2 先拦，AI 永远够不着）；登记 R3 只为账本/自述口径完整
   "aiPolicy.setMode": { risk: "R3", what: "切换 AI 权限档位", why: "改的就是门本身——只许用户操作" },
   "aiPolicy.resetToDefault": { risk: "R3", what: "恢复默认权限", why: "改的就是门本身——只许用户操作" },
-  // 插件安装/卸载是「陌生代码」与「删已装代码」——⛔ 不许按未登记命令兜底成 R1
+  // 插件安装/卸载是「陌生代码」与「删已装代码」——⛔ 不许按未登记命令兜底
   "plugins.installFromCatalog": {
     risk: "R3",
     what: "从市场目录安装插件",
@@ -77,11 +78,6 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
     risk: "R3",
     what: "重试安装插件",
     why: "仍然会运行陌生代码；确认与校验不因重试而跳过",
-  },
-  "marketplace.uninstall": {
-    risk: "R3",
-    what: "卸载插件",
-    why: "会删除已安装的插件代码，插件数据可能一并丢失；重装不等于恢复数据",
   },
   "update.openUpdateFlow": {
     risk: "R3",
@@ -98,6 +94,7 @@ export const COMMAND_RISK: Record<string, RiskEntry> = {
 export const OP_RISK: Record<string, RiskEntry> = {
   /* R0 */
   describe: { risk: "R0", what: "读取界面状态", why: "看标签页、通知、布局（只读）" },
+  opStatus: { risk: "R0", what: "查异步命令相位", why: "只读 op 状态，不改任何东西" },
   ping: { risk: "R0" },
   tabs: { risk: "R0" },
   notifications: { risk: "R0" },
@@ -126,20 +123,43 @@ export const OP_RISK: Record<string, RiskEntry> = {
   },
 };
 
-/** 未登记命令的兜底级（保守规则：不是 R0） */
-export const UNREGISTERED_COMMAND_RISK: Risk = "R1";
+/** 未登记命令的兜底级（保守规则：⛔ 不是 R0/R1——不知道 ≠ 无害） */
+export const UNREGISTERED_COMMAND_RISK: Risk = "R2";
 
 /** 未登记 op 的兜底级：写按 R2、读按 R1 */
 export function unregisteredOpRisk(kind: "read" | "write"): Risk {
   return kind === "write" ? "R2" : "R1";
 }
 
+/** 风险来源（⛔ 布尔开关——以后加来源就扩这个枚举） */
+/** 风险来源（本文件内使用；describe 只消费 riskSource 字符串值） */
+type RiskSource = "shell" | "declared" | "fallback";
+
+/** 一次风险判定：risk ＋ 它从哪来（describe 自述 / doctor 断言用） */
+export interface RiskResolution {
+  risk: Risk;
+  source: RiskSource;
+}
+
+/** 壳命令：壳表唯一；壳表也没有 ⇒ R2 兜底 */
+export function riskOfShellCommand(commandId: string): RiskResolution {
+  const entry = COMMAND_RISK[commandId];
+  return entry ? { risk: entry.risk, source: "shell" } : { risk: UNREGISTERED_COMMAND_RISK, source: "fallback" };
+}
+
+/** 插件命令：只认声明；未声明 ⇒ R2 兜底（非法声明值 loader 已诊断并退回 undefined） */
+export function riskOfPluginCommand(declared: Risk | undefined): RiskResolution {
+  return declared ? { risk: declared, source: "declared" } : { risk: UNREGISTERED_COMMAND_RISK, source: "fallback" };
+}
+
 /**
- * 命令风险（**唯一实现**）——壳表 > 作者声明 > 兜底 R1。
- * `declared` = manifest `contributes.commands[].risk`（schema 落地后才有调用方传）。
+ * 命令风险（**唯一实现**）——按归属分流，⛔ 不按 id 猜：
+ *   `shellOwned` = 注册归属是壳（getCommands DTO 的 `pluginId` === `APP_PLUGIN_ID`）。
+ *   `declared` = manifest `contributes.commands[].risk`（只对插件命令生效；壳命令的声明被壳表覆盖）。
+ * 🔴 壳表**不覆盖**插件命令：插件命令与壳表撞 id 时以声明为准（loader 已有异归属诊断）。
  */
-export function riskOfCommand(commandId: string, declared?: Risk): Risk {
-  return COMMAND_RISK[commandId]?.risk ?? declared ?? UNREGISTERED_COMMAND_RISK;
+export function riskOfCommand(commandId: string, shellOwned: boolean, declared?: Risk): RiskResolution {
+  return shellOwned ? riskOfShellCommand(commandId) : riskOfPluginCommand(declared);
 }
 
 /** op 风险（未登记按 kind 兜底） */

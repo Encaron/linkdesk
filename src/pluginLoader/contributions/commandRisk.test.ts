@@ -50,3 +50,31 @@ describe("contributes.commands[].risk", () => {
     warn.mockRestore();
   });
 });
+
+describe("contributes.commands[].async（S6 声明提示 · 2026-11-25 批准）", () => {
+  beforeEach(() => {
+    registered.length = 0;
+  });
+
+  it("manifest 声明 async:true ⇒ 命令元数据带 async:true（激活前即可见，首调不再同步阻塞）", async () => {
+    await parseContributions("demo-plugin", {
+      commands: [{ id: "demo-plugin.slow", title: "Slow", async: true }],
+    });
+    expect(registered[0]!.async).toBe(true);
+  });
+
+  it("未声明 ⇒ 不带 async（默认同步，行为不变）", async () => {
+    await parseContributions("demo-plugin", { commands: [{ id: "demo-plugin.fast", title: "Fast" }] });
+    expect(registered[0]!.async).toBeUndefined();
+  });
+
+  it("非 true 值（字符串/1）⇒ 按未声明处理（⛔ 宽松真值）", async () => {
+    await parseContributions("demo-plugin", {
+      commands: [
+        { id: "demo-plugin.s1", title: "S1", async: "true" },
+        { id: "demo-plugin.s2", title: "S2", async: 1 },
+      ],
+    });
+    expect(registered.every((c) => c.async === undefined)).toBe(true);
+  });
+});

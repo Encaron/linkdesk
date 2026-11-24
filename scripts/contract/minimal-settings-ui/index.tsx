@@ -193,6 +193,47 @@ function ThemeSelect({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** AI 权限档位——读 aiPolicy.getState、写 aiPolicy.setMode（userOnly 壳命令；⛔ 不写配置键） */
+function AiPolicyRow({ label }: { label: string }) {
+  type State = { mode: string; options: Array<{ value: string; label: string; summary: string }> };
+  const [state, setState] = useState<State | null>(null);
+  const reload = () =>
+    void lk()
+      .commands.executeCommand("aiPolicy.getState")
+      .then((v) => setState(v as State))
+      .catch(() => setState(null));
+  useEffect(() => {
+    reload();
+  }, []);
+  if (!state) {
+    return (
+      <div className="msu-row">
+        <span className="msu-label">{label}</span>
+        <span className="msu-muted">当前壳没有 AI 权限档位（旧壳）</span>
+      </div>
+    );
+  }
+  return (
+    <div className="msu-row">
+      <span className="msu-label">{label}</span>
+      <select
+        aria-label={label}
+        value={state.mode}
+        onChange={async (e) => {
+          await lk().commands.executeCommand("aiPolicy.setMode", undefined, e.target.value);
+          reload();
+        }}
+      >
+        {state.options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label} — {o.summary}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function Row({
   configKey,
   prop,
@@ -219,6 +260,9 @@ function Row({
   if (prop.uiHint === "themePicker") {
     return <ThemeSelect label={label} value={String(v ?? "")} />;
   }
+  if (prop.uiHint === "aiPolicy") {
+    return <AiPolicyRow label={label} />;
+  }
   if (prop.renderHint === "readonly") {
     return (
       <div {...common}>
@@ -235,6 +279,34 @@ function Row({
         <button className="msu-btn" disabled={disabled} onClick={() => prop.actionCommand && void lk().commands.executeCommand(prop.actionCommand, undefined, { settingKey: configKey })}>
           {prop.description ?? label}
         </button>
+      </div>
+    );
+  }
+  // 设置行案 2.1：statusCommand / actionCommand 是**伴生声明**（可与任何主控件共存；无主控件时就是本行本体）
+  if (prop.actionCommand && !prop.uiHint && !prop.enum) {
+    return (
+      <div {...common}>
+        <span className="msu-label">{label}</span>
+        <div className="msu-inline">
+          <button
+            className="msu-btn"
+            onClick={() =>
+              prop.actionCommand &&
+              void lk().commands.executeCommand(prop.actionCommand, undefined, { settingKey: configKey })
+            }
+          >
+            {prop.description ?? label}
+          </button>
+          {prop.statusCommand && <StatusLine command={prop.statusCommand} />}
+        </div>
+      </div>
+    );
+  }
+  if (prop.statusCommand && !prop.uiHint && !prop.enum) {
+    return (
+      <div {...common}>
+        <span className="msu-label">{label}</span>
+        <StatusLine command={prop.statusCommand} />
       </div>
     );
   }
@@ -386,9 +458,120 @@ function Row({
   );
 }
 
+/** 快捷键页——命令 × 绑定 × 冲突，全部来自公开 API；录制走壳的按键捕获通道 */
+function KeybindingsPage() {
+  const [commands, setCommands] = useState<Array<{ id: string; title?: string }>>([]);
+  const [bindings, setBindings] = useState<Array<{ command: string; key: string; source: string; when?: string }>>([]);
+  const [conflicts, setConflicts] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [capturing, setCapturing] = useState("");
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    const kb = lk().keybindings;
+    void Promise.all([
+      lk().commands.getCommands?.() ?? Promise.resolve([]),
+      kb.getKeybindings?.() ?? Promise.resolve([]),
+      kb.getConflicts?.() ?? Promise.resolve([]),
+    ]).then(([cmds, kbs, cfs]) => {
+      setCommands(cmds as Array<{ id: string; title?: string }>);
+      setBindings(kbs as Array<{ command: string; key: string; source: string; when?: string }>);
+      setConflicts(new Set((cfs as Array<{ key: string }>).map((c) => c.key)));
+    }).catch(() => {});
+    return kb.onChange?.(() => setVersion((v) => v + 1));
+  }, [version]);
+
+  // 录制：壳置捕获态 → 主进程转发按键 → 拆成键串 → 删旧绑定 + 注册新绑定 + 落盘
+  useEffect(() => {
+    const kb = lk().keybindings;
+    if (!capturing || !kb?.onForwardedEvent) return;
+    void kb.setKeybindingCaptureActive?.(true);
+    const off = kb.onForwardedEvent(async (input) => {
+      if (input.key === "Escape") {
+        setCapturing("");
+        return;
+      }
+      const key = kb.keyboardEventToKeyString(input);
+      if (!key) return;
+      await kb.removeKeybindingForCommand(capturing);
+      await kb.registerKeybinding({ command: capturing, key, source: "user" });
+      await kb.saveUserKeybindings?.();
+      setCapturing("");
+      setVersion((v) => v + 1);
+    });
+    return () => {
+      off?.();
+      void kb.setKeybindingCaptureActive?.(false);
+    };
+  }, [capturing]);
+
+  const keyOf = new Map(bindings.map((b) => [b.command, b] as const));
+  const q = query.trim().toLowerCase();
+  const rows = commands
+    .map((c) => ({ id: c.id, title: c.title ?? c.id, binding: keyOf.get(c.id) }))
+    .filter((r) => !q || r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q))
+    .slice(0, 300);
+
+  const clear = async (command: string) => {
+    const kb = lk().keybindings;
+    if (kb.clearKeybindingForCommand) await kb.clearKeybindingForCommand(command);
+    else await kb.removeKeybindingForCommand(command);
+    await kb.saveUserKeybindings?.();
+    setVersion((v) => v + 1);
+  };
+  const reset = async (command: string) => {
+    const kb = lk().keybindings;
+    await kb.resetKeybindingToDefault(command);
+    await kb.saveUserKeybindings?.();
+    setVersion((v) => v + 1);
+  };
+
+  return (
+    <div className="msu-keys">
+      <h1>快捷键</h1>
+      <input placeholder="搜索命令…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="搜索命令" />
+      <table className="msu-keytable">
+        <thead>
+          <tr>
+            <th>命令</th>
+            <th>当前按键</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>
+                <div>{r.title}</div>
+                <code className="msu-muted">{r.id}</code>
+              </td>
+              <td>
+                {r.binding?.key ? <kbd>{r.binding.key}</kbd> : <span className="msu-muted">未绑定</span>}
+                {r.binding?.key && conflicts.has(r.binding.key) && <span className="msu-warn"> 冲突</span>}
+              </td>
+              <td className="msu-keyops">
+                <button className="msu-btn" onClick={() => setCapturing(r.id)}>
+                  {capturing === r.id ? "请按键…（Esc 取消）" : "录制"}
+                </button>
+                <button className="msu-btn" onClick={() => void clear(r.id)}>
+                  清除
+                </button>
+                <button className="msu-btn" onClick={() => void reset(r.id)}>
+                  重置
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function MinimalSettingsView() {
   const { contribs, values, write } = useConfiguration();
   const [active, setActive] = useState(0);
+  const [tab, setTab] = useState<"settings" | "keys">("settings");
   const current = contribs[active];
   const groups = useMemo(() => {
     if (!current) return [];
@@ -405,12 +588,26 @@ export default function MinimalSettingsView() {
     <div className="msu-root">
       <nav className="msu-nav">
         {contribs.map(([pluginId, c], i) => (
-          <button key={pluginId} className={i === active ? "is-on" : ""} onClick={() => setActive(i)}>
+          <button
+            key={pluginId}
+            className={tab === "settings" && i === active ? "is-on" : ""}
+            onClick={() => {
+              setTab("settings");
+              setActive(i);
+            }}
+          >
             {c.title}
           </button>
         ))}
+        <button className={tab === "keys" ? "is-on" : ""} onClick={() => setTab("keys")}>
+          快捷键
+        </button>
       </nav>
       <main className="msu-main">
+        {tab === "keys" ? (
+          <KeybindingsPage />
+        ) : (
+          <>
         {!current && <p className="msu-muted">没有可显示的配置组。</p>}
         {current && <h1>{current[1].title}</h1>}
 
@@ -431,6 +628,8 @@ export default function MinimalSettingsView() {
             </section>
           );
         })}
+          </>
+        )}
       </main>
     </div>
   );

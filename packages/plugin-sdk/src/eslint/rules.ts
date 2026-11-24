@@ -481,4 +481,8 @@ export const linkdeskRuleMap: Record<string, Rule.RuleModule> = {
   // 作者照文案写的 `eslint-disable-next-line linkdesk/no-native-title -- 理由` 不报 not-found（E6#137 同一个坑）。
   "no-native-title": NOOP_CHECK_RULE,
   "no-module-level-ipc-listener": NOOP_CHECK_RULE,
+  // T14（2026-11-25）：错误信封腿（`checks/error-envelope.ts`）的两个 id——哑规则只为让作者
+  // 照文案写的 disable-next-line 不报「Definition for rule was not found」。
+  "no-bare-error-throw": NOOP_CHECK_RULE,
+  "no-reserved-shell-error-code": NOOP_CHECK_RULE,
 };

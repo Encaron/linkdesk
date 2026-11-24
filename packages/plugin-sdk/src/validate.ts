@@ -328,6 +328,12 @@ export function validatePluginJson(path: string): ValidationResult {
   const ok = validator.check(manifest);
   if (!ok) {
     for (const e of validator.errors) errors.push(`${base}:${formatSchemaError(e)}`);
+    // 命令契约四件套的报错要能指向作者文档（T20）：只对 commands 段的失败加一条指针。
+    if (validator.errors.some((e) => e.instancePath.includes("/contributes/commands"))) {
+      errors.push(
+        "命令契约四件套：activation / risk / returns / example——见作者文档 21-command-ification-spec.md（中文 21-插件命令化规范.md）",
+      );
+    }
     return { valid: false, errors };
   }
 

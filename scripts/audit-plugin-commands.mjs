@@ -24,6 +24,10 @@
  *   「命令一条不缺、但**整批缺 `description`**」——AI 选命令**就看那一句**（`description` 写意图），
  *   缺了它命令在 AI 眼里只剩一个 id。本尺**只列数**，不判死。
  *
+ * ── 附带第三份名单（S7 风险声明面，非本尺判据）──
+ *   「命令缺 `risk` 或 risk 值非法」——S7 兜底 R2 下这些命令会被 AI 档位**逐次问**（想免确认
+ *   必须显式声明 `risk: "R0"`）。本尺**只列数**，不判死；值只认 `"R0"`–`"R3"` 字符串。
+ *
  * ── 输入从哪来 ──
  *   仓发现与官方名单来源走 `scripts/lib/plugin-repos.mjs`（**单一真相源**，与 `audit-plugin-tests.mjs` 同一份）；
  *   `plugin.json` 是 **JSONC**（注释 + 尾逗号），解析走同一 lib 的 `readManifestJson`（与壳侧同一套 parser 口径）。
@@ -45,6 +49,9 @@ const JSON_OUT = process.argv.includes("--json");
 
 /* ─────────────────────────── 判据（纯函数，自测直接打它） ─────────────────────────── */
 
+/** 风险级合法值（S7：字符串 "R0"–"R3"；⛔ 数字 0–3） */
+const RISKS = new Set(["R0", "R1", "R2", "R3"]);
+
 /** `views` 两种形态都认：对象 `{ container: [view,…] }` 与数组 `[view,…]`；空容器算 0。 */
 function countViews(views) {
   if (Array.isArray(views)) return views.length;
@@ -63,12 +70,13 @@ function countItems(v) {
 /**
  * 一只插件的命令化体检。
  * @param {{id: string, manifest?: any, official?: boolean, parseError?: string|null}} input
- * @returns {{id, official, views, containers, commands, noDescription, noTitle, verdict, parseError}}
+ * @returns {{id, official, views, containers, commands, noDescription, noTitle, noRisk, badRisk, verdict, parseError}}
  *   verdict: "views-no-commands"（本尺判据）| "ok" | "commands-only" | "silent" | "unreadable"
+ *   noRisk = 缺 risk 声明的命令数；badRisk = 声明了但值非 "R0"–"R3" 的命令数（S7 黄灯名单，只报不拦）
  */
 export function judgePlugin({ id, manifest, official = true, parseError = null }) {
   if (parseError || !manifest || typeof manifest !== "object") {
-    return { id, official, views: 0, containers: 0, commands: 0, noDescription: 0, noTitle: 0, verdict: "unreadable", parseError: parseError || "清单不可读" };
+    return { id, official, views: 0, containers: 0, commands: 0, noDescription: 0, noTitle: 0, noRisk: 0, badRisk: 0, verdict: "unreadable", parseError: parseError || "清单不可读" };
   }
   const c = manifest.contributes || {};
   const views = countViews(c.views);
@@ -77,19 +85,26 @@ export function judgePlugin({ id, manifest, official = true, parseError = null }
   const commands = cmds.length;
   const noDescription = cmds.filter((x) => !x || typeof x.description !== "string" || x.description.trim() === "").length;
   const noTitle = cmds.filter((x) => !x || typeof x.title !== "string" || x.title.trim() === "").length;
+  const noRisk = cmds.filter((x) => !x || x.risk === undefined || x.risk === null || x.risk === "").length;
+  const badRisk = cmds.filter((x) => x && x.risk !== undefined && x.risk !== null && x.risk !== "" && !(typeof x.risk === "string" && RISKS.has(x.risk.trim()))).length;
 
   let verdict = "silent";
   if (views > 0 && commands === 0) verdict = "views-no-commands";
   else if (views > 0) verdict = "ok";
   else if (commands > 0) verdict = "commands-only";
 
-  return { id, official, views, containers, commands, noDescription, noTitle, verdict, parseError: null };
+  return { id, official, views, containers, commands, noDescription, noTitle, noRisk, badRisk, verdict, parseError: null };
 }
 
 /* ─────────────────────────── 自测（正控/负控） ─────────────────────────── */
 
 function selfTest() {
   const C = (name, got, want) => ({ name, ok: JSON.stringify(got) === JSON.stringify(want), got, want });
+  /** 只取 S7 risk 计数两字段（C 是全对象严格比，⛔ 直接比整对象） */
+  const riskOf = (inp) => {
+    const j = judgePlugin(inp);
+    return { noRisk: j.noRisk, badRisk: j.badRisk };
+  };
   const cases = [
     C("正控① 有视图 ＋ 有命令 ⇒ ok（不进名单）", judgePlugin({ id: "a", manifest: { contributes: { views: { sidebar: [{ id: "v" }] }, commands: [{ id: "a.x", title: "X", description: "d" }] } } }).verdict, "ok"),
     C("负控① 有视图 ＋ 无 commands 键 ⇒ 报", judgePlugin({ id: "b", manifest: { contributes: { views: { sidebar: [{ id: "v" }] } } } }).verdict, "views-no-commands"),
@@ -104,6 +119,9 @@ function selfTest() {
     C("负控④ 清单不可读（解析失败）⇒ unreadable（fail-visible，⛔ 不静默跳过）", judgePlugin({ id: "i", parseError: "JSONC 语法错误：第 9 行" }).verdict, "unreadable"),
     C("负控④b manifest 为 null 也不崩", judgePlugin({ id: "j", manifest: null }).verdict, "unreadable"),
     C("负控⑤ views 是字符串（坏数据）⇒ 视图数 0、不崩", judgePlugin({ id: "k", manifest: { contributes: { views: "sidebar" } } }).views, 0),
+    C("正控⑥ S7 risk 齐全：3 条全声明合法值 ⇒ noRisk=0/badRisk=0", riskOf({ id: "l", manifest: { contributes: { commands: [{ id: "l.1", risk: "R0" }, { id: "l.2", risk: "R2" }, { id: "l.3", risk: "R3" }] } } }), { noRisk: 0, badRisk: 0 }),
+    C("负控⑥ S7 缺 risk：2 缺 1 非法值 ⇒ noRisk=2/badRisk=1（黄灯名单，不判死）", riskOf({ id: "m", manifest: { contributes: { commands: [{ id: "m.1" }, { id: "m.2", risk: "R1" }, { id: "m.3" }, { id: "m.4", risk: "5" }] } } }), { noRisk: 2, badRisk: 1 }),
+    C("负控⑥b 数字 risk（旧写法 0–3）算非法值", riskOf({ id: "n", manifest: { contributes: { commands: [{ id: "n.1", risk: 0 }] } } }), { noRisk: 0, badRisk: 1 }),
   ];
   const bad = cases.filter((x) => !x.ok);
   console.log("[plugin-commands] 自测（判据纯函数，正控绿 / 负控红）：");
@@ -133,6 +151,7 @@ const repos = discoverPluginRepos(CONTAINER).map((r) => {
 const flagged = repos.filter((r) => r.verdict === "views-no-commands");
 const unreadable = repos.filter((r) => r.verdict === "unreadable");
 const noDescRepos = repos.filter((r) => r.commands > 0 && r.noDescription === r.commands);
+const riskYellow = repos.filter((r) => r.commands > 0 && r.noRisk + r.badRisk > 0);
 const inventory = {
   repos: repos.length,
   withViews: repos.filter((r) => r.views > 0).length,
@@ -150,6 +169,7 @@ const payload = {
   repos,
   inventory,
   flagged: flagged.map((r) => ({ id: r.id, views: r.views, containers: r.containers })),
+  riskYellow: riskYellow.map((r) => ({ id: r.id, commands: r.commands, noRisk: r.noRisk, badRisk: r.badRisk })),
 };
 
 if (JSON_OUT) {
@@ -185,14 +205,15 @@ console.log(`[plugin-commands] 官方名单源：${ids ? "scripts/sync-plugin-ag
 console.log(`[plugin-commands] 判据：${payload.criterion}`);
 console.log(`[plugin-commands] 🔴 只报不拦（exit 0）——⛔ 不进 npm run check / CI / ci-verify；改不改由各插件作者定\n`);
 
-console.log(`${pad("仓", 30)}${pad("视图", 6)}${pad("容器", 6)}${pad("命令", 6)}${pad("缺说明", 8)}判定`);
-console.log("-".repeat(96));
+console.log(`${pad("仓", 30)}${pad("视图", 6)}${pad("容器", 6)}${pad("命令", 6)}${pad("缺说明", 8)}${pad("缺risk", 8)}判定`);
+console.log("-".repeat(108));
 for (const r of repos) {
   const tag = r.official ? r.id : `${r.id}（第三方·只读）`;
   const extra = r.verdict === "unreadable" ? ` — ${r.parseError}` : "";
-  console.log(`${pad(tag, 30)}${pad(r.views, 6)}${pad(r.containers, 6)}${pad(r.commands, 6)}${pad(r.commands ? `${r.noDescription}/${r.commands}` : "—", 8)}${VERDICT_TAG[r.verdict]}${extra}`);
+  const riskCell = r.commands ? `${r.noRisk}${r.badRisk ? `(+${r.badRisk}非法)` : ""}` : "—";
+  console.log(`${pad(tag, 30)}${pad(r.views, 6)}${pad(r.containers, 6)}${pad(r.commands, 6)}${pad(r.commands ? `${r.noDescription}/${r.commands}` : "—", 8)}${pad(riskCell, 8)}${VERDICT_TAG[r.verdict]}${extra}`);
 }
-console.log("-".repeat(96));
+console.log("-".repeat(108));
 
 console.log(`\n[plugin-commands] **名单：有视图声明却零命令（${flagged.length} 只）**——每个界面动作都只活在界面上，快捷键/命令面板/AI 全够不着：`);
 if (flagged.length === 0) {
@@ -204,6 +225,11 @@ if (flagged.length === 0) {
 if (noDescRepos.length) {
   console.log(`\n[plugin-commands] 附带名单：**整批缺 description**（${noDescRepos.length} 只）——命令一条不缺，但 AI 选命令只看那一句：`);
   for (const r of noDescRepos) console.log(`[plugin-commands]   · ${r.id}（${r.noDescription}/${r.commands} 条无说明）`);
+}
+
+if (riskYellow.length) {
+  console.log(`\n[plugin-commands] 附带名单：**risk 未声明/非法（S7 黄灯，${riskYellow.length} 只）**——未声明 ⇒ 兜底 R2 ⇒ AI 档位下会被问；想免确认请显式声明 "risk": "R0"–"R3"：`);
+  for (const r of riskYellow) console.log(`[plugin-commands]   · ${r.id}（缺 ${r.noRisk}${r.badRisk ? ` · 非法值 ${r.badRisk}` : ""} / 共 ${r.commands} 条）`);
 }
 
 if (unreadable.length) {

@@ -17,7 +17,7 @@
  *
  * 连接面六种（NO_RECORD/SWITCH_OFF/LAST_FAILED/APP_EXITED/REFUSED/EAUTH…）的**客户端**分类
  * 在 `cli/linkdeskctl/lib/bridge-client.mjs`（CLI/MCP/验收三处共用，⛔ 不许 fork）；本文件是
- * **内核侧**的操作级错误（EARGS/EUNKNOWN/ENOTFOUND/ENOACTION/EUSERDENIED…），经应答的 `code` 字段
+ * **内核侧**的操作级错误（EARGS/EVIEWREQUIRED/ENOTACTIVE/EUNKNOWNCOMMAND/ENOTFOUND/ENOACTION/EUSERDENIED…），经应答的 `code` 字段
  * 原样传给客户端。两层合起来 = spike README 判据③「失败路径有可读原因」的全集。
  *
  * ## 🔴 敏感动作的确认回路（`AI#29`）在本文件的落法
@@ -32,6 +32,7 @@ import { IPC } from '../../ipc/channels.js';
 import { pickPendingCommands, settleCommandSurface, type DeclaredCommandSource, type PendingCommand } from './commandSurface.js';
 import { coded, POLICY_DENIED, PROTECTED } from './errors.js';
 import { askUser } from './sensitive.js';
+import type { OpRegistry } from './opRegistry.js';
 import { buildActionCard } from './policy/cards.js';
 import {
   askFirstCatalog,
@@ -51,8 +52,9 @@ import {
  *  仍从这里**再导出**：既有调用方（`index.ts` / 单测）认的是这个出口，⛔ 不为搬家改一圈调用方。 */
 export { coded };
 
-/** 白清单版本——操作表形状变更时递增（客户端据此判断自省结果的新旧）。 */
-export const WHITELIST_VERSION = 1;
+/** 白清单版本——操作表形状变更时递增（客户端据此判断自省结果的新旧）。
+ *  v2（2026-11-25 S6/T11）：新增 `opStatus`（异步相位查询）。 */
+export const WHITELIST_VERSION = 2;
 
 /* ── 类型 ── */
 
@@ -76,6 +78,10 @@ export interface LedgerEntry {
   ok: boolean;
   code: string | null;
   ms: number;
+  /** S6/T11：`op.completed` 事件行——异步 op 结算时追加（字段与 `opStatus` 的终态一致） */
+  opId?: string;
+  commandId?: string;
+  state?: "done" | "failed" | "expired";
 }
 
 /**
@@ -97,6 +103,12 @@ export interface BridgeOpContext {
    * 「这条请求正在等人点头」。⛔ 由内核实现记（`index.ts` 的 `opContextFor`），操作只声明事实。
    */
   phase?(phase: BridgePhase, what?: string | null): void;
+  /** T12：壳版本（`apiVersion` 由壳生成，⛔ 作者手填；可选——假 ctx 不传则 "unknown"） */
+  appVersion?(): string;
+  /** S6/T11：异步 op 注册表（**可选**——老 ctx/假 ctx 不传；`opStatus` 缺它时如实报不可用） */
+  ops?: OpRegistry;
+  /** S6/T11：异步 op 结算后追加 `op.completed` 账本行（可选——同批「事件面」；缺它则只有查询面） */
+  recordOpCompleted?(entry: { opId: string; commandId: string; state: "done" | "failed"; code: string | null; ms: number }): void;
 }
 
 export interface BridgeOp {
@@ -214,6 +226,7 @@ async function runShellCommand(
   commandId: string,
   args: unknown[],
   knownCommands?: readonly { id?: unknown; userOnly?: unknown }[],
+  asyncDeclared = false,
 ): Promise<unknown> {
   const commands = knownCommands ?? (await listShellCommands(ctx));
   if (isUserOnlyCommand(commands, commandId)) {
@@ -222,9 +235,11 @@ async function runShellCommand(
       `命令「${commandId}」只允许用户操作（userOnly）——AI 永远不可调；请提示用户去设置页操作，⛔ 不要重试`,
     );
   }
-  // 声明面风险（manifest `contributes.commands[].risk`）——壳内建表优先，见 riskOfCommand
-  const declaredRaw = (commands.find((c) => c && c.id === commandId) as { risk?: unknown } | undefined)?.risk;
-  const risk = riskOfCommand(commandId, isRisk(declaredRaw) ? declaredRaw : undefined);
+  // 风险来源（S7）：壳命令 → 壳内建表；插件命令 → 只认 manifest 声明；均无 → R2 兜底。
+  // 归属来自 getCommands DTO 的 shellOwned（属主不是任何已装插件 = 壳）；壳表 ⛔ 覆盖插件声明（见 riskOfCommand）
+  const entry = commands.find((c) => c && c.id === commandId) as { risk?: unknown; shellOwned?: unknown } | undefined;
+  const shellOwned = entry?.shellOwned === true;
+  const { risk } = riskOfCommand(commandId, shellOwned, isRisk(entry?.risk) ? entry.risk : undefined);
   const snapshot = getPolicySnapshot();
   const decision = decide(snapshot.mode, risk);
   if (decision === 'deny') throw policyDenied(snapshot.mode, risk, `执行「${commandId}」`);
@@ -237,7 +252,113 @@ async function runShellCommand(
     const target = await resolveCommandTarget(ctx, commandId, args);
     await askUser(ctx, what, buildActionCard(what, text.why, risk, target));
   }
-  return ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...args]);
+  const executeOnce = () => ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...args]);
+  // S6/T11（A 案 · 声明式）：async 命令 ⇒ 本请求立即回 pending+opId，真实执行在后台跑、结算写注册表。
+  // 🔴 顺序铁律：档位判定与用户确认**都在上面同步走完**才允许回 pending——⛔ 先回 pending 再弹框
+  //   （那样 AI 会以为「已在跑」，而用户其实还没点头）。
+  if (asyncDeclared && ctx.ops) {
+    const reg = ctx.ops;
+    const { opId, startedAt } = reg.start();
+    const t0 = Date.now();
+    void executeOnce().then(
+      (r) => {
+        reg.settle(opId, r === undefined ? null : r);
+        ctx.recordOpCompleted?.({ opId, commandId, state: "done", code: null, ms: Date.now() - t0 });
+      },
+      (e: unknown) => {
+        const err = e as { code?: unknown; message?: unknown; hint?: unknown };
+        const code = typeof err?.code === "string" && err.code ? err.code : "EERROR";
+        const message = typeof err?.message === "string" && err.message ? err.message : String(e);
+        reg.fail(opId, { code, message, ...(typeof err?.hint === "string" && err.hint ? { hint: err.hint } : {}) });
+        ctx.recordOpCompleted?.({ opId, commandId, state: "failed", code, ms: Date.now() - t0 });
+      },
+    );
+    return { pending: true, opId, startedAt };
+  }
+  try {
+    return await executeOnce();
+  } catch (e) {
+    // S4/T8：视图在场与否决定「能不能执行」——池侧 miss（视图未挂载 / 入口没认领）按注册的 activation 判码。
+    // 池侧 canonical 错误串 = preload-pool executeLocal 的「未在池内注册」（同笔钉在单测里，⛔ 两边各改一边）。
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === `命令 "${commandId}" 未在池内注册`) {
+      const poolEntry = commands.find((c) => c && c.id === commandId) as { activation?: unknown; pluginId?: unknown } | undefined;
+      if (poolEntry?.activation === "view") {
+        throw coded(
+          "EVIEWREQUIRED",
+          `命令 "${commandId}" 需要视图在场（activation=view），当前未挂载——先 open-tab ${poolEntry.pluginId ?? "对应插件"}，再重试`,
+        );
+      }
+      throw coded("ENOTACTIVE", `命令 "${commandId}" 的入口未注册 handler（插件未启用或加载失败）——查看插件管理器`);
+    }
+    throw e;
+  }
+}
+
+/**
+ * S7/T4：命令面每条带上 `risk` ＋ `riskSource`（shell/declared/fallback）——纯函数（描述面组装，测试直打）。
+ * AI 动手前就能预测「这条会不会被问」；⛔ 不在这里改任何判定。
+ */
+export function surfaceCommandRisks(
+  commands: Array<{ id: string } & Record<string, unknown>>,
+): Array<{ id: string } & Record<string, unknown>> {
+  return commands.map((c) => {
+    const ownerEntry = c as { risk?: unknown; shellOwned?: unknown };
+    const shellOwned = ownerEntry.shellOwned === true;
+    const declared = isRisk(ownerEntry.risk) ? ownerEntry.risk : undefined;
+    const { risk, source } = riskOfCommand(c.id, shellOwned, declared);
+    return { ...c, risk, riskSource: source };
+  });
+}
+
+/**
+ * S3a/T15：描述面的**筛选 ＋ 分页**（纯函数，测试直打）。
+ * 🔴 归一化铁律（04 §二）：filter/limit/cursor 的**唯一实现**住这里——⛔ CLI/MCP/插件各写一份过滤。
+ * 缺省（无 filter/limit/cursor）⇒ **原样全量**（与旧行为逐字节一致，⛔ 破坏兼容）。
+ * 游标不透明：`c_` ＋ base64url({o, sig})；`sig` = 筛选条件的稳定指纹，换筛选必须换游标（否则 EARGS）。
+ */
+export function pageCommands<T extends { id: string; title?: unknown; description?: unknown; category?: unknown; pluginId?: unknown }>(
+  commands: readonly T[],
+  req: { filter?: unknown; limit?: unknown; cursor?: unknown },
+): { commands: T[]; total: number; nextCursor: string | null } {
+  const filter = req.filter && typeof req.filter === "object" ? (req.filter as Record<string, unknown>) : {};
+  const pid = typeof filter.pluginId === "string" && filter.pluginId ? filter.pluginId : null;
+  const cat = typeof filter.category === "string" && filter.category ? filter.category : null;
+  const q = typeof filter.query === "string" && filter.query ? filter.query.toLowerCase() : null;
+
+  const matched = commands.filter((c) => {
+    if (!c || typeof c.id !== "string") return false;
+    if (pid && c.pluginId !== pid) return false;
+    if (cat && c.category !== cat) return false;
+    if (q) {
+      const hay = `${c.id}\n${typeof c.title === "string" ? c.title : ""}\n${typeof c.description === "string" ? c.description : ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const sig = JSON.stringify([pid, cat, q]);
+  const limitRaw = Number(req.limit);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : null;
+
+  let offset = 0;
+  if (typeof req.cursor === "string" && req.cursor) {
+    if (!req.cursor.startsWith("c_")) throw coded("EARGS", `游标不合法（"${req.cursor}"）——用上一次回执里的 nextCursor，⛔ 自己构造`);
+    let decoded: { o?: unknown; sig?: unknown } | null = null;
+    try {
+      decoded = JSON.parse(Buffer.from(req.cursor.slice(2), "base64url").toString("utf8")) as { o?: unknown; sig?: unknown };
+    } catch {
+      throw coded("EARGS", "游标解不开——它是不透明串，⛔ 自己构造；用上次回执的 nextCursor");
+    }
+    if (!decoded || typeof decoded.o !== "number" || decoded.o < 0) throw coded("EARGS", "游标解不开——用上次回执的 nextCursor");
+    if (decoded.sig !== sig) throw coded("EARGS", "游标与筛选条件不匹配——换了 filter 就要从第一页重新开始（不带 cursor）");
+    offset = Math.floor(decoded.o);
+  }
+
+  const end = limit ? offset + limit : matched.length;
+  const page = matched.slice(offset, end);
+  const nextCursor = end < matched.length ? `c_${Buffer.from(JSON.stringify({ o: end, sig })).toString("base64url")}` : null;
+  return { commands: page, total: matched.length, nextCursor };
 }
 
 /* ── 操作表（本文件唯一的手写正文；describe 从它派生） ── */
@@ -246,15 +367,26 @@ export const OPS: Record<string, BridgeOp> = {
   describe: {
     name: 'describe',
     kind: 'read',
-    help: '自查：本实例支持的操作（白名单）＋ 可执行的命令面（运行期派生）——零源码环境 AI 的自举点',
-    params: [],
-    run: async (_req, ctx) => {
+    help: '自查：本实例支持的操作（白名单）＋ 可执行的命令面（运行期派生）——零源码环境 AI 的自举点。命令面可筛选/分页（filter.pluginId/category/query ＋ limit ＋ cursor，全部可选；不给 = 全量，与旧行为一致）；响应带 total/nextCursor——⛔ 别把这里的 cursor 当串口 readSince 的 since 用（同名不同义）',
+    params: [
+      { name: 'filter', type: 'object', required: false, description: '{ pluginId?, category?, query? }——query 对 id/title/description 做子串匹配' },
+      { name: 'limit', type: 'number', required: false, description: '每页条数（缺省 = 不分页，全量）' },
+      { name: 'cursor', type: 'string', required: false, description: '上一页回执里的 nextCursor（不透明；换 filter 必须从第一页重新开始）' },
+    ],
+    run: async (req, ctx) => {
       const commands = await listShellCommands(ctx);
+      const surfaced = surfaceCommandRisks(commands);
+      const page = pageCommands(surfaced, { filter: req.filter, limit: req.limit, cursor: req.cursor });
       return {
         whitelistVersion: WHITELIST_VERSION,
+        // S3b/T12：契约面版本——**壳统一生成**（⛔ 作者手填）：壳版本 ＋ 命令面结构修订号。
+        // contracts 包版本运行期不可读（打包后不在盘），故用 whitelistVersion 作「命令面结构版本」。
+        apiVersion: `linkdesk/${ctx.appVersion?.() ?? "unknown"}+bridge${WHITELIST_VERSION}`,
         ops: opCatalog(),
-        commands,
-        commandCount: commands.length,
+        commands: page.commands,
+        commandCount: page.commands.length,
+        total: page.total,
+        nextCursor: page.nextCursor,
         // AI#54 ①：**声明面**——已声明（`contributes.commands`）而运行期未注册的命令（多为视图态：
         // 该插件的视图挂载后才注册）。给 AI 的是**可发现性**：能规划下一步（先 open-tab），
         // ⛔ 不是执行面——`exec` 只认上面那份 commands。
@@ -339,22 +471,37 @@ export const OPS: Record<string, BridgeOp> = {
       const extra = Array.isArray(req.args) ? req.args : [];
       // 缺口① 左半：先查存在性——白名单 = 运行期派生的命令面，现取不缓存（AI#33 判据）
       const commands = await listShellCommands(ctx);
-      if (!commands.some((c) => c && c.id === commandId)) {
-        // AI#54 ①：撞到「已声明、未注册」的命令时给**带指引的** EUNKNOWN（⛔ 不是干巴巴一句「不在命令面」）——
-        // 这类 id 多数是视图态命令，AI 照 `needs` 做一步就能用（外部 AI 报告里「只能靠猜」的正是这一段）。
+      const surfaceEntry = commands.find((c) => c && c.id === commandId) as { activation?: unknown; pluginId?: unknown } | undefined;
+      if (!surfaceEntry) {
+        // S4/T8：失败必须可判读——三码由本处**一处**映射（⛔ CLI/MCP/插件各拼一份）：
+        //   · 声明了未注册且是视图态 ⇒ EVIEWREQUIRED（先 open-tab）；
+        //   · 声明了未注册（入口没认领）⇒ ENOTACTIVE（插件未启用 / 入口加载失败）；
+        //   · 连声明都没有 ⇒ EUNKNOWNCOMMAND（跑 describe 看可用面）。
         const pending = (await listPendingCommands(ctx, commands)).find((p) => p.id === commandId);
-        throw coded(
-          'EUNKNOWN',
-          pending
-            ? `命令 "${commandId}" 已由插件 "${pending.pluginId}" 声明、但运行期尚未注册——${pending.needs}`
-            : `命令 "${commandId}" 不在当前命令面（运行期派生白名单，共 ${commands.length} 条）——describe 可列出全部`,
-        );
+        if (pending) {
+          if (pending.activation === "view") {
+            throw coded(
+              'EVIEWREQUIRED',
+              `命令 "${commandId}" 是视图态命令（插件 "${pending.pluginId}"），视图不在场——先 open-tab ${pending.pluginId}，再重试`,
+            );
+          }
+          throw coded(
+            'ENOTACTIVE',
+            `命令 "${commandId}" 已由插件 "${pending.pluginId}" 声明，但运行期无人认领——插件未启用或入口加载失败，查看插件管理器`,
+          );
+        }
+        throw coded('EUNKNOWNCOMMAND', `命令 "${commandId}" 不存在——跑 describe 看可用面（当前命令面 ${commands.length} 条）`);
       }
       // 缺口① 右半：壳侧严格执行出口回传真结果（未注册/抛错都会以 {error} 信封回来）。
       // 🔴 存在性查过**之后**才问一声：对一条不存在的命令弹确认框只是骚扰。
       // AI#29：敏感命令由 runShellCommand 统一拦下问用户——⛔ 别绕开它直接 shellRequest。
       // 命令面刚取过 → 传进去复用（userOnly 判定与存在性检查同一份数据，不付第二次 IPC）。
-      const result = await runShellCommand(ctx, commandId, extra, commands);
+      // S6：async 声明来自命令条目（manifest / 池注册 meta 的运行期真值）
+      const result = await runShellCommand(ctx, commandId, extra, commands, (surfaceEntry as { async?: unknown }).async === true);
+      // S6：异步回执直接抬到顶层（⛔ 塞进 result 再包一层）
+      if (result && typeof result === "object" && (result as { pending?: unknown }).pending === true) {
+        return { commandId, ...(result as Record<string, unknown>) };
+      }
       return { commandId, result: result === undefined ? null : result };
     },
   },
@@ -441,6 +588,27 @@ export const OPS: Record<string, BridgeOp> = {
       // AI#29：按钮背后是哪条命令**只有读到这里才知道** ⇒ 敏感性只能在此判，故与 exec 共用同一条出口
       const result = await runShellCommand(ctx, action.command, action.args ?? []);
       return { pressed: true, notificationId, action: action.label, command: action.command, result: result === undefined ? null : result };
+    },
+  },
+
+  opStatus: {
+    name: 'opStatus',
+    kind: 'read',
+    help: '查异步命令的相位（S6）：exec 回 pending+opId 之后，用 opId 读 running/done/failed/expired——⛔ 别干等、⛔ 别重试同一条命令（重试 = 同一个动作做两遍）。过期（默认 10 分钟）回 EOPEXPIRED',
+    params: [
+      { name: 'opId', type: 'string', required: true, description: 'exec 回执里的 opId（不透明，⛔ 别解析）' },
+    ],
+    run: async (req, ctx) => {
+      const opId = req.opId;
+      if (typeof opId !== 'string' || !opId) throw coded('EARGS', 'opStatus 需要 opId（非空 string）');
+      const reg = ctx.ops;
+      if (!reg) throw coded('EERROR', '本实例未装配 op 注册表（老内核）——升级软件后可用');
+      const view = reg.status(opId);
+      if (!view) throw coded('ENOTFOUND', `没有这个 opId（"${opId}"）——op 只在内存里活 10 分钟；⛔ 猜 id`);
+      if (view.state === 'expired') {
+        throw coded('EOPEXPIRED', `op "${opId}" 已过期（op 结果只保留 10 分钟）——效果请用读数面核实（log / tabs / 插件状态命令），⛔ 别重试原命令`);
+      }
+      return view;
     },
   },
 

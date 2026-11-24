@@ -50,6 +50,56 @@ function normalizeDeclaredRisk(
   return undefined;
 }
 
+/**
+ * `contributes.commands[].activation` 收敛（S4 · 2026-11-25）。
+ * - 未声明 ⇒ `undefined`（describe 的 commandsPending 里该命令无 activation，AI 仍可经错误码探明）；
+ * - 已知值（entry/view）⇒ 原样；
+ * - 未知值 ⇒ **明确告知作者**并退回 undefined（⛔ 静默当 entry）。
+ * ⚠️ 必填拒绝闸等官方各仓补齐 activation 后与 risk 闸同批切换（内测免兼容，见 03 落地清单）。
+ */
+function normalizeDeclaredActivation(
+  pluginId: string,
+  cmd: { id: string; activation?: string },
+): "entry" | "view" | undefined {
+  if (cmd.activation === undefined) return undefined;
+  if (cmd.activation === "entry" || cmd.activation === "view") return cmd.activation;
+  console.warn(
+    `[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 声明了未知 activation "${String(cmd.activation)}"`
+      + "——只认 entry/view；本条按未声明处理（请修正 plugin.json）",
+  );
+  return undefined;
+}
+
+/**
+ * `contributes.commands[].returns` 收敛（S3b/T12）——字段表只到一级键（可一层嵌套由 description 说明）。
+ * 坏项一律丢弃（整组不崩），并给作者一条诊断（⛔ 静默吞掉声明）。
+ */
+function normalizeDeclaredReturns(
+  pluginId: string,
+  cmd: { id: string; returns?: unknown },
+): Array<{ name: string; type: string; optional?: boolean; description?: string }> | undefined {
+  if (cmd.returns === undefined) return undefined;
+  if (!Array.isArray(cmd.returns)) {
+    console.warn(`[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 的 returns 不是数组——已忽略（请修正 plugin.json）`);
+    return undefined;
+  }
+  const out: Array<{ name: string; type: string; optional?: boolean; description?: string }> = [];
+  for (const raw of cmd.returns) {
+    const f = raw as { name?: unknown; type?: unknown; optional?: unknown; description?: unknown };
+    if (!f || typeof f.name !== "string" || !f.name || typeof f.type !== "string" || !f.type) {
+      console.warn(`[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 的 returns 有坏字段（缺 name/type）——已跳过该项`);
+      continue;
+    }
+    out.push({
+      name: f.name,
+      type: f.type,
+      ...(typeof f.optional === "boolean" ? { optional: f.optional } : {}),
+      ...(typeof f.description === "string" && f.description ? { description: f.description } : {}),
+    });
+  }
+  return out;
+}
+
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
   const raw = data.colors;
@@ -149,7 +199,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   // 导致 terminal 组件注册的真实 handler 被 placeholder 覆盖。
   if (c.commands) {
     // M1 AI#7：声明面同样可写 description/params（与运行时 registerCommand meta 同字段、同语义）
-    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string; description?: string; risk?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }>(pluginId, "commands", c.commands);
+    const cmds = contribArray<{ id: string; title: string; category?: string; when?: string; description?: string; risk?: string; activation?: string; async?: boolean; returns?: Array<{ name: string; type: string; optional?: boolean; description?: string }>; example?: unknown; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }>(pluginId, "commands", c.commands);
     for (const cmd of cmds) {
       registerCommand(pluginId, {
         id: cmd.id,
@@ -158,6 +208,13 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
         when: cmd.when,
         description: cmd.description,
         risk: normalizeDeclaredRisk(pluginId, cmd),
+        // S4：声明面 activation = 提前告知（未注册时 describe 靠它说清）；运行期真值由池注册上下文覆盖
+        activation: normalizeDeclaredActivation(pluginId, cmd),
+        // S6：异步声明（manifest 直传布尔，非布尔值按未声明）
+        async: cmd.async === true ? true : undefined,
+        // S3b/T12：返回形状表与请求示例（声明面原样，describe 透出）
+        returns: normalizeDeclaredReturns(pluginId, cmd),
+        example: cmd.example,
         params: cmd.params,
         // E5.7 Bug C：元数据注册标 placeholder——真实 handler 注册在池侧（preload-pool _poolCommands）。
         // 壳执行时走 CommandRegistry.executeInPool 转发到池，不再调下面的诊断 warn。

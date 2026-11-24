@@ -34,7 +34,7 @@
 |:--|:--|:--|
 | **00** | 本章——判据、目录、任务导航、软件自述 | 先读这一页 |
 | [01-操作路径总览](01-操作路径总览.md) | 三层门（命令／API／CLI+MCP）· 读状态→调命令→读结果 · 谁在哪（池／壳） | 第一次上手，或想知道「有没有 API 能做 X」 |
-| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：97 条宿主命令 + 47 个命名空间 / 259 个方法 | 找具体命令 id / 方法名 / 参数 |
+| [02-命令与API索引](02-命令与API索引.md) | **全索引（机器生成）**：105 条宿主命令 + 51 个命名空间 / 288 个方法 | 找具体命令 id / 方法名 / 参数 |
 | [03-按任务操作](03-按任务操作.md) | 配方：标签页 · 分屏与嵌套 · 通知 · 面板与侧栏 · 设置与主题 · 串口 · 布局问答 | 「我要做某件事」时 |
 | [04-手势隐藏规则](04-手势隐藏规则.md) | 屏幕上那些动作的**隐藏门控**（拖拽相位等）＋ 为什么别走手势 | 你的操作「调了没反应」时 |
 | [05-够不着清单与安装版路径](05-够不着清单与安装版路径.md) | A 类够不着 · 安装版启动／静默装／userData 文件面／更新后重连 | 在**安装版**上干活时 |
@@ -54,7 +54,7 @@
 | 5 | 底部面板**隐藏某个插件** | `workbench.action.togglePanelViewVisibility`（实参两个：`containerId`、`viewId`——平铺或写成一个具名对象都行；见 03 章例 5） | ✅ 现成 |
 | 6 | 同时**打开五个插件的标签页** | `linkdesk.tabs.create(pluginId)` / `openOrFocus(pluginId)` 循环 | ✅ 现成 |
 | 7 | 在某个插件标签页里**做某件事** | = 该插件注册的命令（`linkdesk.commands.getCommands()` 里查） | ⚠️ 看插件 |
-| 8 | **两个 JSON 文件对比** | 两条命令：`file-tree.selectForCompare` → `file-tree.compareWithSelected`（参数 `{uri:"路径"}`；两步手势 = 两行调用）。⚠️ 这两条是**视图态命令**：需先 `open-tab file-tree`（视图挂载后才注册——`describe` 的 `commandsPending` 会先列出它们并写明这一步；`open-tab` 返回时命令面**已落定**，新挂牌的 id 在它的 `added` 里） | ✅ 现成（需装 file-tree 插件） |
+| 8 | **两个 JSON 文件对比** | 两条命令：`file-tree.selectForCompare` → `file-tree.compareWithSelected`（参数 `{uri:"路径"}`；两步手势 = 两行调用）。⚠️ 这两条是**视图态命令**（`describe` 里 `activation:"view"`）：需先 `open-tab file-tree`；无视图调用得 `EVIEWREQUIRED`（hint 给这一步）。`commandsPending` 仍列「已声明未注册」那批；`open-tab` 返回时命令面**已落定**，新挂牌的 id 在它的 `added` 里 | ✅ 现成（需装 file-tree 插件） |
 | 9 | 串口侧栏「**打开消息回显**」 | 命令 `serial-monitor.toggleEcho`（回执带 `field`/`previous`/`value`——**不用从标题反推状态**）。多串口要点名改哪条：`{"sessionId":"…"}`（id 先 `serial-monitor.listSessions` 拿） | ✅ 现成 |
 | 10 | 给 MCU **发东西 + AI 自己转编码 + 把回声读回来** | 命令：`serial-monitor.send(sendMode, data, portName?, encoding?)`、`serial-monitor.setSendCoding`、`serial-monitor.readSince(since, limit?, portName?)`（拉取式读回声，配 `receiveStatus` 看水位——见 03 章 §8）；API：`linkdesk.serial.sendText(text, enc, portName)`、`linkdesk.encoding.detect/decode/encode` | ✅ 现成（需装 serial-monitor 插件） |
 | 11 | **嵌套分屏**（左→右上下→右下再左右） | `linkdesk.pool.tabAction({action:"splitTab", direction, targetGroupId})` 逐层分裂；比例用 `{action:"updateSplitSizes", anchorGroupId, sizes:[a,b]}` | ✅ 现成 |

@@ -4,7 +4,8 @@
  * B24/B25/B26 回归防护。
  *
  * E5.8#28：模拟 handler 载荷升级为对象形（SerialDataPayload/SerialSystemPayload——
- * 对齐新 wire 契约 {portName, text|message}，旧 string 载荷已从推流面消失）。
+ * 对齐新 wire 契约 {portName, dir, data|message}，旧 string 载荷已从推流面消失）。
+ * D1：数据载荷带原始字节 Uint8Array——消费方（插件）自己解码；本模拟用 TextDecoder。
  * E5.8#29：portOpenRef 全局门控删除——改由 portFilter 键控过滤（payload.portName 匹配会话口）。
  * 测试语义同步：B24 残留清空 / B26 变体正则不再挖口名（S12）/ 新增多口各收各的断言。
  */
@@ -34,7 +35,8 @@ function createHandlers() {
   const onSerialData = (payload: SerialDataPayload) => {
     // E5.8#29：portFilter 取代 portOpenRef 门控——本会话口匹配才收（他口数据滤掉）
     if (!matchesPort(payload.portName, sessionPortRef.current)) return;
-    ringBuffer.write({ text: payload.text, type: "received" });
+    // D1：壳给原始字节，消费方解码（模拟插件侧动作）
+    ringBuffer.write({ text: new TextDecoder().decode(payload.data), type: "received" });
   };
 
   const onSerialSystem = (payload: SerialSystemPayload) => {
@@ -60,9 +62,9 @@ function createHandlers() {
 function sys(portName: string, message: string): SerialSystemPayload {
   return { portName, message };
 }
-/** 构造数据载荷 */
+/** 构造数据载荷——D1：原始字节 ＋ 方向 ＋ 时间戳 */
 function data(portName: string, text: string): SerialDataPayload {
-  return { portName, text };
+  return { portName, dir: "rx", data: new TextEncoder().encode(text), at: Date.now() };
 }
 
 describe("serial handlers", () => {
@@ -81,7 +83,7 @@ describe("serial handlers", () => {
   it("无路由键载荷容错——旧数据照收（三态无 key→收）", () => {
     const { ringBuffer, onSerialData } = createHandlers();
 
-    onSerialData({ text: "OLD" } as SerialDataPayload); // 无 portName（旧 string 载荷等价形）
+    onSerialData({ dir: "rx", data: new TextEncoder().encode("OLD"), at: Date.now() } as SerialDataPayload); // 无 portName（旧数据等价形）
     expect(ringBuffer.drainAll().length).toBe(1);
   });
 

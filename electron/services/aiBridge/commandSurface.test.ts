@@ -220,7 +220,12 @@ function fakeCtx(opts: FakeOpts = {}) {
 
 const VIEW_PLUGIN = {
   pluginId: "file-tree",
-  manifest: { contributes: { commands: [{ id: "file-tree.compareWithSelected", title: "与选中项比较" }] } },
+  manifest: { contributes: { commands: [{ id: "file-tree.compareWithSelected", title: "与选中项比较", activation: "view" }] } },
+};
+
+const ENTRY_PLUGIN = {
+  pluginId: "demo-plugin",
+  manifest: { contributes: { commands: [{ id: "demo-plugin.entryCmd", title: "入口命令" }] } },
 };
 
 describe("OPS.describe——声明面与执行面分开", () => {
@@ -229,12 +234,13 @@ describe("OPS.describe——声明面与执行面分开", () => {
     const out = (await OPS.describe.run({}, ctx)) as {
       commands: Array<{ id: string }>;
       commandCount: number;
-      commandsPending: Array<{ id: string; needs: string }>;
+      commandsPending: Array<{ id: string; needs: string; activation?: string }>;
     };
     expect(out.commands.map((c) => c.id)).toEqual(["core.ping"]);
     expect(out.commandCount).toBe(1);
     expect(out.commandsPending.map((p) => p.id)).toEqual(["file-tree.compareWithSelected"]);
     expect(out.commandsPending[0].needs).toContain("open-tab file-tree");
+    expect(out.commandsPending[0].activation).toBe("view");
   });
 
   it("视图态命令已注册后就不再出现在 commandsPending（差集跟着注册面走）", async () => {
@@ -247,20 +253,28 @@ describe("OPS.describe——声明面与执行面分开", () => {
   });
 });
 
-describe("OPS.exec——撞到未注册的声明命令给带指引的 EUNKNOWN", () => {
-  it("已声明未注册 ⇒ EUNKNOWN 正文含插件 id 与那一步，且⛔ 不碰执行面", async () => {
+describe("OPS.exec——撞到未注册的声明命令给可判读三码（S4/T8）", () => {
+  it("已声明未注册且 activation=view ⇒ EVIEWREQUIRED（先 open-tab），且⛔ 不碰执行面", async () => {
     const { ctx, seen } = fakeCtx({ commands: [{ id: "core.ping" }], plugins: [VIEW_PLUGIN] });
     await expect(
       OPS.exec.run({ commandId: "file-tree.compareWithSelected" }, ctx),
-    ).rejects.toMatchObject({ code: "EUNKNOWN", message: expect.stringContaining("open-tab file-tree") });
+    ).rejects.toMatchObject({ code: "EVIEWREQUIRED", message: expect.stringContaining("open-tab file-tree") });
     expect(seen).not.toContain(IPC.commands.execute);
   });
 
-  it("既没注册也没声明 ⇒ 仍是原样的干巴 EUNKNOWN（⛔ 别误报「先开视图」）", async () => {
+  it("已声明未注册且无 activation（入口没认领）⇒ ENOTACTIVE（插件未启用/加载失败），且⛔ 不碰执行面", async () => {
+    const { ctx, seen } = fakeCtx({ commands: [{ id: "core.ping" }], plugins: [ENTRY_PLUGIN] });
+    await expect(
+      OPS.exec.run({ commandId: "demo-plugin.entryCmd" }, ctx),
+    ).rejects.toMatchObject({ code: "ENOTACTIVE", message: expect.stringContaining("demo-plugin") });
+    expect(seen).not.toContain(IPC.commands.execute);
+  });
+
+  it("既没注册也没声明 ⇒ EUNKNOWNCOMMAND（⛔ 别误报「先开视图」）", async () => {
     const { ctx, seen } = fakeCtx({ commands: [{ id: "core.ping" }], plugins: [VIEW_PLUGIN] });
     const err = await OPS.exec.run({ commandId: "nonexistent.cmd" }, ctx).catch((e: Error) => e);
-    expect((err as Error & { code: string }).code).toBe("EUNKNOWN");
-    expect(err.message).toContain("不在当前命令面");
+    expect((err as Error & { code: string }).code).toBe("EUNKNOWNCOMMAND");
+    expect(err.message).toContain("不存在");
     expect(err.message).not.toContain("open-tab");
     expect(seen).not.toContain(IPC.commands.execute);
   });

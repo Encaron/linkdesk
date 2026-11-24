@@ -43,8 +43,9 @@
  * AI 那侧只拿到「壳无应答」＋退出码 1 ⇒ 会重试、或向用户报「失败」）。
  *
  * 操作级 code（内核白名单，`electron/services/aiBridge/whitelist.ts`）原样透传：
- * `EOP`（表外操作）/ `EUNKNOWN`（命令不在运行期派生命令面）/ `EARGS` / `ENOTFOUND` /
- * `ENOACTION` / `ESHELLTIMEOUT` / `ESHELLERROR` / `EPROTO` / `ETOOBIG` / `EERROR` /
+ * `EOP`（表外操作）/ `EVIEWREQUIRED`（视图态命令、视图不在场——先 open-tab）/
+ * `ENOTACTIVE`（插件未启用/入口加载失败）/ `EUNKNOWNCOMMAND`（命令不存在——跑 describe）/
+ * `EARGS` / `ENOTFOUND` / `ENOACTION` / `ESHELLTIMEOUT` / `ESHELLERROR` / `EPROTO` / `ETOOBIG` / `EERROR` /
  * **`EUSERDENIED`（敏感动作没等到用户点头——AI#29：动作**没执行**，不是失败后重试的那类）**。
  *
  * 零第三方依赖，只 `node:*`（发安装包的 CLI 不许拖 node_modules——AI#40 随包的硬前提）。
@@ -111,6 +112,16 @@ export function readRecord({ userDataDirs } = {}) {
 const OP_HINTS = {
   EUSERDENIED:
     "去软件里点那个确认框（键盘 Enter = 同意 / Esc = 取消）——**不点就不执行**；授权不缓存，下次还会问。",
+  EVIEWREQUIRED:
+    "这条命令需要插件的视图在场——先 `open-tab <pluginId>`（或 `exec app.openPluginTab` 一类入口）把视图打开，再重试；⛔ 别为它创建不可见的后台视图。",
+  ENOTACTIVE:
+    "插件没启用、或入口加载失败、或声明了但没人认领——去插件管理器/设置页看该插件状态；修好后再重试。",
+  EUNKNOWNCOMMAND:
+    "没有这条命令（连声明都没有）——跑 `describe` 看当前可用命令面；⛔ 猜命令名硬试。",
+  EOPEXPIRED:
+    "opId 已过期（op 结果只在内存里留 10 分钟）——效果请用读数面核实（`log` 账本 / `tabs` / 插件状态命令）；⛔ 别重试原命令（重试 = 同一个动作做两遍）。",
+  ENOTFOUND:
+    "不存在这样的东西（opId / 资源）——先 `describe` 或 `exec --status` 确认；⛔ 猜 id 硬试。",
   EASKPENDING:
     "**去软件里点那个确认框**（Enter = 同意 / Esc = 取消）——你这次调用已经放弃等待，但框还在；点完再用读数面核实。⛔ 别重试：重试只会再弹一个框。",
   EPENDING:

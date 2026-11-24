@@ -15,7 +15,7 @@
  */
 
 import type { CancellationToken } from "../../utils/CancellationToken";
-import type { LinkDeskCommandParam } from "../../api/linkdesk-api/types"; // M1 AI#7：命令元数据与契约同型（`import type` 零运行时耦合）
+import type { LinkDeskCommandParam, LinkDeskCommandReturnField } from "../../api/linkdesk-api/types"; // M1 AI#7：命令元数据与契约同型（`import type` 零运行时耦合）
 import { reportError } from "../../services/bootstrap/ErrorService";
 import { trackRegistration } from "../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 
@@ -49,6 +49,25 @@ export interface Command {
    * 合并优先级 = 壳内建表 > 本字段 > 兜底 R1（壳表永远赢，⛔ 插件不能靠声明把写命令降成只读）。
    */
   risk?: "R0" | "R1" | "R2" | "R3";
+  /**
+   * S4：可达性——`entry` = 插件级（无视图可调，可被命令 miss 懒激活）；`view` = 视图挂载期间注册（需要该视图在场）。
+   * 真值来源：运行期（池注册上下文回传，registerPoolCommandMetadata 覆盖声明面）＞ 声明面
+   * （loader 从 manifest 读，未注册时的提前告知）。describe 输出供 AI 预判。
+   */
+  activation?: "entry" | "view";
+  /**
+   * S3b/T12：返回形状字段表（manifest `contributes.commands[].returns`）——一级键（必要时一层嵌套），
+   * ⛔ 不是完整 JSON Schema。describe 原样透出，doctor 抽验「声明 vs 真实回执」的漂移。
+   */
+  returns?: LinkDeskCommandReturnField[];
+  /** S3b/T12：请求体示例（manifest `contributes.commands[].example`）——只给请求侧，⛔ 与 returns 重复 */
+  example?: unknown;
+  /**
+   * S6/T11：异步命令声明（`contributes.commands[].async` / 池注册 meta.async）。
+   * `true` ⇒ exec 立即回 `{pending:true, opId}`，handler 在后台跑，结算写 op 注册表并追加
+   * `op.completed` 账本行（A 案：声明式，插件零代码）。⛔ 同步命令不许装异步。
+   */
+  async?: boolean;
   /**
    * 占位标记——loader.ts 按 plugin.json contributes.commands 注册的元数据命令。
    * handler 只是诊断 warn；真实 handler 由插件视图在池内 mount 时注册到池侧注册表
@@ -190,7 +209,15 @@ export function registerCommand(
     if (command.userOnly !== undefined) existing.userOnly = command.userOnly;
     // 声明面风险级同款「有值才覆盖」——池侧重注册不带它时保留声明面那份
     if (command.risk !== undefined) existing.risk = command.risk;
-    if (command.risk !== undefined) existing.risk = command.risk;
+    // S4/S6/S3b：运行期 meta 的通用属性同走「有值才覆盖」。
+    // 🔴 为什么必须在这条分支上：**壳侧双进程注册（registerShellLocalCommand）与池元数据同步
+    //    （registerPoolCommandMetadata 的一部分路径）都复用 registerCommand**——漏在这里 = meta.async /
+    //    activation / returns / example 被首注册（loader 占位条目）吞掉（2026-11-25 实测：serial.query 的
+    //    async:true 一直不出现在 describe）。
+    if (command.activation !== undefined) existing.activation = command.activation;
+    if (command.async !== undefined) existing.async = command.async;
+    if (command.returns !== undefined) existing.returns = command.returns;
+    if (command.example !== undefined) existing.example = command.example;
     // 组件重注册真实 handler 时清 placeholder——否则真实实现永远被转发分支拦截
     existing.placeholder = command.placeholder;
     // 重注册未新增条目——首注册者的 disposer 持有删除权，返回 no-op
@@ -237,9 +264,42 @@ const _poolCommandWindows = new Map<string, Set<string>>();
  * E5.8#43-4（③）：windowId 参数 = 注册窗口归属（主进程 sender 解析注入）——两分支都记入
  *   归属表 `_poolCommandWindows`（路由 origin 亲和/归属表兜底的声明式数据源）。
  */
+/** 池/壳两侧注册共用的 meta 形状（jscpd：两处曾各写一份，字段一多就成克隆） */
+interface PluginCommandMeta {
+  title?: string;
+  category?: string;
+  when?: string;
+  pluginId?: string;
+  description?: string;
+  params?: LinkDeskCommandParam[];
+  activation?: "entry" | "view";
+  async?: boolean;
+  returns?: LinkDeskCommandReturnField[];
+  example?: Record<string, unknown>;
+}
+
+/** meta → 命令条目骨架（handler/placeholder 由各调用方决定）——唯一实现，⛔ 两处各拼一份 */
+function commandBaseFromMeta(
+  commandId: string,
+  meta: PluginCommandMeta,
+): Omit<Command, "handler" | "placeholder"> {
+  return {
+    id: commandId,
+    title: meta.title ?? commandId,
+    category: meta.category,
+    when: meta.when,
+    description: meta.description,
+    params: meta.params,
+    activation: meta.activation,
+    async: meta.async,
+    returns: meta.returns,
+    example: meta.example,
+  };
+}
+
 export function registerPoolCommandMetadata(
   commandId: string,
-  meta: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: LinkDeskCommandParam[] },
+  meta: PluginCommandMeta,
   windowId?: string,
 ): CommandOwnership {
   // §8.6 归属表：登记该命令的注册窗口（多窗口同一命令在每窗各注册一次 → 集合多成员）
@@ -278,16 +338,18 @@ export function registerPoolCommandMetadata(
     // M1 AI#7：说明与参数同走「有值才覆盖」——池侧重注册不带这两项时不抹掉声明面那份
     if (meta.description !== undefined) existing.description = meta.description;
     if (meta.params !== undefined) existing.params = meta.params;
+    // S4：运行期真值覆盖声明面（注册上下文 = 真相，⛔ 声明压不过运行期）
+    if (meta.activation !== undefined) existing.activation = meta.activation;
+    // S6：异步声明（有值才覆盖）
+    if (meta.async !== undefined) existing.async = meta.async;
+    // S3b/T12：returns/example 同走「有值才覆盖」
+    if (meta.returns !== undefined) existing.returns = meta.returns;
+    if (meta.example !== undefined) existing.example = meta.example;
     return owner;
   }
   // 命令 ID 约定 "pluginId.commandName"——**声明面查不到时才**退回前缀推定（preload-pool unregister 同约定）
   registerCommand(owner.pluginId, {
-    id: commandId,
-    title: meta.title ?? commandId,
-    category: meta.category,
-    when: meta.when,
-    description: meta.description,
-    params: meta.params,
+    ...commandBaseFromMeta(commandId, meta),
     placeholder: true,
     handler: async () => {
       console.warn(`[CommandRegistry] 命令 "${commandId}" 尚未绑定 handler——池内视图未挂载`);
@@ -311,7 +373,7 @@ export function registerPoolCommandMetadata(
  */
 export function registerShellLocalCommand(
   commandId: string,
-  meta: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: LinkDeskCommandParam[] },
+  meta: PluginCommandMeta,
 ): CommandOwnership {
   // E6#111b 判据③（H1 修点）：与 registerPoolCommandMetadata 同一条归属解析（①→②→③）
   const owner = _resolveOwner(
@@ -320,12 +382,7 @@ export function registerShellLocalCommand(
     meta.pluginId ? "reported" : "inferred",
   );
   registerCommand(owner.pluginId, {
-    id: commandId,
-    title: meta.title ?? commandId,
-    category: meta.category,
-    when: meta.when,
-    description: meta.description,
-    params: meta.params,
+    ...commandBaseFromMeta(commandId, meta),
     placeholder: false,
     handler: (...args) => {
       const bridge = window.linkdesk?.commands?._executeShellLocal;
@@ -576,7 +633,7 @@ async function executeInPool(cmd: Command, args: unknown[], originWindowId = "ma
  */
 export function resolvePoolExecution(
   requestId: string,
-  payload: { result?: unknown; error?: string },
+  payload: { result?: unknown; error?: string; code?: string; hint?: string },
   windowId?: string,
 ): void {
   const pending = _poolPending.get(requestId);
@@ -584,8 +641,14 @@ export function resolvePoolExecution(
   if (pending.targetWindowId && windowId && pending.targetWindowId !== windowId) return;
   clearTimeout(pending.timer);
   _poolPending.delete(requestId);
-  if (payload.error) pending.reject(new Error(payload.error));
-  else pending.resolve(payload.result);
+  if (payload.error) {
+    // S2/T14：池侧错误码原样带回（结构化错误信封的 code 是 AI 唯一能判的字段）。
+    // 裸 Error（旧插件/无 code）⇒ EUNKNOWN——⛔ 壳侧猜语义归到某个已有码。
+    const err = new Error(payload.error) as Error & { code: string; hint?: string };
+    err.code = typeof payload.code === "string" && payload.code ? payload.code : "EUNKNOWN";
+    if (typeof payload.hint === "string" && payload.hint) err.hint = payload.hint;
+    pending.reject(err);
+  } else pending.resolve(payload.result);
 }
 
 /** 同步执行（fire-and-forget）——不需要等待结果时用 */

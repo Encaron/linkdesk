@@ -10,6 +10,8 @@ import { POLICY_MODES, type PolicyMode } from "../modes.js";
 import {
   riskOfCommand,
   riskOfOp,
+  riskOfPluginCommand,
+  riskOfShellCommand,
   unregisteredOpRisk,
   UNREGISTERED_COMMAND_RISK,
   type Risk,
@@ -60,10 +62,11 @@ describe("decide：4×4 判定矩阵（16 格）", () => {
   });
 });
 
-describe("未登记兜底（保守规则：不知道 ≠ 无害）", () => {
-  it("未登记命令 ⇒ R1（不是 R0）", () => {
-    expect(riskOfCommand("demo.unknown-command")).toBe(UNREGISTERED_COMMAND_RISK);
-    expect(UNREGISTERED_COMMAND_RISK).toBe("R1");
+describe("未登记兜底与风险来源分层（S7：壳表只管壳命令，插件只认声明）", () => {
+  it("未登记命令 ⇒ R2 保守兜底（⛔ 不是 R0/R1；source=fallback）", () => {
+    expect(UNREGISTERED_COMMAND_RISK).toBe("R2");
+    expect(riskOfShellCommand("demo.unknown-command")).toEqual({ risk: "R2", source: "fallback" });
+    expect(riskOfPluginCommand(undefined)).toEqual({ risk: "R2", source: "fallback" });
   });
 
   it("未登记 op ⇒ 写按 R2、读按 R1", () => {
@@ -73,9 +76,21 @@ describe("未登记兜底（保守规则：不知道 ≠ 无害）", () => {
     expect(unregisteredOpRisk("read")).toBe("R1");
   });
 
-  it("登记项优先于作者声明，作者声明优先于兜底", () => {
-    expect(riskOfCommand("update.openUpdateFlow", "R0")).toBe("R3"); // 壳表说了算
-    expect(riskOfCommand("demo.declared", "R2")).toBe("R2"); // 作者声明
-    expect(riskOfCommand("demo.undeclared")).toBe("R1"); // 兜底
+  it("壳命令：壳表唯一，声明压不过壳表（source=shell）", () => {
+    expect(riskOfShellCommand("update.openUpdateFlow")).toEqual({ risk: "R3", source: "shell" });
+    expect(riskOfCommand("update.openUpdateFlow", true, "R0")).toEqual({ risk: "R3", source: "shell" });
+  });
+
+  it("插件命令：只认声明，壳表 ⛔ 覆盖（撞 id 以声明为准）", () => {
+    // 同 id 壳表有 R3，但插件归属仍按声明走——壳表不覆盖插件命令
+    expect(riskOfCommand("update.openUpdateFlow", false, "R1")).toEqual({ risk: "R1", source: "declared" });
+    expect(riskOfCommand("demo.declared", false, "R2")).toEqual({ risk: "R2", source: "declared" });
+    expect(riskOfCommand("demo.undeclared", false)).toEqual({ risk: "R2", source: "fallback" });
+  });
+
+  it("S7 兜底语义：未声明插件命令在 ask 档被问；auto 档按已落地矩阵 = allow（要 auto 档被问须声明 R3）", () => {
+    const { risk } = riskOfCommand("demo.undeclared", false);
+    expect(decide("ask", risk)).toBe("ask");
+    expect(decide("auto", risk)).toBe("allow");
   });
 });

@@ -12,8 +12,8 @@
  * 文案：用 t() 读——key 就是中文原文，英文译文放 i18n/en.json（见作者文档 05-ui-conventions.md）。
  * 壳已 external react/react-dom/react-i18next/i18next——构建不会打进包，插件工程无需 npm i 它们。
  *
- * 命令：本插件自带一个能跑的命令样板（src/commands.ts）——**顶层**调用注册（命令 handler
- * 要能无视图执行，顶层副作用才是唯一注册时机）；声明在 plugin.json 的 contributes.commands[]。
+ * 命令：本插件自带两条能跑的样板——entry 级（src/commands.ts，**顶层**注册，无视图可调）
+ * 与 view 级（本文件组件内注册，随视图挂载）；两条的声明都在 plugin.json 的 contributes.commands[]。
  *
  * 🔴 共享件来自 `@linkdesk/ui`（壳在运行时供给那**唯一一份**，见 READMEs「共享的东西不写在这里」）：
  * 本文件从它**静态具名导入**了 `HintTip`。你每多导入一个导出，`plugin.json` 的 `minAppVersion`
@@ -21,7 +21,7 @@
  * ⇒ 改完代码跑 `npm run lint` 拿新值，别照抄这里的数字。
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { HintTip } from "@linkdesk/ui";
 import { registerPluginCommands } from "./commands";
@@ -32,6 +32,18 @@ registerPluginCommands();
 export default function HelloPlugin(_props: { isActive?: boolean; tabId?: string; sourceId?: string }) {
   const { t } = useTranslation();
   const [reply, setReply] = useState("");
+
+  // 视图态命令样板（plugin.json 里 activation:"view"）：只在视图挂载时注册。
+  // 作用域分区会随本视图卸载自动摘除——⛔ 不要调 unregisterCommands(pluginId) 整片摘。
+  // useRef 防 StrictMode 下 effect 双跑导致同 id 重复注册（S4 会记诊断）。
+  const viewCommandRegistered = useRef(false);
+  useEffect(() => {
+    if (viewCommandRegistered.current) return;
+    viewCommandRegistered.current = true;
+    window.linkdesk?.commands?.registerCommand("{{pluginName}}.viewGreeting", async () => ({
+      message: "这个命令只在视图打开时可用。",
+    }));
+  }, []);
 
   // 界面也只是命令的消费者之一——按钮走命令而不是直调函数，
   // 这样命令面板 / 快捷键 / AI 与按钮用的是**同一条实现**（入口可多处，命令源唯一）。

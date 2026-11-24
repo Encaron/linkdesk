@@ -234,3 +234,52 @@ describe("CommandRegistry 空转命令可见性（R3 半条：dev 喊 error / �
     err.mockRestore();
   });
 });
+
+describe("重注册分支携带运行期 meta（S4/S6/S3b · 2026-11-25 回归）", () => {
+  it("首注册（loader 占位）后，双进程壳侧重注册带 async/activation/returns/example ⇒ 必须生效", () => {
+    clearCommands();
+    // ① loader 先注册声明面占位（无 async/returns）
+    registerCommand("demo-plugin", {
+      id: "demo-plugin.slow",
+      title: "慢命令",
+      placeholder: true,
+      handler: async () => undefined,
+    });
+    expect(getCommand("demo-plugin.slow")?.async).toBeUndefined();
+
+    // ② 壳侧双进程注册（registerShellLocalCommand 同款路径：经 registerCommand 重注册）
+    registerCommand("demo-plugin", {
+      id: "demo-plugin.slow",
+      title: "慢命令",
+      activation: "entry",
+      async: true,
+      returns: [{ name: "ok", type: "boolean" }],
+      example: { delay: 1 },
+      placeholder: false,
+      handler: async () => ({ ok: true }),
+    });
+
+    const cmd = getCommand("demo-plugin.slow");
+    // 🔴 漏了任何一项 ⇒ 真实插件（serial.query）的 async 在 describe 里永远不出现
+    expect(cmd?.async).toBe(true);
+    expect(cmd?.activation).toBe("entry");
+    expect(cmd?.returns).toEqual([{ name: "ok", type: "boolean" }]);
+    expect(cmd?.example).toEqual({ delay: 1 });
+    expect(cmd?.placeholder).toBe(false);
+  });
+
+  it("重注册不带这些字段 ⇒ 不抹掉首注册/声明面那份（有值才覆盖）", () => {
+    clearCommands();
+    registerCommand("demo-plugin", {
+      id: "demo-plugin.keep",
+      title: "保留",
+      async: true,
+      returns: [{ name: "n", type: "number" }],
+      handler: async () => undefined,
+    });
+    registerCommand("demo-plugin", { id: "demo-plugin.keep", title: "保留", handler: async () => 1 });
+    const cmd = getCommand("demo-plugin.keep");
+    expect(cmd?.async).toBe(true);
+    expect(cmd?.returns).toEqual([{ name: "n", type: "number" }]);
+  });
+});

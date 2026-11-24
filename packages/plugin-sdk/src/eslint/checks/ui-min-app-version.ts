@@ -197,6 +197,133 @@ export function computeUiFloor(ledger: Record<string, string>, names: string[]):
   return { floor, baseline, driver, missing };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+ * 非 UI 的「字段/形态地板」（T23 · 2026-11-25 裁定 #21/②）
+ *
+ * `minAppVersion` 不只由 @linkdesk/ui 导入决定：插件用了**某个壳版本才有的命令形态**时，
+ * 旧壳会把插件拒载（不会静默降级）。唯一表 = `FEATURE_FLOORS`；加新特性只加一行。
+ *   · `meta.async` ⇒ 0.2.65：壳从该版起才把 `registerCommand` meta 里的 async 自动包成 op
+ *     （exec 回 pending+opId、opStatus 查询）；0.2.64 不认识 ⇒ 必须靠 minAppVersion 挡住。
+ * ⛔ 不在壳/脚手架各抄一份表——脚手架与 lint 都调本模块（单一算点）。
+ * ═══════════════════════════════════════════════════════════════════════ */
+export const FEATURE_FLOORS = {
+  "meta.async": "0.2.65",
+} as const;
+
+export type FeatureKey = keyof typeof FEATURE_FLOORS;
+
+/** 形态探测（窄口子：`AsyncCommandMeta` 类型名 或 `async: true` 字面量；注释已剔除） */
+const FEATURE_PATTERNS: Record<FeatureKey, RegExp> = {
+  "meta.async": /\bAsyncCommandMeta\b|\basync\s*:\s*true\b/,
+};
+
+export interface FeatureFloorDriver {
+  feature: FeatureKey;
+  since: string;
+  file: string;
+  line: number;
+}
+
+export interface FeatureFloor {
+  /** 这些形态里最高的壳版本地板；null = 未使用任何特性 */
+  floor: string | null;
+  /** 每个特性的首个使用点（报文给作者能跳过去的位置） */
+  drivers: FeatureFloorDriver[];
+}
+
+/** 扫描插件源码，算「字段/形态地板」＋使用点（纯读盘；测试/夹具跳过，与其余腿同口径）。 */
+export function detectFeatureFloors(root: string): FeatureFloor {
+  const drivers: FeatureFloorDriver[] = [];
+  for (const { rel, cleaned } of cleanedSources(root)) {
+    for (const feature of Object.keys(FEATURE_FLOORS) as FeatureKey[]) {
+      const re = new RegExp(FEATURE_PATTERNS[feature].source, "g");
+      const m = re.exec(cleaned);
+      if (!m) continue;
+      drivers.push({
+        feature,
+        since: FEATURE_FLOORS[feature],
+        file: rel,
+        line: countNewlines(cleaned.slice(0, m.index)) + 1,
+      });
+    }
+  }
+  let floor: string | null = null;
+  for (const d of drivers) {
+    if (floor === null || gt(parseSemver(d.since)!, parseSemver(floor)!)) floor = d.since;
+  }
+  return { floor, drivers };
+}
+
+/** 两个 x.y.z 取较大；null 视为无约束。形态坏时保守返回 `a`（调用方另有形态守卫）。 */
+export function maxAppVersion(a: string | null, b: string | null): string | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  if (!pa || !pb) return a;
+  return gte(pa, pb) ? a : b;
+}
+
+export const FEATURE_FLOOR_WHY =
+  "minAppVersion 是「你的插件能在多旧的壳上跑」的下限：用了新壳才有的命令形态必须抬到该壳版本，" +
+  "否则旧壳会**拒绝加载**（不会静默按旧行为跑）。地板由 @linkdesk/plugin-sdk 按插件实际使用面算出，⛔ 手抄。";
+
+/** 字段/形态地板核对（独立于 UI 消费——不用 @linkdesk/ui 的插件也可能踩这条）。 */
+export function runFeatureFloorCheck(root: string): CheckViolation[] {
+  const { floor, drivers } = detectFeatureFloors(root);
+  if (floor === null || drivers.length === 0) return [];
+  const d = drivers[0];
+  const where = `${d.file}:${d.line}`;
+  const manifest = readMinAppVersion(root);
+  if (manifest.kind === "unreadable") {
+    return [
+      {
+        file: "plugin.json",
+        line: 1,
+        message: `插件使用了 \`${d.feature}\`（${where}），但${manifest.reason}——minAppVersion 无法核对（fail-closed）。${FEATURE_FLOOR_WHY}`,
+      },
+    ];
+  }
+  const declared = manifest.declared;
+  if (typeof declared !== "string" || declared.trim() === "") {
+    return [
+      {
+        file: "plugin.json",
+        line: 1,
+        message: `插件使用了 \`${d.feature}\`（${where}）——壳 ${floor} 起才提供该形态，但 plugin.json 未声明 minAppVersion。修法：声明 minAppVersion ≥ ${floor}。${FEATURE_FLOOR_WHY}`,
+      },
+    ];
+  }
+  const parsed = parseSemver(declared);
+  if (!parsed) {
+    return [
+      {
+        file: "plugin.json",
+        line: 1,
+        message: `插件使用了 \`${d.feature}\`（${where}），但 minAppVersion = ${JSON.stringify(declared)} 不是 x.y.z 形态，无法核对 ≥ 地板 ${floor}（fail-closed）。${FEATURE_FLOOR_WHY}`,
+      },
+    ];
+  }
+  if (!gte(parsed, parseSemver(floor)!)) {
+    return [
+      {
+        file: "plugin.json",
+        line: 1,
+        message: `插件使用了 \`${d.feature}\`（${where}）——壳 **${floor} 起**才支持（旧壳会拒绝加载，不会静默按旧行为跑），但 minAppVersion = ${declared} 低于地板 ${floor}。修法：抬到 ≥ ${floor}。${FEATURE_FLOOR_WHY}`,
+      },
+    ];
+  }
+  return [];
+}
+
+/** 本腿总入口：UI 导出面地板 ∪ 字段/形态地板（两条判据分开报点、同一腿）。 */
+export function runMinAppVersionFloorCheck(
+  root: string,
+  opts: { ledger?: Record<string, string> | null } = {},
+): CheckViolation[] {
+  return [...runUiMinAppVersionCheck(root, opts), ...runFeatureFloorCheck(root)];
+}
+
 function collectConsumeSites(root: string): ConsumeSite[] {
   const sites: ConsumeSite[] = [];
   for (const { rel, cleaned } of cleanedSources(root)) {

@@ -152,3 +152,55 @@ describe('池侧 on-command 激活（E6#62e）', () => {
     expect(single).toEqual(['md', 'pdf']);
   });
 });
+
+describe('S2/T14：池侧错误回传带 code/hint（结构化透传，裸 Error ⇒ EUNKNOWN）', () => {
+  beforeEach(() => {
+    ipcMock.invoke.mockClear();
+  });
+
+  const resultPayload = () => {
+    const call = ipcMock.invoke.mock.calls.find((c) => c[0] === IPC.commands.executeResult);
+    return call?.[2] as { error?: string; code?: string; hint?: string } | undefined;
+  };
+
+  it('带 code/hint 的插件错误 ⇒ 原样透传（⛔ 被压成裸字符串）', async () => {
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    commands.registerCommand('demo-plugin.fail', () => {
+      throw Object.assign(new Error('波特率非法'), { code: 'EBADBAUD', hint: '用 describe 看可选值' });
+    });
+
+    await events.triggerAsync({ requestId: 't14-1', commandId: 'demo-plugin.fail', args: [] });
+
+    expect(resultPayload()).toEqual({ error: '波特率非法', code: 'EBADBAUD', hint: '用 describe 看可选值' });
+  });
+
+  it('裸 Error（无 code）⇒ code=EUNKNOWN（⛔ 壳侧猜语义）', async () => {
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    commands.registerCommand('demo-plugin.bare', () => {
+      throw new Error('随便失败了');
+    });
+
+    await events.triggerAsync({ requestId: 't14-2', commandId: 'demo-plugin.bare', args: [] });
+
+    expect(resultPayload()).toEqual({ error: '随便失败了', code: 'EUNKNOWN' });
+  });
+});
+
+describe('S2/T14 补充：错误形态宽容（错误对象不是 Error 实例也照样取 message）', () => {
+  it('抛普通对象 {code, message, hint} ⇒ 原样透传，⛔ [object Object]', async () => {
+    ipcMock.invoke.mockClear();
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    commands.registerCommand('demo-plugin.plainObj', () => {
+      // 故意模拟 pluginError 返回普通对象的形态（不是 Error 实例）
+      throw { code: 'EPLUGIN', message: '插件说：参数不对', hint: '看 describe' };
+    });
+
+    await events.triggerAsync({ requestId: 't14-3', commandId: 'demo-plugin.plainObj', args: [] });
+
+    const call = ipcMock.invoke.mock.calls.find((c) => c[0] === IPC.commands.executeResult);
+    expect(call?.[2]).toEqual({ error: '插件说：参数不对', code: 'EPLUGIN', hint: '看 describe' });
+  });
+});

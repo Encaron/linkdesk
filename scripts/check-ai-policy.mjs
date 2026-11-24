@@ -17,6 +17,10 @@
  *      与 `src/App/config/aiBridge.ts`（设置声明）；且声明文件里不许出现写配置的函数调用。error。
  *   P5 **策略键不散落**：`ai.policy.` 前缀字面量只许出现在上述两个落点。error。
  *   P9 **第二套名单禁令**：源码里不许再出现 `ASK_FIRST_`（旧静态名单已并入风险表）。error。
+ *   P10 **兜底必须 R2**（S7）：`UNREGISTERED_COMMAND_RISK` 必须是 `"R2"`——未声明 ⇒ 保守兜底，
+ *       改回 `"R1"` = 静默放行回来。error。
+ *   P11 **风险来源分层调用**（S7）：`runShellCommand` 必须按 `shellOwned` 归属分流调 `riskOfCommand`
+ *       （壳表只管壳命令、插件只认声明）；退化成旧式「壳表>声明>兜底」合并调用 ⇒ 红。error。
  *
  * ── 本批**不**在跑的（如实登记，别当漏扫）──
  *   · P2 运行期命令面比对（`COMMAND_RISK` 无死条目）：需要活实例的 `describe` 快照 ⇒ 归批 2
@@ -159,6 +163,23 @@ export function checkAiPolicy(input) {
     }
   }
 
+  const fallback = input.risk.match(/UNREGISTERED_COMMAND_RISK\s*:\s*Risk\s*=\s*"R([0-3])"/);
+  if (!fallback || fallback[1] !== "2") {
+    findings.push({
+      code: "P10",
+      level: "error",
+      message: `UNREGISTERED_COMMAND_RISK 必须是 "R2"（S7 保守兜底：未声明 ⇒ 问一声，⛔ 不得静默放行成 R1）——现为 ${fallback ? `"R${fallback[1]}"` : "（找不到该常量，被改名/删除了？）"}`,
+    });
+  }
+
+  if (gate && !/riskOfCommand\(commandId,\s*shellOwned/.test(gate)) {
+    findings.push({
+      code: "P11",
+      level: "error",
+      message: "runShellCommand 必须按 shellOwned 归属分流调 riskOfCommand（壳表只管壳命令、插件只认声明）——现为旧式合并调用或缺失（修法：见 electron/services/aiBridge/policy/risk.ts 的 riskOfCommand）",
+    });
+  }
+
   const allowedKeyFiles = new Set([
     norm(input.policyStatePath),
     norm(input.configDeclPath),
@@ -233,10 +254,16 @@ function selfTest() {
       "};",
       "async function runShellCommand(ctx, commandId, args) {",
       "  if (isUserOnlyCommand(list, commandId)) throw coded(PROTECTED, 'no');",
+      "  const { risk } = riskOfCommand(commandId, shellOwned, declared);",
       "  if (decide('auto', 'R1') === 'deny') throw coded(POLICY_DENIED, 'no');",
       "}",
     ].join("\n"),
-    risk: ["export const OP_RISK: Record<string, RiskEntry> = {", "  describe: { risk: 'R0' },", "  exec: { risk: 'R1' },", "};"].join("\n"),
+    risk: [
+      "export const OP_RISK: Record<string, RiskEntry> = {",
+      "  describe: { risk: 'R0' },",
+      "  exec: { risk: 'R1' },",
+      "};",
+    ].join("\n") + "\nexport const UNREGISTERED_COMMAND_RISK: Risk = \"R2\";\n",
     policyStatePath: "/x/policy/policyState.ts",
     configDeclPath: "/x/src/App/config/aiBridge.ts",
     policyConstPath: "/x/src/core/types/ipc/aiPolicy.ts",
@@ -320,6 +347,25 @@ function selfTest() {
         files: [...base.files, { path: "/x/src/old.ts", text: "export const ASK_FIRST_OPS = [];" }],
       },
       expect: (f) => f.some((x) => x.code === "P9"),
+    },
+    {
+      name: "P10 负控：兜底改回 R1 ⇒ 红",
+      input: {
+        ...base,
+        risk: base.risk.replace('UNREGISTERED_COMMAND_RISK: Risk = "R2"', 'UNREGISTERED_COMMAND_RISK: Risk = "R1"'),
+      },
+      expect: (f) => f.some((x) => x.code === "P10"),
+    },
+    {
+      name: "P11 负控：riskOfCommand 去掉 shellOwned 分流（旧式合并调用）⇒ 红",
+      input: {
+        ...base,
+        whitelist: base.whitelist.replace(
+          "  const { risk } = riskOfCommand(commandId, shellOwned, declared);\n",
+          "  const risk = riskOfCommand(commandId, declared);\n",
+        ),
+      },
+      expect: (f) => f.some((x) => x.code === "P11"),
     },
   ];
 

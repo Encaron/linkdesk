@@ -212,7 +212,10 @@ export function getPrefixCheck() {
 }
 
 /** 断言 13 要用的四处导出——同一个模块，缺一即 dist 与源码不同步 */
-const UI_FLOOR_EXPORTS = ["loadUiSurfaceLedger", "computeUiFloor", "collectUiImportNames", "runUiMinAppVersionCheck"];
+const UI_FLOOR_EXPORTS = [
+  "loadUiSurfaceLedger", "computeUiFloor", "collectUiImportNames", "runUiMinAppVersionCheck",
+  "detectFeatureFloors", "maxAppVersion", "runFeatureFloorCheck",
+];
 
 /**
  * 取断言 13 的判据（懒加载，dist 新鲜度判据同 `getPrefixCheck`）。`null` = 拿不到（已记 `failures`）。
@@ -376,8 +379,10 @@ export function checkMinAppVersionFloor(dir, api) {
   }
 
   const imports = api.collectUiImportNames(dir);
-  const floor = api.computeUiFloor(ledger, imports.map((i) => i.name)); // { floor, baseline, driver, missing }
-  const red = api.runUiMinAppVersionCheck(dir);
+  const uiFloor = api.computeUiFloor(ledger, imports.map((i) => i.name)); // { floor, baseline, driver, missing }
+  const feature = api.detectFeatureFloors(dir); // 字段/形态地板（meta.async 等）
+  const floor = { ...uiFloor, floor: api.maxAppVersion(uiFloor.floor, feature.floor), feature };
+  const red = [...api.runUiMinAppVersionCheck(dir), ...api.runFeatureFloorCheck(dir)];
 
   const names = imports.map((i) => i.name).join("、") || "（无）";
   if (floor.missing.length > 0) {
@@ -387,7 +392,7 @@ export function checkMinAppVersionFloor(dir, api) {
     problems.push(`生成物过不了那条腿（${red.length} 处）：\n     ${red.map((v) => `${v.file}:${v.line} ${v.message.split("：")[0]}`).join("\n     ")}`);
   }
   if (declared !== null && floor.floor !== null && declared !== floor.floor) {
-    const driver = floor.driver ? `${floor.driver.name}（since ${floor.driver.since}）` : `基线（vendor 供给起点那一批）`;
+    const driver = floor.driver ? `${floor.driver.name}（since ${floor.driver.since}）` : floor.feature.floor ? `${floor.feature.drivers[0]?.feature ?? "字段/形态"}（壳 ${floor.feature.floor} 起）` : `基线（vendor 供给起点那一批）`;
     problems.push(
       `minAppVersion = ${declared}，但按模板自身导入算出的地板是 ${floor.floor}` +
         `（导入 ${names}；顶上去的是 ${driver}）——模板默认值必须是这个地板：` +

@@ -267,6 +267,13 @@ function evalChannel(expr, ipcMap) {
     }
     const nextDepth = depth + 1;
 
+    // 二进制视图（Uint8Array）——lib 类型无 src 声明（namedInfo 不认），只查 instanceof；
+    // 不进对象属性递归（否则会逐个校验 byteLength/byteOffset/方法… 生成无意义断言）。
+    const sym = t.getSymbol?.() ?? t.symbol;
+    if (sym?.name === 'Uint8Array') {
+      return [`if (!(${expr} instanceof Uint8Array)) ${E}.push((${P}) + ": 期望 Uint8Array");`];
+    }
+
     // 元组（固定长度数组）——TS 5.9 无 TypeFlags.Tuple，元组 flags=Object，用 checker.isTupleType
     if (checker.isTupleType(t)) {
       const els = t.typeArguments ?? [];

@@ -52,6 +52,12 @@ export const CHECK_IDS = {
    *  ⇒「未知 id」不判；宿主名单随包下发 `schemas/host-menu-slots.json`（壳生成器投影）。
    *  ⚠️ 合法偏离形态基本不存在（只差大小写的槽位 id 没有任何正当用途），豁免机制只是与其余腿同形。 */
   menuSlotCase: "linkdesk/no-menu-slot-case",
+  /** T14（2026-11-25）：插件业务错误**走 `pluginError`**——裸 `throw new Error` 是提示（🟡 不拦 CI）；
+   *  真正的编程错误仍可抛。判据见 `checks/error-envelope.ts`。 */
+  errorEnvelope: "linkdesk/no-bare-error-throw",
+  /** T14：插件**不得自造壳保留错误码**（🔴 进腿）——清单唯一来源 = `@linkdesk/contracts` 的
+   *  `SHELL_ERROR_CODES`（SDK ⛔ 本地另存字面量表）。 */
+  reservedShellErrorCode: "linkdesk/no-reserved-shell-error-code",
 } as const;
 
 interface RawComment {

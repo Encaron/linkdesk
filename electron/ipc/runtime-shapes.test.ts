@@ -74,8 +74,17 @@ describe("validateWire——正确载荷返回空数组", () => {
     expect(validateWire("serial:stats", { portName: "COM3", tx: 10, rx: 20 })).toEqual([]);
     expect(validateWire("serial:stats", { portName: "COM3" })).toEqual([]);
   });
-  it("serial:data 正确（E5.8#28 载荷对象化——portName + text）", () => {
-    expect(validateWire("serial:data", { portName: "COM3", text: "S500" })).toEqual([]);
+  it("serial:data 正确（D1：portName + dir + data(Uint8Array) + at）", () => {
+    expect(validateWire("serial:data", {
+      portName: "COM3",
+      dir: "rx",
+      data: new Uint8Array([0x53, 0x35, 0x30, 0x30]),
+      at: Date.now(),
+    })).toEqual([]);
+    expect(validateWire("serial:data", { portName: "COM3", dir: "tx", data: new Uint8Array([1]), at: 1 })).toEqual([]);
+  });
+  it("serial:data 旧 {portName,text} 形态 ⇒ 报错（D1 已删 text）", () => {
+    expect(validateWire("serial:data", { portName: "COM3", text: "S500" })).not.toEqual([]);
   });
   it("serial:system 正确（E5.8#28 载荷对象化 + #30.11 type 分类——status/error）", () => {
     expect(validateWire("serial:system", { portName: "COM3", message: "---- 已打开串行端口 COM3 ----", type: "status" })).toEqual([]);

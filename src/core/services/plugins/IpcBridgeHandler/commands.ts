@@ -24,7 +24,8 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
     case "commands:executeResult": {
       // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
       // E5.8#43-4（①④）：末位 windowId = 回执来源窗口（主进程 sender 注入）——回执校验只收目标窗口
-      const [requestId, payload, windowId] = args as [string, { result?: unknown; error?: string }, string?];
+      // S2/T14：code/hint 随回执透传（插件结构化错误的码是 AI 唯一能判的字段）——本层 verbatim
+      const [requestId, payload, windowId] = args as [string, { result?: unknown; error?: string; code?: string; hint?: string }, string?];
       resolvePoolExecution(requestId, payload, windowId);
       break;
     }
@@ -35,13 +36,14 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
       // E6#111b：meta.pluginId = 注册方显式申报的真身份（②）——**回执把解析出的归属还给池侧**，
       //   池侧 on-command 激活据此取属主（H3：不再从名字第一段推）。
       // M1 AI#7：meta 增 description/params（命令说明与参数结构）——本层 verbatim 透传，语义归注册表
-      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] } | null, string?];
+      // S4：meta.activation = 池侧注册上下文的运行期真值——verbatim 透传，语义归注册表
+      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[]; activation?: "entry" | "view"; async?: boolean } | null, string?];
       return registerPoolCommandMetadata(commandId, meta ?? {}, windowId);
     }
     case "commands:registerShell": {
       // E5.7#56：壳侧插件入口注册命令（双进程执行——壳 glob loader 侧半程真注册，
       // handler 存壳 preload 页面世界代理，执行走 _executeShellLocal 桥）
-      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] } | null];
+      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[]; activation?: "entry" | "view"; async?: boolean } | null];
       return registerShellLocalCommand(commandId, meta ?? {});
     }
     case "commands:unregister": {

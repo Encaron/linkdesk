@@ -13,12 +13,10 @@
  *   - ownerPluginId 资源归属 + closePortsByOwner 卸载连坐（D8——S16 补洞）
  *
  * 关键行为（保留既有修复成果，全部不变）：
- *   - 行缓冲 + \n 拆行（与 Rust read_loop 一致）
  *   - 读错误休眠 100ms，不忙循环（H1 修复）
- *   - 关闭前冲刷行缓冲残留（B3 修复）
- *   - GBK/Shift-JIS 编码支持（B61 修复，iconv-lite）
+ *   - GBK/Shift-JIS **发送编码**支持（B61 修复，iconv-lite）——接收解码已归插件（D2）
  *   - 打开时清空硬件输入缓冲区（丢弃闭口期间陈旧数据）
- *   - 16ms 批量推送（非行分隔连续数据，防止数千次/秒 IPC）
+ *   - 原始字节即时推送（D1：壳只在读写边界打 dir，不解码、不拆行——行/会话/缓冲全归插件）
  *   - isClosing 标志防止关闭期间读取竞态（E5.8#26：每口独立——防 A 口关闭期间 B 口数据被 isClosing 丢弃）
  *
  * 安全模型：
@@ -42,17 +40,15 @@ interface PortInfo {
   description: string;
 }
 
-/** E5.8#26 D4——每个打开端口的独立状态。六字段内聚（isClosing/flushTimer 各口独立，
+/** E5.8#26 D4——每个打开端口的独立状态。四字段内聚（isClosing/port 各口独立，
  *  防 A 口关闭期间 B 口数据被 isClosing 丢弃）+ ownerPluginId（D8 资源归属，卸载连坐）。
- *  portName 冗余存于状态内——Map key 与状态自含一致，防改 key 时丢（设计 D4 六字段含 portName）。 */
+ *  portName 冗余存于状态内——Map key 与状态自含一致，防改 key 时丢（设计 D4 六字段含 portName）。
+ *  D1：接收侧不再有行缓冲/编码态——字节一到就带 dir 推给插件。 */
 interface PortState {
   port: SerialPort;
-  lineBuffer: Buffer[];
   isClosing: boolean;
-  encoding: string;
   portName: string;
   baudRate: number;
-  flushTimer: ReturnType<typeof setTimeout> | null;
   ownerPluginId?: string;
 }
 
@@ -64,20 +60,7 @@ interface SerialCallbacks {
   onSystem: (payload: SerialSystemPayload) => void;
 }
 
-// ── 编码解码（对标 Rust decode_bytes）──
-
-function decodeBuffer(buf: Buffer, encoding: string): string {
-  switch (encoding) {
-    case 'GBK':
-    case 'GB2312':
-      return iconv.decode(buf, 'gbk');
-    case 'Shift-JIS':
-      return iconv.decode(buf, 'shift_jis');
-    default:
-      // UTF-8 / ASCII / Latin-1 → lossy UTF-8 兜底（对标 Rust from_utf8_lossy）
-      return Buffer.from(buf).toString('utf-8');
-  }
-}
+// ── 发送编码（对标 Rust send_text）——接收侧无解码器（D1/D2）──
 
 function encodeText(text: string, encoding: string): Buffer {
   switch (encoding) {
@@ -163,7 +146,6 @@ class SerialService {
     const dataBits = cfg.dataBits ?? 8;
     const stopBits = cfg.stopBits ?? 1;
     const parity = cfg.parity ?? 'none';
-    const encoding = cfg.encoding ?? 'UTF-8';
 
     const state: PortState = {
       port: new SerialPort({
@@ -174,12 +156,9 @@ class SerialService {
         parity: parity as 'none' | 'even' | 'odd' | 'mark' | 'space',
         autoOpen: false,
       }),
-      lineBuffer: [],
       isClosing: false,
-      encoding,
       portName: cfg.portName,
       baudRate: cfg.baudRate,
-      flushTimer: null,
       ownerPluginId: cfg.ownerPluginId,
     };
 
@@ -210,41 +189,29 @@ class SerialService {
   // ── 读循环（对标 Rust read_loop——事件驱动替代轮询）──
 
   /** E5.8#26——闭包捕获 PortState（现网 this.port 读 this 字段改参传 state）：
-   *  每口独立 isClosing/flushTimer/lineBuffer，防跨口串扰。 */
+   *  每口独立 isClosing，防跨口串扰。
+   *  D1：读口就是壳的边界——字节原样带 `dir:"rx"` 推给插件；不拆行、不解码、不缓冲。 */
   private startReadLoop(state: PortState): void {
     // serialport npm 事件驱动——比 Rust 的 100ms 轮询更高效
     state.port.on('data', (chunk: Buffer) => {
       if (state.isClosing) return;
 
-      // 收到新数据就重置超时计时器
-      if (state.flushTimer) {
-        clearTimeout(state.flushTimer);
-        state.flushTimer = null;
-      }
-
       // RX 统计
       this.callbacks?.onStats({ portName: state.portName, rx: chunk.length });
 
-      // 拼入行缓冲区
-      state.lineBuffer.push(chunk);
-
-      // 按 \n 拆行并 push（对标 Rust read_loop 行拆分逻辑）
-      this.flushLines(state);
-
-      // 对标 Rust 100ms 超时冲刷——无 \n 的数据不会永远滞留缓冲区
-      state.flushTimer = setTimeout(() => {
-        state.flushTimer = null;
-        this.flushLineResidual(state);
-      }, 100);
+      // D1：原始字节透传——方向由壳的读口边界决定（解码/拼行/会话归插件）
+      this.callbacks?.onData({
+        portName: state.portName,
+        dir: 'rx',
+        data: new Uint8Array(chunk),
+        at: Date.now(),
+      });
     });
 
     // 错误处理——对标 Rust 读错误休眠 100ms
     // serialport 在底层处理超时，不会像 Rust 那样返回 Err
     state.port.on('error', (err: Error) => {
       if (state.isClosing) return;
-
-      // 冲刷行缓冲区残留（对标 Rust 读错误时的 residual 逻辑）
-      this.flushLineResidual(state);
 
       // E5.8#30.11（P1）：拔线/驱动错误——错误消息全局可见（范围含拔线，P1 拍板 §0.2）
       this.callbacks?.onSystem({
@@ -257,56 +224,6 @@ class SerialService {
     });
   }
 
-  // ── 按 \n 拆行并推送 ──
-
-  private flushLines(state: PortState): void {
-    // 合并行缓冲区为单个 Buffer
-    const merged = Buffer.concat(state.lineBuffer);
-
-    // 找最后一个 \n 的位置
-    let lastNL = -1;
-    for (let i = 0; i < merged.length; i++) {
-      if (merged[i] === 0x0a) lastNL = i; // \n = 0x0a
-    }
-
-    if (lastNL >= 0) {
-      // 取从开头到最后一个 \n（含）的数据
-      const complete = merged.subarray(0, lastNL + 1);
-      // 剩余数据留在行缓冲区
-      const remaining = merged.subarray(lastNL + 1);
-
-      // 按 \n 拆行
-      let start = 0;
-      for (let i = 0; i < complete.length; i++) {
-        if (complete[i] === 0x0a) {
-          const line = complete.subarray(start, i + 1);
-          const text = decodeBuffer(Buffer.from(line), state.encoding).trim();
-          if (text) {
-            this.callbacks?.onData({ portName: state.portName, text });
-          }
-          start = i + 1;
-        }
-      }
-
-      // 重置行缓冲区
-      state.lineBuffer = remaining.length > 0 ? [Buffer.from(remaining)] : [];
-    }
-
-    // 如果没有 \n，数据留在 lineBuffer 中，等更多数据到达
-  }
-
-  // ── 冲刷行缓冲区残留（对标 Rust close_port 中的 line_residual 逻辑）──
-
-  private flushLineResidual(state: PortState): void {
-    if (state.lineBuffer.length === 0) return;
-    const merged = Buffer.concat(state.lineBuffer);
-    const text = decodeBuffer(Buffer.from(merged), state.encoding).trim();
-    state.lineBuffer = [];
-    if (text) {
-      this.callbacks?.onData({ portName: state.portName, text });
-    }
-  }
-
   // ── 关闭串口（对标 Rust close_port）──
 
   /** E5.8#26——可选 portName 经 getPort 解析（D2）；缺省唯一口语义：0 口抛「串口未打开」/ ≥2 口抛歧义。 */
@@ -316,9 +233,6 @@ class SerialService {
 
     const name = state.portName;
     state.isClosing = true;
-
-    // 冲刷行缓冲区残留（对标 Rust line_residual 逻辑）
-    this.flushLineResidual(state);
 
     // 关闭端口
     const p = state.port;
@@ -333,7 +247,6 @@ class SerialService {
 
     // 清理状态
     state.isClosing = false;
-    state.lineBuffer = [];
 
     this.callbacks?.onSystem({ portName: name, message: `---- 关闭串行端口 ${name} ----`, type: 'status' });
   }
@@ -360,34 +273,43 @@ class SerialService {
     }
   }
 
+  /**
+   * D1：写口就是壳的边界——写出去的字节一次落三件事（jscpd 唯一实现）：
+   * ① 真正写口；② onStats 记 tx 增量；③ onData 带 `dir:'tx'` 回推（插件按 dir 区分回显与设备上报）。
+   * `sendData` / `sendText` 只负责「字节怎么来」，⛔ 各拼一份回调面（两份会漂）。
+   */
+  private emitTxAndEcho(state: PortState, buf: Buffer): number {
+    state.port.write(buf);
+    const byteCount = buf.length;
+    this.callbacks?.onStats({ portName: state.portName, tx: byteCount });
+    this.callbacks?.onData({
+      portName: state.portName,
+      dir: 'tx',
+      data: new Uint8Array(buf),
+      at: Date.now(),
+    });
+    return byteCount;
+  }
+
   // ── 发送字节（对标 Rust send_data）──
 
-  sendData(data: Buffer | number[], portName?: string): number {
+  /** 写口前共用守卫——取口 ＋ 未开即抛（`sendData`/`sendText` 单一实现） */
+  private requireOpenPort(portName?: string): PortState {
     const state = this.getPort(portName);
     if (!state.port.isOpen) {
       throw new Error('串口未打开');
     }
+    return state;
+  }
 
-    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-    state.port.write(buf);
-    const byteCount = buf.length;
-    this.callbacks?.onStats({ portName: state.portName, tx: byteCount });
-    return byteCount;
+  sendData(data: Buffer | number[], portName?: string): number {
+    return this.emitTxAndEcho(this.requireOpenPort(portName), Buffer.isBuffer(data) ? data : Buffer.from(data));
   }
 
   // ── 发送文本（对标 Rust send_text）──
 
   sendText(text: string, encoding: string, portName?: string): number {
-    const state = this.getPort(portName);
-    if (!state.port.isOpen) {
-      throw new Error('串口未打开');
-    }
-
-    const buf = encodeText(text, encoding);
-    state.port.write(buf);
-    const byteCount = buf.length;
-    this.callbacks?.onStats({ portName: state.portName, tx: byteCount });
-    return byteCount;
+    return this.emitTxAndEcho(this.requireOpenPort(portName), encodeText(text, encoding));
   }
 
   // ── DTR / RTS 控制信号（对标 Rust set_dtr / set_rts）──
