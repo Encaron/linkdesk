@@ -14,7 +14,9 @@
  *    **凡壳侧新增、用户可读可写的配置键，必须在本文件声明**——⛔ 不许只在代码里 `getConfigurationValue`
  *    读一个设置页看不见的裸键。三条键全部声明，消费方 = `install/trust.ts`（唯一读取处）。
  *
- * 落点：`src/App/config/update.ts` 已在「通用」组注册「更新」节；本文件在其后注册「插件更新」节。
+ * 落点：`src/App/config/update.ts` 已在「通用」组注册「软件更新」节；本文件在其后注册「插件更新」节。
+ * 🔴 2026-11-24 实机纠偏：四条**不再各自声明 `group`**——同节内再分子组时实机把两条描述串到相邻行
+ *   （用户截图：第一条下面显示的是第二条的描述）。节标题本身已足够分组。
  * 设置页是普通插件、可整套替换——这里是**配置声明**，任何设置插件都应渲染；
  * `trustedSources` 用共享 `stringList` 控件（通用渲染器直接出，⛔ 不需要设置插件发版）。
  */
@@ -32,21 +34,18 @@ export function registerPluginUpdateConfiguration(t: ConfigT): void {
     properties: {
       [POLICY_KEYS.silentOfficial]: {
         type: "boolean",
-        group: t("插件更新"),
         default: DEFAULT_POLICY.silentOfficial,
         title: t("官方目录更新不再询问"),
         description: t("官方目录的同源更新（同一来源、版本更高、校验通过）直接安装，不再逐项询问"),
       },
       [POLICY_KEYS.silentTrustedSources]: {
         type: "boolean",
-        group: t("插件更新"),
         default: DEFAULT_POLICY.silentTrustedSources,
         title: t("信任来源的更新不再询问"),
         description: t("你在下方信任过的第三方来源，其同源更新直接安装，不再逐项询问"),
       },
       [POLICY_KEYS.sources]: {
         type: "array",
-        group: t("插件更新"),
         default: [],
         uiHint: "stringList",
         title: t("市场源"),
@@ -54,7 +53,6 @@ export function registerPluginUpdateConfiguration(t: ConfigT): void {
       },
       [POLICY_KEYS.trustedSources]: {
         type: "array",
-        group: t("插件更新"),
         default: [],
         uiHint: "stringList",
         title: t("信任来源"),

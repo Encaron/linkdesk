@@ -149,9 +149,30 @@ describe("isRemoteSource —— D2 安装门判据", () => {
   });
 });
 
+describe("无账本记录时的判定（2026-11-24 实机回归）", () => {
+  it("官方同源更新 · 免问开 · 账本无记录 ⇒ **silent**（实机 bug：以前弹「来源已变更·未知发布者」）", () => {
+    const c = ctx({ facts: { installedVersion: "1.0.78", knownSource: null }, silentOfficial: true });
+    expect(decideOne(req({ mode: "update", version: "1.0.79", source: SOURCE_OFFICIAL }), c)).toEqual({ kind: "silent" });
+  });
+
+  it("官方同源更新 · 免问关 · 账本无记录 ⇒ ask(official-source)，且不冒充「来源变更」", () => {
+    const c = ctx({ facts: { installedVersion: "1.0.78", knownSource: null }, silentOfficial: false });
+    const d = decideOne(req({ mode: "update", version: "1.0.79", source: SOURCE_OFFICIAL }), c);
+    expect(d).toMatchObject({ kind: "ask", reason: "official-source" });
+    expect((d as { previous?: unknown }).previous).toBeUndefined();
+  });
+
+  it("第三方同源更新 · 账本无记录 ⇒ ask(untrusted-source)，⛔ 不带 previous", () => {
+    const c = ctx({ facts: { installedVersion: "1.0.0", knownSource: null } });
+    const d = decideOne(req({ mode: "update", version: "1.1.0" }), c);
+    expect(d).toMatchObject({ kind: "ask", reason: "untrusted-source" });
+    expect((d as { previous?: unknown }).previous).toBeUndefined();
+  });
+});
+
 describe("sameSourceIdentity", () => {
-  it("null 恒不同", () => {
-    expect(sameSourceIdentity(null, SOURCE_THIRD)).toBe(false);
+  it("null = 无记录 ⇒ 不判变更（随包种子/旧安装没有来源账本，⛔ 别当「来源变了」）", () => {
+    expect(sameSourceIdentity(null, SOURCE_THIRD)).toBe(true);
   });
 
   it("url/repo/publisher 全同 = 同源（id 不参与）", () => {

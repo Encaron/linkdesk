@@ -412,4 +412,19 @@
   border-color: var(--danger);
   background: var(--danger);
   color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+/* 🔴 危险按钮的 hover 必须仍是红的（2026-11-24 实机：hover 变绿＋红圈，很丑）。
+   原因 = `.is-primary:hover` 的优先级压过 `.is-danger` 的底色；这里显式收回来。 */
+.ldk-pic-btn.is-danger:hover {
+  border-color: var(--danger);
+  background: var(--danger);
+  filter: brightness(1.12);
+}
+
+.ldk-pic-btn.is-danger:focus-visible,
+.ldk-pic-btn.is-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

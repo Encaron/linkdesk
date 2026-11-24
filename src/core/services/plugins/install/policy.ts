@@ -23,9 +23,17 @@ import type { PolicyContext, PolicyDecision } from "./types";
 /** 官方目录的固定 sourceId（信任清单里 fixed=true 的那一行；⛔ 不参与第 ⑥ 步判定，见文件头） */
 export const OFFICIAL_SOURCE_ID = "official";
 
-/** 同源判据：sourceUrl ＋ repo ＋ publisher 全同（spec §3.4；id 只是市场的自称，不作判据） */
+/**
+ * 同源判据：sourceUrl ＋ repo ＋ publisher 全同（spec §3.4；id 只是市场的自称，不作判据）。
+ *
+ * 🔴 **没有记录 ≠ 来源变了**（2026-11-24 实机纠偏）：随包种子（bundled）装进来的插件、
+ * 以及本功能上线前装的插件，账本里**没有来源身份**。此前把"无记录"当成"来源变更" ⇒
+ * 用户点官方更新时被一张「来源已变更 · 旧来源=未知发布者」的卡拦住，连「官方更新不再询问」
+ * 开关都失效（用户实机截图证物）。正确语义：**无记录 = 没有相反证据** ⇒ 不判变更，
+ * 交给「首装/免问开关/信任」那几条正常规则去决定。
+ */
 export function sameSourceIdentity(known: PluginSourceIdentity | null, next: PluginSourceIdentity): boolean {
-  if (!known) return false;
+  if (!known) return true;
   return known.url === next.url && (known.repo ?? "") === (next.repo ?? "") && (known.publisher ?? "") === (next.publisher ?? "");
 }
 
