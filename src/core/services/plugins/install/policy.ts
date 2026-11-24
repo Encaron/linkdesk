@@ -48,6 +48,13 @@ export function isRemoteSource(path: string): boolean {
 
 /** 单项判定 */
 export function decideOne(req: PluginInstallRequest, ctx: PolicyContext): PolicyDecision {
+  // ⓪ 最低壳版本——**壳自己判**（spec §四：不满足直接拦、不弹卡）。
+  //   市场侧也有一道（minAppVerdict），但"市场不判"是完全可以发生的（第三方市场/脚本）⇒ 壳这道是底线。
+  // 🔴 dev 树 `product.json` 恒为占位 0.1.0（见 CLAUDE.md）——拿它判 minApp 会让 dev 里谁都装不上。
+  const devPlaceholder = !ctx.shellVersion || ctx.shellVersion === "0.1.0";
+  if (!devPlaceholder && req.minAppVersion && compareVersions(ctx.shellVersion!, req.minAppVersion) < 0) {
+    return { kind: "rejected", reason: "min-app", message: `requires ${req.minAppVersion}` };
+  }
   const facts = ctx.facts(req.pluginId);
 
   // ① 首装 / 重装 —— 任何来源必问

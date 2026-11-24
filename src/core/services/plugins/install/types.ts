@@ -91,6 +91,8 @@ export interface PolicyContext {
   facts(pluginId: string): RequestFacts;
   /** 本批临时「全都问一遍」——预览重算时用（⛔ 不改设置、不落盘） */
   forceAsk?: boolean;
+  /** 当前壳版本（null = 取不到 ⇒ 不判 minApp） */
+  shellVersion?: string | null;
 }
 
 /** 单项判定——`ask` 带原因（渲染体只按原因选文案） */

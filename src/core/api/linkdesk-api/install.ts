@@ -50,8 +50,12 @@ export interface PluginInstallRequest {
   display: PluginInstallDisplay;
   /** update 模式：显式放行降级（版本下拉选旧版）——仍会走确认（policy 出 `downgrade`） */
   allowOlder?: boolean;
-  /** 缺依赖解析目录（同 PluginInstallRequestOpts.catalogUrl 语义）——壳在同一 job 内自动装依赖用 */
+  /** 缺依赖解析目录（同 PluginInstallRequestOpts.catalogUrl 语义）——壳在同一 job 内自动装依赖用。
+   *  🔴 市场**必须**带上（旧链靠它做依赖自动安装，漏了 = 依赖装不上、插件 parked）。 */
   catalogUrl?: string;
+  /** 目录条目声明的最低壳版本——壳**自己**再判一次（spec §四：不满足直接拦，不进入确认）。
+   *  市场照抄目录条目即可；不带 = 不判（旧目录条目没有该字段）。 */
+  minAppVersion?: string;
 }
 
 /** 需要确认的原因——**封闭集合**；渲染体只按它选文案，⛔ 不自推（两条独立开关见 PluginUpdatePolicy） */
@@ -159,6 +163,10 @@ export interface PluginInstallPrepared {
 /** `commitInstall` 回执——`confirmed:true` = 用户已确认且已交执行（成败看 job 表） */
 export interface PluginInstallCommitResult {
   confirmed: boolean;
+  /** 🔴 **执行结果**（confirmed 只表示"用户同意了"）：false = 已确认但没装成（下载/校验/落盘失败）。
+   *  市场必须据此报错，⛔ 不许把 confirmed 当成"装好了"（实机：确认后失败的更新被报成成功）。 */
+  ok?: boolean;
+  error?: string;
   cancelled?: boolean;
   jobId?: string;
   /** `unknown-plan` = planId 不存在/已用过/已过期（统一一个词，⛔ 不细分） */

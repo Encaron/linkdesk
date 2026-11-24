@@ -122,7 +122,7 @@ describe("prepareInstall / commitInstall", () => {
     const ex = executor(null);
     setInstallExecutor(ex);
     const { planId } = await prepareInstall(REQ);
-    expect(await commitInstall(planId)).toEqual({ confirmed: true });
+    expect(await commitInstall(planId)).toEqual({ confirmed: true, ok: true, error: undefined });
     expect(ex.install).toHaveBeenCalledTimes(1);
     expect(recorded).toEqual(["demo-plugin"]);
     expect(await commitInstall(planId)).toEqual({ confirmed: false, reason: "unknown-plan" });
@@ -182,7 +182,7 @@ describe("prepareUpdateBatch", () => {
     // demo-plugin 账本记着官方源 ⇒ 同源更新免问；third-a 无账本记录 ⇒ 按来源变更问
     expect(plan.totals).toEqual({ total: 2, ask: 1, silent: 1 });
     expect(plan.groups.map((g) => g.sourceId)).toEqual(["lab", "official"]);
-    expect(await commitInstall(planId)).toEqual({ confirmed: true });
+    expect(await commitInstall(planId)).toEqual({ confirmed: true, ok: true });
     expect(ex.update).toHaveBeenCalledTimes(2);
   });
 

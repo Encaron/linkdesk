@@ -74,6 +74,13 @@ export function wireInstallExecutor(api: PluginManagementAPI): void {
     async install(req: PluginInstallRequest, token: string) {
       const rejected = rejectUnsafeRequest(req, token);
       if (rejected) return rejected;
+      // 🔴 已装还按"安装"走会在解压段撞「目标已存在 ⇒ 请走更新」（用户确认了却装不上）。
+      //    ⇒ 已装就改走更新链（同一条流水线，语义正确）。
+      const installed = await this.installedVersion?.(req.pluginId);
+      if (installed) {
+        const upd = await api.updatePlugin(req.pluginId, { url: req.downloadUrl, allowOlder: req.allowOlder });
+        return { success: upd.success, error: upd.error, cancelled: upd.cancelled, version: upd.version, needRestart: upd.needRestart };
+      }
       const res = await api.installWithProgress(req.downloadUrl, {
         pluginId: req.pluginId,
         displayName: req.display.name,
@@ -98,8 +105,17 @@ export function wireInstallExecutor(api: PluginManagementAPI): void {
       };
     },
     async installedVersion(pluginId: string) {
-      const entry = api.getListPluginManifests().find((p) => p.pluginId === pluginId);
-      return entry?.manifest?.version ?? null;
+      // 🔴 账本是「装了谁」的唯一真相源（installed-plugins.json）：清单投影只含已加载+挂起，
+      //    **禁用插件不在里面** ⇒ 拿清单判"是否已装"会把禁用插件当首装（实机同类 bug 的源头）。
+      try {
+        const { getInstalled } = await import("../../PluginInstallService");
+        const entry = (await getInstalled())[pluginId];
+        if (entry && !entry.removed) return entry.version;
+      } catch {
+        /* 账本读失败 → 回落到清单 */
+      }
+      const row = api.getListPluginManifests().find((p) => p.pluginId === pluginId);
+      return row?.manifest?.version ?? null;
     },
   });
 }

@@ -33,6 +33,7 @@ import { getSourceIdentity, recordSourceIdentity } from "./ledger";
 import { dropPlanHandle, putPlanHandle, takePlanHandle, type PlanHandle } from "./plan-handles";
 import { bindingOfRequest, issueToken } from "./token";
 import { getUpdatePolicy, isSourceTrusted, sourceLabel } from "./trust";
+import { getShellExposed } from "../../../api/linkdesk-api/surfaces";
 import type {
   ConfirmPresentInfo,
   ConfirmRenderer,
@@ -124,6 +125,13 @@ async function buildContext(
 ): Promise<PolicyContext> {
   const executor = requireExecutor();
   const policy = getUpdatePolicy();
+  // 壳版本——minApp 判定的依据；取不到就 null（⛔ 不猜、不因此拦人）
+  let shellVersion: string | null = null;
+  try {
+    shellVersion = (await getShellExposed()?.app?.getVersion?.()) ?? null;
+  } catch {
+    shellVersion = null;
+  }
   const versions = new Map<string, string | null>();
   const known = new Map<string, PluginSourceIdentity | null>();
 
@@ -155,6 +163,7 @@ async function buildContext(
 
   return {
     policy,
+    shellVersion,
     forceAsk: opts?.forceAsk === true,
     isTrusted: isSourceTrusted,
     labelOf: sourceLabel,
@@ -279,7 +288,8 @@ async function executePlan(handle: PlanHandle): Promise<PluginInstallCommitResul
     if (!req) return { confirmed: false, reason: "rejected" };
     const result = await execute(req);
     if (result.success) await recordSource(req, result);
-    return { confirmed: true };
+    // confirmed = 用户同意了；ok = 真的装成了（市场必须分开报，⛔ 别把「同意」当「成功」）
+    return { confirmed: true, ok: result.success, error: result.error };
   }
 
   const outcomes = await Promise.all(
@@ -290,7 +300,7 @@ async function executePlan(handle: PlanHandle): Promise<PluginInstallCommitResul
     }),
   );
   emitBatchSummary(outcomes);
-  return { confirmed: true };
+  return { confirmed: true, ok: outcomes.every((o) => o.result.success) };
 }
 
 /* ── 批量更新 ── */
