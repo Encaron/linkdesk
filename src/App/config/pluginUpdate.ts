@@ -22,14 +22,19 @@
  */
 
 import { registerConfiguration } from "../../core/registry/ConfigurationRegistry";
-import { APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
+/**
+ * 本节的声明归属——**独立 pluginId**（导航项 = 一个 pluginId 一项）。
+ * 🔴 2026-11-24 实机纠偏：挂在 `app` 下时，四条会并进「通用」且（去掉 group 后）连节名都没了，
+ * 用户原话「没有插件更新这个东西了」。独立成一项：左侧导航直接有「插件更新」，点进去就是这三条。
+ */
+const PLUGIN_UPDATE_ID = "plugin-update";
 import { DEFAULT_POLICY, POLICY_KEYS } from "../../core/services/plugins/install";
 
 /** t() 类型——仅声明组取 key（同 config/update.ts） */
 type ConfigT = (key: string) => string;
 
 export function registerPluginUpdateConfiguration(t: ConfigT): void {
-  registerConfiguration(APP_PLUGIN_ID, {
+  registerConfiguration(PLUGIN_UPDATE_ID, {
     title: t("插件更新"),
     properties: {
       [POLICY_KEYS.silentOfficial]: {
@@ -44,20 +49,13 @@ export function registerPluginUpdateConfiguration(t: ConfigT): void {
         title: t("信任来源的更新不再询问"),
         description: t("你在下方信任过的第三方来源，其同源更新直接安装，不再逐项询问"),
       },
-      [POLICY_KEYS.sources]: {
-        type: "array",
-        default: [],
-        uiHint: "stringList",
-        title: t("市场源"),
-        description: t("已登记的市场目录源（每行一条 id）。命令 plugins.addSource 写入；浏览面读它决定去哪找插件"),
-      },
       [POLICY_KEYS.trustedSources]: {
         type: "array",
         default: [],
         uiHint: "stringList",
         title: t("信任来源"),
         // 「覆盖范围」写进说明——每行状态由确认卡与来源清单显式展示，⛔ 不让用户猜「在这一行是信任还是不信任」。
-        description: t("已信任来源的来源 ID（每行一条）。每个来源只影响它的同源更新；首次安装与来源变更仍需确认"),
+        description: t("每行一个来源 id（就是市场「来源」里显示的那个名字）。只影响该来源的更新；首次安装和来源变更仍会确认"),
       },
     },
   });

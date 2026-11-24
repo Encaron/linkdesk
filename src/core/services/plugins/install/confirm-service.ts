@@ -233,7 +233,7 @@ export async function requestInstall(req: PluginInstallRequest): Promise<PluginI
   const r = await commitInstall(prepared.planId);
   const mapped: PluginInstallConfirmResult["reason"] =
     r.reason === "unknown-plan" ? "no-token" : r.reason === "rejected" ? "invalid" : r.reason;
-  return { confirmed: r.confirmed, cancelled: r.cancelled, reason: mapped };
+  return { confirmed: r.confirmed, ok: r.ok, error: r.error, cancelled: r.cancelled, reason: mapped };
 }
 
 /* ── 两步确认（D1′：UI 归市场）── */

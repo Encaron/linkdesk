@@ -139,6 +139,10 @@ export interface PluginSourceTrustEntry {
 /** `requestInstall` 回执——`confirmed:false` ＋ `cancelled:false` = 被拒（`reason` 说原因） */
 export interface PluginInstallConfirmResult {
   confirmed: boolean;
+  /** 🔴 执行结果（confirmed 只表示「用户同意了」）：false = 已确认但没装成。
+   *  市场必须据此报错——实机（2026-11-24）：明文 http 被拒后**一点提示都没有**，就是因为这里被吞了。 */
+  ok?: boolean;
+  error?: string;
   cancelled?: boolean;
   /** 确认后壳已入队；进度/终态走 `plugin:installJobs` 全量快照 */
   jobId?: string;

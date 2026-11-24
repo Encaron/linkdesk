@@ -30,9 +30,17 @@ export const POLICY_KEYS = {
   silentOfficial: "app.pluginUpdate.silentOfficial",
   silentTrustedSources: "app.pluginUpdate.silentTrustedSources",
   trustedSources: "app.pluginUpdate.trustedSources",
-  /** 已登记的市场目录源 id 列表（D9′ 零插件路径：`plugins.addSource` 写它；市场/浏览面读它） */
-  sources: "app.pluginUpdate.sources",
 } as const;
+
+/**
+ * 市场源清单的**唯一 store** —— 市场插件自己那本账（`marketplace.marketplaceSources`）。
+ *
+ * 🔴 2026-11-24 实机纠偏：D9′ 曾新开 `app.pluginUpdate.sources` 当"零插件路径的来源清单"，
+ * 结果**同一事实两处写**——设置里多出一个「市场源」输入框、市场里还有一套，两边的来源 id
+ * 还不一样（一个 `fixtures-a`、一个 `Encaron/linkdesk-fixtures`）⇒ 用户信任了 A 却按 B 判定，
+ * 「信任来源不再询问」怎么开都无效。现已收回：**只写市场那本账**，壳命令只是它的另一个写入口。
+ */
+export const MARKET_SOURCES_KEY = "marketplace.marketplaceSources";
 
 /** 默认值——**唯一来源**：配置声明用它、读取兜底也用它（⛔ 两处各写一遍数字） */
 export const DEFAULT_POLICY: PluginUpdatePolicy = {

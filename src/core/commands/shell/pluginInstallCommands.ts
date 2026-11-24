@@ -17,7 +17,7 @@ import i18n from "../../../i18n";
 import { getConfigurationValue } from "../../services/configuration/ConfigurationService";
 import { setConfigurationValue } from "../../services/configuration/ConfigurationService/settings-io";
 import { createLogChannel, getLogChannel } from "../../services/ui/LogChannel";
-import { POLICY_KEYS, commitInstall, prepareInstall, requestInstall } from "../../services/plugins/install";
+import { MARKET_SOURCES_KEY, commitInstall, prepareInstall, requestInstall } from "../../services/plugins/install";
 import { getShellExposed } from "../../api/linkdesk-api/surfaces";
 import type { PluginInstallRequest } from "../../api/linkdesk-api/types";
 
@@ -208,11 +208,16 @@ export function registerPluginInstallCommands(): void {
       if (!url) throw new Error(t("缺少 catalogUrl"));
       if (!/^https:\/\//i.test(url)) throw new Error(t("仅支持 HTTPS 目录源"));
       const id = sourceIdOfCatalog(url);
-      const current = getConfigurationValue<string[]>(POLICY_KEYS.sources) ?? [];
-      if (!current.includes(id)) {
-        await setConfigurationValue(POLICY_KEYS.sources, [...current, id]);
+      // 🔴 写**市场那本账**（唯一 store）——市场上「来源」列表立刻能看到，⛔ 不另开第二套清单
+      const current = getConfigurationValue<unknown[]>(MARKET_SOURCES_KEY) ?? [];
+      const has = current.some((it) => {
+        const u = typeof it === "string" ? it : typeof it === "object" && it ? String((it as { url?: unknown }).url ?? "") : "";
+        return u.trim().toLowerCase() === url.toLowerCase();
+      });
+      if (!has) {
+        await setConfigurationValue(MARKET_SOURCES_KEY, [...current, url]);
       }
-      return { sourceId: id, sources: getConfigurationValue<string[]>(POLICY_KEYS.sources) ?? [] };
+      return { sourceId: id, sources: getConfigurationValue<unknown[]>(MARKET_SOURCES_KEY) ?? [] };
     },
   });
 }

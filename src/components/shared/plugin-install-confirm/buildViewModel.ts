@@ -68,14 +68,15 @@ export function buildInstallVM(
 ): PluginConfirmVM {
   const item = plan.ask[0];
   if (!item) {
-    // 调用方保证 ask 非空；空则给一张不可确认的空卡（⛔ 不崩、⛔ 不静默确认）
+    // 正常情况下调用方保证 ask 非空（壳只在 ask>0 时弹卡）。真走到这里说明**计划与卡片不匹配**，
+    // 必须显式说清并只留一个出口——⛔ 不许像 2026-11-24 实机那样出现「两个取消」的空白卡。
     return {
       kind: "install",
       title: labels.batchTitle,
       sub: labels.batchSub,
       rows: [],
       emptyText: labels.batchEmpty,
-      footer: { confirm: labels.actionCancel, cancel: labels.actionCancel },
+      footer: { confirm: labels.actionCancel, cancel: labels.actionCancel, tone: "danger" },
     };
   }
 

@@ -94,16 +94,26 @@ export default function PluginInstallConfirm({ vm, onConfirm, onCancel, onRememb
       </div>
 
       <footer className="ldk-pic-foot">
-        <button type="button" className="ldk-pic-btn" onClick={onCancel}>
-          {vm.footer.cancel}
-        </button>
-        <button
-          type="button"
-          className={danger ? "ldk-pic-btn is-primary is-danger" : "ldk-pic-btn is-primary"}
-          onClick={onConfirm}
-        >
-          {vm.footer.confirm}
-        </button>
+        {/* 两颗按钮**文案相同时只画一颗**（2026-11-24 实机：计划与卡片不匹配时出现过「取消 / 取消」
+            两个按钮，用户完全不知道该点哪个）。这是兜底护栏，不是正常形态。 */}
+        {vm.footer.confirm === vm.footer.cancel ? (
+          <button type="button" className="ldk-pic-btn" onClick={onCancel}>
+            {vm.footer.cancel}
+          </button>
+        ) : (
+          <>
+            <button type="button" className="ldk-pic-btn" onClick={onCancel}>
+              {vm.footer.cancel}
+            </button>
+            <button
+              type="button"
+              className={danger ? "ldk-pic-btn is-primary is-danger" : "ldk-pic-btn is-primary"}
+              onClick={onConfirm}
+            >
+              {vm.footer.confirm}
+            </button>
+          </>
+        )}
       </footer>
     </div>
   );

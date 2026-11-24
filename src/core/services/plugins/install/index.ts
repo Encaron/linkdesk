@@ -29,6 +29,7 @@ export {
 /* ② 策略面 */
 export {
   POLICY_KEYS,
+  MARKET_SOURCES_KEY,
   DEFAULT_POLICY,
   getUpdatePolicy,
   setUpdatePolicy,

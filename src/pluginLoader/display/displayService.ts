@@ -12,7 +12,7 @@ import i18n from "../../i18n";
 import {
   resolveDisplayManifest,
   type DisplayTextEntry,
-} from "@linkdesk/plugin-sdk/display-text";
+} from "../../../packages/plugin-sdk/src/display-text";
 
 /** 单条显示文本按插件命名空间解析；缺键 → 原文。 */
 export function resolvePluginDisplayText(pluginId: string, text: string, lang = i18n.language): string {

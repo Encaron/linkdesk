@@ -200,7 +200,7 @@ describe("requestInstall 快捷路径（= prepare + 默认卡 + commit）", () =
     const ex = executor(null);
     setInstallExecutor(ex);
     setConfirmRenderer({ present: vi.fn(async () => true) });
-    expect(await requestInstall(REQ)).toEqual({ confirmed: true });
+    expect(await requestInstall(REQ)).toMatchObject({ confirmed: true, ok: true });
     expect(ex.install).toHaveBeenCalledTimes(1);
   });
 
