@@ -23,6 +23,8 @@ import type {
   PluginUpdatePolicy,
   PluginSourceTrustEntry,
   PluginConfirmPlan,
+  PluginInstallPrepared,
+  PluginInstallCommitResult,
 } from "./types";
 import type { PluginManifest } from "../types";
 
@@ -59,6 +61,9 @@ export interface PluginsAPI {
      *  a jobId → AbortController registry and does not interpret semantics. Returns false = that job currently has no in-flight download
      *  (already finished / not started / not in the download stage) — callers should read this as "cancel accepted, wait for the terminal state", not as a failure. */
     packageCancel?(jobId: string): Promise<boolean>;
+    /** P1（D9′ 零插件路径）：只读拉取目录原文（HTTPS-only；主进程唯一网络出口）——命令面 `plugins.listCatalog` 用。
+     *  ⛔ 不解析、不缓存：解析归调用方（壳命令），主进程只当管道。 */
+    packageReadCatalog?(catalogUrl: string): Promise<string>;
     /** E6#13b (stage B): the main-process real network stage — fetches marketplace.json → version comparison (does not touch the ledger — current is passed in by the shell). Prereleases are ignored by default. */
     packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
     /** E6#13b/c (stage B): the main-process real download+extract stage — downloads to tmp → extracts to {userData}/tmp/.stage-<id> (id consistency + version direction validation; the old directory is untouched).
@@ -80,6 +85,15 @@ export interface PluginsAPI {
     requestInstall?(req: PluginInstallRequest): Promise<PluginInstallConfirmResult>;
     /** 批量更新 —— 只提交结构化请求；谁要确认由壳算（`ask` 为空则**不弹卡**直接全入队） */
     requestUpdateBatch?(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult>;
+    /** 两步确认 · 第一跳：只算计划，⛔ 不弹 UI、零副作用（2026-11-24 D1′：UI 归市场） */
+    prepareInstall?(req: PluginInstallRequest): Promise<PluginInstallPrepared>;
+    /** 两步确认 · 批量第一跳（一张计划的 ask/silent/分组全在返回值里） */
+    prepareUpdateBatch?(reqs: PluginInstallRequest[]): Promise<PluginInstallPrepared>;
+    /** 两步确认 · 第二跳：用户已在自己画的卡上点确认 ⇒ 壳签一次性令牌并执行。
+     *  `confirmed:false` 等价于 discard（不执行）。不调这一步就装不上——这是"必须调 API"的硬形态。 */
+    commitInstall?(planId: string, opts?: { confirmed?: boolean }): Promise<PluginInstallCommitResult>;
+    /** 释放句柄（用户取消 / 页面关闭）——不执行、不签票 */
+    discardInstall?(planId: string): Promise<void>;
     /** 只读预览：按**当前**设置算一遍计划（不改状态、不入队）。确认卡内改设置后就地重算；
      *  AI 也可先用它看「这次会问哪几个」。`forceAsk` = 把免问项也展开成需确认（本批临时，不改设置） */
     previewUpdatePlan?(reqs: PluginInstallRequest[], opts?: { forceAsk?: boolean }): Promise<PluginConfirmPlan>;

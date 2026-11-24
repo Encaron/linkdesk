@@ -21,7 +21,11 @@ import {
   consumeToken,
   getUpdatePolicy,
   isRemoteSource,
+  commitInstall,
+  discardInstall,
   listSourceTrust,
+  prepareInstall,
+  prepareUpdateBatch,
   previewUpdatePlan,
   requestInstall,
   requestUpdateBatch,
@@ -125,6 +129,19 @@ export async function handleInstallMethod(method: string, args: unknown[]): Prom
     case "requestUpdateBatch":
       ensureExecutor();
       return requestUpdateBatch(argList(args[0]));
+    case "prepareInstall":
+      ensureExecutor();
+      return prepareInstall(args[0] as PluginInstallRequest);
+    case "prepareUpdateBatch":
+      ensureExecutor();
+      return prepareUpdateBatch(argList(args[0]));
+    case "commitInstall": {
+      ensureExecutor();
+      const opts = (args[1] ?? {}) as { confirmed?: boolean };
+      return commitInstall(args[0] as string, opts);
+    }
+    case "discardInstall":
+      return discardInstall(args[0] as string);
     case "previewUpdatePlan": {
       ensureExecutor();
       const opts = (args[1] ?? {}) as { forceAsk?: boolean };

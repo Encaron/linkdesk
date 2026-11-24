@@ -183,6 +183,9 @@ export const IPC = {
     // 一锅端）：取消必须命中**具体哪一个 job**（18 档 §八 主动偏离注——桥计时器只知道 channel，
     // 故取消不挂在它上）。主进程只持 jobId → AbortController 的登记表，不解释语义。
     cancel: 'plugins:cancel',
+    // P1（D9′ 零插件路径）：只读拉取任意目录源原文——shell 命令 plugins.listCatalog 消费；
+    // 与 updateCheck 分开：后者只回答「某插件有没有新版」，前者要给整张目录（含 sha256/minAppVersion）。
+    readCatalog: 'plugins:read-catalog',
     updateCheck: 'plugins:update-check',
     stageUpdate: 'plugins:stage-update',
     commitUpdate: 'plugins:commit-update',

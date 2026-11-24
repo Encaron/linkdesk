@@ -21,13 +21,16 @@ import { confirm } from "../../ui/DialogService";
 import { pushToast, showTransientToast } from "../../ui/NotificationService";
 import type {
   PluginConfirmPlan,
+  PluginInstallCommitResult,
   PluginInstallConfirmResult,
+  PluginInstallPrepared,
   PluginInstallRequest,
   PluginSourceIdentity,
   PluginUpdateBatchResult,
 } from "../../../api/linkdesk-api/types";
 import { buildConfirmPlan } from "./batch";
 import { getSourceIdentity, recordSourceIdentity } from "./ledger";
+import { dropPlanHandle, putPlanHandle, takePlanHandle, type PlanHandle } from "./plan-handles";
 import { bindingOfRequest, issueToken } from "./token";
 import { getUpdatePolicy, isSourceTrusted, sourceLabel } from "./trust";
 import type {
@@ -199,52 +202,85 @@ async function execute(req: PluginInstallRequest): Promise<ExecResult> {
  * 这里不替用户下「装成功了」的结论（异步尾部还有重载/重启提示）。
  */
 export async function requestInstall(req: PluginInstallRequest): Promise<PluginInstallConfirmResult> {
+  // 事实只预取一次（prepare 与"旧版本显示"共用同一个 ctx，⛔ 重复读盘）
   const ctx = await buildContext([req]);
   const plan = buildConfirmPlan([req], ctx);
+  const handle = putPlanHandle("install", [req], plan);
+  const prepared: PluginInstallPrepared = { planId: handle.planId, plan, expiresAt: handle.expiresAt };
 
-  const rejected = plan.rejected[0];
-  if (rejected) {
-    return { confirmed: false, reason: rejected.reason };
+  // 直接被拒（同版本 / 未放行降级）：不弹卡、不签票
+  if (plan.totals.total === 0) {
+    discardInstall(prepared.planId);
+    const r = plan.rejected[0]?.reason;
+    return { confirmed: false, reason: r === "min-app" || r === "integrity-failed" ? r : "invalid" };
   }
-  if (plan.ask.length > 0) {
-    const accepted = await presentedSerialized(plan, "install", {
-      fromVersion: ctx.facts(req.pluginId).installedVersion,
-    });
-    if (!accepted) return { confirmed: false, cancelled: true, reason: "user-cancelled" };
+  const accepted = await presentedSerialized(plan, "install", {
+    fromVersion: ctx.facts(req.pluginId).installedVersion,
+  });
+  if (!accepted) {
+    discardInstall(prepared.planId);
+    return { confirmed: false, cancelled: true, reason: "user-cancelled" };
   }
-
-  const result = await execute(req);
-  if (result.success) await recordSource(req, result);
-  return { confirmed: true };
+  const r = await commitInstall(prepared.planId);
+  const mapped: PluginInstallConfirmResult["reason"] =
+    r.reason === "unknown-plan" ? "no-token" : r.reason === "rejected" ? "invalid" : r.reason;
+  return { confirmed: r.confirmed, cancelled: r.cancelled, reason: mapped };
 }
 
-/* ── 批量更新 ── */
-
-let _batchSeq = 0;
+/* ── 两步确认（D1′：UI 归市场）── */
 
 /**
- * 批量更新 —— 一张汇总卡（只列 ask；silent 以摘要行出现）→ 全部入队 → 全部落地后一条汇总（spec §五）。
- *
- * 取消语义：用户在汇总卡上取消 = **整批 0 个入队**（spec §五.4）——不搞「只跑免问项」的惊喜。
- * 逐项勾选排除（行级 checkbox）由渲染体把它从 `reqs` 里去掉后重提交，壳不另立协议。
- *
- * 并发：**不在这里限条数**——全部同时交给执行端口，下载/解压并发仍由壳的
- * `INSTALL_CONCURRENCY = 3` 槽位把关（D4：3 是并发槽，不是条数上限）。
+ * 第一跳：**只算计划，零副作用、不弹 UI**。
+ * 市场拿 `plan` 自己画卡（可用 `@linkdesk/ui` 的共享件，也可完全自绘），用户点确认后再 `commitInstall`。
+ * ⛔ 市场不许自造 plan（来源/版本/哈希/风险唯一来源 = 壳）。
  */
-export async function requestUpdateBatch(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult> {
-  if (reqs.length === 0) return { confirmed: true, jobIds: [] };
+export async function prepareInstall(req: PluginInstallRequest): Promise<PluginInstallPrepared> {
+  const ctx = await buildContext([req]);
+  const plan = buildConfirmPlan([req], ctx);
+  const handle = putPlanHandle("install", [req], plan);
+  return { planId: handle.planId, plan, expiresAt: handle.expiresAt };
+}
 
-  const plan = buildConfirmPlan(reqs, await buildContext(reqs));
-  if (plan.ask.length > 0) {
-    const accepted = await presentedSerialized(plan, "batch", { reqs });
-    if (!accepted) {
-      return { confirmed: false, cancelled: true, jobIds: [], rejected: plan.rejected };
-    }
+/** 批量第一跳（一张计划的 ask/silent/分组全在返回值里） */
+export async function prepareUpdateBatch(reqs: PluginInstallRequest[]): Promise<PluginInstallPrepared> {
+  const ctx = await buildContext(reqs);
+  const plan = buildConfirmPlan(reqs, ctx);
+  const handle = putPlanHandle("batch", reqs, plan);
+  return { planId: handle.planId, plan, expiresAt: handle.expiresAt };
+}
+
+/**
+ * 第二跳：用户**已在市场自绘的卡上**点确认 ⇒ 壳签一次性令牌并执行。
+ * 句柄一次性（取用即核销）；不存在/已用/已过期统一回 `unknown-plan`。
+ */
+export async function commitInstall(
+  planId: string,
+  opts?: { confirmed?: boolean },
+): Promise<PluginInstallCommitResult> {
+  const handle = takePlanHandle(planId);
+  if (!handle) return { confirmed: false, reason: "unknown-plan" };
+  if (opts?.confirmed === false) return { confirmed: false, cancelled: true, reason: "user-cancelled" };
+  if (handle.plan.totals.total === 0) return { confirmed: false, reason: "rejected" };
+  return executePlan(handle);
+}
+
+/** 释放句柄（用户取消 / 页面关闭）——不执行、不签票 */
+export async function discardInstall(planId: string): Promise<void> {
+  dropPlanHandle(planId);
+}
+
+/** 执行一次计划——`commitInstall` 的唯一执行体（单项/批量同一入口，⛔ 第二份派发） */
+async function executePlan(handle: PlanHandle): Promise<PluginInstallCommitResult> {
+  const rejectedIds = new Set(handle.plan.rejected.map((r) => r.pluginId));
+  const accepted = dedupe(handle.requests).filter((r) => !rejectedIds.has(r.pluginId));
+
+  if (handle.kind === "install") {
+    const req = accepted[0];
+    if (!req) return { confirmed: false, reason: "rejected" };
+    const result = await execute(req);
+    if (result.success) await recordSource(req, result);
+    return { confirmed: true };
   }
-
-  const rejectedIds = new Set(plan.rejected.map((r) => r.pluginId));
-  const accepted = dedupe(reqs).filter((r) => !rejectedIds.has(r.pluginId));
-  const batchId = `batch-${Date.now().toString(36)}-${++_batchSeq}`;
 
   const outcomes = await Promise.all(
     accepted.map(async (req) => {
@@ -253,14 +289,38 @@ export async function requestUpdateBatch(reqs: PluginInstallRequest[]): Promise<
       return { req, result };
     }),
   );
-
   emitBatchSummary(outcomes);
-  return { confirmed: true, jobIds: [], batchId, rejected: plan.rejected };
+  return { confirmed: true };
+}
+
+/* ── 批量更新 ── */
+
+/**
+ * 批量更新 —— 快捷路径（= prepare + 壳默认汇总卡 + commit）。自绘 UI 的市场请走
+ * `prepareUpdateBatch` + `commitInstall` 两跳（D1′），判定/令牌/队列完全相同。
+ *
+ * 取消语义：用户在汇总卡上取消 = **整批 0 个入队**（spec §五.4）。
+ * 并发：**不在这里限条数**——全部同时交给执行端口，下载/解压并发仍由壳的
+ * `INSTALL_CONCURRENCY = 3` 槽位把关（D4：3 是并发槽，不是条数上限）。
+ */
+export async function requestUpdateBatch(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult> {
+  if (reqs.length === 0) return { confirmed: true, jobIds: [] };
+
+  const prepared = await prepareUpdateBatch(reqs);
+  if (prepared.plan.ask.length > 0) {
+    const accepted = await presentedSerialized(prepared.plan, "batch", { reqs });
+    if (!accepted) {
+      discardInstall(prepared.planId);
+      return { confirmed: false, cancelled: true, jobIds: [], rejected: prepared.plan.rejected };
+    }
+  }
+  const r = await commitInstall(prepared.planId);
+  return { confirmed: r.confirmed, cancelled: r.cancelled, jobIds: [], rejected: prepared.plan.rejected };
 }
 
 /**
  * 只读预览——按**当前**设置算一遍计划，不改状态、不入队（确认卡里改设置后就地重算；
- * AI 也能先看「这次会问哪几个」）。与 requestUpdateBatch 走**同一个** buildConfirmPlan
+ * AI 也能先看「这次会问哪几个」）。与 prepare/commit 走**同一个** buildConfirmPlan
  * （⛔ 第二份计划实现——预览与实际执行结论不一致是最坏的那种 bug）。
  */
 export async function previewUpdatePlan(

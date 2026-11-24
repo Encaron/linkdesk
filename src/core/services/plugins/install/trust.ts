@@ -30,6 +30,8 @@ export const POLICY_KEYS = {
   silentOfficial: "app.pluginUpdate.silentOfficial",
   silentTrustedSources: "app.pluginUpdate.silentTrustedSources",
   trustedSources: "app.pluginUpdate.trustedSources",
+  /** 已登记的市场目录源 id 列表（D9′ 零插件路径：`plugins.addSource` 写它；市场/浏览面读它） */
+  sources: "app.pluginUpdate.sources",
 } as const;
 
 /** 默认值——**唯一来源**：配置声明用它、读取兜底也用它（⛔ 两处各写一遍数字） */

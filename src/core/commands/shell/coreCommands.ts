@@ -488,7 +488,8 @@ import { registerAboutCommands } from "./aboutCommands"; // E6#57.14：关于标
 import { registerManualCommands } from "./manualCommands"; // M3 AI#16：AI 操作手册（打开；帮助菜单入口）
 import { registerWelcomeCommands } from "./welcomeCommands"; // 欢迎页重设计 W4a：app.openWelcome（帮助菜单/+/命令面板三入口共用）
 import { registerAiBridgeCommands } from "./aiBridgeCommands"; // M4 AI#38：AI 接入（状态出口＋设置页动作按钮）
-import { registerAiPolicyCommands } from "./aiPolicyCommands"; // 2026-11-24：AI 权限档位（四段控件/风险表/切档）
+import { registerAiPolicyCommands } from "./aiPolicyCommands";
+import { registerPluginInstallCommands } from "./pluginInstallCommands"; // P1 D9′：零插件安装路径（列目录/装插件/加源） // 2026-11-24：AI 权限档位（四段控件/风险表/切档）
 import { registerReadCommands } from "./readCommands"; // M2 AI#62：读数命令族（配置读／布局读／容器与视图读）
 import { registerStorageCommands } from "./storageCommands"; // 设置页「存储」——打开缓存目录按钮行＋只读路径行出口
 import { registerAppearanceAssetCommands } from "./appearanceAssetCommands"; // 2026-11-24 语义归属：appearance.pickImage（选图＋入库一步）
@@ -515,6 +516,7 @@ export function ensureCoreCommands(): void {
   registerManualCommands(); // M3 AI#16：AI 操作手册标签页（打开；帮助菜单入口）
   registerWelcomeCommands(); // 欢迎页重设计 W4a：app.openWelcome（打开；帮助菜单/+/命令面板三入口共用）
   registerAiBridgeCommands(); // M4 AI#38：AI 接入（五条状态出口 ＋ 七条动作按钮）
+  registerPluginInstallCommands(); // P1 D9′：零插件路径（listCatalog / installFromCatalog / addSource）
   registerAiPolicyCommands(); // 2026-11-24：AI 权限档位（getState/setMode/resetToDefault/openOps/openSettings）
   registerReadCommands(); // M2 AI#62：读数命令族（配置读／布局读／容器与视图读——写侧 AI#21 的读侧补齐）
   registerStorageCommands(); // 设置页「存储」——打开缓存目录（action）＋生效路径读数（statusCommand）

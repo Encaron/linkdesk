@@ -357,6 +357,8 @@ try {
       // E6#73c：job 身份随行——主进程段进度事件据此回填 jobId/pluginId（缺省 = 事件不带身份）
       // P1：sha256 随行——主进程下载落盘后、解压前校验（不符即删包拒装）
       packageDownload:  (url: string, job?: PluginInstallJobRef, sha256?: string) => ipcRenderer.invoke(IPC.plugins.download, url, job, sha256),
+      // P1（D9′）：只读拉目录原文——零插件路径的命令面消费（不装任何市场也能看目录/装插件）
+      packageReadCatalog: (catalogUrl: string) => ipcRenderer.invoke(IPC.plugins.readCatalog, catalogUrl),
       packageExtract:   (zipPath: string, expectedPluginId?: string, job?: PluginInstallJobRef) => ipcRenderer.invoke(IPC.plugins.extract, zipPath, expectedPluginId, job),
       // E6#73d：按 jobId 中止在途下载（面板「取消安装」）——AbortSignal 不可序列化，只能发定向消息。
       // 返回 false = 该 job 没有在途下载（未开跑 / 已收尾）——非错误，壳侧照常撤行。

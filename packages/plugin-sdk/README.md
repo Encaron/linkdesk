@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**19 domain interfaces → 51 namespaces / 281 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**19 domain interfaces → 51 namespaces / 286 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -58,7 +58,7 @@ npm install -D @linkdesk/plugin-sdk
 | `lsp` | 4 | `spawn` `write` `dispose` `onData` | LSP bridge — autocompletion/F12/diagnostics/rename |
 | `protocol` | 3 | `listProtocols` `getActiveProtocolId` `setActiveProtocolId` | protocol — protocol registry (answered directly by the main… |
 | `viewContainer` | 4 | `getViewContainer` `getViews` `getView` `registerView` | viewContainer — real IPC query/update (asks the shell-side … |
-| `plugins` | 22 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exist… |
+| `plugins` | 27 | `resolvePath` `resolveEntry`° `getCompatibility`° `listDirs`° `listAll`° `listDisabledDirs`° `readManifest`° `readAllManifests`° `packageDownload`° `packageExtract`° `packageCancel`° `packageReadCatalog`° `packageUpdateCheck`° `packageStageUpdate`° `packageCommitUpdate`° `requestInstall`° `requestUpdateBatch`° `prepareInstall`° `prepareUpdateBatch`° `commitInstall`° `discardInstall`° `previewUpdatePlan`° `getUpdatePolicy`° `setUpdatePolicy`° `listSourceTrust`° `trustSource`° `untrustSource`° | Plugin discovery — injected on both ends: resolvePath exist… |
 | `pluginManager` | 14 | `list` `enable` `disable` `uninstall` `install` `installFromDirectory`° `installWithProgress`° `reinstall` `getDisabled` `getUninstalled` `isDisabled` `update`° `checkUpdates`° `notifyManifestChanged`° | Plugin management — bridges IpcBridgeHandler → loader funct… |
 | `licenses` | 3 | `verify` `list` `remove` | —— |
 | `bridge` ⚠️ | 4 | `onRequest` `respond` `broadcast` `notifyConfigChanged` | Shell↔plugin communication relay — shell preload only |

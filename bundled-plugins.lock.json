@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "syncedAt": "2026-11-24T08:44:52.742Z",
+  "syncedAt": "2026-11-24T10:45:08.870Z",
   "note": "出厂种子的账（E6#101）。`seed:true` = 随包出厂（bootstrap 集，判据「断网零插件时用户能不能自救」）；`seed:false` = 纯市场（只登记，不随包）。谁随包是**数据**不是代码（硬约束 10）。刷新：npm run sync:bundled -- --latest；校验：npm run sync:bundled -- --offline。",
   "plugins": [
     {
@@ -24,7 +24,7 @@
       "repo": "Encaron/linkdesk-plugin-lang-defaults",
       "version": "1.0.77",
       "downloadUrl": "https://github.com/Encaron/linkdesk-plugin-lang-defaults/releases/download/v1.0.77/lang-defaults.linkdesk-plugin",
-      "fingerprint": "CHANGELOG.md:2d3b238080e8f87d1674357b85eab1f2662b9e5aa27fed20734e2629f9f4f909\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\ndocs/readme/en.md:76ab8f2d27627003b24c0ea185f4d754cb53730f1b608289d35089a471543abb\nen.json:e234236333ba7a2095297c24df2066690bdb3a3a015c21c2530a0b704e192ba6\nplugin.json:595eb3fb2e62da80290f174de921927d34b3d3b65c4b58bcf4f3a0e5d4afc9ba\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:b693316c841b4766351576d7817db01a31096fa1bdc8d69330362fa87a61458f",
+      "fingerprint": "CHANGELOG.md:2d3b238080e8f87d1674357b85eab1f2662b9e5aa27fed20734e2629f9f4f909\nLICENSE:66ade75576a2f04b7f1a11340b8141cf42a26d3a64bc441e3822e193291d3051\nREADME.md:5bfbd656e092d376ccd5843af47631d3d3d1fc786978611384350b88dbb5862d\ndocs/readme/en.md:76ab8f2d27627003b24c0ea185f4d754cb53730f1b608289d35089a471543abb\nen.json:27742bd30603597f9f4808b9ed6e4be68f8a035fcd56757792b5813b40e4ac8a\nplugin.json:595eb3fb2e62da80290f174de921927d34b3d3b65c4b58bcf4f3a0e5d4afc9ba\nresources/cover.svg:5f4dc33217c392e0e32d58d8931d8e66c251012896d419b4d2bc487458108af0\nresources/icon.svg:3e541009fc343d47fb82c8d53076526cd445955eafab464cf8d92e0c4571e88b\nzh.json:b693316c841b4766351576d7817db01a31096fa1bdc8d69330362fa87a61458f",
       "seed": true
     },
     {

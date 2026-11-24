@@ -230,6 +230,10 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     // 七个方法 = 远端（市场/AI）唯一合法安装入口；旧链的远程来源已在 handlePluginManagerMethod 里拒。
     case "requestInstall":
     case "requestUpdateBatch":
+    case "prepareInstall":
+    case "prepareUpdateBatch":
+    case "commitInstall":
+    case "discardInstall":
     case "previewUpdatePlan":
     case "getUpdatePolicy":
     case "setUpdatePolicy":

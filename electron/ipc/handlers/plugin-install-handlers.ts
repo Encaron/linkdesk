@@ -148,6 +148,21 @@ export function registerPluginInstallHandlers(): void {
     return { zipPath, sizeBytes: total || undefined };
   });
 
+  // ── plugins:read-catalog(catalogUrl) → 目录原文（P1 D9′）──
+  // 只读、零副作用：给零插件路径的 `plugins.listCatalog` 用（不装任何市场也能看目录）。
+  // 网络唯一出口 = mainFetch（读系统代理，与 updateCheck 同一条腿）。
+  loggedHandle(IPC.plugins.readCatalog, async (_event, catalogUrl: string) => {
+    if (typeof catalogUrl !== "string" || !isHttpSource(catalogUrl)) {
+      throw new Error("仅支持 http(s) 目录源");
+    }
+    if (!/^https:\/\//i.test(catalogUrl.trim())) {
+      throw new Error("仅支持 HTTPS 目录源");
+    }
+    const res = await mainFetch(catalogUrl);
+    if (!res.ok) throw new Error(`目录拉取失败：HTTP ${res.status}`);
+    return await res.text();
+  });
+
   // ── plugins:extract(zipPath, expectedPluginId?) → { pluginId, version, targetDir } ──
   // 真磁盘段：共享 bundle-zip 语义解压到 {userData}/plugins/<id>/（2026-09-05 塌平单根）；纯新建契约（目标已存在拒绝——
   // 更新/覆盖走 update 流或先卸）；包内 id 与 expectedPluginId 不符拒绝（防伪装）。

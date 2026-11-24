@@ -142,6 +142,29 @@ export interface PluginInstallConfirmResult {
   reason?: "user-cancelled" | "source-changed" | "integrity-failed" | "min-app" | "no-token" | "up-to-date" | "invalid";
 }
 
+/**
+ * `prepareInstall` / `prepareUpdateBatch` 的产物——**两步确认的第一跳**（2026-11-24 D1′）。
+ * 壳只算计划、⛔ 不弹任何 UI、零副作用；`planId` 短 TTL（5 分钟）且绑定请求指纹。
+ * 市场拿 `plan` 自己画卡（可用共享件、可完全自绘）；用户点确认后再调 `commitInstall(planId)`。
+ */
+export interface PluginInstallPrepared {
+  /** 一次性句柄——`commitInstall(planId)` 才签令牌并执行 */
+  planId: string;
+  /** 壳算出的确认计划（来源/发布者/版本/哈希/风险唯一来源，⛔ 市场不许自造） */
+  plan: PluginConfirmPlan;
+  /** 句柄到期时刻（ms）——到点后 commit 返回 `expired` */
+  expiresAt: number;
+}
+
+/** `commitInstall` 回执——`confirmed:true` = 用户已确认且已交执行（成败看 job 表） */
+export interface PluginInstallCommitResult {
+  confirmed: boolean;
+  cancelled?: boolean;
+  jobId?: string;
+  /** `unknown-plan` = planId 不存在/已用过/已过期（统一一个词，⛔ 不细分） */
+  reason?: "unknown-plan" | "rejected" | "user-cancelled" | "no-token";
+}
+
 /** `requestUpdateBatch` 回执——`confirmed:false` = **整批取消**（0 个入队，spec §五.4） */
 export interface PluginUpdateBatchResult {
   confirmed: boolean;

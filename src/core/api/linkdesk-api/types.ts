@@ -385,6 +385,8 @@ export type {
   PluginSourceTrustEntry,
   PluginInstallConfirmResult,
   PluginUpdateBatchResult,
+  PluginInstallPrepared,
+  PluginInstallCommitResult,
 } from "./install";
 /* ── R4-1.3（I21/#24 壳侧·正典 09 §三·补3）：许可与权益（licenses 命名空间）── */
 

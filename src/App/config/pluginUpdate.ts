@@ -44,6 +44,14 @@ export function registerPluginUpdateConfiguration(t: ConfigT): void {
         title: t("信任来源的更新不再询问"),
         description: t("你在下方信任过的第三方来源，其同源更新直接安装，不再逐项询问"),
       },
+      [POLICY_KEYS.sources]: {
+        type: "array",
+        group: t("插件更新"),
+        default: [],
+        uiHint: "stringList",
+        title: t("市场源"),
+        description: t("已登记的市场目录源（每行一条 id）。命令 plugins.addSource 写入；浏览面读它决定去哪找插件"),
+      },
       [POLICY_KEYS.trustedSources]: {
         type: "array",
         group: t("插件更新"),

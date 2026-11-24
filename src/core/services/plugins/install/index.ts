@@ -16,7 +16,15 @@
  */
 
 /* ① 请求面 */
-export { requestInstall, requestUpdateBatch, previewUpdatePlan } from "./confirm-service";
+export {
+  requestInstall,
+  requestUpdateBatch,
+  previewUpdatePlan,
+  prepareInstall,
+  prepareUpdateBatch,
+  commitInstall,
+  discardInstall,
+} from "./confirm-service";
 
 /* ② 策略面 */
 export {

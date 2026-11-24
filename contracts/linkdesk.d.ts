@@ -2621,6 +2621,27 @@ export interface PluginConfirmPlan {
         silent: number;
     };
 }
+/**
+ * `prepareInstall` / `prepareUpdateBatch` 的产物——**两步确认的第一跳**（2026-11-24 D1′）。
+ * 壳只算计划、⛔ 不弹任何 UI、零副作用；`planId` 短 TTL（5 分钟）且绑定请求指纹。
+ * 市场拿 `plan` 自己画卡（可用共享件、可完全自绘）；用户点确认后再调 `commitInstall(planId)`。
+ */
+export interface PluginInstallPrepared {
+    /** 一次性句柄——`commitInstall(planId)` 才签令牌并执行 */
+    planId: string;
+    /** 壳算出的确认计划（来源/发布者/版本/哈希/风险唯一来源，⛔ 市场不许自造） */
+    plan: PluginConfirmPlan;
+    /** 句柄到期时刻（ms）——到点后 commit 返回 `expired` */
+    expiresAt: number;
+}
+/** `commitInstall` 回执——`confirmed:true` = 用户已确认且已交执行（成败看 job 表） */
+export interface PluginInstallCommitResult {
+    confirmed: boolean;
+    cancelled?: boolean;
+    jobId?: string;
+    /** `unknown-plan` = planId 不存在/已用过/已过期（统一一个词，⛔ 不细分） */
+    reason?: "unknown-plan" | "rejected" | "user-cancelled" | "no-token";
+}
 /** 两条**独立**开关（D5 拍板：正交、可同时开；首装/来源变更/降级不可关，见 spec §3.5） */
 export interface PluginUpdatePolicy {
     /** 官方目录的**同源更新**不逐项询问（默认开） */
@@ -2831,6 +2852,9 @@ export interface PluginsAPI {
          *  a jobId → AbortController registry and does not interpret semantics. Returns false = that job currently has no in-flight download
          *  (already finished / not started / not in the download stage) — callers should read this as "cancel accepted, wait for the terminal state", not as a failure. */
         packageCancel?(jobId: string): Promise<boolean>;
+        /** P1（D9′ 零插件路径）：只读拉取目录原文（HTTPS-only；主进程唯一网络出口）——命令面 `plugins.listCatalog` 用。
+         *  ⛔ 不解析、不缓存：解析归调用方（壳命令），主进程只当管道。 */
+        packageReadCatalog?(catalogUrl: string): Promise<string>;
         /** (stage B): the main-process real network stage — fetches marketplace.json → version comparison (does not touch the ledger — current is passed in by the shell). Prereleases are ignored by default. */
         packageUpdateCheck?(pluginId: string, catalogUrl: string, currentVersion?: string): Promise<PluginUpdateCheckResult>;
         /** b/c (stage B): the main-process real download+extract stage — downloads to tmp → extracts to {userData}/tmp/.stage-<id> (id consistency + version direction validation; the old directory is untouched).
@@ -2859,6 +2883,17 @@ export interface PluginsAPI {
         requestInstall?(req: PluginInstallRequest): Promise<PluginInstallConfirmResult>;
         /** 批量更新 —— 只提交结构化请求；谁要确认由壳算（`ask` 为空则**不弹卡**直接全入队） */
         requestUpdateBatch?(reqs: PluginInstallRequest[]): Promise<PluginUpdateBatchResult>;
+        /** 两步确认 · 第一跳：只算计划，⛔ 不弹 UI、零副作用（2026-11-24 D1′：UI 归市场） */
+        prepareInstall?(req: PluginInstallRequest): Promise<PluginInstallPrepared>;
+        /** 两步确认 · 批量第一跳（一张计划的 ask/silent/分组全在返回值里） */
+        prepareUpdateBatch?(reqs: PluginInstallRequest[]): Promise<PluginInstallPrepared>;
+        /** 两步确认 · 第二跳：用户已在自己画的卡上点确认 ⇒ 壳签一次性令牌并执行。
+         *  `confirmed:false` 等价于 discard（不执行）。不调这一步就装不上——这是"必须调 API"的硬形态。 */
+        commitInstall?(planId: string, opts?: {
+            confirmed?: boolean;
+        }): Promise<PluginInstallCommitResult>;
+        /** 释放句柄（用户取消 / 页面关闭）——不执行、不签票 */
+        discardInstall?(planId: string): Promise<void>;
         /** 只读预览：按**当前**设置算一遍计划（不改状态、不入队）。确认卡内改设置后就地重算；
          *  AI 也可先用它看「这次会问哪几个」。`forceAsk` = 把免问项也展开成需确认（本批临时，不改设置） */
         previewUpdatePlan?(reqs: PluginInstallRequest[], opts?: {

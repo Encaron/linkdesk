@@ -1,6 +1,7 @@
 /**
  * 「更新」两键声明——并入「通用」组（同 pluginId 二次注册 merge，04-软件更新「设置页通用归类」
- *   2026-09-26 拍板；判据：一级目录留给条目多、成体系的域，更新域只有 2 条撑不起目录，节名统一「更新」）。
+ *   2026-09-26 拍板；判据：一级目录留给条目多、成体系的域，更新域只有 2 条撑不起目录）。
+ *   2026-11-24：节名「更新」→「软件更新」——与并列的「插件更新」区分（用户实机读不出语义）。
  * E6#57.9a（06-主软件更新 / 00-README §三⑦）：`app.update.mode`（string enum auto/manual，
  *   默认 auto）+ `app.update.showReleaseNotes`（boolean，默认 true）。
  * 自 startup.ts 拆出（结构对标 config/appearance.ts，E5.8 Phase 11.13 的 Domain 拆解先例）：
@@ -22,7 +23,7 @@ type ConfigT = (key: string) => string;
 
 export function registerUpdateConfiguration(t: ConfigT): void {
   registerConfiguration(APP_PLUGIN_ID, {
-    title: t("更新"),
+    title: t("软件更新"),
     properties: {
       // 对标 VS Code `update.mode` 简化为两档（砍 none/start——「检查更新」入口恒显，01 §1.2）。
       // 🔴 值域是英文 `auto/manual`（对标 app.menuStyle 的 titlebar/hamburger/both）——
@@ -30,7 +31,7 @@ export function registerUpdateConfiguration(t: ConfigT): void {
       // 🔴 「手动」不等于「检查更新入口消失」：入口按**恒显原则**在任何 mode 下都在（03 §2.2）。
       "app.update.mode": {
         type: "string",
-        group: t("更新"),
+        group: t("软件更新"),
         default: "auto",
         enum: ["auto", "manual"],
         enumDescriptions: [
@@ -44,7 +45,7 @@ export function registerUpdateConfiguration(t: ConfigT): void {
       // 关了它不砍入口——帮助菜单「显示发行说明」始终可用。
       "app.update.showReleaseNotes": {
         type: "boolean",
-        group: t("更新"),
+        group: t("软件更新"),
         default: true,
         title: t("自动打开发行说明"),
         description: t("更新到新版本后，首次启动时自动打开发行说明"),

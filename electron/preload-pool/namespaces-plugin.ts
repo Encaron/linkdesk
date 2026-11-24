@@ -75,6 +75,12 @@ export function buildPlugins() {
     // 旧链 pluginManager.install/update 的**远程来源**在壳分发层一律拒（no-token）——本命名空间不是可选装饰。
     requestInstall: (req: PluginInstallRequest) => ipcRenderer.invoke(IPC.plugins.call, 'requestInstall', req),
     requestUpdateBatch: (reqs: PluginInstallRequest[]) => ipcRenderer.invoke(IPC.plugins.call, 'requestUpdateBatch', reqs),
+    // 两步确认（D1′：UI 归市场）——prepare 只算计划、commit 才签票执行；不 commit 就装不上
+    prepareInstall: (req: PluginInstallRequest) => ipcRenderer.invoke(IPC.plugins.call, 'prepareInstall', req),
+    prepareUpdateBatch: (reqs: PluginInstallRequest[]) => ipcRenderer.invoke(IPC.plugins.call, 'prepareUpdateBatch', reqs),
+    commitInstall: (planId: string, opts?: { confirmed?: boolean }) =>
+      ipcRenderer.invoke(IPC.plugins.call, 'commitInstall', planId, opts),
+    discardInstall: (planId: string) => ipcRenderer.invoke(IPC.plugins.call, 'discardInstall', planId),
     // 只读预览（不改状态、不入队）——确认卡内改设置后原地重算；AI 也能先看「这次会问哪几个」
     previewUpdatePlan: (reqs: PluginInstallRequest[], opts?: { forceAsk?: boolean }) =>
       ipcRenderer.invoke(IPC.plugins.call, 'previewUpdatePlan', reqs, opts),
