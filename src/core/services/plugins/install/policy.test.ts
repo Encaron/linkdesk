@@ -185,6 +185,18 @@ describe("sameSourceIdentity", () => {
     expect(sameSourceIdentity(known, next)).toBe(true);
   });
 
+  it("任一方缺 repo/publisher ⇒ 该字段不参与判定（市场只传 url 也走同源）", () => {
+    const known: PluginSourceIdentity = { id: "official", url: "https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json", repo: "encaron/linkdesk-marketplace", publisher: "Encaron" };
+    const onlyUrl: PluginSourceIdentity = { id: "official", url: "https://raw.githubusercontent.com/Encaron/linkdesk-marketplace/main/marketplace.json" };
+    expect(sameSourceIdentity(known, onlyUrl)).toBe(true);
+  });
+
+  it("url 都不同才判变更", () => {
+    const a: PluginSourceIdentity = { id: "s", url: "https://a.dev/x", repo: "o/r" };
+    const b: PluginSourceIdentity = { id: "s", url: "https://b.dev/x", repo: "o/r" };
+    expect(sameSourceIdentity(a, b)).toBe(false);
+  });
+
   it("publisher 仍大小写敏感（是人名）", () => {
     const a: PluginSourceIdentity = { id: "s", url: "https://a.dev/x", publisher: "Lab" };
     const b: PluginSourceIdentity = { id: "s", url: "https://a.dev/x", publisher: "lab" };

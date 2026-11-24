@@ -38,9 +38,16 @@ export function sameSourceIdentity(known: PluginSourceIdentity | null, next: Plu
   //   （`raw.githubusercontent.com/encaron/...`），而账本可能是别的来源写的混合大小写 ⇒ 逐字节比会
   //   把「同一个源」判成「来源变更」，用户每次更新都被红卡拦。publisher 保持大小写敏感（是人名）。
   const norm = (s?: string) => (s ?? "").trim().toLowerCase();
-  return norm(known.url) === norm(next.url)
-    && norm(known.repo) === norm(next.repo)
-    && (known.publisher ?? "") === (next.publisher ?? "");
+  // 🔴 任一方**没填**的字段不参与判定（"没有信息" ≠ "不一样"）：
+  //   `repo`/`publisher` 在契约里都是可选的，第三方市场只传 url 也能走通；
+  //   拿空串去比一个真实值，会把同源更新误判成来源变更（与「无账本≠来源变更」同一条道理）。
+  const same = (a?: string, b?: string, ci = true): boolean => {
+    const x = ci ? norm(a) : (a ?? "").trim();
+    const y = ci ? norm(b) : (b ?? "").trim();
+    if (!x || !y) return true; // 任一方缺 → 不判
+    return x === y;
+  };
+  return same(known.url, next.url) && same(known.repo, next.repo) && same(known.publisher, next.publisher, false);
 }
 
 /**
