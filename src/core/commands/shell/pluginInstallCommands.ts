@@ -110,11 +110,13 @@ async function readCatalogRaw(catalogUrl: string): Promise<string> {
  * 🔴 只写一种就会「点了没反应，也不报错」——历史上踩过（菜单载荷形状失配）。
  */
 function pick(args: unknown[], key: string, index: number): unknown {
-  const first = args[0];
+  // 形态③：整体只给了一个数组（`executeCommand(id, [a, b])`）——先摊平
+  const flat = args.length === 1 && Array.isArray(args[0]) ? (args[0] as unknown[]) : args;
+  const first = flat[0];
   if (first && typeof first === "object" && !Array.isArray(first)) {
     return (first as Record<string, unknown>)[key];
   }
-  return args[index];
+  return flat[index];
 }
 
 export function registerPluginInstallCommands(): void {
