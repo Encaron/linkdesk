@@ -223,12 +223,19 @@ export async function requestInstall(req: PluginInstallRequest): Promise<PluginI
     const r = plan.rejected[0]?.reason;
     return { confirmed: false, reason: r === "min-app" || r === "integrity-failed" ? r : "invalid" };
   }
-  const accepted = await presentedSerialized(plan, "install", {
-    fromVersion: ctx.facts(req.pluginId).installedVersion,
-  });
-  if (!accepted) {
-    discardInstall(prepared.planId);
-    return { confirmed: false, cancelled: true, reason: "user-cancelled" };
+  /* 🔴 「免问就真的不弹」——2026-11-24 实机根因，一句话说清：
+   *    `silent`（官方免问 / 已信任来源）时 ask 里是**空的**，但 totals.total = 1。
+   *    这里原先**不看 ask 就弹卡** ⇒ 弹出一张「没有待确认项」的空卡（只有一个取消），
+   *    用户既更新不了、又看到"我开了开关它还在弹"。批量那条路早就有这个判断，单条漏了。
+   *    ⇒ ask 为空 = 不弹卡，直接签票执行（这正是开关的本意）。 */
+  if (plan.ask.length > 0) {
+    const accepted = await presentedSerialized(plan, "install", {
+      fromVersion: ctx.facts(req.pluginId).installedVersion,
+    });
+    if (!accepted) {
+      discardInstall(prepared.planId);
+      return { confirmed: false, cancelled: true, reason: "user-cancelled" };
+    }
   }
   const r = await commitInstall(prepared.planId);
   const mapped: PluginInstallConfirmResult["reason"] =

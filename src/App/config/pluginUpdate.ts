@@ -22,35 +22,34 @@
  */
 
 import { registerConfiguration } from "../../core/registry/ConfigurationRegistry";
-/**
- * 本节的声明归属——**独立 pluginId**（导航项 = 一个 pluginId 一项）。
- * 🔴 2026-11-24 实机纠偏：挂在 `app` 下时，四条会并进「通用」且（去掉 group 后）连节名都没了，
- * 用户原话「没有插件更新这个东西了」。独立成一项：左侧导航直接有「插件更新」，点进去就是这三条。
- */
-const PLUGIN_UPDATE_ID = "plugin-update";
+import { APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService";
 import { DEFAULT_POLICY, POLICY_KEYS } from "../../core/services/plugins/install";
 
 /** t() 类型——仅声明组取 key（同 config/update.ts） */
 type ConfigT = (key: string) => string;
 
 export function registerPluginUpdateConfiguration(t: ConfigT): void {
-  registerConfiguration(PLUGIN_UPDATE_ID, {
+  // 🔴 2026-11-24 用户明确要求：**留在「通用」组、紧接「软件更新」下方**（⛔ 不许独立成导航项）
+  registerConfiguration(APP_PLUGIN_ID, {
     title: t("插件更新"),
     properties: {
       [POLICY_KEYS.silentOfficial]: {
         type: "boolean",
+        group: t("软件更新"),
         default: DEFAULT_POLICY.silentOfficial,
         title: t("官方目录更新不再询问"),
         description: t("官方目录的同源更新（同一来源、版本更高、校验通过）直接安装，不再逐项询问"),
       },
       [POLICY_KEYS.silentTrustedSources]: {
         type: "boolean",
+        group: t("软件更新"),
         default: DEFAULT_POLICY.silentTrustedSources,
         title: t("信任来源的更新不再询问"),
         description: t("你在下方信任过的第三方来源，其同源更新直接安装，不再逐项询问"),
       },
       [POLICY_KEYS.trustedSources]: {
         type: "array",
+        group: t("软件更新"),
         default: [],
         uiHint: "stringList",
         title: t("信任来源"),
