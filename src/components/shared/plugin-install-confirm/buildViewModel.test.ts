@@ -266,7 +266,7 @@ describe("批量行 AI 徽标（2026-11-25）", () => {
       rejected: [],
     } as never;
     const vm = buildBatchVM(plan, L, false);
-    const rows = vm.groups.flatMap((g) => g.rows);
+    const rows = (vm.groups ?? []).flatMap((g) => g.rows);
     expect(rows.find((r) => r.pluginId === "a")?.ai).toBe("AI");
     expect(rows.find((r) => r.pluginId === "b")?.ai).toBeUndefined();
   });
