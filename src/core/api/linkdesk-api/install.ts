@@ -250,6 +250,17 @@ export interface PluginInstallPrepared {
   /** 壳算出的确认计划（来源/发布者/版本/哈希/风险唯一来源，⛔ 市场不许自造） */
   plan: PluginConfirmPlan;
   /**
+   * 这张卡**该由谁画**（2026-11-25 用户拍板「风险分档」）。
+   *
+   * - `host`：含**需要现场授权**的项（首装 / 来源变更 / 降级 / 未信任来源）⇒ 必须壳画。
+   *   理由：这几类正是「用户只能靠卡上那几行判断」的场景；市场自绘时用户看到的内容
+   *   不再有壳背书（市场完全可以画一张假卡再 commit）。壳是唯一不撒谎的见证者。
+   * - `market`：用户**已经预授权过**的低风险项（官方同源更新 / 已信任来源但你把开关关了）⇒ 市场可画。
+   * 市场必须遵守：`host` ⇒ 丢弃本计划、改调 `requestInstall`/`requestUpdateBatch`（壳默认卡）。
+   * ⚠️ 契约只能「告知」不能「强制」——恶意市场可以无视它自己画；信任边界仍靠来源信任与安装闸。
+   */
+  cardOwner: "host" | "market";
+  /**
    * 直接可渲染的载荷（labels ＋ plan ＋ policy ＋ reqs）——市场自绘卡**原样喂**给
    * `@linkdesk/ui` 的 `buildInstallVM` / `buildBatchVM` 即可，⛔ 不用自己拼文案或事实。
    * 与壳默认卡推给渲染槽的 payload 是**同一份**（`renderer.ts` 构造），此处提前给，市场不必等弹窗。

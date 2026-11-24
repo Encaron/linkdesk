@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { PluginInstallRequest, PluginSourceIdentity } from "../../../api/linkdesk-api/types";
-import { decideOne, isRemoteSource, OFFICIAL_SOURCE_ID, sameSourceIdentity } from "./policy";
+import { decideOne, isRemoteSource, OFFICIAL_SOURCE_ID, sameSourceIdentity, requiresHostConfirm } from "./policy";
 import type { PolicyContext, RequestFacts } from "./types";
 
 const SOURCE_OFFICIAL: PluginSourceIdentity = {
@@ -207,5 +207,43 @@ describe("sameSourceIdentity", () => {
     const a: PluginSourceIdentity = { id: "s", url: "https://a.dev" };
     const b: PluginSourceIdentity = { id: "s", url: "https://a.dev", repo: undefined };
     expect(sameSourceIdentity(a, b)).toBe(true);
+  });
+});
+
+describe("requiresHostConfirm —— 风险分档（谁画卡）", () => {
+  const planOf = (reasons: Array<{ reason: string; sourceId?: string; trusted?: boolean }>) =>
+    ({
+      totals: { total: reasons.length, ask: reasons.length, silent: 0 },
+      ask: reasons.map((r) => ({ reason: r.reason, request: { source: { id: r.sourceId ?? "src" } } })),
+      silent: [],
+      rejected: [],
+      groups: reasons.map((r) => ({
+        sourceId: r.sourceId ?? "src",
+        label: "src",
+        trusted: r.trusted ?? false,
+        silentAllowed: false,
+        askCount: 1,
+        silentCount: 0,
+      })),
+    }) as never;
+
+  it("首装 / 来源变更 / 降级 / 未信任来源 ⇒ 壳画", () => {
+    expect(requiresHostConfirm(planOf([{ reason: "first-install" }]))).toBe(true);
+    expect(requiresHostConfirm(planOf([{ reason: "source-changed" }]))).toBe(true);
+    expect(requiresHostConfirm(planOf([{ reason: "downgrade" }]))).toBe(true);
+    expect(requiresHostConfirm(planOf([{ reason: "untrusted-source", trusted: false }]))).toBe(true);
+  });
+
+  it("官方同源（用户主动要问）/ 已信任来源只是开关关着 ⇒ 市场可画", () => {
+    expect(requiresHostConfirm(planOf([{ reason: "official-source" }]))).toBe(false);
+    expect(requiresHostConfirm(planOf([{ reason: "untrusted-source", trusted: true }]))).toBe(false);
+  });
+
+  it("批量里只要有一项高风险 ⇒ 整批壳画", () => {
+    expect(requiresHostConfirm(planOf([{ reason: "official-source" }, { reason: "downgrade" }]))).toBe(true);
+  });
+
+  it("没有需要确认的项 ⇒ 没人画（直接执行）", () => {
+    expect(requiresHostConfirm(planOf([]))).toBe(false);
   });
 });

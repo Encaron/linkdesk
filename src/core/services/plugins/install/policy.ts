@@ -17,7 +17,7 @@
  */
 
 import { compareVersions } from "../../../utils/plugin/semverUtils";
-import type { PluginInstallRequest, PluginSourceIdentity } from "../../../api/linkdesk-api/types";
+import type { PluginConfirmPlan, PluginInstallRequest, PluginSourceIdentity } from "../../../api/linkdesk-api/types";
 import type { PolicyContext, PolicyDecision } from "./types";
 
 /** 官方目录的固定 sourceId（信任清单里 fixed=true 的那一行；⛔ 不参与第 ⑥ 步判定，见文件头） */
@@ -104,4 +104,31 @@ export function decideOne(req: PluginInstallRequest, ctx: PolicyContext): Policy
     return { kind: "silent" };
   }
   return { kind: "ask", reason: "untrusted-source" };
+}
+
+/**
+ * 「这张卡必须壳画吗」——**唯一判据**（2026-11-25 拍板：按风险分档画卡）。
+ *
+ * 高风险 = 需要用户**现场判断**的四类：首装（来源第一次出现）、来源变更、降级、未信任来源。
+ * 低风险 = 用户已在设置里**预授权**的（官方同源更新、已信任来源但把"不再询问"关了）——
+ * 这些卡是"通知 + 取消机会"，市场画不损失任何安全信息。
+ *
+ * ⚠️ `untrusted-source` 这一条要再看 group.trusted：已信任来源只是开关关着，属于低风险；
+ *    从未信任过的才是高风险（旧实现把两者都叫 untrusted-source，此处按 trusted 区分）。
+ */
+export function requiresHostConfirm(plan: PluginConfirmPlan): boolean {
+  return plan.ask.some((item) => {
+    switch (item.reason) {
+      case "first-install":
+      case "source-changed":
+      case "downgrade":
+        return true;
+      case "untrusted-source": {
+        const g = plan.groups.find((x) => x.sourceId === item.request.source.id);
+        return g?.trusted !== true;
+      }
+      default:
+        return false; // official-source = 用户主动要求"问我一下"的低风险项
+    }
+  });
 }

@@ -111,6 +111,14 @@ describe("prepareInstall / commitInstall", () => {
     expect(view.policy).toEqual({ silentOfficial: true, silentTrustedSources: false });
   });
 
+  it("cardOwner：首装（需要现场授权）⇒ host；官方同源但用户要问 ⇒ market", async () => {
+    setInstallExecutor(executor(null));
+    expect((await prepareInstall(REQ)).cardOwner).toBe("host"); // 首装
+    setInstallExecutor(executor("1.0.0"));
+    const upd = await prepareInstall({ ...REQ, mode: "update", version: "2.0.0" }); // 官方同源、silentOfficial=false（mock）
+    expect(upd.cardOwner).toBe("market");
+  });
+
   it("prepare 零副作用：不执行、不记账", async () => {
     const ex = executor(null);
     setInstallExecutor(ex);

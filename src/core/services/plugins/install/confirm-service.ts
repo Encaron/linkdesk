@@ -33,6 +33,7 @@ import { getSourceIdentity, recordSourceIdentity } from "./ledger";
 import { dropPlanHandle, putPlanHandle, takePlanHandle, type PlanHandle } from "./plan-handles";
 import { bindingOfRequest, issueToken } from "./token";
 import { getUpdatePolicy, isSourceTrusted, sourceLabel } from "./trust";
+import { requiresHostConfirm } from "./policy";
 import { buildConfirmPayload } from "./view-payload";
 import { getShellExposed } from "../../../api/linkdesk-api/surfaces";
 import type {
@@ -220,6 +221,7 @@ export async function requestInstall(req: PluginInstallRequest): Promise<PluginI
     planId: handle.planId,
     plan,
     view: buildConfirmPayload(plan, "install", { fromVersion: ctx.facts(req.pluginId).installedVersion }),
+    cardOwner: requiresHostConfirm(plan) ? "host" : "market",
     expiresAt: handle.expiresAt,
   };
 
@@ -262,7 +264,8 @@ export async function prepareInstall(req: PluginInstallRequest): Promise<PluginI
   const handle = putPlanHandle("install", [req], plan);
   /* D8′：市场自绘卡要的载荷（文案/策略/旧版本）与壳默认卡**同一份**构造器 */
   const view = buildConfirmPayload(plan, "install", { fromVersion: ctx.facts(req.pluginId).installedVersion });
-  return { planId: handle.planId, plan, view, expiresAt: handle.expiresAt };
+  const cardOwner = requiresHostConfirm(plan) ? "host" : "market";
+  return { planId: handle.planId, plan, view, cardOwner, expiresAt: handle.expiresAt };
 }
 
 /** 批量第一跳（一张计划的 ask/silent/分组全在返回值里） */
@@ -271,7 +274,8 @@ export async function prepareUpdateBatch(reqs: PluginInstallRequest[]): Promise<
   const plan = buildConfirmPlan(reqs, ctx);
   const handle = putPlanHandle("batch", reqs, plan);
   const view = buildConfirmPayload(plan, "batch", { reqs });
-  return { planId: handle.planId, plan, view, expiresAt: handle.expiresAt };
+  const cardOwner = requiresHostConfirm(plan) ? "host" : "market";
+  return { planId: handle.planId, plan, view, cardOwner, expiresAt: handle.expiresAt };
 }
 
 /**
