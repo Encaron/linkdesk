@@ -92,3 +92,22 @@ describe("resolvePluginIcon — iconSource shared（04 内置配置组图标 202
     expect(resolvePluginIcon("demo-plugin", { iconSource: "shared" })).toEqual({ emoji: "📄" });
   });
 });
+
+describe("resolvePluginIcon —— 绝对 URL 自证是图（2026-11-25 批量卡破图）", () => {
+  it("https URL（市场目录条目的 icon）⇒ 直接当 src，⛔ 不再按文件名拼插件资产路径", () => {
+    const url = "https://raw.githubusercontent.com/Encaron/linkdesk-plugin-demo/v1.0.0/resources/icon.svg";
+    expect(resolvePluginIcon("demo-theme", { icon: url })).toEqual({ src: url });
+    // 带 iconSource:"url" 也走同一条（两种入口同一个结果）
+    expect(resolvePluginIcon("demo-theme", { icon: url, iconSource: "url" })).toEqual({ src: url });
+  });
+
+  it("data: / linkdesk: / file: 同样直接当 src", () => {
+    expect(resolvePluginIcon("demo", { icon: "data:image/svg+xml;base64,AAA" })).toEqual({ src: "data:image/svg+xml;base64,AAA" });
+    expect(resolvePluginIcon("demo", { icon: "linkdesk://demo/resources/icon.png" })).toEqual({ src: "linkdesk://demo/resources/icon.png" });
+  });
+
+  it("相对路径仍按文件名走插件资产（未被 URL 分支误伤）", () => {
+    const r = resolvePluginIcon("demo-plugin", { icon: "resources/icon.png" });
+    expect(r.src).toMatch(/^linkdesk:\/\/demo-plugin\//);
+  });
+});

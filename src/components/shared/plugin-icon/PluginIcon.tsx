@@ -13,7 +13,7 @@
  *   manifest 缺省 → emoji 兜底（池内无 manifest 的历史条目沿用现状）。
  */
 import { resolvePluginIcon, type ManifestIconShape, type SharedIconDefault } from "./iconUtils";
-import { ComponentType } from "react";
+import { ComponentType, useState } from "react";
 import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
   Monitor, Settings, BookOpen, BarChart3, Lightbulb, Lock,
@@ -66,6 +66,8 @@ const FALLBACK = "📄";
 
 export function PluginIcon({ pluginId, manifest, sharedIcons, className, alt = "" }: PluginIconProps) {
   const resolved = manifest ? resolvePluginIcon(pluginId, manifest) : { emoji: FALLBACK };
+  // 图片加载失败记录——挂在 src 上而不是布尔，换图标后自动重试
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   // E5#100: Lucide 优先
   if (resolved.lucide) {
@@ -107,9 +109,20 @@ export function PluginIcon({ pluginId, manifest, sharedIcons, className, alt = "
     );
   }
   if (resolved.src) {
-    return (
-      <img src={resolved.src} alt={alt} className={`plugin-icon plugin-icon--img ${className ?? ""}`} draggable={false} />
-    );
+    /* 远程图可能 404/断网（目录条目的 icon 是 raw.githubusercontent 地址）——加载失败退回 FALLBACK，
+     * ⛔ 不留一张「破图」占位（用户实机：批量卡上两个条目就是破图块）。 */
+    if (failedSrc !== resolved.src) {
+      return (
+        <img
+          src={resolved.src}
+          alt={alt}
+          className={`plugin-icon plugin-icon--img ${className ?? ""}`}
+          draggable={false}
+          onError={() => setFailedSrc(resolved.src!)}
+        />
+      );
+    }
+    return <span className={`plugin-icon plugin-icon--emoji ${className ?? ""}`}>{FALLBACK}</span>;
   }
   // @deprecated E5#100：emoji 回退——保留一个月后删除。新图标优先走 Lucide。
   return (

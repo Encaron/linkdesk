@@ -57,6 +57,13 @@ export function resolvePluginIcon(pluginId: string, manifest: ManifestIconShape)
   const icon = manifest.icon;
   const source = manifest.iconSource;
 
+  /* 🔴 2026-11-25（用户实机：批量更新卡上一排「破图」）：**绝对 URL 自证是图**。
+   * 目录条目的 `icon` 就是 `https://raw.githubusercontent.com/…/icon.svg` 这种地址；
+   * 旧逻辑只认 `iconSource:"url"`，而市场发来的载荷只有 `icon` 字符串（`iconSource` 在契约里没有）
+   * ⇒ 落到「含 / ⇒ 当文件名」分支 ⇒ `getPluginAssetPath(未安装的插件, "https://…")` ⇒ 必破。
+   * 判据只认「协议头」：http(s)/data/linkdesk/file —— 这几类本身就不是文件名。 */
+  if (icon && /^(https?:|data:|linkdesk:|file:)/i.test(icon.trim())) return { src: icon.trim() };
+
   // E5#100: Lucide 图标优先
   if (source === "lucide" && icon) {
     return { lucide: icon };
