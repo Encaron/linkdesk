@@ -77,7 +77,7 @@
   margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 4px 16px;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.6;
