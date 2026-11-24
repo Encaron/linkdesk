@@ -51,12 +51,22 @@ export interface SidebarLayoutState {
   width?: number;
 }
 
-/** E5.8#43-3：脱出窗持久化状态——重启/F5 恢复浮窗（I9-15）。此刻浮窗无 tab（tab 归属随 #44 拖出后扩展），仅落盘窗口矩形。 */
+/**
+ * 脱出窗持久化状态——重启/F5 恢复浮窗（E5.8#43-3 / I9-15）。
+ *
+ * 🔴 2026-11-25：**`tabs` 必须落盘**（用户实机：把「设置」拖成独立窗 → F5 / 插件更新后「立即重启」
+ * ⇒ 那扇窗回来是**白屏**）。旧实现只存 `bounds`，恢复时给 `emptyTabState()` ⇒ 窗在、内容没了。
+ * 快照形状与主窗持久化**同一份** `LayoutData`（`serializeGroups`/`reduceRestoreLayout` 单源），
+ * ⛔ 不另造脱出窗专用格式。
+ */
 export interface DetachedWindowState {
   /** 壳生成 id——主进程按 id 幂等建/复窗 */
   windowId: string;
-  /** 上次落盘的窗口矩形——重启 createPoolWindow 用（越界钳制主进程做，I9-14） */
-  bounds: { x: number; y: number; width: number; height: number };
+  /** 上次落盘的窗口矩形——重启 createPoolWindow 用（越界钳制主进程做，I9-14）。
+   *  缺省 = 主进程按缺省矩形建（用户从未移动过该窗时也得能恢复内容）。 */
+  bounds?: { x: number; y: number; width: number; height: number };
+  /** 该窗的标签页快照（与主窗 `WorkspaceLayout.tabs` 同形）；缺省/空 = 空窗 */
+  tabs?: LayoutData;
 }
 
 export interface WorkspaceLayout {
@@ -186,6 +196,28 @@ export function syncWriteLayout(layout: WorkspaceLayout): void {
   _layoutCache = layout;
   writeSync(layoutStorageKey(), _layoutCache);
 }
+/* ── 重启前落盘（2026-11-25） ── */
+
+/** 布局快照的**同步落盘器**——由壳（`useLayoutPersistence`）注册：读活值现建快照并写盘。
+ *  壳侧拿得到全部 live state（主窗 tabState / 面板 / 脱出窗注册表），LayoutService 只有缓存。
+ *  ⛔ 不在这里另建第二份快照逻辑——注册进来的是壳那**同一个** `writeNow`。 */
+let _layoutFlush: (() => void) | null = null;
+
+export function registerLayoutFlush(fn: (() => void) | null): void {
+  _layoutFlush = fn;
+}
+
+/**
+ * **重启前同步落盘**——`app.exit(0)`（`shell.relaunch` 的实现）**不跑 beforeunload**，
+ * 于是「插件更新 → 立即重启」这条路上，脱出窗的标签页/位置从来没被写下去
+ * （2026-11-25 用户实机：重启后独立窗白屏）。
+ * 调用点：`pluginLoader/lifecycle/update.ts` 的 `relaunchApp()`，⛔ 不要散落到别处。
+ * 未注册（壳未 mount / 纯浏览器预览）→ 静默 no-op。
+ */
+export function flushLayoutSync(): void {
+  try { _layoutFlush?.(); } catch { /* 落盘失败不能挡住重启 */ }
+}
+
 
 /* ── 具名工作区（Phase 7） ── */
 

@@ -24,6 +24,7 @@ import {
 } from "./lifecycle-ops";
 // E6#73j（G1）：更新与安装同一条 job 队列——进度行 / 并发上限 / 取消 三样一起继承，不再「同是长任务两套待遇」。
 // 同插件去重使「一边装一边点更新」合并成一件事（一个插件一次只该有一个 job 在跑）。
+import { flushLayoutSync } from "../../core/services/layout/LayoutService";
 import {
   identifyInstallJob,
   isInstallJobCancelled,
@@ -41,6 +42,10 @@ import {
  * 面缺失（老 preload / 纯浏览器预览）→ 退回 reload——聊胜于无，至少不静默。
  */
 function relaunchApp(): void {
+  /* 🔴 先落盘再重启：`shell.relaunch` 的实现是 `app.exit(0)`，**beforeunload 不会跑**
+   * （main.ts 注释：「语义是立刻重来，不被任何 beforeunload/close 拦截」）。
+   * 不 flush ⇒ 脱出窗的标签页/位置从来没写过盘 ⇒ 重启后那扇窗白屏（2026-11-25 实机）。 */
+  flushLayoutSync();
   const relaunch = window.linkdesk?.shell?.relaunch;
   if (relaunch) {
     try { void relaunch(); return; } catch { /* 落到 reload 兜底 */ }

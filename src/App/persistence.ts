@@ -6,8 +6,8 @@
  * App 消费：useLayoutPersistence({ ready, tabState, panelActiveViewId })。无反向依赖。
  */
 
-import { useEffect, useRef } from "react";
-import { saveTabLayout, savePanelLayout, saveSidebarLayout, saveDetachedWindows, getPanelLayout, syncWriteLayout, type WorkspaceLayout, type DetachedWindowState } from "../core/services/layout/LayoutService";
+import { useCallback, useEffect, useRef } from "react";
+import { saveTabLayout, savePanelLayout, saveSidebarLayout, saveDetachedWindows, getPanelLayout, syncWriteLayout, registerLayoutFlush, type WorkspaceLayout, type DetachedWindowState } from "../core/services/layout/LayoutService";
 import { syncWriteWorkspaceFolders } from "../core/services/layout/WorkspaceService";
 import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.8#36.9：edge 窄化守卫（dock.edge 宽类型 → DTO 窄类型）
 import type { TabState, LayoutData } from "../hooks/useTabManager";
@@ -23,11 +23,21 @@ export interface LayoutPersistenceDeps {
   windows: WindowShellState[];
 }
 
-/** E5.8#43-3：注册表脱出窗子集 → 持久化形状（windowId + bounds；无 bounds 不落盘——未移过/未恢复的窗不建持久化记录） */
-function serializeDetachedWindows(windows: WindowShellState[]): DetachedWindowState[] {
+/**
+ * 注册表脱出窗子集 → 持久化形状（windowId ＋ bounds ＋ **tabs**）。
+ *
+ * 🔴 2026-11-25 修（用户实机白屏）：旧实现只落 `windowId+bounds` 且**要求 bounds 存在**
+ * （用户没拖过窗 = 不落盘 = 那扇窗下次直接消失）。恢复时 shell 只能给空 tabState ⇒ 窗在、内容没。
+ * 现在标签页快照与主窗同一份序列化（`serializeGroups`，`LayoutData` 同形），bounds 缺失也照记。
+ */
+export function serializeDetachedWindows(windows: WindowShellState[]): DetachedWindowState[] {
   return windows
-    .filter((w) => w.mode === "detached" && w.bounds)
-    .map((w) => ({ windowId: w.windowId, bounds: w.bounds! }));
+    .filter((w) => w.mode === "detached")
+    .map((w) => ({
+      windowId: w.windowId,
+      ...(w.bounds ? { bounds: w.bounds } : {}),
+      tabs: serializeGroups(w.tabState.groups, w.tabState.activeGroupId, w.tabState.root),
+    }));
 }
 
 /** 标签页组序列化——beforeunload 与 100ms 防抖保存共用同一形状（E5.8#1c 去重） */
@@ -67,51 +77,65 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
   const panelVisibleRef = useRef(panelVisible);
   panelVisibleRef.current = panelVisible;
 
-  // beforeunload——F5 刷新/关闭窗口时同步写入
-  useEffect(() => {
-    const onBeforeUnload = () => {
-      try {
-        const s = tabStateRef.current;
-        const layout: WorkspaceLayout = {
-          tabs: serializeGroups(s.groups, s.activeGroupId, s.root),
-          cards: [],
+  /**
+   * **同步落盘的唯一实现**——`beforeunload`（F5 / 关窗）与**重启前 flush**（`app.exit(0)` 不跑
+   * beforeunload，见 `LayoutService.flushLayoutSync`）共用这一份：
+   * 各自写一份迟早漂移（一处补了面板、另一处没补），这正是 2026-11-25 白屏事故的同族病。
+   * 闭包 `[]` 恒等 + ref 读活值（beforeunload 期间没有下一次 render 可等）。
+   */
+  const writeNow = useCallback(() => {
+    try {
+      const s = tabStateRef.current;
+      const layout: WorkspaceLayout = {
+        tabs: serializeGroups(s.groups, s.activeGroupId, s.root),
+        cards: [],
+      };
+      // E5.7#63.7：面板状态同样读活值（防抖保存可能未落盘）——syncWriteLayout 整体替换缓存，
+      // 不带上 panel 会在退出时冲掉面板状态。仅面板被用过（有激活视图/有历史状态）时写入。
+      const panelActive = panelActiveViewIdRef.current;
+      const panelHeight = layoutEngine.getBounds("panel")?.height;
+      // E5.8#36.9：位置/对齐同显隐合并落盘——防抖保存可能未覆盖，退出时兜底写入
+      const panelZone = layoutEngine.getZone("panel");
+      const panelEdge = narrowPanelEdge(panelZone?.dock?.edge);
+      const panelEdgeIsVertical = panelEdge === "left" || panelEdge === "right";
+      if (panelActive || getPanelLayout()) {
+        layout.panel = {
+          height: panelHeight ?? 220,
+          ...(panelEdgeIsVertical
+            ? { width: layoutEngine.getBounds("panel")?.width ?? panelZone?.dock?.width ?? 300 }
+            : {}),
+          edge: panelEdge,
+          align: panelZone?.dock?.align ?? "center",
+          ...(panelActive ? { activeViewId: panelActive } : {}),
+          visible: panelVisibleRef.current, // E5.8#31：显隐合并落盘——防抖保存可能未覆盖
         };
-        // E5.7#63.7：面板状态同样读活值（防抖保存可能未落盘）——syncWriteLayout 整体替换缓存，
-        // 不带上 panel 会在退出时冲掉面板状态。仅面板被用过（有激活视图/有历史状态）时写入。
-        const panelActive = panelActiveViewIdRef.current;
-        const panelHeight = layoutEngine.getBounds("panel")?.height;
-        // E5.8#36.9：位置/对齐同显隐合并落盘——防抖保存可能未覆盖，退出时兜底写入
-        const panelZone = layoutEngine.getZone("panel");
-        const panelEdge = narrowPanelEdge(panelZone?.dock?.edge);
-        const panelEdgeIsVertical = panelEdge === "left" || panelEdge === "right";
-        if (panelActive || getPanelLayout()) {
-          layout.panel = {
-            height: panelHeight ?? 220,
-            ...(panelEdgeIsVertical
-              ? { width: layoutEngine.getBounds("panel")?.width ?? panelZone?.dock?.width ?? 300 }
-              : {}),
-            edge: panelEdge,
-            align: panelZone?.dock?.align ?? "center",
-            ...(panelActive ? { activeViewId: panelActive } : {}),
-            visible: panelVisibleRef.current, // E5.8#31：显隐合并落盘——防抖保存可能未覆盖
-          };
-        }
-        // E5.8#36.9：侧栏边——beforeunload 兜底落盘（防抖保存可能未覆盖）
-        // 04「侧栏显隐持久化」：宽度同笔兜底（折叠态 = 宽 ≤48，重启由 tabActions 恢复）
-        layout.sidebar = {
-          edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge),
-          width: layoutEngine.getBounds("sidebar")?.width ?? 280,
-        };
-        // E5.8#43-3（A6/I9-14）：脱出窗 bounds 兜底落盘——防抖保存可能未覆盖，退出时同步写入
-        const detached = serializeDetachedWindows(windowsRef.current);
-        if (detached.length) layout.detachedWindows = detached;
-        syncWriteLayout(layout);
-        syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
-      } catch { /* 静默 */ }
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+      }
+      // E5.8#36.9：侧栏边——beforeunload 兜底落盘（防抖保存可能未覆盖）
+      // 04「侧栏显隐持久化」：宽度同笔兜底（折叠态 = 宽 ≤48，重启由 tabActions 恢复）
+      layout.sidebar = {
+        edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge),
+        width: layoutEngine.getBounds("sidebar")?.width ?? 280,
+      };
+      // E5.8#43-3（A6/I9-14）：脱出窗 bounds 兜底落盘——防抖保存可能未覆盖，退出时同步写入
+      const detached = serializeDetachedWindows(windowsRef.current);
+      if (detached.length) layout.detachedWindows = detached;
+      syncWriteLayout(layout);
+      syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
+    } catch { /* 静默 */ }
   }, []);
+
+  // beforeunload——F5 刷新/关闭窗口时同步写入（读 ref，不重算）
+  useEffect(() => {
+    window.addEventListener("beforeunload", writeNow);
+    return () => window.removeEventListener("beforeunload", writeNow);
+  }, [writeNow]);
+
+  // 重启前 flush 注册——`shell.relaunch` = app.exit(0)，beforeunload 不会触发；
+  // 不注册 = 「插件更新 → 立即重启」这条路上布局/脱出窗从不落盘（2026-11-25 实测白屏）。
+  useEffect(() => {
+    registerLayoutFlush(writeNow);
+    return () => registerLayoutFlush(null);
+  }, [writeNow]);
 
   // 100ms 防抖保存——标签页/分屏变更后自动持久化。
   // E5.7 迁移补：ready 前不保存——迁入 App 后此 effect 首轮 mount 就跑（StrictMode 双跑），
@@ -203,7 +227,8 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
     };
   }, [ready, panelActiveViewId]);
 
-  // E5.8#43-3（A6/I9-14）：脱出窗 bounds 落盘——100ms 防抖（主进程 moved/resized 上报 → 注册表更新 → 本 effect 落盘）。
+  // E5.8#43-3（A6/I9-14）：脱出窗落盘——100ms 防抖（主进程 moved/resized 上报 → 注册表更新 → 本 effect 落盘）。
+  // 2026-11-25：快照含 `tabs`（此前只 bounds ⇒ 重启/刷新后窗在内容没 = 白屏）。
   // 与上次落盘指纹比对——main tabState 活同步也触发 windows 变化，脱出子集不变不写盘。
   // 首轮跳过：恢复（restore 建窗 + bounds 回填）不该立刻写回盘。
   const detachedSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

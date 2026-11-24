@@ -15,7 +15,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TabState } from "../../hooks/useTabManager";
+import type { LayoutData, TabState } from "../../hooks/useTabManager";
+import { reduceRestoreLayout } from "../../hooks/useTabManager/reducers-layout"; // 脱出窗恢复＝与主窗同一份 reducer（单源）
 import type { WindowShellState, WindowMode } from "./index";
 import { getDetachedWindows } from "../../core/services/layout/LayoutService";
 import type { PoolWindowBoundsPayload } from "../../core/types/ipc/poolActions";
@@ -46,6 +47,14 @@ export interface MainResourceActions {
 interface UseWindowHostOptions {
   /** 主窗标签页真相源（useTabManager）——活同步进注册表，主窗布局随标签操作即时重推 */
   mainTabState: TabState;
+  /**
+   * 启动就绪（App 的 `ready`，= `initAll` 完成、布局缓存已装载）——脱出窗恢复的**唯一**闸门。
+   *
+   * 🔴 2026-11-25：恢复曾在 mount 时直接跑，而 `initLayoutService` 在启动管线里**晚于** mount
+   * ⇒ `getDetachedWindows()` 可能读到空缓存（脱出窗直接消失）。与主窗标签恢复（`tabActions` 的
+   * `if (!ready) return`）同一把尺子：**持久化数据装好之后才恢复**。缺省 true（测试/无启动序场景）。
+   */
+  bootReady?: boolean;
   /** E5.8#45：漂移面板窗关闭回调——壳消费关闭面板（I9-13 拍板 A：关窗即关会话，不回归主窗口）。
    *   OS ×（onWindowClosed）与壳驱动 closeWindow 双路径同触发。 */
   onDriftWindowClosed?: () => void;
@@ -70,6 +79,17 @@ export interface UseWindowHostResult {
  *  #45-C panelDrift 复用——两消费方（恢复 effect 同模块 + panelDrift 建 drift 窗）。 */
 export function emptyTabState(): TabState {
   return { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } };
+}
+
+/**
+ * 脱出窗恢复的 tabState——持久化快照 → TabState（2026-11-25，用户实机白屏的修复点）。
+ *
+ * 判据：`tabs.groups` 有内容 ⇒ 走**主窗同款** `reduceRestoreLayout`（⛔ 不另写反序列化）；
+ * 缺省/空（老数据、漂移面板窗）⇒ 空窗（保持既有语义：脱出窗不补欢迎页）。
+ */
+export function restoredDetachedTabState(tabs?: LayoutData): TabState {
+  if (!tabs?.groups?.length) return emptyTabState();
+  return reduceRestoreLayout(tabs);
 }
 
 /** E5.8#46.2 跨窗资源广播——mapper 结果契约 */
@@ -111,7 +131,7 @@ function basenameOf(path: string): string {
   return normalizePath(path).split("/").pop() || path;
 }
 
-export function useWindowHost({ mainTabState, onDriftWindowClosed, mainResourceActions }: UseWindowHostOptions): UseWindowHostResult {
+export function useWindowHost({ mainTabState, bootReady = true, onDriftWindowClosed, mainResourceActions }: UseWindowHostOptions): UseWindowHostResult {
   // 初始只有主窗——ready:true（主池可立即接收布局，preload 缓冲回放；onReady('main') 仅确认）
   const [windows, setWindows] = useState<WindowShellState[]>(() => [
     { windowId: "main", mode: "main", ready: true, tabState: mainTabState },
@@ -279,10 +299,11 @@ export function useWindowHost({ mainTabState, onDriftWindowClosed, mainResourceA
   // 主进程幂等：F5 复用既有窗（bounds 保持实际值），重启新建（bounds 给 createPoolWindow 越界钳制）。
   // 幂等重跑安全（createWindow 壳侧 + 主进程双侧幂等）——StrictMode/HMR 双跑不重复登记。
   useEffect(() => {
+    if (!bootReady) return; // 布局缓存未装载就开始恢复 = 读到空清单（见 options.bootReady 注释）
     for (const d of getDetachedWindows()) {
-      createWindow(d.windowId, emptyTabState(), d.bounds);
+      createWindow(d.windowId, restoredDetachedTabState(d.tabs), d.bounds);
     }
-  }, [createWindow]);
+  }, [bootReady, createWindow]);
 
   return { windows, createWindow, closeWindow, updateTabState };
 }

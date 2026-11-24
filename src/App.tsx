@@ -144,6 +144,7 @@ function App() {
   // E5.8#45：onDriftWindowClosed——漂移面板窗关闭 = 关闭面板（I9-13 拍板 A：关窗即关会话，不回归主窗口）。
   // 双路径（OS 点 × / 壳驱动 closeWindow）同触发；setPanelVisible 稳定（usePanelHost）→ 回调恒等
   const { windows, createWindow, closeWindow, updateTabState } = useWindowHost({
+    bootReady: ready,
     mainTabState: tabState,
     onDriftWindowClosed: () => setPanelVisible(false),
     mainResourceActions,
