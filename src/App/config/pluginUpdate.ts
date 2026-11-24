@@ -35,26 +35,26 @@ export function registerPluginUpdateConfiguration(t: ConfigT): void {
     properties: {
       [POLICY_KEYS.silentOfficial]: {
         type: "boolean",
-        group: t("软件更新"),
+        group: t("插件更新"),
         default: DEFAULT_POLICY.silentOfficial,
         title: t("官方目录更新不再询问"),
-        description: t("官方目录的同源更新（同一来源、版本更高、校验通过）直接安装，不再逐项询问"),
+        description: t("官方目录的同源更新直接安装"),
       },
       [POLICY_KEYS.silentTrustedSources]: {
         type: "boolean",
-        group: t("软件更新"),
+        group: t("插件更新"),
         default: DEFAULT_POLICY.silentTrustedSources,
         title: t("信任来源的更新不再询问"),
-        description: t("你在下方信任过的第三方来源，其同源更新直接安装，不再逐项询问"),
+        description: t("已信任来源的同源更新直接安装"),
       },
       [POLICY_KEYS.trustedSources]: {
         type: "array",
-        group: t("软件更新"),
+        group: t("插件更新"),
         default: [],
         uiHint: "stringList",
         title: t("信任来源"),
         // 「覆盖范围」写进说明——每行状态由确认卡与来源清单显式展示，⛔ 不让用户猜「在这一行是信任还是不信任」。
-        description: t("每行一个来源 id（就是市场「来源」里显示的那个名字）。只影响该来源的更新；首次安装和来源变更仍会确认"),
+        description: t("每行一个来源 id（市场「来源」里显示的那个名字）"),
       },
     },
   });
