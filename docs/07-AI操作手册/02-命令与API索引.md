@@ -203,7 +203,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**19 个域接口 → 51 个命名空间 / 286 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**19 个域接口 → 51 个命名空间 / 288 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -223,7 +223,7 @@
 | `env` | WorkspaceAPI | 1 | `get` | Environment info — modeled after VS Code ExtensionContext |
 | `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data pipeline. channel is a free-form string; payloads are typed p… |
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
-| `fileAssociation` | EditorAPI | 4 | `getPluginFor` `listHandlersFor` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly by the main-process FileAssociationService). |
+| `fileAssociation` | EditorAPI | 6 | `getPluginFor` `listHandlersFor` `getOverrides` `onDidChangeOverrides` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly by the main-process FileAssociationService). |
 | `filesystem` | WorkspaceAPI | 12 | `readTextFile` `writeTextFile` `exists` `createDir` `copy` `rename` `remove` `listDir` `readBinaryFile` `writeBinaryFile` `watch` `readdir`° | Filesystem — plugin read/write (path validation is performed by the main process) |
 | `floatingPanelHost` | UiAPI | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | (type B): floating panel dumb-render subscription — consumed by the pool's FloatingPanelHost (the shell preload has no … |
 | `getFilePath` | ShellAPI | 0 | （顶层函数）`getFilePath: (file: File) => string;` | Get the paths of files dragged in from the OS — injected on both ends |
