@@ -106,38 +106,31 @@
   color: var(--danger);
 }
 
-/* 完全访问的常驻提示条——危险语气，但颜色仍走 token */
-.ldk-ai-policy-note {
-  padding: 8px;
-  border: 1px solid var(--danger);
+/* 完全访问的告警行：一句说明 + 行内「恢复默认」（对齐原型的一行式） */
+.ldk-ai-policy-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--warning);
   border-radius: var(--radius-sm);
   background: var(--warning-bg);
   color: var(--warning-text);
   font-size: var(--font-size-xs);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-/* 「改成自主」——次级按钮（不是主 CTA：真正的写入在设置页的保存心智里） */
-.ldk-ai-policy-reset {
-  align-self: flex-start;
-  padding: 0 12px;
-  height: var(--size-control-sm);
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
+.ldk-ai-policy-alert-reset {
+  appearance: none;
+  border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--accent-hover);
   font-family: inherit;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
+  padding: 0;
   white-space: nowrap;
-}
-
-.ldk-ai-policy-reset:hover:not(:disabled) {
-  background: var(--hover-overlay);
-  color: var(--text-primary);
-}
-
-.ldk-ai-policy-reset:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }

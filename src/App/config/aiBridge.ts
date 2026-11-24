@@ -177,15 +177,6 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         description: t("查看操作清单"),
       },
       // token 明文永不进设置页（mockup 也没画）——只提供重新生成；查看走通道详情 / CLI
-      "ai.token.regenerate": {
-        type: "string",
-        group: t("开放范围与安全"),
-        default: "",
-        renderHint: "action",
-        actionCommand: "aiBridge.regenerateToken",
-        title: t("接入凭据"),
-        description: t("重新生成凭据"),
-      },
       "ai.sensitive.openManager": {
         type: "string",
         group: t("开放范围与安全"),
@@ -194,6 +185,15 @@ export function registerAiBridgeConfiguration(t: ConfigT): void {
         actionCommand: "aiBridge.openSensitiveManager",
         title: t("敏感能力"),
         description: t("查看敏感能力"),
+      },
+      "ai.token.regenerate": {
+        type: "string",
+        group: t("开放范围与安全"),
+        default: "",
+        renderHint: "action",
+        actionCommand: "aiBridge.regenerateToken",
+        title: t("接入凭据"),
+        description: t("重新生成凭据"),
       },
 
       /* ── 分节④：记录（2 键·状态已并进开关）── */

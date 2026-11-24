@@ -129,7 +129,7 @@ export default function AiPolicyPicker({
         })}
       </div>
 
-      {current?.description && (
+      {current?.description && !showNote && (
         <p className="ldk-ai-policy-current" id={`${groupId}-desc`}>
           {translate(current.description)}
         </p>
@@ -148,12 +148,15 @@ export default function AiPolicyPicker({
         </p>
       )}
 
-      {showNote && <div className="ldk-ai-policy-note" role="status">{translate(note)}</div>}
-
-      {showNote && onReset && resetLabel && (
-        <button type="button" className="ldk-ai-policy-reset" onClick={onReset} disabled={disabled}>
-          {translate(resetLabel)}
-        </button>
+      {showNote && (
+        <div className="ldk-ai-policy-alert" role="status">
+          <span>{translate(note)}</span>
+          {onReset && resetLabel && (
+            <button type="button" className="ldk-ai-policy-alert-reset" onClick={onReset} disabled={disabled}>
+              {translate(resetLabel)}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
