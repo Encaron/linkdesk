@@ -16,6 +16,7 @@
 ### test
 
 - 新增 `dev-fixtures/state-probe` 验证插件（读快照 / 写后置状态 / 幂等键 / 版本冲突；⛔ 不随壳发货）＋ 重放表/doctor/客户端 details 单测。
+- `doctor --profile file-tree` 接 file-tree 1.0.38：`a-state-keys` 由 skip 转严（refresh 实收键 ⊆ 声明）、`a-conflict` 用 `rename` 陈旧版本真验；`state-probe` 继续做幂等负控样本。
 
 ## v0.2.66（2026-11-25）
 

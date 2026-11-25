@@ -48,12 +48,18 @@ describe("doctor 正控（serial profile）", () => {
     const call = makeCall({
       exec: (_id, payload) => {
         if (payload.commandId.endsWith("doctor-no-such")) throw coded("EUNKNOWNCOMMAND", "不存在");
+        // 1.0.38：rename 的版本前置——冲突先于落盘（a-conflict 的真样本）
+        if (payload.commandId === "file-tree.rename") {
+          const e = coded("ECONFLICT", "树状态已变化");
+          e.details = { stateVersion: 1 };
+          throw e;
+        }
         return { commandId: payload.commandId, result: null };
       },
     });
     const out = await runDoctor({ call, profile: "file-tree" });
     const skipped = out.filter((r) => r.skip).map((r) => r.id);
-    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent", "a-conflict"]);
+    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent"]);
     for (const r of out.filter((x) => !x.skip)) expect(r.pass, `${r.id}: ${r.actual}`).toBe(true);
   });
 

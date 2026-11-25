@@ -50,11 +50,15 @@ const PROFILES = {
     viewCommand: null,
     // 无「可逆写 + 可回读后置状态」的无害样本 ⇒ 后置状态/收尾断言跳过（⛔ 硬造一条写盘命令当样本）
     changeCommand: null,
-    stateCommand: null,
+    // 1.0.38（T-B）：refresh 回状态快照，无视图也回（viewMounted:false）——状态键断言的真实样本
+    stateCommand: "file-tree.refresh",
     teardownCommand: null,
-    // file-tree 未声明 idempotencyKey / 版本前置 ⇒ 幂等/冲突断言跳过
+    // 幂等键：rename 是「目标路径收敛」写，同键重放可验；但**异键负控**会撞 ENOENT（源已不在）
+    // ⇒ 不给 doctor 做负控样本（幂等断言仍由 state-probe 覆盖）
     idempotentCommand: null,
-    conflictCommand: null,
+    // 版本前置：冲突先于落盘 ⇒ 用不存在的路径即可验码（⛔ 需要真文件）
+    conflictCommand: "file-tree.rename",
+    conflictArgs: { uri: "C:/linkdesk-doctor-none.txt", newName: "none-2.txt", expectedVersion: 999999 },
   },
   /**
    * state-probe——纯软件状态样本（T-B · 13-状态命令约定）。
