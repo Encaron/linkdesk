@@ -43,6 +43,42 @@ const _activationStack: string[] = [];
  */
 let _entryImportDepth = 0;
 
+/**
+ * 2026-11-25：**清单声明过的命令 = 插件级**（与 import 上下文解耦）。
+ * 病根二：插件把命令注册放进「首个被 import 的池面模块」（市场侧就是这种），首个 import 若发生在
+ * 某个视图挂载期间 ⇒ 命令被记成 view 作用域；视图一卸载就整批摘掉，而模块级 guard 又让 entry
+ * 重被 import 时不再注册 ⇒ 图标/齿轮报「未在池内注册」。
+ * 判据：contributes.commands[] 声明过的 id 是**插件级公共命令**（声明面即契约），视图卸载只该摘
+ * 私有命令。本集合从壳注册表 placeholder:true 的条目预取（loader 为声明面登记的占位元数据）。
+ */
+const _declaredCommandIds = new Set<string>();
+let _declaredLoadStarted = false;
+function ensureDeclaredCommands(): void {
+  if (_declaredLoadStarted) return;
+  _declaredLoadStarted = true;
+  void ipcRenderer
+    .invoke(IPC.plugins.call, "getCommands")
+    .then((list: unknown) => {
+      if (!Array.isArray(list)) return;
+      for (const c of list as Array<{ id?: unknown; placeholder?: unknown }>) {
+        if (typeof c?.id === "string" && c.placeholder === true) _declaredCommandIds.add(c.id);
+      }
+    })
+    .catch(() => {
+      /* 壳不可达（浏览器 dev-host）⇒ 集合空 = 退回纯上下文判定 */
+    });
+}
+
+/** 测试内部面——注入「声明面命令」集合（生产由 ensureDeclaredCommands 预取） */
+function setDeclaredCommandsForTest(ids: Iterable<string>): void {
+  _declaredCommandIds.clear();
+  for (const id of ids) _declaredCommandIds.add(id);
+  _declaredLoadStarted = true; // 阻止预取覆盖测试注入
+}
+
+// 模块加载即预取声明面命令集合（须在 _declaredCommandIds 初始化之后——否则 TDZ）
+ensureDeclaredCommands();
+
 /** 视图挂载：压栈（栈顶即当前视图上下文） */
 function enterViewContext(viewInstanceId: string): void {
   if (_activationStack[_activationStack.length - 1] !== viewInstanceId) _activationStack.push(viewInstanceId);
@@ -53,7 +89,13 @@ function leaveViewContext(viewInstanceId: string): void {
   const at = _activationStack.lastIndexOf(viewInstanceId);
   if (at >= 0) _activationStack.splice(at, 1);
   for (const [id, entry] of _poolCommands) {
-    if (entry.scope === `view:${viewInstanceId}`) _poolCommands.delete(id);
+    if (entry.scope !== `view:${viewInstanceId}`) continue;
+    if (_declaredCommandIds.has(id)) {
+      // 声明面命令 = 插件级：视图卸载时**提升**，⛔ 不随实例删（否则图标/齿轮永久 miss）
+      _poolCommands.set(id, { ...entry, scope: "plugin", activation: "entry" });
+      continue;
+    }
+    _poolCommands.delete(id);
   }
 }
 
@@ -146,6 +188,13 @@ export function buildCommands(events: EventSystemApi) {
       const scope = viewInstanceId ? `view:${viewInstanceId}` : "plugin";
       const existing = _poolCommands.get(id);
       if (existing && existing.scope !== scope) {
+        // 2026-11-25：view → plugin = **提升**（入口级注册是权威，声明面命令更该如此）；
+        // 反向（plugin → view）仍保留插件级，⛔ 谁最后注册谁赢。
+        if (scope === "plugin") {
+          _poolCommands.set(id, { handler, activation: "entry", scope: "plugin" });
+          if (meta?.pluginId) _poolCommandOwners.set(id, meta.pluginId);
+          return;
+        }
         // T6：同一 commandId 只允许一个作用域——跨层双注册 ⇒ 诊断 ＋ 后者不覆盖（⛔ 谁最后注册谁赢）。
         // 视图态晚于插件级 ⇒ 保留首注册；插件的双注册由各仓收敛（02 §2.2 的验收对象）。
         console.warn(
@@ -213,6 +262,8 @@ export function buildCommands(events: EventSystemApi) {
     /** 2026-11-25 内部面——import 入口前后压/弹「强制 entry 作用域」计数器（PluginComponent 调；非插件 API） */
     _beginEntryImport: () => { _entryImportDepth++; },
     _endEntryImport: () => { if (_entryImportDepth > 0) _entryImportDepth--; },
+    /** 测试内部面（⛔ 插件 API）：注入声明面命令集合 */
+    _setDeclaredCommandsForTest: setDeclaredCommandsForTest,
     getCommands: () => ipcRenderer.invoke(IPC.plugins.call, 'getCommands'),
   };
 

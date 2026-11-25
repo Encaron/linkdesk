@@ -231,3 +231,43 @@ describe('2026-11-25：入口 import 强制上下文（齿轮命令丢失回归�
     await expect(commands.executeCommand('demo-plugin.viewScoped')).resolves.toBeUndefined();
   });
 });
+
+describe('2026-11-25：声明面命令 = 插件级（S4 作用域回归）', () => {
+  it('声明过的命令即使先被视图注册，视图卸载时提升为 plugin，仍可执行', async () => {
+    ipcMock.invoke.mockClear();
+    const commands = buildCommands(fakeEvents());
+    commands._setDeclaredCommandsForTest(['demo-plugin.declared']);
+
+    commands._enterViewContext('view-3');
+    commands.registerCommand('demo-plugin.declared', () => 'kept');
+    commands._leaveViewContext('view-3');
+
+    await expect(commands.executeCommand('demo-plugin.declared')).resolves.toBe('kept');
+  });
+
+  it('未声明的视图私有命令照旧随视图卸载清理', async () => {
+    ipcMock.invoke.mockClear();
+    const commands = buildCommands(fakeEvents());
+    commands._setDeclaredCommandsForTest(['demo-plugin.declared']);
+
+    commands._enterViewContext('view-4');
+    commands.registerCommand('demo-plugin.private', () => 'gone');
+    commands._leaveViewContext('view-4');
+
+    await expect(commands.executeCommand('demo-plugin.private')).resolves.toBeUndefined();
+  });
+
+  it('view → plugin 重注册 = 提升（不因先来后到拒绝）', async () => {
+    ipcMock.invoke.mockClear();
+    const commands = buildCommands(fakeEvents());
+
+    commands._enterViewContext('view-5');
+    commands.registerCommand('demo-plugin.reg', () => 'view-handler');
+    commands._leaveViewContext('view-5');
+    commands._beginEntryImport();
+    commands.registerCommand('demo-plugin.reg', () => 'entry-handler');
+    commands._endEntryImport();
+
+    await expect(commands.executeCommand('demo-plugin.reg')).resolves.toBe('entry-handler');
+  });
+});
