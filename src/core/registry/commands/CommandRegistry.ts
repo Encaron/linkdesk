@@ -338,8 +338,20 @@ export function registerPoolCommandMetadata(
     // M1 AI#7：说明与参数同走「有值才覆盖」——池侧重注册不带这两项时不抹掉声明面那份
     if (meta.description !== undefined) existing.description = meta.description;
     if (meta.params !== undefined) existing.params = meta.params;
-    // S4：运行期真值覆盖声明面（注册上下文 = 真相，⛔ 声明压不过运行期）
-    if (meta.activation !== undefined) existing.activation = meta.activation;
+    // S4：运行期与声明面的一致性——**声明是地板**（2026-11-25 根修）：
+    //   `activation` 是命令的静态设计属性，宿主不应让一次上下文误判把它降级。
+    //   声明 entry 而运行期报 view ⇒ **保留 entry ＋ 诊断**（插件确实把命令挪进视图时，
+    //   应改 manifest，而不是让运行期偷偷改写契约）。
+    if (meta.activation !== undefined && meta.activation !== existing.activation) {
+      if (!(existing.activation === "entry" && meta.activation === "view")) {
+        existing.activation = meta.activation;
+      } else {
+        console.warn(
+          `[CommandRegistry] "${commandId}" 声明为 entry、运行期却按 view 注册——保留声明值（请检查插件注册点；`
+          + `当前注册上下文不可信：视图导入期会顺带求值 entry）`,
+        );
+      }
+    }
     // S6：异步声明（有值才覆盖）
     if (meta.async !== undefined) existing.async = meta.async;
     // S3b/T12：returns/example 同走「有值才覆盖」

@@ -119,6 +119,7 @@ function parseArgv(argv) {
     else if (a === "--list") opts.list = true; // doctor --list（S5）
     else if (a === "-k") opts.only = argv[++i]; // doctor -k <断言 id>
     else if (a === "--profile") opts.profile = argv[++i]; // doctor --profile file-tree
+    else if (a === "--blind") { /* doctor 本来就是"门外盲测"——兼容 05 文档/旧教程的 --blind 写法，无副作用 */ }
     else if (a === "--status") { opts.statusRequested = true; opts.statusOpId = argv[++i] ?? null; } // exec --status <opId>（S6 异步相位）
     else if (a.startsWith("--")) throw new BridgeError("EUSAGE", `未知选项 ${a}`, "看 `--help`。");
     else rest.push(a);

@@ -52,10 +52,16 @@ let _entryImportDepth = 0;
  * 私有命令。本集合从壳注册表 placeholder:true 的条目预取（loader 为声明面登记的占位元数据）。
  */
 const _declaredCommandIds = new Set<string>();
-let _declaredLoadStarted = false;
+let _declaredLoadInFlight = false;
+let _declaredLoadDisabled = false;
+/**
+ * 🔴 2026-11-25 根修（竞态）：旧实现「模块加载即取一次、成败都上锁」——池 preload 常早于壳注册完
+ * 声明面占位，取到空集就**永久空**⇒ 视图卸载的「声明面提升」失效，插件级命令整批被摘。
+ * 现在：**集合为空就允许重取**（并发去重），并在每次 registerCommand 前机会性刷新。
+ */
 function ensureDeclaredCommands(): void {
-  if (_declaredLoadStarted) return;
-  _declaredLoadStarted = true;
+  if (_declaredLoadDisabled || _declaredLoadInFlight || _declaredCommandIds.size > 0) return;
+  _declaredLoadInFlight = true;
   void ipcRenderer
     .invoke(IPC.plugins.call, "getCommands")
     .then((list: unknown) => {
@@ -65,7 +71,10 @@ function ensureDeclaredCommands(): void {
       }
     })
     .catch(() => {
-      /* 壳不可达（浏览器 dev-host）⇒ 集合空 = 退回纯上下文判定 */
+      /* 壳不可达（浏览器 dev-host）⇒ 集合空 = 退回纯上下文判定（下次注册再试） */
+    })
+    .finally(() => {
+      _declaredLoadInFlight = false;
     });
 }
 
@@ -73,7 +82,7 @@ function ensureDeclaredCommands(): void {
 function setDeclaredCommandsForTest(ids: Iterable<string>): void {
   _declaredCommandIds.clear();
   for (const id of ids) _declaredCommandIds.add(id);
-  _declaredLoadStarted = true; // 阻止预取覆盖测试注入
+  _declaredLoadDisabled = true; // 阻止预取覆盖测试注入
 }
 
 // 模块加载即预取声明面命令集合（须在 _declaredCommandIds 初始化之后——否则 TDZ）
@@ -181,6 +190,8 @@ export function buildCommands(events: EventSystemApi) {
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
     registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[]; async?: boolean }) => {
+      // 竞态兜底：声明面集合为空时，注册这条请求顺手再取一次（⛔ 上锁一次定终身）
+      ensureDeclaredCommands();
       // S4：读激活上下文栈顶定 activation/scope——entry 顶层注册 = plugin 作用域；视图挂载期间 = view:<id>
       // 2026-11-25：入口 import 期间强制 entry（见 _entryImportDepth 注）——否则视图内触发激活入口会误记 view 作用域。
       const viewInstanceId = _entryImportDepth > 0 ? undefined : _activationStack[_activationStack.length - 1];

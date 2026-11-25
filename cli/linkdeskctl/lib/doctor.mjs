@@ -64,6 +64,24 @@ async function execChecked(call, commandId, args = []) {
   }
 }
 
+/** 该插件是否已有打开的标签页（tabs 操作的结构：windows[].groups[].tabs[].pluginId） */
+async function pluginHasOpenTab(ctx, pluginId) {
+  try {
+    const layout = await ctx.call("tabs");
+    const wins = (layout && Array.isArray(layout.windows)) ? layout.windows : [];
+    for (const w of wins) {
+      const groups = (w && Array.isArray(w.groups)) ? w.groups : [];
+      for (const g of groups) {
+        const tabs = (g && Array.isArray(g.tabs)) ? g.tabs : [];
+        if (tabs.some((t) => t && t.pluginId === pluginId)) return true;
+      }
+    }
+  } catch {
+    /* tabs 读不到 ⇒ 不阻断断言（按无视图处理，失败会照常报红并给复现命令） */
+  }
+  return false;
+}
+
 /** 一条断言的结果形状（⛔ 只打 FAILED——失败必须可定位） */
 function resultOf(id, name, source, body) {
   return {
@@ -146,6 +164,19 @@ export const DOCTOR_ASSERTIONS = [
       const cmd = ctx.profile.viewCommand;
       if (!cmd) {
         return { pass: true, skip: true, note: "profile 无视图态命令样本（该插件当前全部 entry 注册）", expected: "—", actual: "—", repro: "—" };
+      }
+      // 🔴 前置：断言前提是「该插件的视图不在场」。真实实例上用户常开着串口页，
+      //    此时 view 命令**本就该成功**——不检查前置就会误红（2026-11-25 外部实测踩到）。
+      const openPlugin = await pluginHasOpenTab(ctx, ctx.profile.pluginId);
+      if (openPlugin) {
+        return {
+          pass: true,
+          skip: true,
+          note: `插件 "${ctx.profile.pluginId}" 的视图已开着（命令本就可用，该断言的前提不成立）——关掉视图后再单跑本条`,
+          expected: "—",
+          actual: "—",
+          repro: `linkdeskctl tabs`,
+        };
       }
       const r = await execChecked(ctx.call, cmd);
       // 现 manifest 无 activation 声明 ⇒ ENOTACTIVE（入口没认领）也算可判读；声明齐后必须 EVIEWREQUIRED

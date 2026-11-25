@@ -283,3 +283,36 @@ describe("重注册分支携带运行期 meta（S4/S6/S3b · 2026-11-25 回归�
     expect(cmd?.returns).toEqual([{ name: "n", type: "number" }]);
   });
 });
+
+describe("S4 根修回归：声明 entry 不得被运行期降级为 view", () => {
+  it("已声明 entry 的命令，运行期按 view 同步 ⇒ 保留 entry ＋ 诊断", () => {
+    clearCommands();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // ① loader 按 manifest 登记声明面（activation: entry）
+    registerCommand("demo-plugin", {
+      id: "demo-plugin.entryCmd",
+      title: "入口命令",
+      activation: "entry",
+      placeholder: true,
+      handler: async () => undefined,
+    });
+    // ② 运行期（导入窗口外）误判成 view 的同步
+    registerPoolCommandMetadata("demo-plugin.entryCmd", { activation: "view", pluginId: "demo-plugin" });
+    expect(getCommand("demo-plugin.entryCmd")?.activation).toBe("entry");
+    expect(warn.mock.calls.some(([m]) => String(m).includes("保留声明值"))).toBe(true);
+    warn.mockRestore();
+  });
+
+  it("已声明 view 的命令，运行期按 entry 同步 ⇒ 允许升级（以运行期为准，声明是提示）", () => {
+    clearCommands();
+    registerCommand("demo-plugin", {
+      id: "demo-plugin.viewCmd",
+      title: "视图命令",
+      activation: "view",
+      placeholder: true,
+      handler: async () => undefined,
+    });
+    registerPoolCommandMetadata("demo-plugin.viewCmd", { activation: "entry", pluginId: "demo-plugin" });
+    expect(getCommand("demo-plugin.viewCmd")?.activation).toBe("entry");
+  });
+});

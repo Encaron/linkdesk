@@ -99,7 +99,11 @@ export function resolvePluginViewLoader(pluginId: string, renderPath?: string): 
   //   2. "linkdesk://<id>/<render>"（prod dist——协议 root-direct 直解析）
   // @vite-ignore：运行时拼的 URL，Vite 静态分析扫不到（/@fs 下 dev 源码仍由 Vite 即时编译）。
   if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
-    loader = () => import(/* @vite-ignore */ renderPath);
+    // 🔴 2026-11-25 根修：视图 bundle 会在导入期**顺带求值 entry**（视图模块 import 了入口）。
+    //    模块求值期的 registerCommand 一律是「顶层声明」⇒ 必须走 entry 窗口，否则 20 条插件级命令
+    //    被记成 view 作用域（真实实例：serial 28 条全 view，关视图后连 listPorts 都 EVIEWREQUIRED）。
+    //    视图组件自身的 hook 在**挂载后**才跑，那时窗口已关 ⇒ 仍正确记为 view。
+    loader = () => importEntry(renderPath);
   }
 
   if (!loader) {

@@ -32,12 +32,13 @@ import { IPC } from '../../ipc/channels.js';
 import { pickPendingCommands, settleCommandSurface, type DeclaredCommandSource, type PendingCommand } from './commandSurface.js';
 import { coded, POLICY_DENIED, PROTECTED } from './errors.js';
 import { askUser } from './sensitive.js';
+import { OP_RISK } from './policy/risk.js';
 import type { OpRegistry } from './opRegistry.js';
 import { buildActionCard } from './policy/cards.js';
 import {
-  askFirstCatalog,
   askTextForCommand,
   askTextForOp,
+  askFirstCatalog,
   decide,
   getPolicySnapshot,
   isRisk,
@@ -322,6 +323,16 @@ export function pageCommands<T extends { id: string; title?: unknown; descriptio
   req: { filter?: unknown; limit?: unknown; cursor?: unknown },
 ): { commands: T[]; total: number; nextCursor: string | null } {
   const filter = req.filter && typeof req.filter === "object" ? (req.filter as Record<string, unknown>) : {};
+  // S3a/T15（2026-11-25 外部实测）：未知 filter 键必须 fail-closed。
+  // 旧行为静默忽略 ⇒ AI 以为"筛过了"，实际拿到全量（实测传 commandId 返回 217 条还带 nextCursor）。
+  const FILTER_KEYS = ["pluginId", "category", "query"] as const;
+  const unknownKeys = Object.keys(filter).filter((k) => !(FILTER_KEYS as readonly string[]).includes(k));
+  if (unknownKeys.length > 0) {
+    throw coded(
+      "EBADFILTER",
+      `不支持的 filter 键：${unknownKeys.join(", ")}——只认 ${FILTER_KEYS.join("/")}（⛔ 静默忽略；按未知键筛选会返回全量）`,
+    );
+  }
   const pid = typeof filter.pluginId === "string" && filter.pluginId ? filter.pluginId : null;
   const cat = typeof filter.category === "string" && filter.category ? filter.category : null;
   const q = typeof filter.query === "string" && filter.query ? filter.query.toLowerCase() : null;
@@ -361,6 +372,39 @@ export function pageCommands<T extends { id: string; title?: unknown; descriptio
   return { commands: page, total: matched.length, nextCursor };
 }
 
+/**
+ * S7：`describe.askFirst`——**按当前档位实际会弹框的动作**（唯一实现）。
+ * 判据与执行门同一条：`decide(mode, risk) === "ask"`（⛔ 不复述名单、⛔ 只看壳表）。
+ * - ops：R3 的 op（install / requestElevation …）在 auto/ask 档会问，full 档不问；
+ * - commands：**命令面**里 risk 会触发 ask 的每一条（含插件声明的 R3，如 serial reset/closePort）。
+ * 文案写清「当前档位」，纠正「R3 必弹框」这种与矩阵不符的表述。
+ */
+export function askFirstForMode(
+  commands: Array<{ id: string; risk?: unknown; title?: unknown }>,
+  mode: string,
+): { note: string; ops: Array<{ id: string; what: string; why: string }>; commands: Array<{ id: string; what: string; why: string }> } {
+  // op 侧仍从 askFirstCatalog（唯一 R3 op 自述源）派生，再按当前档位过滤（full ⇒ 不问）
+  const ops = askFirstCatalog()
+    .ops.filter((o) => isRisk(OP_RISK[o.id]?.risk) && decide(mode, OP_RISK[o.id]!.risk) === "ask")
+    .map((o) => ({ id: o.id, what: o.what, why: o.why }));
+  const asked = commands
+    .filter((c) => isRisk(c.risk) && decide(mode, c.risk) === "ask")
+    .map((c) => {
+      const text = askTextForCommand(c.id);
+      return {
+        id: c.id,
+        what: text.what ?? (typeof c.title === "string" && c.title ? c.title : c.id),
+        why: text.why ?? "",
+      };
+    });
+  return {
+    note: `当前档位（${mode}）下，下列动作会先弹确认框等用户点头；不点头 = EUSERDENIED、不执行。`
+      + `risk 只是"后果分级"，弹不弹由档位矩阵决定：full 档一律不问；ask 档 R1–R3 都问；auto 档只问 R3。`,
+    ops,
+    commands: asked,
+  };
+}
+
 /* ── 操作表（本文件唯一的手写正文；describe 从它派生） ── */
 
 export const OPS: Record<string, BridgeOp> = {
@@ -392,7 +436,9 @@ export const OPS: Record<string, BridgeOp> = {
         // ⛔ 不是执行面——`exec` 只认上面那份 commands。
         commandsPending: await listPendingCommands(ctx, commands),
         // AI#29：哪些动作会先停下等人点头——**自述面**（AI 动手前就知道，客户端据此定等待预算）
-        askFirst: askFirstCatalog(),
+        // S7（2026-11-25 外部实测）：自述面必须与**实际判定**一致——按当前档位从命令面实算，
+        // 并纳入插件声明的 R3（旧实现只列壳表：命令面 14 条 R3 只列出了 5 条）。
+        askFirst: askFirstForMode(surfaced, getPolicySnapshot().mode),
         // AI 权限档位（只读自述）：AI 动手前就知道自己现在能做什么
         policy: (() => {
           const s = getPolicySnapshot();

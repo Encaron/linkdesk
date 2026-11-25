@@ -132,3 +132,28 @@ describe("doctor 负控（坏形状必须红，且带三件套）", () => {
     expect(out[0].pass).toBe(false);
   });
 });
+
+describe("a-view-code 前置：插件视图已开着 ⇒ skip（不改写为假红）", () => {
+  const tabsWithSerial = {
+    windows: [{ windowId: "main", groups: [{ id: "main", tabs: [{ id: "t1", pluginId: "serial-monitor" }] }] }],
+  };
+
+  function ctxWithTabs(tabsResult) {
+    return {
+      shellRequest: async (channel, args) => {
+        if (channel === "plugins:call" && args[0] === "getCommands") return [{ id: "serial-monitor.copy", activation: "view", risk: "R1" }];
+        if (channel === "plugins:call" && args[0] === "list") return [];
+        if (channel === "plugins:call" && args[0] === "listTabs") return tabsResult;
+        if (channel === "commands:execute") return { commandId: "x", result: null };
+        return { ok: true };
+      },
+    };
+  }
+
+  it("serial 视图开着 ⇒ a-view-code 跳过并说明前提", async () => {
+    const out = await runDoctor({ call: (op2, payload) => Promise.resolve(op2 === "tabs" ? tabsWithSerial : { commandId: "x", result: null }), only: "a-view-code" });
+    expect(out[0].pass).toBe(true);
+    expect(out[0].skip).toBe(true);
+    expect(out[0].note).toContain("视图已开着");
+  });
+});

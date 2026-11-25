@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { IPC } from "../../ipc/channels.js";
-import { OPS, pageCommands, surfaceCommandRisks } from "./whitelist.js";
+import { OPS, askFirstForMode, pageCommands, surfaceCommandRisks } from "./whitelist.js";
 import { createOpRegistry } from "./opRegistry.js";
 
 describe("surfaceCommandRisks：describe 命令面的风险自述（S7/T4）", () => {
@@ -242,5 +242,48 @@ describe("S3b/T12：describe 透出 returns/example ＋ 顶层 apiVersion（壳�
   it("apiVersion = linkdesk/<壳版本>+bridge<结构修订号>（壳生成，⛔ 作者手填）", async () => {
     const out = (await OPS.describe!.run({}, t12ctx([]) as never)) as { apiVersion: string };
     expect(out.apiVersion).toBe("linkdesk/0.2.65+bridge2");
+  });
+});
+
+describe("S3a 外部实测回归：filter 未知键 fail-closed", () => {
+  it("未知键 ⇒ EBADFILTER（⛔ 静默返回全量）", () => {
+    expect(() => pageCommands([{ id: "a.x" }], { filter: { commandId: "a.x" } })).toThrow(/不支持的 filter 键/);
+    try {
+      pageCommands([{ id: "a.x" }], { filter: { commandId: "a.x" } });
+    } catch (e) {
+      expect((e as Error & { code?: string }).code).toBe("EBADFILTER");
+    }
+  });
+
+  it("合法键照常筛选（pluginId/category/query）", () => {
+    const out = pageCommands([{ id: "a.x", pluginId: "a" }], { filter: { pluginId: "a" } });
+    expect(out.total).toBe(1);
+  });
+});
+
+describe("S7 外部实测回归：askFirst 按档位实算（含插件声明 R3）", () => {
+  const surface = [
+    { id: "serial-monitor.reset", risk: "R3", title: "复位" },
+    { id: "serial-monitor.send", risk: "R2", title: "发送" },
+    { id: "demo.read", risk: "R0", title: "读" },
+  ];
+
+  it("auto 档：只列 R3（插件声明的也算），R2/R0 不列", () => {
+    const out = askFirstForMode(surface, "auto");
+    expect(out.commands.map((c) => c.id)).toEqual(["serial-monitor.reset"]);
+    expect(out.note).toContain("auto");
+  });
+
+  it("full 档：一律不问（命令与 op 都空）", () => {
+    const out = askFirstForMode(surface, "full");
+    expect(out.commands).toEqual([]);
+    expect(out.ops).toEqual([]);
+    expect(out.note).toContain("full 档一律不问");
+  });
+
+  it("ask 档：R1–R3 都问（R0 不问）", () => {
+    const out = askFirstForMode(surface, "ask");
+    expect(out.commands.map((c) => c.id).sort()).toEqual(["serial-monitor.reset", "serial-monitor.send"]);
+    expect(out.ops.some((o) => o.id === "install")).toBe(true);
   });
 });
