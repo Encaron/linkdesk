@@ -166,10 +166,12 @@ export function initIpcBridgeHandler(): void {
       bridge.respond(req.requestId, result);
     } catch (e) {
       // S2/T14：结构化错误码原样带回主进程（⛔ 只传 message 会让门外从中文猜）
-      const err = e as { code?: unknown; hint?: unknown };
+      const err = e as { code?: unknown; hint?: unknown; details?: unknown };
       bridge.respond(req.requestId, undefined, e instanceof Error ? e.message : String(e), {
         ...(typeof err?.code === "string" && err.code ? { code: err.code } : {}),
         ...(typeof err?.hint === "string" && err.hint ? { hint: err.hint } : {}),
+        // T-B：结构化错误的细节（ECONFLICT 的 stateVersion 等）——与 code/hint 同一条缝，⛔ 到此截断
+        ...(err?.details !== undefined ? { details: err.details } : {}),
       });
     }
   });

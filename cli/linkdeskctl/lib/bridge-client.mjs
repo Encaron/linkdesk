@@ -61,11 +61,13 @@ const TOKEN_NAME = "ai-bridge.token";
 
 /** 带机读 code ＋ 人读 hint 的错误（CLI 把 hint 打给用户，`--json` 里 code 给 AI） */
 export class BridgeError extends Error {
-  constructor(code, message, hint) {
+  constructor(code, message, hint, details) {
     super(message);
     this.name = "BridgeError";
     this.code = code;
     this.hint = hint;
+    // T-B：结构化细节（ECONFLICT 的 stateVersion 等）——缺省 undefined，旧错误形状不变
+    this.details = details;
   }
 }
 
@@ -130,6 +132,8 @@ const OP_HINTS = {
     "这是**壳那半没在预算内答复**，⛔ 不是执行失败、⛔ 别据此判断「没做」。长命令（下载、装更新）合法超过这个预算：去界面或用读数面（`log` / `tabs` / `notifications`）核实它到底有没有跑起来。",
   TIMEOUT:
     "服务端此刻**没在办任何请求**（探活也没看到在办的事）⇒ 真没应答。先看软件是否卡住；重试前想清楚这条命令会不会重复发生效果。",
+  ECONFLICT:
+    "状态版本冲突（别的写入/重开把状态改了）——先读状态命令拿当前快照（details.stateVersion = 当前版本），按它重算参数再改；⛔ 原样重试。",
 };
 
 /** 探活预算——超时之后那一次「到底还在不在办」的回读，⛔ 别让它变成第二轮长等待 */
@@ -313,7 +317,7 @@ export async function callBridge(op, payload = {}, opts = {}) {
       (msg) => {
         if (msg && msg.ok) return msg.result;
         const code = msg && msg.code ? msg.code : "EERROR";
-        throw new BridgeError(code, (msg && msg.message) || "未知错误", OP_HINTS[code] ?? null);
+        throw new BridgeError(code, (msg && msg.message) || "未知错误", OP_HINTS[code] ?? null, msg && msg.details);
       },
       (e) => {
         if (e instanceof BridgeError) throw e;

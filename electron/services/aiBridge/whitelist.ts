@@ -34,6 +34,7 @@ import { coded, POLICY_DENIED, PROTECTED } from './errors.js';
 import { askUser } from './sensitive.js';
 import { OP_RISK } from './policy/risk.js';
 import type { OpRegistry } from './opRegistry.js';
+import { extractIdempotencyKey, type IdempotencyRegistry } from './idempotency.js';
 import { buildActionCard } from './policy/cards.js';
 import {
   askTextForCommand,
@@ -110,6 +111,8 @@ export interface BridgeOpContext {
   ops?: OpRegistry;
   /** S6/T11：异步 op 结算后追加 `op.completed` 账本行（可选——同批「事件面」；缺它则只有查询面） */
   recordOpCompleted?(entry: { opId: string; commandId: string; state: "done" | "failed"; code: string | null; ms: number }): void;
+  /** T-B：幂等重放表（**可选**——老 ctx / 假 ctx 不传则不做重放，行为与旧版一致） */
+  idempotency?: IdempotencyRegistry;
 }
 
 export interface BridgeOp {
@@ -260,7 +263,9 @@ async function runShellCommand(
   }
   // 风险来源（S7）：壳命令 → 壳内建表；插件命令 → 只认 manifest 声明；均无 → R2 兜底。
   // 归属来自 getCommands DTO 的 shellOwned（属主不是任何已装插件 = 壳）；壳表 ⛔ 覆盖插件声明（见 riskOfCommand）
-  const entry = commands.find((c) => c && c.id === commandId) as { risk?: unknown; shellOwned?: unknown } | undefined;
+  const entry = commands.find((c) => c && c.id === commandId) as
+    | { risk?: unknown; shellOwned?: unknown; params?: unknown }
+    | undefined;
   const shellOwned = entry?.shellOwned === true;
   const { risk } = riskOfCommand(commandId, shellOwned, isRisk(entry?.risk) ? entry.risk : undefined);
   const snapshot = getPolicySnapshot();
@@ -276,6 +281,21 @@ async function runShellCommand(
     await askUser(ctx, what, buildActionCard(what, text.why, risk, target));
   }
   const executeOnce = () => ctx.shellRequest(IPC.commands.execute, [commandId, undefined, ...args]);
+  // T-B（13-状态命令约定 §二.3）：**声明式**幂等——命令在 `params[]` 里声明了 `idempotencyKey`
+  // 才启用；命中同一键 ⇒ 回放首次成功结果（⛔ 再执行一遍）。位序在档位/确认之后：
+  // 策略判定不下沉到缓存（提权/降档后，旧结果不能成了绕过用户点头的后门）。
+  const idemKey = asyncDeclared
+    ? null
+    : extractIdempotencyKey(Array.isArray(entry?.params) ? (entry!.params as { name?: unknown }[]) : undefined, args);
+  if (idemKey && ctx.idempotency) {
+    const hit = ctx.idempotency.lookup(commandId, idemKey);
+    if (hit) {
+      const r = hit.result;
+      return r && typeof r === "object" && !Array.isArray(r)
+        ? { ...(r as Record<string, unknown>), replayed: true }
+        : { result: r, replayed: true };
+    }
+  }
   // S6/T11（A 案 · 声明式）：async 命令 ⇒ 本请求立即回 pending+opId，真实执行在后台跑、结算写注册表。
   // 🔴 顺序铁律：档位判定与用户确认**都在上面同步走完**才允许回 pending——⛔ 先回 pending 再弹框
   //   （那样 AI 会以为「已在跑」，而用户其实还没点头）。
@@ -299,7 +319,10 @@ async function runShellCommand(
     return { pending: true, opId, startedAt };
   }
   try {
-    return await executeOnce();
+    const result = await executeOnce();
+    // 只记成功（失败不进表：AI 改参数后重试必须真跑）
+    if (idemKey && ctx.idempotency) ctx.idempotency.store(commandId, idemKey, result === undefined ? null : result);
+    return result;
   } catch (e) {
     // S4/T8：视图在场与否决定「能不能执行」——池侧 miss（视图未挂载 / 入口没认领）按注册的 activation 判码。
     // 池侧 canonical 错误串 = preload-pool executeLocal 的「未在池内注册」（同笔钉在单测里，⛔ 两边各改一边）。

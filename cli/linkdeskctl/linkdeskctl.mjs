@@ -385,7 +385,7 @@ async function main() {
       opName = SUBCOMMAND_OPS[subcommand];
     }
   } catch (e) {
-    if (opts.json) console.log(JSON.stringify({ ok: false, code: e.code, message: e.message, hint: e.hint ?? null }));
+    if (opts.json) console.log(JSON.stringify({ ok: false, code: e.code, message: e.message, hint: e.hint ?? null, ...(e.details !== undefined ? { details: e.details } : {}) }));
     else console.error(`linkdeskctl: ${e.message}` + (e.hint ? `\n  ${e.hint}` : ""));
     process.exit(1);
   }
@@ -468,11 +468,13 @@ async function main() {
   } catch (e) {
     const code = e instanceof BridgeError ? e.code : e.code || "EERROR";
     if (opts.json) {
-      console.log(JSON.stringify({ ok: false, subcommand, code, message: e.message, hint: e.hint ?? null }));
+      console.log(JSON.stringify({ ok: false, subcommand, code, message: e.message, hint: e.hint ?? null, ...(e.details !== undefined ? { details: e.details } : {}) }));
     } else {
       // 人读形态：一行说清是什么故障，一行说清下一步（失败路径的可读性就在这两行）
       console.error(`linkdeskctl: [${code}] ${e.message}`);
       if (e.hint) console.error(`  下一步: ${e.hint}`);
+      // T-B：结构化细节（ECONFLICT 的 stateVersion 等）——人读形态也带上，AI 据此自纠
+      if (e.details !== undefined) console.error(`  细节: ${JSON.stringify(e.details)}`);
       if (code === "NO_RECORD") {
         const { searched } = readRecord({ userDataDirs: callOpts.userDataDirs });
         console.error(`  找过: ${searched.join(" · ")}`);

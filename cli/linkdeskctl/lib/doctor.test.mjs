@@ -53,7 +53,7 @@ describe("doctor 正控（serial profile）", () => {
     });
     const out = await runDoctor({ call, profile: "file-tree" });
     const skipped = out.filter((r) => r.skip).map((r) => r.id);
-    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op"]);
+    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent", "a-conflict"]);
     for (const r of out.filter((x) => !x.skip)) expect(r.pass, `${r.id}: ${r.actual}`).toBe(true);
   });
 
@@ -155,5 +155,79 @@ describe("a-view-code 前置：插件视图已开着 ⇒ skip（不改写为假�
     expect(out[0].pass).toBe(true);
     expect(out[0].skip).toBe(true);
     expect(out[0].note).toContain("视图已开着");
+  });
+});
+
+
+/** state-probe 假服务：实现真实的状态机（版本/幂等由测试桩代替宿主——断的是 doctor 的判据） */
+function makeStateCall(opts = {}) {
+  let st = { value: 0, stateVersion: 0, updatedAt: null };
+  const seen = new Map();
+  const stateReturns = [
+    { name: "value", type: "number" },
+    { name: "stateVersion", type: "number" },
+    { name: "updatedAt", type: "string", optional: true },
+  ];
+  const describe = {
+    commands: [
+      { id: "state-probe.readState", risk: "R0", riskSource: "declared", returns: stateReturns },
+      { id: "state-probe.writeValue", risk: "R1", riskSource: "declared", params: [{ name: "value" }, { name: "expectedVersion" }, { name: "idempotencyKey" }], returns: stateReturns },
+      { id: "state-probe.reset", risk: "R1", riskSource: "declared", returns: stateReturns },
+    ],
+    commandCount: 3,
+  };
+  const call = async (op, payload) => {
+    if (op === "ping") return { pid: 1 };
+    if (op === "describe") return opts.describe ?? describe;
+    if (op !== "exec") return null;
+    const id = payload.commandId;
+    const args = payload.args ?? [];
+    if (id === "state-probe.reset") {
+      st = { value: 0, stateVersion: 0, updatedAt: new Date().toISOString() };
+      return { commandId: id, result: { ...st } };
+    }
+    if (id === "state-probe.readState") return { commandId: id, result: { ...st, ...(opts.extraKey ? { extra: 1 } : {}) } };
+    if (id === "state-probe.writeValue") {
+      const a = (args[0] && typeof args[0] === "object") ? args[0] : {};
+      if (a.expectedVersion !== undefined && a.expectedVersion !== st.stateVersion) {
+        const e = coded("ECONFLICT", "版本冲突");
+        if (!opts.conflictWithoutDetails) e.details = { stateVersion: st.stateVersion };
+        throw e;
+      }
+      if (a.idempotencyKey && seen.has(a.idempotencyKey) && !opts.noReplay) {
+        return { commandId: id, result: { ...seen.get(a.idempotencyKey), replayed: true } };
+      }
+      st = { value: a.value, stateVersion: st.stateVersion + 1, updatedAt: new Date().toISOString() };
+      if (a.idempotencyKey) seen.set(a.idempotencyKey, { ...st });
+      return { commandId: id, result: { ...st } };
+    }
+    throw coded("EUNKNOWNCOMMAND", "不存在");
+  };
+  return call;
+}
+
+describe("doctor · state-probe（T-B 纯软件状态样本）", () => {
+  it("正控：a-state-keys / a-idempotent / a-conflict 全绿（其余断言也成立）", async () => {
+    const out = await runDoctor({ call: makeStateCall(), profile: "state-probe" });
+    for (const r of out) expect(r.pass, `${r.id}: ${r.actual}`).toBe(true);
+    expect(out.find((r) => r.id === "a-idempotent").skip).toBeUndefined();
+    expect(out.find((r) => r.id === "a-conflict").skip).toBeUndefined();
+  });
+
+  it("负控：实收回执出现未声明键 ⇒ a-state-keys 红", async () => {
+    const out = await runDoctor({ call: makeStateCall({ extraKey: true }), profile: "state-probe", only: "a-state-keys" });
+    expect(out[0].pass).toBe(false);
+    expect(out[0].actual).toContain("extra");
+  });
+
+  it("负控：同键第二次没有 replayed ⇒ a-idempotent 红", async () => {
+    const out = await runDoctor({ call: makeStateCall({ noReplay: true }), profile: "state-probe", only: "a-idempotent" });
+    expect(out[0].pass).toBe(false);
+  });
+
+  it("负控：ECONFLICT 不带 details.stateVersion ⇒ a-conflict 红", async () => {
+    const out = await runDoctor({ call: makeStateCall({ conflictWithoutDetails: true }), profile: "state-probe", only: "a-conflict" });
+    expect(out[0].pass).toBe(false);
+    expect(out[0].actual).toContain("code=ECONFLICT");
   });
 });

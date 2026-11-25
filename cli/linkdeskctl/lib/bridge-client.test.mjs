@@ -250,3 +250,27 @@ describe("S1 负控：多包输入只解一层（⛔ 递归解包）", () => {
     expect(out.result).toEqual({ commandId: "demo.one", result: null });
   });
 });
+
+
+/* ── ③ 结构化错误的细节面（T-B）：details 必须活着到客户端 ── */
+
+describe("callBridge 错误 details 透传（T-B · ECONFLICT.stateVersion）", () => {
+  it("服务端错误带 details ⇒ BridgeError.details 保留 ＋ ECONFLICT 有自纠提示", async () => {
+    const bridge = await startFakeBridge((req) =>
+      req.op === "ping"
+        ? { ok: true, result: { pid: process.pid } }
+        : { ok: false, code: "ECONFLICT", message: "状态版本冲突：期望 0，当前 3", details: { stateVersion: 3 } },
+    );
+    bridges.push(bridge);
+    const dir = fixtureDir(bridge.port);
+    dirs.push(dir);
+    const err = await callBridge("exec", { commandId: "state-probe.writeValue" }, { userDataDirs: [dir] }).then(
+      () => null,
+      (e) => e,
+    );
+    expect(err).toBeInstanceOf(BridgeError);
+    expect(err.code).toBe("ECONFLICT");
+    expect(err.details).toEqual({ stateVersion: 3 });
+    expect(err.hint).toContain("stateVersion");
+  });
+});

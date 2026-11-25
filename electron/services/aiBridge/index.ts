@@ -66,6 +66,7 @@ import * as path from 'node:path';
 import { IPC } from '../../ipc/channels.js';
 import { OPS, coded, type BridgeOpContext, type BridgePhase, type LedgerEntry } from './whitelist.js';
 import { createOpRegistry } from './opRegistry.js';
+import { createIdempotencyRegistry } from './idempotency.js';
 import { setPolicySettingsFile } from './policy/index.js';
 
 /** 通道记录文件名（userData 下）。客户端（cli/linkdeskctl/lib/bridge-client.mjs）按同名找它——改名两处同笔 */
@@ -255,6 +256,8 @@ interface PendingShellRequest {
 const ledger: LedgerEntry[] = [];
 /** S6/T11：异步 op 注册表——**唯一一份**（memory-only；TTL 10 分钟 / 上限 500） */
 const opRegistry = createOpRegistry();
+/** T-B：幂等重放表——**唯一一份**（memory-only；声明 `idempotencyKey` 的命令才用；同 TTL/容量纪律） */
+const idempotencyRegistry = createIdempotencyRegistry();
 const pendingShell = new Map<string, PendingShellRequest>();
 let shellSeq = 0;
 let record: BridgeRecord | null = null;
@@ -379,6 +382,7 @@ const opContext: BridgeOpContext = {
   ledgerEntries: () => ledger,
   appVersion: () => app.getVersion(),
   ops: opRegistry,
+  idempotency: idempotencyRegistry,
   recordOpCompleted: ({ opId, commandId, state, code, ms }) => {
     // S6/T11 事件面：op 结算追加一行（字段与 opStatus 终态一致；`log` 操作的读取面自动带上）
     const entry: LedgerEntry = {
@@ -473,10 +477,12 @@ async function handleRequest(req: unknown): Promise<unknown> {
  * 旧实现一律重造 `ESHELLERROR` ⇒ 插件声明的 EBADARGS/EDEVICE/ENOPORT 到门外全被压平，
  * AI 只能从中文 message 里猜（2026-11-25 实测）。
  */
-export function shellReplyError(msg: { error?: string; code?: string; hint?: string }): Error & { code: string; hint?: string } {
+export function shellReplyError(msg: { error?: string; code?: string; hint?: string; details?: unknown }): Error & { code: string; hint?: string; details?: unknown } {
   const code = typeof msg.code === "string" && msg.code ? msg.code : "ESHELLERROR";
-  const err = coded(code, String(msg.error)) as Error & { code: string; hint?: string };
+  const err = coded(code, String(msg.error)) as Error & { code: string; hint?: string; details?: unknown };
   if (typeof msg.hint === "string" && msg.hint) err.hint = msg.hint;
+  // T-B：details 原样保留（ECONFLICT 带 stateVersion 供 AI 自纠）
+  if (msg.details !== undefined) err.details = msg.details;
   return err;
 }
 
@@ -507,9 +513,9 @@ function onConnection(socket: net.Socket): void {
       (result) => {
         if (!socket.destroyed && socket.writable) socket.end(JSON.stringify({ ok: true, result }) + '\n');
       },
-      (e: Error & { code?: string }) => {
+      (e: Error & { code?: string; details?: unknown }) => {
         if (!socket.destroyed && socket.writable) {
-          socket.end(JSON.stringify({ ok: false, code: e.code ?? 'EERROR', message: e.message, servedBy: process.pid }) + '\n');
+          socket.end(JSON.stringify({ ok: false, code: e.code ?? 'EERROR', message: e.message, ...(e.details !== undefined ? { details: e.details } : {}), servedBy: process.pid }) + '\n');
         }
       },
     );
@@ -583,7 +589,7 @@ export function initAiBridge(deps: AiBridgeDeps): void {
   const rec: BridgeRecord = record;
 
   // 应答缝——只认自己的 requestId 前缀（IpcBridge 的请求同通道不同前缀，各走各的）
-  ipcMain.on(IPC.bridge.response, (_event, msg: { requestId?: string; result?: unknown; error?: string; code?: string; hint?: string }) => {
+  ipcMain.on(IPC.bridge.response, (_event, msg: { requestId?: string; result?: unknown; error?: string; code?: string; hint?: string; details?: unknown }) => {
     const id = msg?.requestId;
     if (typeof id !== 'string' || !id.startsWith(REQUEST_ID_PREFIX)) return;
     const p = pendingShell.get(id);

@@ -651,7 +651,7 @@ async function executeInPool(cmd: Command, args: unknown[], originWindowId = "ma
  */
 export function resolvePoolExecution(
   requestId: string,
-  payload: { result?: unknown; error?: string; code?: string; hint?: string },
+  payload: { result?: unknown; error?: string; code?: string; hint?: string; details?: unknown },
   windowId?: string,
 ): void {
   const pending = _poolPending.get(requestId);
@@ -662,9 +662,11 @@ export function resolvePoolExecution(
   if (payload.error) {
     // S2/T14：池侧错误码原样带回（结构化错误信封的 code 是 AI 唯一能判的字段）。
     // 裸 Error（旧插件/无 code）⇒ EUNKNOWN——⛔ 壳侧猜语义归到某个已有码。
-    const err = new Error(payload.error) as Error & { code: string; hint?: string };
+    const err = new Error(payload.error) as Error & { code: string; hint?: string; details?: unknown };
     err.code = typeof payload.code === "string" && payload.code ? payload.code : "EUNKNOWN";
     if (typeof payload.hint === "string" && payload.hint) err.hint = payload.hint;
+    // T-B：结构化细节原样带回（ECONFLICT 的 stateVersion）——与 code/hint 同一跳
+    if (payload.details !== undefined) err.details = payload.details;
     pending.reject(err);
   } else pending.resolve(payload.result);
 }

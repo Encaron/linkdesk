@@ -37,6 +37,9 @@ const PROFILES = {
     stateCommand: "serial-monitor.receiveStatus",
     /** 收尾命令——change 成功后恢复现场，且状态面确认无残留 */
     teardownCommand: "serial-monitor.closePort",
+    /** T-B：串口未声明 idempotencyKey / 版本前置 ⇒ 幂等/冲突断言跳过（⛔ 硬造） */
+    idempotentCommand: null,
+    conflictCommand: null,
   },
   /** file-tree——非硬件领域（跨领域验收：同一条断言链，⛔ 没有串口语义也能跑） */
   "file-tree": {
@@ -49,6 +52,28 @@ const PROFILES = {
     changeCommand: null,
     stateCommand: null,
     teardownCommand: null,
+    // file-tree 未声明 idempotencyKey / 版本前置 ⇒ 幂等/冲突断言跳过
+    idempotentCommand: null,
+    conflictCommand: null,
+  },
+  /**
+   * state-probe——纯软件状态样本（T-B · 13-状态命令约定）。
+   * 插件住 `dev-fixtures/state-probe/`（验证用，⛔ 随壳发货）：装上后同一条断言链对
+   * 「读快照 → 改 → 回读确认 → 同键重放 → 版本冲突」全链路成立。
+   */
+  "state-probe": {
+    label: "state-probe（纯软件状态样本 · dev-fixtures）",
+    pluginId: "state-probe",
+    readCommand: "state-probe.readState",
+    viewCommand: null,
+    changeCommand: "state-probe.writeValue",
+    changeArgs: { value: 1 },
+    stateCommand: "state-probe.readState",
+    teardownCommand: "state-probe.reset",
+    idempotentCommand: "state-probe.writeValue",
+    idempotentArgs: { value: 5 },
+    conflictCommand: "state-probe.writeValue",
+    conflictArgs: { value: 6, expectedVersion: 999999 },
   },
 };
 
@@ -60,7 +85,12 @@ async function execChecked(call, commandId, args = []) {
   try {
     return { ok: true, result: await call("exec", { commandId, args }) };
   } catch (e) {
-    return { ok: false, code: e && e.code ? e.code : "EERROR", message: e ? e.message : String(e) };
+    return {
+      ok: false,
+      code: e && e.code ? e.code : "EERROR",
+      message: e ? e.message : String(e),
+      ...(e && e.details !== undefined ? { details: e.details } : {}),
+    };
   }
 }
 
@@ -320,6 +350,82 @@ export const DOCTOR_ASSERTIONS = [
         expected: "opStatus 采样到终态 ＋ log 有同一 opId 的 op.completed",
         actual: `采样=${JSON.stringify(states)} · log事件=${logged}`,
         repro: `linkdeskctl exec --status ${out.opId}`,
+      };
+    },
+  },
+  {
+    id: "a-state-keys",
+    name: "状态快照可判读：只读命令实收回执的键 ⊆ describe 声明的 returns",
+    source: "T-B/13（声明面与实收回执漂移：AI 按 returns 写的断言对不上真回执）",
+    async run(ctx) {
+      const cmd = ctx.profile.stateCommand ?? ctx.profile.readCommand;
+      const desc = await ctx.call("describe");
+      const entry = (desc && Array.isArray(desc.commands) ? desc.commands : []).find((c) => c && c.id === cmd);
+      if (!entry || !Array.isArray(entry.returns) || entry.returns.length === 0) {
+        return { pass: true, skip: true, note: `${cmd} 未声明 returns（B 补齐后转严）`, expected: "—", actual: "—", repro: "linkdeskctl describe --json" };
+      }
+      const r = await execChecked(ctx.call, cmd);
+      if (!r.ok) {
+        return { pass: false, expected: `${cmd} 执行成功`, actual: `code=${r.code} ${r.message}`, repro: `linkdeskctl exec ${cmd}` };
+      }
+      const inner = r.result && typeof r.result === "object" ? r.result.result : undefined;
+      const keys = inner && typeof inner === "object" && !Array.isArray(inner) ? Object.keys(inner) : [];
+      const declared = new Set(entry.returns.map((f) => f && f.name).filter((n) => typeof n === "string"));
+      const unexpected = keys.filter((k) => !declared.has(k));
+      return {
+        pass: keys.length > 0 && unexpected.length === 0,
+        expected: `实收键 ⊆ 声明 returns（${[...declared].join("/")}）`,
+        actual: unexpected.length ? `未声明键=${unexpected.join(",")}` : `keys=${JSON.stringify(keys)}`,
+        repro: `linkdeskctl exec ${cmd}`,
+      };
+    },
+  },
+  {
+    id: "a-idempotent",
+    name: "重试不重复执行：同一 idempotencyKey 第二次回 replayed:true，换键则真执行",
+    source: "T-B/13（AI 超时重试 = 同一动作做两遍）",
+    async run(ctx) {
+      const cmd = ctx.profile.idempotentCommand;
+      if (!cmd) {
+        return { pass: true, skip: true, note: "profile 无声明幂等键的写命令样本", expected: "—", actual: "—", repro: "—" };
+      }
+      const base = ctx.profile.idempotentArgs ?? {};
+      const key = `doctor-${Date.now()}`;
+      const first = await execChecked(ctx.call, cmd, [{ ...base, idempotencyKey: key }]);
+      if (!first.ok) {
+        return { pass: false, expected: `${cmd} 首次执行成功`, actual: `code=${first.code} ${first.message}`, repro: `linkdeskctl exec ${cmd} '${JSON.stringify({ ...base, idempotencyKey: key })}'` };
+      }
+      const second = await execChecked(ctx.call, cmd, [{ ...base, idempotencyKey: key }]);
+      const inner = second.ok && second.result && typeof second.result === "object" ? second.result.result : undefined;
+      const replayed = !!inner && inner.replayed === true;
+      // 负控：换一个键必须是真执行（否则「重放」是假的——命令根本没在跑）
+      const third = await execChecked(ctx.call, cmd, [{ ...base, idempotencyKey: `${key}-b` }]);
+      const inner3 = third.ok && third.result && typeof third.result === "object" ? third.result.result : undefined;
+      const negative = third.ok && (!inner3 || inner3.replayed !== true);
+      return {
+        pass: replayed && negative,
+        expected: "同键第二次 replayed:true；不同键不回放",
+        actual: `second.replayed=${replayed} · third.replayed=${inner3 ? inner3.replayed === true : "n/a"}`,
+        repro: `linkdeskctl exec ${cmd} '{"value":...,"idempotencyKey":"<同键>"}'`,
+      };
+    },
+  },
+  {
+    id: "a-conflict",
+    name: "冲突可判读：陈旧 stateVersion 写入 ⇒ ECONFLICT ＋ details.stateVersion",
+    source: "T-B/13（并发覆盖：AI 只能从中文猜「版本不对」）",
+    async run(ctx) {
+      const cmd = ctx.profile.conflictCommand;
+      if (!cmd) {
+        return { pass: true, skip: true, note: "profile 无版本前置的写命令样本", expected: "—", actual: "—", repro: "—" };
+      }
+      const r = await execChecked(ctx.call, cmd, [ctx.profile.conflictArgs ?? {}]);
+      const hasVersion = !!(r.details && typeof r.details === "object" && "stateVersion" in r.details);
+      return {
+        pass: !r.ok && r.code === "ECONFLICT" && hasVersion,
+        expected: "code=ECONFLICT ＋ details.stateVersion（当前快照版本）",
+        actual: r.ok ? "居然执行成功了" : `code=${r.code} · details=${JSON.stringify(r.details ?? null)}`,
+        repro: `linkdeskctl exec ${cmd} '${JSON.stringify(ctx.profile.conflictArgs ?? {})}'`,
       };
     },
   },

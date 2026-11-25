@@ -236,7 +236,7 @@ async function callTool(name, args, ctx) {
     return toolResult((typeof result === "string" ? result : JSON.stringify(result, null, 2)) + waited);
   } catch (e) {
     const code = e instanceof BridgeError ? e.code : e.code || "EERROR";
-    return toolResult(`无法调用 ${name}：[${code}] ${e.message}` + (e.hint ? `\n下一步: ${e.hint}` : ""), { isError: true });
+    return toolResult(`无法调用 ${name}：[${code}] ${e.message}` + (e.hint ? `\n下一步: ${e.hint}` : "") + (e.details !== undefined ? `\n细节: ${JSON.stringify(e.details)}` : ""), { isError: true });
   }
 }
 

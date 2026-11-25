@@ -25,7 +25,7 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
       // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
       // E5.8#43-4（①④）：末位 windowId = 回执来源窗口（主进程 sender 注入）——回执校验只收目标窗口
       // S2/T14：code/hint 随回执透传（插件结构化错误的码是 AI 唯一能判的字段）——本层 verbatim
-      const [requestId, payload, windowId] = args as [string, { result?: unknown; error?: string; code?: string; hint?: string }, string?];
+      const [requestId, payload, windowId] = args as [string, { result?: unknown; error?: string; code?: string; hint?: string; details?: unknown }, string?];
       resolvePoolExecution(requestId, payload, windowId);
       break;
     }

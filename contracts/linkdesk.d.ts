@@ -3405,6 +3405,7 @@ export interface ShellAPI {
         respond(requestId: string, result?: unknown, error?: string, meta?: {
             code?: string;
             hint?: string;
+            details?: unknown;
         }): void;
         broadcast(channel: string, payload: unknown): void;
         notifyConfigChanged(key: string, value: unknown): void;

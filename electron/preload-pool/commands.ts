@@ -320,7 +320,7 @@ export function buildCommands(events: EventSystemApi) {
   // E6#62e：miss 先经 on-command 激活（import 属主入口）重试一次，仍 miss → reject。
   const executeLocal = (id: string, ...args: unknown[]): Promise<unknown> =>
     callPoolHandlerWithActivation(id, args, () => Promise.reject(new Error(`命令 "${id}" 未在池内注册`)));
-  const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string; code?: string; hint?: string }): void => {
+  const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string; code?: string; hint?: string; details?: unknown }): void => {
     ipcRenderer.invoke(IPC.commands.executeResult, requestId, result).catch((e) => {
       console.error(`[preload-pool] commands:executeResult 回传失败 (${requestId}):`, e);
     });
@@ -338,7 +338,7 @@ export function buildCommands(events: EventSystemApi) {
     } catch (e) {
       // S2/T14：插件错误**原样透传 code/hint**（结构化错误只有一个构造点 = SDK `pluginError`）；
       // 裸 Error（无 code）⇒ `EUNKNOWN`——⛔ 由壳猜语义归到某个已有码。message 只作人读。
-      const err = e as { code?: unknown; message?: unknown; hint?: unknown };
+      const err = e as { code?: unknown; message?: unknown; hint?: unknown; details?: unknown };
       const code = typeof err?.code === 'string' && err.code ? err.code : 'EUNKNOWN';
       // message 取字符串形态优先（pluginError 若返回带 code 的普通对象也照样可取，⛔ [object Object]）
       const message = typeof err?.message === 'string' ? err.message : (e instanceof Error ? e.message : String(e));
@@ -346,6 +346,8 @@ export function buildCommands(events: EventSystemApi) {
         error: message,
         code,
         ...(typeof err?.hint === 'string' && err.hint ? { hint: err.hint } : {}),
+        // T-B：details 与 code/hint 同一条缝（ECONFLICT.stateVersion）——⛔ 到此截断
+        ...(err?.details !== undefined ? { details: err.details } : {}),
       });
     }
   });

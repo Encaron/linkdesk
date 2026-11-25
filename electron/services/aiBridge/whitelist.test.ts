@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import { IPC } from "../../ipc/channels.js";
 import { OPS, askFirstForMode, pageCommands, surfaceCommandRisks } from "./whitelist.js";
 import { createOpRegistry } from "./opRegistry.js";
+import { createIdempotencyRegistry } from "./idempotency.js";
 
 describe("surfaceCommandRisks：describe 命令面的风险自述（S7/T4）", () => {
   it("壳命令（shellOwned）⇒ 壳表；表外 ⇒ R2 fallback", () => {
@@ -217,22 +218,25 @@ describe("S3a/T15：describe 筛选与分页（唯一实现）", () => {
   });
 });
 
+/** 假壳读面（describe 用）：getCommands/list 应答；execute 可选（幂等重放用例用） */
+function makeSurfaceCtx(surface: unknown[], onExecute?: () => Promise<unknown>) {
+  return {
+    appVersion: () => "0.2.65",
+    shellRequest: async (channel: string, args: unknown[]): Promise<unknown> => {
+      if (channel === IPC.plugins.call && args[0] === "getCommands") return surface;
+      if (channel === IPC.plugins.call && args[0] === "list") return [];
+      if (channel === IPC.commands.execute && onExecute) return onExecute();
+      return { ok: true };
+    },
+  };
+}
+
 describe("S3b/T12：describe 透出 returns/example ＋ 顶层 apiVersion（壳生成）", () => {
-  function t12ctx(surface: unknown[]) {
-    return {
-      appVersion: () => "0.2.65",
-      shellRequest: async (channel: string, args: unknown[]): Promise<unknown> => {
-        if (channel === IPC.plugins.call && args[0] === "getCommands") return surface;
-        if (channel === IPC.plugins.call && args[0] === "list") return [];
-        return { ok: true };
-      },
-    };
-  }
 
   it("命令条目带 returns/example（原样透出，⛔ 壳加工）", async () => {
     const returns = [{ name: "count", type: "number", description: "端口数" }];
     const example = { sessionId: "s1" };
-    const out = (await OPS.describe!.run({}, t12ctx([
+    const out = (await OPS.describe!.run({}, makeSurfaceCtx([
       { id: "demo.ports", shellOwned: false, risk: "R0", returns, example },
     ]) as never)) as { commands: Array<Record<string, unknown>> };
     expect(out.commands[0].returns).toEqual(returns);
@@ -240,7 +244,7 @@ describe("S3b/T12：describe 透出 returns/example ＋ 顶层 apiVersion（壳�
   });
 
   it("apiVersion = linkdesk/<壳版本>+bridge<结构修订号>（壳生成，⛔ 作者手填）", async () => {
-    const out = (await OPS.describe!.run({}, t12ctx([]) as never)) as { apiVersion: string };
+    const out = (await OPS.describe!.run({}, makeSurfaceCtx([]) as never)) as { apiVersion: string };
     expect(out.apiVersion).toBe("linkdesk/0.2.65+bridge2");
   });
 });
@@ -329,5 +333,58 @@ describe("openTab 回执保真（外部实测：新建成功却回 added:[]）",
     const out = (await OPS.openTab!.run({ type: "app" }, ctx as never)) as { openedTabs: string[]; reused: boolean };
     expect(out.openedTabs).toEqual([]);
     expect(out.reused).toBe(true);
+  });
+});
+
+describe("exec 幂等重放（T-B · 声明式 idempotencyKey）", () => {
+  function idemCtx(surface: unknown[], execute: () => Promise<unknown>) {
+    const idempotency = createIdempotencyRegistry();
+    let calls = 0;
+    const ctx = { ...makeSurfaceCtx(surface, () => { calls += 1; return execute(); }), idempotency };
+    return { ctx, idempotency, calls: () => calls };
+  }
+
+  const surface = [{
+    id: "demo.write", shellOwned: false, risk: "R1", activation: "entry",
+    params: [{ name: "value", type: "number" }, { name: "idempotencyKey", type: "string" }],
+  }];
+
+  it("同一键第二次 ⇒ 回放首次结果 + replayed:true（只执行一次）", async () => {
+    const { ctx, calls } = idemCtx(surface, async () => ({ value: 7, stateVersion: 3 }));
+    const first = await OPS.exec!.run({ commandId: "demo.write", args: [{ value: 7, idempotencyKey: "k1" }] }, ctx as never);
+    const second = await OPS.exec!.run({ commandId: "demo.write", args: [{ value: 7, idempotencyKey: "k1" }] }, ctx as never);
+    expect(calls()).toBe(1);
+    expect(first).toEqual({ commandId: "demo.write", result: { value: 7, stateVersion: 3 } });
+    expect(second).toEqual({ commandId: "demo.write", result: { value: 7, stateVersion: 3, replayed: true } });
+  });
+
+  it("不同键 ⇒ 各执行一次；未声明 idempotencyKey 的命令 ⇒ 带键也不重放", async () => {
+    const { ctx, calls } = idemCtx(surface, async () => ({ ok: true }));
+    await OPS.exec!.run({ commandId: "demo.write", args: [{ value: 1, idempotencyKey: "a" }] }, ctx as never);
+    await OPS.exec!.run({ commandId: "demo.write", args: [{ value: 1, idempotencyKey: "b" }] }, ctx as never);
+    expect(calls()).toBe(2);
+
+    const plain = idemCtx(
+      [{ id: "demo.plain", shellOwned: false, risk: "R1", params: [{ name: "value", type: "number" }] }],
+      async () => ({ ok: true }),
+    );
+    await OPS.exec!.run({ commandId: "demo.plain", args: [{ value: 1, idempotencyKey: "same" }] }, plain.ctx as never);
+    await OPS.exec!.run({ commandId: "demo.plain", args: [{ value: 1, idempotencyKey: "same" }] }, plain.ctx as never);
+    expect(plain.calls()).toBe(2);
+  });
+
+  it("失败不缓存：修好参数后同键重试仍真执行", async () => {
+    let fail = true;
+    const { ctx, calls } = idemCtx(surface, async () => {
+      if (fail) throw Object.assign(new Error("conflict"), { code: "ECONFLICT" });
+      return { ok: true };
+    });
+    await expect(
+      OPS.exec!.run({ commandId: "demo.write", args: [{ value: 1, idempotencyKey: "k" }] }, ctx as never),
+    ).rejects.toMatchObject({ code: "ECONFLICT" });
+    fail = false;
+    const retry = await OPS.exec!.run({ commandId: "demo.write", args: [{ value: 1, idempotencyKey: "k" }] }, ctx as never);
+    expect(calls()).toBe(2);
+    expect(retry).toEqual({ commandId: "demo.write", result: { ok: true } });
   });
 });

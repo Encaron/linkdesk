@@ -1,0 +1,59 @@
+{
+  "pluginId": "state-probe",
+  "name": "状态探针",
+  "version": "1.0.0",
+  "category": "development",
+  "categories": ["developer"],
+  "description": "契约验收夹具：状态快照/写后置状态/幂等键/版本冲突（⛔ 不随壳发货，只用于 doctor 与实机验收）",
+  "author": "Encaron",
+  "distribution": "user",
+  "entry": "index.bundle.js",
+  "contributes": {
+    "commands": [
+      {
+        "id": "state-probe.readState",
+        "title": "读探针状态",
+        "description": "读状态快照：当前值、状态版本、更新时间。⛔ 无副作用。",
+        "risk": "R0",
+        "activation": "entry",
+        "returns": [
+          { "name": "value", "type": "number", "description": "当前值" },
+          { "name": "stateVersion", "type": "number", "description": "状态版本（每次成功写入 +1）" },
+          { "name": "updatedAt", "type": "string", "description": "最近一次成功写入的 ISO 时间；从未写入为 null（optional）", "optional": true }
+        ],
+        "example": {}
+      },
+      {
+        "id": "state-probe.writeValue",
+        "title": "写探针状态",
+        "description": "改状态并回后置状态（值/版本/时间）。带 expectedVersion 时先比对版本：不一致 ⇒ ECONFLICT（details.stateVersion = 当前版本）。带 idempotencyKey 时同键重试不重复执行。",
+        "risk": "R1",
+        "activation": "entry",
+        "params": [
+          { "name": "value", "type": "number", "required": true, "description": "目标值" },
+          { "name": "expectedVersion", "type": "number", "description": "期望的当前 stateVersion；与现状不一致 ⇒ ECONFLICT（⛔ 不覆盖）" },
+          { "name": "idempotencyKey", "type": "string", "description": "重试键：同一键重复调用回放首次结果（replayed:true），⛔ 再执行一次" }
+        ],
+        "returns": [
+          { "name": "value", "type": "number", "description": "写入后的值" },
+          { "name": "stateVersion", "type": "number", "description": "写入后的状态版本" },
+          { "name": "updatedAt", "type": "string", "description": "本次写入的 ISO 时间" }
+        ],
+        "example": { "value": 1 }
+      },
+      {
+        "id": "state-probe.reset",
+        "title": "复位探针状态",
+        "description": "把状态复位为 value=0 / stateVersion=0（验收收尾用）。",
+        "risk": "R1",
+        "activation": "entry",
+        "returns": [
+          { "name": "value", "type": "number", "description": "复位后的值（恒 0）" },
+          { "name": "stateVersion", "type": "number", "description": "复位后的状态版本（恒 0）" },
+          { "name": "updatedAt", "type": "string", "description": "复位时间", "optional": true }
+        ],
+        "example": {}
+      }
+    ]
+  }
+}
