@@ -287,3 +287,47 @@ describe("S7 外部实测回归：askFirst 按档位实算（含插件声明 R3�
     expect(out.ops.some((o) => o.id === "install")).toBe(true);
   });
 });
+
+describe("openTab 回执保真（外部实测：新建成功却回 added:[]）", () => {
+  it("新建了标签 ⇒ openedTabs 如实回 1 个（added 只是命令）", async () => {
+    let tabsCall = 0;
+    const ctx = {
+      shellRequest: async (channel: string, args: unknown[]): Promise<unknown> => {
+        if (channel === IPC.plugins.call && args[0] === "getCommands") return [{ id: "app.x" }];
+        if (channel === IPC.plugins.call && args[0] === "list") return [];
+        if (channel === IPC.plugins.call && args[0] === "listTabs") {
+          tabsCall += 1;
+          // 第 1 次（开前）无；开之后（第 2 次起）有一个新 tab
+          return tabsCall === 1
+            ? { windows: [{ groups: [{ tabs: [] }] }] }
+            : { windows: [{ groups: [{ tabs: [{ id: "serial-monitor-9", pluginId: "serial-monitor" }] }] }] };
+        }
+        if (channel === IPC.tabs.create) return undefined;
+        return { ok: true };
+      },
+    };
+    const out = (await OPS.openTab!.run({ type: "serial-monitor" }, ctx as never)) as {
+      openedTabs: string[]; reused: boolean; added: string[];
+    };
+    expect(out.openedTabs).toEqual(["serial-monitor-9"]);
+    expect(out.reused).toBe(false);
+    expect(out.added).toEqual([]); // 没有新命令，但标签确已新建
+  });
+
+  it("复用已有标签 ⇒ openedTabs 空、reused=true", async () => {
+    const ctx = {
+      shellRequest: async (channel: string, args: unknown[]): Promise<unknown> => {
+        if (channel === IPC.plugins.call && args[0] === "getCommands") return [{ id: "app.x" }];
+        if (channel === IPC.plugins.call && args[0] === "list") return [];
+        if (channel === IPC.plugins.call && args[0] === "listTabs") {
+          return { windows: [{ groups: [{ tabs: [{ id: "t1", pluginId: "app" }] }] }] };
+        }
+        if (channel === IPC.tabs.create) return undefined;
+        return { ok: true };
+      },
+    };
+    const out = (await OPS.openTab!.run({ type: "app" }, ctx as never)) as { openedTabs: string[]; reused: boolean };
+    expect(out.openedTabs).toEqual([]);
+    expect(out.reused).toBe(true);
+  });
+});

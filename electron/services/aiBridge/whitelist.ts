@@ -147,6 +147,28 @@ async function listPendingCommands(
   return pickPendingCommands(await listShellPlugins(ctx), registered);
 }
 
+/**
+ * 当前布局里属于某插件（= tab type）的 tab id 集。
+ * 用途：`openTab` 的回执保真——`tabs:create` 是 fire 型，没有返回值，
+ * 需靠开前/开后快照差集才能如实回答「到底新建了没有」（2026-11-25 外部实测：
+ * 新建成功却回 `added: []`，AI 误以为没开成而重复调用）。
+ */
+async function tabIdsOfType(ctx: BridgeOpContext, type: string): Promise<string[]> {
+  const layout = await ctx.shellRequest(IPC.plugins.call, ['listTabs']);
+  const out: string[] = [];
+  const wins = (layout && typeof layout === "object" && Array.isArray((layout as { windows?: unknown[] }).windows))
+    ? (layout as { windows: Array<{ groups?: Array<{ tabs?: Array<{ id?: unknown; pluginId?: unknown }> }> }> }).windows
+    : [];
+  for (const w of wins) {
+    for (const g of w?.groups ?? []) {
+      for (const t of g?.tabs ?? []) {
+        if (t && t.pluginId === type && typeof t.id === "string") out.push(t.id);
+      }
+    }
+  }
+  return out;
+}
+
 /** 通知 DTO 里按 id 找条目（NotifLayout.groups[].items[].id，poolLayout.ts） */
 function findNotifItem(layout: unknown, notificationId: string): { actions: Array<{ label: string; command?: string; args?: unknown[] }> } | null {
   const groups = (layout as { groups?: Array<{ items?: unknown[] }> })?.groups;
@@ -467,7 +489,7 @@ export const OPS: Record<string, BridgeOp> = {
   openTab: {
     name: 'openTab',
     kind: 'write',
-    help: '开一个标签页（经壳 tabs:create 通道——插件调壳的同一张缝；结果经 tabs 操作回读确认）',
+    help: '开一个标签页（经壳 tabs:create 通道）。回执：`openedTabs` = 本次新建的标签 id（空 = 复用已有标签）；`added` = 新挂牌的命令 id（⛔ 不是标签）；`commandsSettled` = 命令面是否已落定',
     params: [
       { name: 'type', type: 'string', required: true, description: '标签类型（视图/插件 id，如 app）' },
       { name: 'opts', type: 'object', required: false, description: '透传给视图的选项' },
@@ -491,6 +513,8 @@ export const OPS: Record<string, BridgeOp> = {
       const opts = req.opts && typeof req.opts === 'object' ? req.opts : undefined;
       // 开之前的命令面——用来算「这一开新挂牌了哪些命令」
       const before = (await listShellCommands(ctx)).map((c) => c.id);
+      // 开之前的标签快照——用来如实回答「这次到底新建了 tab 没有」
+      const tabsBefore = await tabIdsOfType(ctx, type).catch(() => [] as string[]);
       await ctx.shellRequest(IPC.tabs.create, [type, opts]);
       // tabs:create 是 fire 型（壳收到即 emit tab:create）——「开没开成」用 tabs 操作回读，不在这装成功。
       // 🔴 但**命令面的落定要等**（AI#54 ②）：池侧挂载 → 插件注册 → `commands:register` 回传是随后的
@@ -499,7 +523,18 @@ export const OPS: Record<string, BridgeOp> = {
         async () => (await listShellCommands(ctx)).map((c) => c.id),
         before,
       );
-      return { accepted: true, type, added: settled.added, commandsSettled: settled.settled };
+      const tabsAfter = await tabIdsOfType(ctx, type).catch(() => tabsBefore);
+      const openedTabs = tabsAfter.filter((id) => !tabsBefore.includes(id));
+      return {
+        accepted: true,
+        type,
+        // `openedTabs` = 这次新建的标签（如实回；空数组 = 复用了已有标签）
+        openedTabs,
+        reused: openedTabs.length === 0 && tabsAfter.length > 0,
+        // `added` = 新挂牌的命令 id（不是标签！）
+        added: settled.added,
+        commandsSettled: settled.settled,
+      };
     },
   },
 
