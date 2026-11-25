@@ -271,3 +271,25 @@ describe('2026-11-25：声明面命令 = 插件级（S4 作用域回归）', () 
     await expect(commands.executeCommand('demo-plugin.reg')).resolves.toBe('entry-handler');
   });
 });
+
+describe('S4 根修第二次：提升判据 = 声明为 entry（⛔ "声明过"）', () => {
+  it('视图卸载：声明 entry 的保留为 plugin；声明 view 的随实例删除', async () => {
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    commands._setDeclaredCommandsForTest?.([
+      ['demo-plugin.entryCmd', 'entry'],
+      ['demo-plugin.viewCmd', 'view'],
+    ]);
+    commands._enterViewContext?.('tab-x');
+    commands.registerCommand('demo-plugin.entryCmd', () => 'entry-ok');
+    commands.registerCommand('demo-plugin.viewCmd', () => 'view-ok');
+    commands._leaveViewContext?.('tab-x');
+
+    // entry 提升为插件级：无视图仍可执行
+    expect(await commands.executeCommand('demo-plugin.entryCmd')).toBe('entry-ok');
+    // view 被删除：执行落壳 IPC（而不是本地执行）
+    await commands.executeCommand('demo-plugin.viewCmd');
+    const exec = ipcMock.invoke.mock.calls.filter((c) => c[0] === IPC.commands.execute);
+    expect(exec.some((c) => c[1] === 'demo-plugin.viewCmd')).toBe(true);
+  });
+});

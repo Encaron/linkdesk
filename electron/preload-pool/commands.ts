@@ -51,7 +51,13 @@ let _entryImportDepth = 0;
  * 判据：contributes.commands[] 声明过的 id 是**插件级公共命令**（声明面即契约），视图卸载只该摘
  * 私有命令。本集合从壳注册表 placeholder:true 的条目预取（loader 为声明面登记的占位元数据）。
  */
-const _declaredCommandIds = new Set<string>();
+/**
+ * 声明面命令 → **声明的 activation**（entry/view）。
+ * 🔴 2026-11-25 根修（第二次）：之前只记「声明过」的 id，视图卸载时把**真视图命令**（如 serial.copy）
+ * 也提升成插件级 ⇒ 无视图时它照样执行、在 handler 里炸（实测 `Cannot read properties of null (reading 'cmView')`，
+ * doctor `a-view-code` 因此红）。提升判据必须是「声明为 entry」，不是「声明过」。
+ */
+const _declaredActivation = new Map<string, "entry" | "view">();
 let _declaredLoadInFlight = false;
 let _declaredLoadDisabled = false;
 /**
@@ -60,14 +66,15 @@ let _declaredLoadDisabled = false;
  * 现在：**集合为空就允许重取**（并发去重），并在每次 registerCommand 前机会性刷新。
  */
 function ensureDeclaredCommands(): void {
-  if (_declaredLoadDisabled || _declaredLoadInFlight || _declaredCommandIds.size > 0) return;
+  if (_declaredLoadDisabled || _declaredLoadInFlight || _declaredActivation.size > 0) return;
   _declaredLoadInFlight = true;
   void ipcRenderer
     .invoke(IPC.plugins.call, "getCommands")
     .then((list: unknown) => {
       if (!Array.isArray(list)) return;
-      for (const c of list as Array<{ id?: unknown; placeholder?: unknown }>) {
-        if (typeof c?.id === "string" && c.placeholder === true) _declaredCommandIds.add(c.id);
+      for (const c of list as Array<{ id?: unknown; placeholder?: unknown; activation?: unknown }>) {
+        if (typeof c?.id !== "string" || c.placeholder !== true) continue;
+        if (c.activation === "entry" || c.activation === "view") _declaredActivation.set(c.id, c.activation);
       }
     })
     .catch(() => {
@@ -79,9 +86,14 @@ function ensureDeclaredCommands(): void {
 }
 
 /** 测试内部面——注入「声明面命令」集合（生产由 ensureDeclaredCommands 预取） */
-function setDeclaredCommandsForTest(ids: Iterable<string>): void {
-  _declaredCommandIds.clear();
-  for (const id of ids) _declaredCommandIds.add(id);
+function setDeclaredCommandsForTest(
+  entries: Iterable<string> | Iterable<[string, "entry" | "view"]>,
+): void {
+  _declaredActivation.clear();
+  for (const e of entries) {
+    if (Array.isArray(e)) _declaredActivation.set(e[0], e[1]);
+    else _declaredActivation.set(e as string, "entry"); // 旧写法（只给 id）按 entry 理解
+  }
   _declaredLoadDisabled = true; // 阻止预取覆盖测试注入
 }
 
@@ -99,8 +111,9 @@ function leaveViewContext(viewInstanceId: string): void {
   if (at >= 0) _activationStack.splice(at, 1);
   for (const [id, entry] of _poolCommands) {
     if (entry.scope !== `view:${viewInstanceId}`) continue;
-    if (_declaredCommandIds.has(id)) {
-      // 声明面命令 = 插件级：视图卸载时**提升**，⛔ 不随实例删（否则图标/齿轮永久 miss）
+    if (_declaredActivation.get(id) === "entry") {
+      // **声明为 entry** 的命令 = 插件级：视图卸载时提升，⛔ 不随实例删（否则图标/齿轮永久 miss）。
+      // 声明为 view 的命令（如 copy/exportLog）照常随实例删除——否则无视图时它会执行并炸 handler。
       _poolCommands.set(id, { ...entry, scope: "plugin", activation: "entry" });
       continue;
     }
