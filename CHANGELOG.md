@@ -8,6 +8,10 @@
 - 🧾 **错误 `details` 端到端**：结构化错误的细节字段（如 `ECONFLICT` 的 `stateVersion`）从池侧一路透传到 `BridgeError`、CLI `--json` 与 MCP 工具正文——AI 能按当前版本自纠，⛔ 从中文猜。
 - 🩺 **doctor ＋3 条断言**：`a-state-keys`（实收回执键 ⊆ 声明 `returns`）、`a-idempotent`（同键回放 / 异键真执行负控）、`a-conflict`（`ECONFLICT` 必须带 `details.stateVersion`）；新增 `--profile state-probe` 纯软件状态样本。
 
+### fix
+
+- 🧾 **错误 `hint` 真的到客户端了**：主进程应答此前只序列化 `code/message/details`，插件给的「下一步」在出网点被丢掉（CLI/MCP 只能靠本地码表猜）。现服务端 `hint` 原样透传并优先于本地兜底——`ENOVIEW` 这类插件语义码因此自带可执行下一步。
+
 ### docs
 
 - 立项三条：设备会话共享契约 / 插件间事件契约 / 状态命令约定（各一页，含证据与验收）。

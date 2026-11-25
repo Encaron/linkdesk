@@ -274,3 +274,24 @@ describe("callBridge 错误 details 透传（T-B · ECONFLICT.stateVersion）", 
     expect(err.hint).toContain("stateVersion");
   });
 });
+
+
+describe("callBridge 错误 hint 透传（T-B · 插件语义码的下一步提示）", () => {
+  it("服务端带 hint ⇒ 原样保留（⛔ 被 OP_HINTS 覆盖；ENOVIEW 这类新码同理）", async () => {
+    const serverHint = "传 uri+newName 走程序化改名，或先 open-tab file-tree 再调用";
+    const bridge = await startFakeBridge((req) =>
+      req.op === "ping"
+        ? { ok: true, result: { pid: process.pid } }
+        : { ok: false, code: "ENOVIEW", message: "无 file-tree 视图", hint: serverHint },
+    );
+    bridges.push(bridge);
+    const dir = fixtureDir(bridge.port);
+    dirs.push(dir);
+    const err = await callBridge("exec", { commandId: "file-tree.rename" }, { userDataDirs: [dir] }).then(
+      () => null,
+      (e) => e,
+    );
+    expect(err.code).toBe("ENOVIEW");
+    expect(err.hint).toBe(serverHint);
+  });
+});

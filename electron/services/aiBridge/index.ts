@@ -513,9 +513,9 @@ function onConnection(socket: net.Socket): void {
       (result) => {
         if (!socket.destroyed && socket.writable) socket.end(JSON.stringify({ ok: true, result }) + '\n');
       },
-      (e: Error & { code?: string; details?: unknown }) => {
+      (e: Error & { code?: string; hint?: string; details?: unknown }) => {
         if (!socket.destroyed && socket.writable) {
-          socket.end(JSON.stringify({ ok: false, code: e.code ?? 'EERROR', message: e.message, ...(e.details !== undefined ? { details: e.details } : {}), servedBy: process.pid }) + '\n');
+          socket.end(JSON.stringify({ ok: false, code: e.code ?? 'EERROR', message: e.message, ...(e.hint ? { hint: e.hint } : {}), ...(e.details !== undefined ? { details: e.details } : {}), servedBy: process.pid }) + '\n');
         }
       },
     );

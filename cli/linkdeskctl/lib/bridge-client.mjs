@@ -317,7 +317,7 @@ export async function callBridge(op, payload = {}, opts = {}) {
       (msg) => {
         if (msg && msg.ok) return msg.result;
         const code = msg && msg.code ? msg.code : "EERROR";
-        throw new BridgeError(code, (msg && msg.message) || "未知错误", OP_HINTS[code] ?? null, msg && msg.details);
+        throw new BridgeError(code, (msg && msg.message) || "未知错误", (msg && msg.hint) || OP_HINTS[code] || null, msg && msg.details);
       },
       (e) => {
         if (e instanceof BridgeError) throw e;
