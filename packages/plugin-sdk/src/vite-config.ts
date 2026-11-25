@@ -159,21 +159,27 @@ function collectSurfaces(root: string, manifest: unknown, options: LinkdeskPlugi
 
 /** dist plugin.json 深变换——把源码相对路径改写为编译 chunk 相对路径（按 rel → finalName 映射）：
  *  contributes.views[].render → views/<Key>.bundle.js；E6#62d appearsIn.statusBar → 根 statusBar.bundle.js。
- *  源码 plugin.json 保持作者视角 src/...，壳/池按 dist manifest 指向编译表面动态 import。 */
-function rewriteDistManifest(manifest: unknown, surfaceByRel: Map<string, string>): unknown {
+ *  源码 plugin.json 保持作者视角 src/...，壳/池按 dist manifest 指向编译表面动态 import。
+ *
+ *  `entryFinal` 单独传入（⛔ 不从 rel 映射里猜）：入口恒编译为 `index.bundle.js`（见 collectSurfaces），
+ *  而 `surfaceByRel` 只登记**非入口**表面。两者共用一个 rel 时（夹具 entry 与 render 同指 index.tsx）
+ *  rel 映射会被视图覆盖，入口会被改写成 `views/index_.bundle.js`（视图 shim）——形状上能跑，语义上错。 */
+function rewriteDistManifest(
+  manifest: unknown,
+  surfaceByRel: Map<string, string>,
+  entryFinal: string | undefined,
+): unknown {
   const clone: unknown = JSON.parse(JSON.stringify(manifest));
   const c = clone as {
     entry?: unknown;
     appearsIn?: { statusBar?: unknown };
     contributes?: { views?: Record<string, Array<{ render?: unknown }>> };
   };
-  // 2026-11-25：**入口路径同样要改写**——dist 的 JS 入口恒 index.bundle.js；源码 plugin.json 的
-  // `entry: "src/index.tsx"` 若原样进包，会让「入口顶层副作用」（命令注册）依赖的路径不存在：
-  // 壳的 resolveEntry 虽能按 bundle 兜底，但第三方宿主/读者按 manifest.entry 取入口即 404
-  // （实证：settings 1.0.55 的齿轮命令在部分路径上报「未在池内注册」）。
-  if (typeof c.entry === "string" && surfaceByRel.has(c.entry)) {
-    c.entry = surfaceByRel.get(c.entry);
-  }
+  // 2026-11-25：dist 的 JS 入口恒 index.bundle.js——manifest.entry 若原样保留源码路径
+  // （`src/index.tsx`），第三方宿主/读者按 manifest 取入口即 404；壳的 resolveEntry 有 bundle 兜底，
+  // 但「包内清单自描述」不该依赖兜底。（⛔ 此前注释把「未在池内注册」归因于此——实为命令作用域/ESM
+  // 缓存问题，见 preload-pool/commands.ts；本改写只是清单正确性，不是那个 bug 的修复。）
+  if (entryFinal && typeof c.entry === "string" && c.entry) c.entry = entryFinal;
   // E6#62d：自绘状态栏组件声明路径 → 编译表面（dist manifest 供 linkdesk:// 协议 root-direct 直解析）
   const appearsIn = c.appearsIn;
   if (appearsIn && typeof appearsIn.statusBar === "string" && surfaceByRel.has(appearsIn.statusBar)) {
@@ -527,7 +533,11 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
 
         // 静态清单（jsonc 归一 + E6#15 render 改写）先算——includeLspRuntimePackages 需对改写副本动
         // .bin args（E6#15m 解引用改写进 dist plugin.json，源码 plugin.json 保持作者视角 .bin 形态）
-        const distManifest = rewriteDistManifest(manifest, relToFinal);
+        const distManifest = rewriteDistManifest(
+          manifest,
+          relToFinal,
+          surfaces.find((s) => s.key === "index")?.finalName,
+        );
 
         // E6#15e/#15m：插件自带的 LSP 二进制随包——扫本插件 langDefs[].lsp.args，凡路径式 arg 指向
         // `node_modules/<pkg>/…` 的，把 <pkg> 整树从插件根 node_modules 拷进 zip（pyright 等是 spawn 二进制，

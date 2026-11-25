@@ -165,7 +165,12 @@ export function initIpcBridgeHandler(): void {
 
       bridge.respond(req.requestId, result);
     } catch (e) {
-      bridge.respond(req.requestId, undefined, e instanceof Error ? e.message : String(e));
+      // S2/T14：结构化错误码原样带回主进程（⛔ 只传 message 会让门外从中文猜）
+      const err = e as { code?: unknown; hint?: unknown };
+      bridge.respond(req.requestId, undefined, e instanceof Error ? e.message : String(e), {
+        ...(typeof err?.code === "string" && err.code ? { code: err.code } : {}),
+        ...(typeof err?.hint === "string" && err.hint ? { hint: err.hint } : {}),
+      });
     }
   });
 

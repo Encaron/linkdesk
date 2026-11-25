@@ -121,11 +121,31 @@ function leaveViewContext(viewInstanceId: string): void {
   }
 }
 
-/** 查池侧 handler 并执行——handler 存在返回 Promise，不存在返回 null（调用方决定 fallback 壳 / reject）。E5.8#1c 去重 */
+/**
+ * 查池侧 handler 并执行——handler 存在返回 Promise，不存在返回 null（调用方决定 fallback 壳 / reject）。E5.8#1c 去重
+ *
+ * 🔴 S2/T14（2026-11-25 根修）：**返回的结构化错误** → 转成带 code/hint/details 的 rejection。
+ * 为什么必须走「返回」而不是「throw」：插件 handler 是经 contextBridge 代理的页面世界函数，
+ * **异常跨桥只保留 message**，自定义属性（`code`/`hint`）会被丢掉 ⇒ 池侧只能归 EUNKNOWN，
+ * 插件声明的 EBADARGS/EDEVICE/ENOPORT 全到不了门外（实测）。返回值的结构化克隆保属性。
+ * 作者契约：预期内的业务错误 `return pluginError({...})`；throw 留给真正的意外。
+ */
 function callPoolHandler(id: string, args: unknown[]): Promise<unknown> | null {
   const entry = _poolCommands.get(id);
   if (!entry) return null;
-  return Promise.resolve(entry.handler(...args));
+  return Promise.resolve(entry.handler(...args)).then((value) => {
+    if (value && typeof value === "object" && (value as { isPluginError?: unknown }).isPluginError === true) {
+      const v = value as { code?: unknown; message?: unknown; hint?: unknown; details?: unknown };
+      const e = new Error(typeof v.message === "string" ? v.message : `${id} 返回了结构化错误`) as Error & {
+        code?: string; hint?: string; details?: unknown;
+      };
+      if (typeof v.code === "string" && v.code) e.code = v.code;
+      if (typeof v.hint === "string" && v.hint) e.hint = v.hint;
+      if (v.details !== undefined) e.details = v.details;
+      throw e;
+    }
+    return value;
+  });
 }
 
 /** E6#62e 池侧 on-command 激活钩——池 renderer 注册的属主插件入口 import 回调。

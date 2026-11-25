@@ -17,7 +17,8 @@ export interface ShellAPI {
   /** Shell↔plugin communication relay — shell preload only */
   bridge?: {
     onRequest(cb: (req: BridgeRequestPayload) => void): () => void;
-    respond(requestId: string, result?: unknown, error?: string): void;
+    /** S2/T14：error 为 null 时结果回传；失败时 meta 带机读 code 与 hint（⛔ 只剩中文 message） */
+    respond(requestId: string, result?: unknown, error?: string, meta?: { code?: string; hint?: string }): void;
     broadcast(channel: string, payload: unknown): void;
     notifyConfigChanged(key: string, value: unknown): void;
   };

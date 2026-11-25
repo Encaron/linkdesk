@@ -293,3 +293,18 @@ describe('S4 根修第二次：提升判据 = 声明为 entry（⛔ "声明过"�
     expect(exec.some((c) => c[1] === 'demo-plugin.viewCmd')).toBe(true);
   });
 });
+
+describe('S2/T14 根修：返回的结构化错误（pluginError）保留 code/hint', () => {
+  it('handler 返回 {isPluginError,code,hint} ⇒ 回执带 code/hint（⛔ EUNKNOWN）', async () => {
+    ipcMock.invoke.mockClear();
+    const events = fakeEvents();
+    const commands = buildCommands(events);
+    commands.registerCommand('demo-plugin.retErr', () =>
+      ({ isPluginError: true, code: 'EBADARGS', message: 'baudRate 必须是正整数', hint: '看 describe', details: { baudRate: -1 } }));
+
+    await events.triggerAsync({ requestId: 't14-ret', commandId: 'demo-plugin.retErr', args: [] });
+
+    const call = ipcMock.invoke.mock.calls.find((c) => c[0] === IPC.commands.executeResult);
+    expect(call?.[2]).toMatchObject({ error: 'baudRate 必须是正整数', code: 'EBADARGS', hint: '看 describe' });
+  });
+});

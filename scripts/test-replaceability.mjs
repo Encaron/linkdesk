@@ -56,6 +56,11 @@ export function inspectFixture(fixtureDir = FIXTURE_DIR) {
     if (/from\s+["']@\/(?:src)\//.test(src) || /from\s+["']@src\//.test(src)) {
       errors.push(`夹具 import 了壳内部模块：${path.relative(fixtureDir, f)}`);
     }
+    // 🔴 契约面里 `onForwardedEvent`/`syncToMainProcess` 是**壳侧专属**（池 preload 不注入）。
+    // 夹具若依赖它们，池内静默失效——录不进键、同步不了表，却看不出为什么（2026-11-25 实机教训）。
+    if (/\bonForwardedEvent\b|\bsyncToMainProcess\b/.test(src)) {
+      errors.push(`夹具依赖壳侧专属 API（池内不存在）：${path.relative(fixtureDir, f)}`);
+    }
     // repo 传 "settings" 以启用 K3（夹具同样不许出现 app.* 键名）
     for (const h of scanPluginSource(src, { repo: "settings", file: path.relative(fixtureDir, f), official: true })) {
       if (["K1", "K2", "K3", "K9", "K10"].includes(h.rule)) {
@@ -88,11 +93,18 @@ if (SELF_TEST) {
     fs.writeFileSync(path.join(tmp, "plugin.json"), JSON.stringify({ pluginId: "bad-fixture", factoryRole: "settings", entry: "x.ts" }));
     fs.writeFileSync(
       path.join(tmp, "x.ts"),
-      ['import { Button } from "@linkdesk/ui";', 'const p = window.linkdesk.path.join(window.linkdesk.path.appDataDir(), "settings.json");'].join("\n"),
+      [
+        'import { Button } from "@linkdesk/ui";',
+        'const p = window.linkdesk.path.join(window.linkdesk.path.appDataDir(), "settings.json");',
+        "window.linkdesk.keybindings.onForwardedEvent(() => {});",
+      ].join("\n"),
     );
     const bad = inspectFixture(tmp);
-    const okBad = bad.errors.some((e) => e.includes("K1") || e.includes("K10")) && bad.errors.some((e) => e.includes("UI 库"));
-    console.log(`${okBad ? "✓" : "✗"} 负控：夹具自拼宿主路径 / import 壳 UI 库 均被拦下`);
+    const okBad =
+      bad.errors.some((e) => e.includes("K1") || e.includes("K10"))
+      && bad.errors.some((e) => e.includes("UI 库"))
+      && bad.errors.some((e) => e.includes("壳侧专属"));
+    console.log(`${okBad ? "✓" : "✗"} 负控：夹具自拼宿主路径 / import 壳 UI 库 / 依赖壳侧专属 API 均被拦下`);
     if (!okGood || !okBad) process.exit(1);
     console.log("\n✅ 可替换性夹具自测通过");
   } finally {

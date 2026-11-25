@@ -489,27 +489,41 @@ function KeybindingsPage() {
     return kb.onChange?.(() => setVersion((v) => v + 1));
   }, [version]);
 
-  // 录制：壳置捕获态 → 主进程转发按键 → 拆成键串 → 删旧绑定 + 注册新绑定 + 落盘
+  // 录制：宿主置捕获态（主进程放行按键）→ 本页 DOM keydown 收键 → 删旧绑定 + 注册 + 落盘。
+  // 🔴 池插件用**本地 keydown** 收键，⛔ 不用 `onForwardedEvent`——那条面是壳侧专属（契约注释明示
+  // shell-side only，池 preload 不注入）；第二个作者照文档只用 setKeybindingCaptureActive + DOM 即可。
   useEffect(() => {
     const kb = lk().keybindings;
-    if (!capturing || !kb?.onForwardedEvent) return;
-    void kb.setKeybindingCaptureActive?.(true);
-    const off = kb.onForwardedEvent(async (input) => {
-      if (input.key === "Escape") {
+    if (!capturing || !kb?.setKeybindingCaptureActive) return;
+    void kb.setKeybindingCaptureActive(true);
+    const handler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.key === "Escape") {
         setCapturing("");
         return;
       }
-      const key = kb.keyboardEventToKeyString(input);
+      // contextBridge 结构化克隆会丢 KeyboardEvent 原生属性——提成普通对象再传。
+      const key = kb.keyboardEventToKeyString({
+        key: e.key,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+      });
       if (!key) return;
-      await kb.removeKeybindingForCommand(capturing);
-      await kb.registerKeybinding({ command: capturing, key, source: "user" });
-      await kb.saveUserKeybindings?.();
-      setCapturing("");
-      setVersion((v) => v + 1);
-    });
+      void (async () => {
+        await kb.removeKeybindingForCommand(capturing);
+        await kb.registerKeybinding({ command: capturing, key, source: "user" });
+        await kb.saveUserKeybindings?.();
+        setCapturing("");
+        setVersion((v) => v + 1);
+      })();
+    };
+    window.addEventListener("keydown", handler, true);
     return () => {
-      off?.();
-      void kb.setKeybindingCaptureActive?.(false);
+      window.removeEventListener("keydown", handler, true);
+      void kb.setKeybindingCaptureActive(false);
     };
   }, [capturing]);
 

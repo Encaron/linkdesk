@@ -604,8 +604,16 @@ try {
       onRequest: (cb: (req: BridgeRequestPayload) => void) =>
         _bridgeRequestRelay.onReady(cb),
       // React 侧 IpcBridgeHandler 响应请求（#26）
-      respond: (requestId: string, result?: unknown, error?: string) => {
-        ipcRenderer.send(IPC.bridge.response, { requestId, result, error });
+      respond: (requestId: string, result?: unknown, error?: string, meta?: { code?: string; hint?: string }) => {
+        // S2/T14：失败回执必须带机读 code/hint——否则主进程只能重造 ESHELLERROR，
+        // 插件抛的结构化错误到门外全被压平（2026-11-25 实测：EBADARGS/EDEVICE 均变成 ESHELLERROR）。
+        ipcRenderer.send(IPC.bridge.response, {
+          requestId,
+          result,
+          error,
+          ...(meta?.code ? { code: meta.code } : {}),
+          ...(meta?.hint ? { hint: meta.hint } : {}),
+        });
       },
       // E3b #35 → E5.7#43：广播到唯一 Pool——主题切换、语言切换等全局事件
       broadcast: (channel: string, payload: unknown) => {

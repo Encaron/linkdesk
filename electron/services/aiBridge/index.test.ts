@@ -19,7 +19,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { electronMock } from "../electron-mock.js";
 void electronMock;
 
-import { resolveBridgeConfig, tokenOk, pickShellWindow } from "./index.js";
+import { resolveBridgeConfig, shellReplyError, tokenOk, pickShellWindow } from "./index.js";
 import { OPS, opCatalog, WHITELIST_VERSION, coded } from "./whitelist.js";
 
 let tmpDirs: string[] = [];
@@ -170,5 +170,18 @@ describe("pickShellWindow（AI#41：多窗口下的目标壳窗）", () => {
   it("一只活的都没有 ⇒ null（调用方据此进等窗循环，不是抛）", () => {
     expect(pickShellWindow({ focused: w("main", "win") as never, shells: [w("ws-2", "win")] as never, alive })).toBeNull();
     expect(pickShellWindow({ focused: null, shells: [], alive })).toBeNull();
+  });
+});
+
+describe("S2/T14 端到端：壳回执错误码原样保留", () => {
+  it("回执带 code/hint ⇒ 原样上抛（⛔ 一律压成 ESHELLERROR）", () => {
+    const err = shellReplyError({ error: "baudRate 必须是正整数", code: "EBADARGS", hint: "看 describe" });
+    expect(err.code).toBe("EBADARGS");
+    expect(err.message).toContain("baudRate");
+    expect(err.hint).toBe("看 describe");
+  });
+
+  it("回执没带 code ⇒ ESHELLERROR（壳层异常兜底）", () => {
+    expect(shellReplyError({ error: "unknown channel" }).code).toBe("ESHELLERROR");
   });
 });

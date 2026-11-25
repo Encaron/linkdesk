@@ -468,6 +468,18 @@ async function handleRequest(req: unknown): Promise<unknown> {
   }
 }
 
+/**
+ * 壳回执 → 异常（S2/T14，纯函数可单测）：**原样保留**壳带回来的 code/hint。
+ * 旧实现一律重造 `ESHELLERROR` ⇒ 插件声明的 EBADARGS/EDEVICE/ENOPORT 到门外全被压平，
+ * AI 只能从中文 message 里猜（2026-11-25 实测）。
+ */
+export function shellReplyError(msg: { error?: string; code?: string; hint?: string }): Error & { code: string; hint?: string } {
+  const code = typeof msg.code === "string" && msg.code ? msg.code : "ESHELLERROR";
+  const err = coded(code, String(msg.error)) as Error & { code: string; hint?: string };
+  if (typeof msg.hint === "string" && msg.hint) err.hint = msg.hint;
+  return err;
+}
+
 /** 一条连接 = 一行 JSON 请求 + 一行 JSON 应答，用完即断（零状态机，同 spike 实测形态） */
 function onConnection(socket: net.Socket): void {
   let buf = '';
@@ -571,14 +583,14 @@ export function initAiBridge(deps: AiBridgeDeps): void {
   const rec: BridgeRecord = record;
 
   // 应答缝——只认自己的 requestId 前缀（IpcBridge 的请求同通道不同前缀，各走各的）
-  ipcMain.on(IPC.bridge.response, (_event, msg: { requestId?: string; result?: unknown; error?: string }) => {
+  ipcMain.on(IPC.bridge.response, (_event, msg: { requestId?: string; result?: unknown; error?: string; code?: string; hint?: string }) => {
     const id = msg?.requestId;
     if (typeof id !== 'string' || !id.startsWith(REQUEST_ID_PREFIX)) return;
     const p = pendingShell.get(id);
     if (!p) return;
     pendingShell.delete(id);
     clearTimeout(p.timer);
-    if (msg.error) p.reject(coded('ESHELLERROR', String(msg.error)));
+    if (msg.error) p.reject(shellReplyError(msg));
     else p.resolve(msg.result);
   });
 
