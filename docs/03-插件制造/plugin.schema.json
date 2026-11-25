@@ -421,7 +421,9 @@
     "readme": {
       "description": "Multi-language README. A string is the legacy tombstone (ignored with a warning — use root README.md). An object maps language codes to markdown files under docs/readme/; the host/marketplace picks the app language and falls back to `default` (then README.md). Shared images stay in resources/.",
       "oneOf": [
-        { "type": "string" },
+        {
+          "type": "string"
+        },
         {
           "type": "object",
           "properties": {
@@ -433,7 +435,9 @@
               "type": "object",
               "description": "Language code → README path (relative, forward slashes). A language may point at README.md itself.",
               "patternProperties": {
-                "^[a-z]{2,3}(-[a-z0-9]{2,8})?$": { "type": "string" }
+                "^[a-z]{2,3}(-[a-z0-9]{2,8})?$": {
+                  "type": "string"
+                }
               },
               "additionalProperties": false
             }
@@ -469,7 +473,8 @@
             "required": [
               "id",
               "title",
-              "risk"
+              "risk",
+              "activation"
             ],
             "properties": {
               "id": {
@@ -494,13 +499,21 @@
               },
               "risk": {
                 "type": "string",
-                "enum": ["R0", "R1", "R2", "R3"],
+                "enum": [
+                  "R0",
+                  "R1",
+                  "R2",
+                  "R3"
+                ],
                 "description": "Plugin-command risk declaration — the ONLY source for a plugin command's risk. R0 read-only / R1 reversible write / R2 side-effecting write / R3 irreversible or touches the body — e.g. physical reset, continuous sending, interrupting a live connection, deleting data or replacing running code. The host built-in table covers shell commands only and never overrides a plugin declaration. Missing or invalid ⇒ treated as R2; the loader rejection gate is pending (official 6 repos aligned; my-cool-plugin demo deferred). Required: declare \"R0\" explicitly when a command is truly read-only."
               },
               "activation": {
                 "type": "string",
-                "enum": ["entry", "view"],
-                "description": "Where the real handler is registered: entry = plugin-level (callable with no view open) / view = registered by a mounted view instance (needs that view). The host auto-detects the runtime truth at registration time; this declaration is used by describe() to tell the AI in advance. Conflict with the runtime truth ⇒ runtime wins + loader diagnostic. Required in the author contract (see 21-插件命令化规范)."
+                "enum": [
+                  "entry",
+                  "view"
+                ],
+                "description": "Where the real handler is registered: entry = plugin-level (callable with no view open) / view = registered by a mounted view instance (needs that view). Required: every command must declare it — the loader rejects commands missing/invalid activation, and this schema requires it; the two stay one source of truth. The host auto-detects the runtime truth at registration time; this declaration is used by describe() to tell the AI in advance. Conflict with the runtime truth ⇒ runtime wins + loader diagnostic."
               },
               "async": {
                 "type": "boolean",
@@ -531,7 +544,8 @@
                     "description": {
                       "type": "string",
                       "description": "One sentence on what this field means"
-                    }                  },
+                    }
+                  },
                   "additionalProperties": false
                 }
               },
