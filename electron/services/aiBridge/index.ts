@@ -67,6 +67,7 @@ import { IPC } from '../../ipc/channels.js';
 import { OPS, coded, type BridgeOpContext, type BridgePhase, type LedgerEntry } from './whitelist.js';
 import { createOpRegistry } from './opRegistry.js';
 import { createIdempotencyRegistry } from './idempotency.js';
+import { nativeAsk } from '../nativeAsk.js';
 import { setPolicySettingsFile } from './policy/index.js';
 
 /** 通道记录文件名（userData 下）。客户端（cli/linkdeskctl/lib/bridge-client.mjs）按同名找它——改名两处同笔 */
@@ -431,7 +432,21 @@ export function opContextFor(
       if (handle.phase() !== 'ask-user') handle.set('shell', channel);
       return base.shellRequest(channel, args, timeoutMs);
     },
-    identity: () => ({ ...base.identity(), inFlight: registry.snapshot(handle.id) }),
+    identity: () => {
+      // Block 1：原生确认框（guard 的 MessageBox）不在相位表里——补一条 ask-user 事实，
+      // 客户端超时回读据此回 EASKPENDING（「正等人点头」），⛔ 读成「还在跑」。
+      const inFlight = registry.snapshot(handle.id);
+      const native = nativeAsk();
+      if (native) {
+        inFlight.push({
+          op: "guard.write-confirm",
+          phase: "ask-user",
+          what: native.what,
+          ms: Date.now() - native.startedAt,
+        });
+      }
+      return { ...base.identity(), inFlight };
+    },
     phase: (phase, what) => handle.set(phase, what ?? null),
   };
   return { ctx, done: () => handle.done() };

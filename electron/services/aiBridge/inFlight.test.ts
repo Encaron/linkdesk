@@ -23,6 +23,7 @@ import { IPC } from "../../ipc/channels.js";
 import { createInFlightRegistry, opContextFor } from "./index.js";
 import type { BridgeOpContext } from "./whitelist.js";
 import { askUser, USER_DENIED } from "./sensitive.js";
+import { beginNativeAsk, endNativeAsk } from "../nativeAsk.js";
 
 /** 一只假内核上下文（`opContextFor` 的 `base`）：壳请求只记账、每秒表由本文件自己造 */
 function fakeBase(shellReply: (channel: string) => unknown = () => null) {
@@ -130,5 +131,21 @@ describe("opContextFor（执行上下文那条缝）", () => {
     expect(reg.size()).toBe(2);
     a.done();
     b.done();
+  });
+
+  it("原生确认框（guard MessageBox）也进相位面 ⇒ 客户端回读看到 ask-user（⛔ EPENDING 假象）", () => {
+    const { base } = fakeBase();
+    const reg = createInFlightRegistry(() => 0);
+    const { ctx, done } = opContextFor('exec', base, reg);
+    beginNativeAsk('工作区外写入确认：E:/proj/x.txt');
+    expect(ctx.identity().inFlight).toContainEqual({
+      op: 'guard.write-confirm',
+      phase: 'ask-user',
+      what: '工作区外写入确认：E:/proj/x.txt',
+      ms: expect.any(Number),
+    });
+    endNativeAsk();
+    expect(ctx.identity().inFlight).toEqual([]); // 答完即撤，不留幽灵条目
+    done();
   });
 });

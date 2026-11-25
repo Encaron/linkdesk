@@ -61,7 +61,7 @@ afterEach(() => {
 describe("① 数组形 —— 空槽/非对象项跳过，好项照旧注册", () => {
   it("commands 里夹一个 null 空槽 → 好项照常注册，warn 一条并带下标记位", async () => {
     await parseContributions(PLUGIN, {
-      commands: [null, { id: "demo.cmd.alpha", title: "Demo Alpha" }],
+      commands: [null, { id: "demo.cmd.alpha", title: "Demo Alpha", risk: "R1", activation: "entry" }],
     });
 
     expect(getPluginCommands(PLUGIN)).toEqual(["demo.cmd.alpha"]);
@@ -122,7 +122,7 @@ describe("③ 形状写错（数组 ↔ 表 写反）—— 整项跳过 + warn�
 
   it("menus 写成数组（该是键值表）→ 整组跳过，同清单的 commands 照常注册", async () => {
     await parseContributions(PLUGIN, {
-      commands: [{ id: "demo.cmd.alpha", title: "Demo Alpha" }],
+      commands: [{ id: "demo.cmd.alpha", title: "Demo Alpha", risk: "R1", activation: "entry" }],
       menus: [{ command: "demo.cmd.alpha" }] as never,
     });
 
@@ -156,7 +156,7 @@ describe("④ 正控 —— 合规清单零误报（宽容层不吃好数据）"
     await parseContributions(
       PLUGIN,
       {
-        commands: [{ id: "demo.cmd.alpha", title: "Demo Alpha" }],
+        commands: [{ id: "demo.cmd.alpha", title: "Demo Alpha", risk: "R1", activation: "entry" }],
         menus: { [MENU_SLOTS.EditorContext]: [{ command: "demo.cmd.alpha" }] },
         keybindings: [{ command: "demo.cmd.alpha", key: "ctrl+demo" }],
         configuration: { title: "Demo Settings", properties: { "demo.setting.alpha": { type: "string" } } },

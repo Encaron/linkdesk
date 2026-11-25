@@ -27,7 +27,7 @@ function makeCall(overrides = {}) {
       if (overrides.exec) return overrides.exec(payload.commandId, payload);
       const id = payload.commandId;
       if (id.endsWith("doctor-no-such")) throw coded("EUNKNOWNCOMMAND", "不存在");
-      if (id === "serial-monitor.copy") throw coded("ENOTACTIVE", "入口没认领");
+      if (id === "serial-monitor.copy") throw coded("EVIEWREQUIRED", "先 open-tab");
       if (id === "serial-monitor.openPort") throw coded("ENOTFOUND", "无设备");
       if (id === "serial-monitor.receiveStatus") return { commandId: id, result: {} };
       if (id === "serial-monitor.closePort") return { commandId: id, result: { ok: true } };
@@ -96,6 +96,13 @@ describe("doctor 负控（坏形状必须红，且带三件套）", () => {
     const out = await runDoctor({ call, only: "a-unknown-code" });
     expect(out[0].pass).toBe(false);
     expect(out[0].actual).toContain("成功");
+  });
+
+  it("视图命令回 ENOTACTIVE（入口没认领）⇒ a-view-code 红（Block 1 转严，⛔ 混读成可达性正常）", async () => {
+    const call = makeCall({ exec: () => { throw coded("ENOTACTIVE", "入口没认领"); } });
+    const out = await runDoctor({ call, only: "a-view-code" });
+    expect(out[0].pass).toBe(false);
+    expect(out[0].actual).toContain("入口没认领");
   });
 
   it("视图命令回 EUNKNOWNCOMMAND（声明丢了）⇒ a-view-code 红", async () => {

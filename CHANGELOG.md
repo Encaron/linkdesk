@@ -10,6 +10,9 @@
 
 ### fix
 
+- 🚫 **T3 开闸：命令声明 `risk`/`activation` 必填**：loader 对缺声明/非法值的命令**拒绝注册**并响亮报错（⛔ 兜底 R2 装成正常命令）；`audit:plugin-commands` 对官方仓缺口从黄转红（exit 1），`.release-mp-1.3.0` 冻结暂存副本排除。
+- ⏳ **原生确认框不再被读成「还在跑」**：`filesystem-guard` 对工作区外写入弹的是主进程 MessageBox，此前不进相位表——AI 超时回读只得 `EPENDING`（会误判重试，动作其实没执行）。现 guard 在弹框期间登记 `nativeAsk`，`ping` 的 `inFlight` 增 `ask-user` 事实 ⇒ 客户端回 `EASKPENDING`（「正等人点头」）。
+- 🎯 **`a-view-code` 转严**：只认 `EVIEWREQUIRED`；`ENOTACTIVE`（入口没认领）从此是红——两者不可混读。
 - 🧾 **错误 `hint` 真的到客户端了**：主进程应答此前只序列化 `code/message/details`，插件给的「下一步」在出网点被丢掉（CLI/MCP 只能靠本地码表猜）。现服务端 `hint` 原样透传并优先于本地兜底——`ENOVIEW` 这类插件语义码因此自带可执行下一步。
 
 ### docs

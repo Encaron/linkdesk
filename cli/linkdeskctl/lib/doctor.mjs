@@ -9,8 +9,10 @@
  *     否则测的不是 AI 走的路；
  *   · ⛔ 为让 doctor 变绿而弱化断言；每条断言给 `{assertionId, 期望, 实际, 复现命令}`；
  *   · ⛔ 不进 `npm run check`（要活实例）；发版前人工跑一次（决策 #1）。
- *   · manifest 尚未补齐的字段（returns/activation/apiVersion）⇒ 对应断言**记 skip**（⛔ 不红不绿），
+ *   · manifest 尚未补齐的字段（returns/apiVersion）⇒ 对应断言**记 skip**（⛔ 不红不绿），
  *     B 补齐后同批转严——「按现有 manifest」口径（调度台 2026-11-25）。
+ *   · Block 1（2026-11-25）：`a-view-code` 只认 `EVIEWREQUIRED`——存量 activation 声明已补齐，
+ *     `ENOTACTIVE` 从此是红（入口没认领 ≠ 视图不在场，两者不可混读）。
  *
  * ── 用法 ──
  *   linkdeskctl doctor                    # 全量跑（默认 profile = serial）
@@ -192,7 +194,7 @@ export const DOCTOR_ASSERTIONS = [
   },
   {
     id: "a-view-code",
-    name: "可达性有码：无视图调视图态命令 ⇒ EVIEWREQUIRED（声明缺失时 ENOTACTIVE 也可判读）",
+    name: "可达性有码：无视图调视图态命令 ⇒ EVIEWREQUIRED（Block 1 起只认此码）",
     source: "B1-7/I-2（when=… 命令不开视图够不着、且看不出要开视图）",
     async run(ctx) {
       const cmd = ctx.profile.viewCommand;
@@ -213,12 +215,15 @@ export const DOCTOR_ASSERTIONS = [
         };
       }
       const r = await execChecked(ctx.call, cmd);
-      // 现 manifest 无 activation 声明 ⇒ ENOTACTIVE（入口没认领）也算可判读；声明齐后必须 EVIEWREQUIRED
-      const pass = !r.ok && (r.code === "EVIEWREQUIRED" || r.code === "ENOTACTIVE");
+      // Block 1（2026-11-25）：只认 EVIEWREQUIRED——ENOTACTIVE 是「入口没认领」，不是「视图不在场」，
+      // 混着接受会让 manifest 声明缺失/入口加载失败长期伪装成可达性正常。
+      const pass = !r.ok && r.code === "EVIEWREQUIRED";
       return {
         pass,
-        expected: "EVIEWREQUIRED（manifest 声明 activation:view 后必须此码；当前声明缺失期 ENOTACTIVE 可判读）",
-        actual: r.ok ? "居然执行成功了" : `code=${r.code}${r.code === "ENOTACTIVE" ? "（manifest 无 activation 声明——B 补齐后转严为 EVIEWREQUIRED）" : ""}`,
+        expected: "EVIEWREQUIRED（视图态命令的唯一可判读码）",
+        actual: r.ok
+          ? "居然执行成功了"
+          : `code=${r.code}${r.code === "ENOTACTIVE" ? "（入口没认领——查 manifest activation 声明与插件启用状态）" : ""}`,
         repro: `linkdeskctl exec ${cmd}`,
       };
     },

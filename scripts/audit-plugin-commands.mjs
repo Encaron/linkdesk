@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 「有视图声明却零命令」审计尺 —— **只报不拦**。
+ * 「有视图声明却零命令」审计尺 —— **只报不拦**。（T3 起：`risk/activation` 缺口对官方仓转红）
  *
  * ── 它守的是哪句话 ──
  *   插件被 AI 操作**唯一**的途径是「它注册了命令」（见 `docs/03-插件制造/21-插件命令化规范.md`）。
@@ -72,11 +72,11 @@ function countItems(v) {
  * @param {{id: string, manifest?: any, official?: boolean, parseError?: string|null}} input
  * @returns {{id, official, views, containers, commands, noDescription, noTitle, noRisk, badRisk, verdict, parseError}}
  *   verdict: "views-no-commands"（本尺判据）| "ok" | "commands-only" | "silent" | "unreadable"
- *   noRisk = 缺 risk 声明的命令数；badRisk = 声明了但值非 "R0"–"R3" 的命令数（S7 黄灯名单，只报不拦）
+ *   noRisk/badRisk、noActivation/badActivation = 缺声明/非法值计数（T3 灯：官方仓有缺口 ⇒ exit 1）
  */
 export function judgePlugin({ id, manifest, official = true, parseError = null }) {
   if (parseError || !manifest || typeof manifest !== "object") {
-    return { id, official, views: 0, containers: 0, commands: 0, noDescription: 0, noTitle: 0, noRisk: 0, badRisk: 0, verdict: "unreadable", parseError: parseError || "清单不可读" };
+    return { id, official, views: 0, containers: 0, commands: 0, noDescription: 0, noTitle: 0, noRisk: 0, badRisk: 0, noActivation: 0, badActivation: 0, verdict: "unreadable", parseError: parseError || "清单不可读" };
   }
   const c = manifest.contributes || {};
   const views = countViews(c.views);
@@ -86,6 +86,8 @@ export function judgePlugin({ id, manifest, official = true, parseError = null }
   const noDescription = cmds.filter((x) => !x || typeof x.description !== "string" || x.description.trim() === "").length;
   const noTitle = cmds.filter((x) => !x || typeof x.title !== "string" || x.title.trim() === "").length;
   const noRisk = cmds.filter((x) => !x || x.risk === undefined || x.risk === null || x.risk === "").length;
+  const noActivation = cmds.filter((x) => !x || x.activation === undefined || x.activation === null || x.activation === "").length;
+  const badActivation = cmds.filter((x) => x && x.activation !== undefined && x.activation !== null && x.activation !== "" && x.activation !== "entry" && x.activation !== "view").length;
   const badRisk = cmds.filter((x) => x && x.risk !== undefined && x.risk !== null && x.risk !== "" && !(typeof x.risk === "string" && RISKS.has(x.risk.trim()))).length;
 
   let verdict = "silent";
@@ -93,7 +95,7 @@ export function judgePlugin({ id, manifest, official = true, parseError = null }
   else if (views > 0) verdict = "ok";
   else if (commands > 0) verdict = "commands-only";
 
-  return { id, official, views, containers, commands, noDescription, noTitle, noRisk, badRisk, verdict, parseError: null };
+  return { id, official, views, containers, commands, noDescription, noTitle, noRisk, badRisk, noActivation, badActivation, verdict, parseError: null };
 }
 
 /* ─────────────────────────── 自测（正控/负控） ─────────────────────────── */
@@ -122,6 +124,8 @@ function selfTest() {
     C("正控⑥ S7 risk 齐全：3 条全声明合法值 ⇒ noRisk=0/badRisk=0", riskOf({ id: "l", manifest: { contributes: { commands: [{ id: "l.1", risk: "R0" }, { id: "l.2", risk: "R2" }, { id: "l.3", risk: "R3" }] } } }), { noRisk: 0, badRisk: 0 }),
     C("负控⑥ S7 缺 risk：2 缺 1 非法值 ⇒ noRisk=2/badRisk=1（黄灯名单，不判死）", riskOf({ id: "m", manifest: { contributes: { commands: [{ id: "m.1" }, { id: "m.2", risk: "R1" }, { id: "m.3" }, { id: "m.4", risk: "5" }] } } }), { noRisk: 2, badRisk: 1 }),
     C("负控⑥b 数字 risk（旧写法 0–3）算非法值", riskOf({ id: "n", manifest: { contributes: { commands: [{ id: "n.1", risk: 0 }] } } }), { noRisk: 0, badRisk: 1 }),
+    C("正控⑦ T3 activation 齐全 ⇒ 0/0", (() => { const j = judgePlugin({ id: "o", manifest: { contributes: { commands: [{ id: "o.1", activation: "entry" }, { id: "o.2", activation: "view" }] } } }); return { noActivation: j.noActivation, badActivation: j.badActivation }; })(), { noActivation: 0, badActivation: 0 }),
+    C("负控⑦ T3 缺/非法 activation ⇒ 各 1", (() => { const j = judgePlugin({ id: "p", manifest: { contributes: { commands: [{ id: "p.1" }, { id: "p.2", activation: "view" }, { id: "p.3", activation: "tab" }] } } }); return { noActivation: j.noActivation, badActivation: j.badActivation }; })(), { noActivation: 1, badActivation: 1 }),
   ];
   const bad = cases.filter((x) => !x.ok);
   console.log("[plugin-commands] 自测（判据纯函数，正控绿 / 负控红）：");
@@ -135,7 +139,8 @@ if (process.argv.slice(2).includes("--self-test")) process.exit(selfTest());
 /* ─────────────────────────── 主流程（只读盘点） ─────────────────────────── */
 
 const ids = officialPluginIds(AGENTS_SCRIPT);
-const repos = discoverPluginRepos(CONTAINER).map((r) => {
+// T3：`.` 开头的目录（如 `.release-mp-1.3.0` 冻结发布暂存副本）不在加载路径——⛔ 算进 T3 拒绝面
+const repos = discoverPluginRepos(CONTAINER).filter((r) => !r.id.startsWith(".")).map((r) => {
   const parsed = readManifestJson(path.join(r.dir, "plugin.json"));
   return {
     group: r.group,
@@ -151,7 +156,7 @@ const repos = discoverPluginRepos(CONTAINER).map((r) => {
 const flagged = repos.filter((r) => r.verdict === "views-no-commands");
 const unreadable = repos.filter((r) => r.verdict === "unreadable");
 const noDescRepos = repos.filter((r) => r.commands > 0 && r.noDescription === r.commands);
-const riskYellow = repos.filter((r) => r.commands > 0 && r.noRisk + r.badRisk > 0);
+const declarationGaps = repos.filter((r) => r.commands > 0 && r.noRisk + r.badRisk + r.noActivation + r.badActivation > 0);
 const inventory = {
   repos: repos.length,
   withViews: repos.filter((r) => r.views > 0).length,
@@ -169,7 +174,7 @@ const payload = {
   repos,
   inventory,
   flagged: flagged.map((r) => ({ id: r.id, views: r.views, containers: r.containers })),
-  riskYellow: riskYellow.map((r) => ({ id: r.id, commands: r.commands, noRisk: r.noRisk, badRisk: r.badRisk })),
+  declarationGaps: declarationGaps.map((r) => ({ id: r.id, official: r.official, commands: r.commands, noRisk: r.noRisk, badRisk: r.badRisk, noActivation: r.noActivation, badActivation: r.badActivation })),
 };
 
 if (JSON_OUT) {
@@ -203,7 +208,8 @@ const VERDICT_TAG = {
 console.log(`[plugin-commands] 容器 ${CONTAINER} · ${repos.length} 仓（官方名单${ids ? "" : "读取失败，降级为全部按官方报"}）`);
 console.log(`[plugin-commands] 官方名单源：${ids ? "scripts/sync-plugin-agents.mjs FACTS 表" : "—（读取失败）"}`);
 console.log(`[plugin-commands] 判据：${payload.criterion}`);
-console.log(`[plugin-commands] 🔴 只报不拦（exit 0）——⛔ 不进 npm run check / CI / ci-verify；改不改由各插件作者定\n`);
+console.log(`[plugin-commands] T3：官方仓 risk/activation 缺口 ⇒ exit 1（loader 同口径硬拒绝）；第三方仓只列不拦；⛔ 不挂 npm run check（容器不在 CI）。
+`);
 
 console.log(`${pad("仓", 30)}${pad("视图", 6)}${pad("容器", 6)}${pad("命令", 6)}${pad("缺说明", 8)}${pad("缺risk", 8)}判定`);
 console.log("-".repeat(108));
@@ -227,9 +233,10 @@ if (noDescRepos.length) {
   for (const r of noDescRepos) console.log(`[plugin-commands]   · ${r.id}（${r.noDescription}/${r.commands} 条无说明）`);
 }
 
-if (riskYellow.length) {
-  console.log(`\n[plugin-commands] 附带名单：**risk 未声明/非法（S7 黄灯，${riskYellow.length} 只）**——未声明 ⇒ 兜底 R2 ⇒ AI 档位下会被问；想免确认请显式声明 "risk": "R0"–"R3"：`);
-  for (const r of riskYellow) console.log(`[plugin-commands]   · ${r.id}（缺 ${r.noRisk}${r.badRisk ? ` · 非法值 ${r.badRisk}` : ""} / 共 ${r.commands} 条）`);
+if (declarationGaps.length) {
+  console.log(`
+[plugin-commands] 🔴 **T3 声明缺口（risk/activation 必填，${declarationGaps.length} 只）**——loader 拒绝这些命令；官方仓 ⇒ exit 1：`);
+  for (const r of declarationGaps) console.log(`[plugin-commands]   · ${r.id}${r.official ? "" : "（第三方·只读）"}（缺 risk ${r.noRisk}${r.badRisk ? ` · 非法 ${r.badRisk}` : ""}；缺 activation ${r.noActivation}${r.badActivation ? ` · 非法 ${r.badActivation}` : ""} / 共 ${r.commands} 条）`);
 }
 
 if (unreadable.length) {
@@ -242,4 +249,11 @@ console.log(
 );
 console.log(`[plugin-commands] ⚠️ 静态绿 ≠ 语义清：本尺只查「有视图零命令」这条**静态信号**；`);
 console.log(`[plugin-commands]    「哪个动作算业务动作」「每条动作是否另有非鼠标路径」机器判不了——那靠作者照 docs/03-插件制造/21-插件命令化规范.md 的清单自检。`);
-process.exitCode = 0;
+const officialGaps = declarationGaps.filter((r) => r.official);
+if (officialGaps.length > 0) {
+  console.log(`
+[plugin-commands] 🔴 红灯：官方仓 ${officialGaps.length} 只有 risk/activation 缺口——loader 将拒绝对应命令`);
+  process.exitCode = 1;
+} else {
+  process.exitCode = 0;
+}

@@ -23,6 +23,7 @@ import { app, BrowserWindow, dialog } from 'electron';
 import type { WebContents } from 'electron';
 import { normalizePath } from '../../src/core/utils/path/pathUtils.js';
 import { envService } from './env-service.js';
+import { beginNativeAsk, endNativeAsk } from './nativeAsk.js';
 
 export type GuardWriteOp = 'writeTextFile' | 'writeBinaryFile' | 'createDir' | 'copy' | 'rename' | 'remove';
 
@@ -174,8 +175,15 @@ async function confirmOutsideWrite(sender: WebContents, target: string, op: Guar
     cancelId: 1,
   };
   const parent = BrowserWindow.fromWebContents(sender);
-  const { response } = parent && !parent.isDestroyed()
-    ? await dialog.showMessageBox(parent, opts)
-    : await dialog.showMessageBox(opts);
-  return response === 0;
+  // Block 1：原生框也是「在等人」——登记进 aiBridge 的相位面，否则 AI 只看到 EPENDING（「还在跑」），
+  // 会误判超时/重试，而动作其实还没执行。只登记事实，⛔ 不参与放行判定。
+  beginNativeAsk(`工作区外${OP_LABELS[op]}确认：${target}`);
+  try {
+    const { response } = parent && !parent.isDestroyed()
+      ? await dialog.showMessageBox(parent, opts)
+      : await dialog.showMessageBox(opts);
+    return response === 0;
+  } finally {
+    endNativeAsk();
+  }
 }

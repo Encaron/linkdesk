@@ -26,79 +26,12 @@ import { registerCommand } from "../../core/registry/commands/CommandRegistry";
 import { registerKeybinding } from "../../core/registry/commands/KeybindingRegistry";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../../i18n";
+import {
+  normalizeDeclaredRisk,
+  normalizeDeclaredActivation,
+  normalizeDeclaredReturns,
+} from "./declaredCommandMeta";
 import { errMsg } from "../resolution/state";
-
-/** 声明面风险级白名单（`contributes.commands[].risk`）——壳只认这四值 */
-const DECLARED_RISKS = new Set(["R0", "R1", "R2", "R3"]);
-
-/**
- * `contributes.commands[].risk` 收敛（2026-11-24 · AI 权限档位）。
- * - 未声明 ⇒ `undefined`（壳兜底 R1）；
- * - 已知值 ⇒ 原样；
- * - 未知值 ⇒ **明确告知作者**并退回兜底（⛔ 不静默当 R1 装作没事，也对齐插件权限系统「壳不认识的能力要出声」口径）。
- */
-function normalizeDeclaredRisk(
-  pluginId: string,
-  cmd: { id: string; risk?: string },
-): "R0" | "R1" | "R2" | "R3" | undefined {
-  if (cmd.risk === undefined) return undefined;
-  if (DECLARED_RISKS.has(cmd.risk)) return cmd.risk as "R0" | "R1" | "R2" | "R3";
-  console.warn(
-    `[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 声明了未知风险级 "${String(cmd.risk)}"`
-      + "——只认 R0–R3；本条已按兜底 R1 处理（请修正 plugin.json）",
-  );
-  return undefined;
-}
-
-/**
- * `contributes.commands[].activation` 收敛（S4 · 2026-11-25）。
- * - 未声明 ⇒ `undefined`（describe 的 commandsPending 里该命令无 activation，AI 仍可经错误码探明）；
- * - 已知值（entry/view）⇒ 原样；
- * - 未知值 ⇒ **明确告知作者**并退回 undefined（⛔ 静默当 entry）。
- * ⚠️ 必填拒绝闸等官方各仓补齐 activation 后与 risk 闸同批切换（内测免兼容，见 03 落地清单）。
- */
-function normalizeDeclaredActivation(
-  pluginId: string,
-  cmd: { id: string; activation?: string },
-): "entry" | "view" | undefined {
-  if (cmd.activation === undefined) return undefined;
-  if (cmd.activation === "entry" || cmd.activation === "view") return cmd.activation;
-  console.warn(
-    `[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 声明了未知 activation "${String(cmd.activation)}"`
-      + "——只认 entry/view；本条按未声明处理（请修正 plugin.json）",
-  );
-  return undefined;
-}
-
-/**
- * `contributes.commands[].returns` 收敛（S3b/T12）——字段表只到一级键（可一层嵌套由 description 说明）。
- * 坏项一律丢弃（整组不崩），并给作者一条诊断（⛔ 静默吞掉声明）。
- */
-function normalizeDeclaredReturns(
-  pluginId: string,
-  cmd: { id: string; returns?: unknown },
-): Array<{ name: string; type: string; optional?: boolean; description?: string }> | undefined {
-  if (cmd.returns === undefined) return undefined;
-  if (!Array.isArray(cmd.returns)) {
-    console.warn(`[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 的 returns 不是数组——已忽略（请修正 plugin.json）`);
-    return undefined;
-  }
-  const out: Array<{ name: string; type: string; optional?: boolean; description?: string }> = [];
-  for (const raw of cmd.returns) {
-    const f = raw as { name?: unknown; type?: unknown; optional?: unknown; description?: unknown };
-    if (!f || typeof f.name !== "string" || !f.name || typeof f.type !== "string" || !f.type) {
-      console.warn(`[pluginLoader] 插件 "${pluginId}" 的命令 "${cmd.id}" 的 returns 有坏字段（缺 name/type）——已跳过该项`);
-      continue;
-    }
-    out.push({
-      name: f.name,
-      type: f.type,
-      ...(typeof f.optional === "boolean" ? { optional: f.optional } : {}),
-      ...(typeof f.description === "string" && f.description ? { description: f.description } : {}),
-    });
-  }
-  return out;
-}
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -201,15 +134,28 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     // M1 AI#7：声明面同样可写 description/params（与运行时 registerCommand meta 同字段、同语义）
     const cmds = contribArray<{ id: string; title: string; category?: string; when?: string; description?: string; risk?: string; activation?: string; async?: boolean; returns?: Array<{ name: string; type: string; optional?: boolean; description?: string }>; example?: unknown; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[] }>(pluginId, "commands", c.commands);
     for (const cmd of cmds) {
+      // 🔴 T3（2026-11-25 开闸）：risk/activation 必填——缺任一或值非法 ⇒ **该命令不注册**。
+      // 为什么是拒绝而不是兜底：兜底 R2 在默认 auto 档不弹确认（不是安全兜底），activation 缺省又让
+      // AI 无法预判可达性；两件都是「声明即可知」的事实，作者漏写时宁可响亮失败，⛔ 装成正常命令。
+      const declaredRisk = normalizeDeclaredRisk(pluginId, cmd);
+      const declaredActivation = normalizeDeclaredActivation(pluginId, cmd);
+      if (!declaredRisk || !declaredActivation) {
+        console.error(
+          `[pluginLoader] T3 拒绝注册：插件 "${pluginId}" 的命令 "${cmd.id}" `
+            + `缺少必填声明 ${!declaredRisk ? "risk" : ""}${!declaredRisk && !declaredActivation ? " ＋ " : ""}${!declaredActivation ? "activation" : ""}`
+            + `——请在 plugin.json 的 contributes.commands[] 写 risk(R0–R3) 与 activation(entry/view)`,
+        );
+        continue;
+      }
       registerCommand(pluginId, {
         id: cmd.id,
         title: cmd.title,
         category: cmd.category,
         when: cmd.when,
         description: cmd.description,
-        risk: normalizeDeclaredRisk(pluginId, cmd),
+        risk: declaredRisk,
         // S4：声明面 activation = 提前告知（未注册时 describe 靠它说清）；运行期真值由池注册上下文覆盖
-        activation: normalizeDeclaredActivation(pluginId, cmd),
+        activation: declaredActivation,
         // S6：异步声明（manifest 直传布尔，非布尔值按未声明）
         async: cmd.async === true ? true : undefined,
         // S3b/T12：返回形状表与请求示例（声明面原样，describe 透出）
