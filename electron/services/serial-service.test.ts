@@ -184,3 +184,34 @@ describe("serial-service 多口 Map 化（E5.8#26）", () => {
     expect(Array.from(datas[1].data)).toEqual([0x41]);
   });
 });
+
+describe("拔插后句柄回收（2026-11-25 实测根因修复）", () => {
+  /** 最近一次 new 出来的实例（mock 的 instances 跨用例累积，取末位才是本用例的） */
+  const lastPort = () => mockPorts[mockPorts.length - 1] as unknown as { isOpen: boolean; emit: (ev: string, ...a: unknown[]) => void };
+  /** 模拟拔线：serialport 实例 isOpen 变 false（OS 句柄已失效），但 Map 里可能还有条目 */
+  const unplug = () => {
+    lastPort().isOpen = false;
+  };
+
+  it("拔线后 closePort 幂等摘账（⛔ Map 残留）——关完可重新打开", async () => {
+    await open("COM3");
+    unplug();
+    await serialService.closePort("COM3"); // 旧实现此处直接 return，条目永不删
+    expect(serialService.getStatus()).toHaveLength(0);
+    await expect(open("COM3")).resolves.toBeUndefined();
+  });
+
+  it("僵尸条目（Map 有、句柄不活）⇒ openPort 摘账重开，⛔ 报「已被打开」", async () => {
+    await open("COM3");
+    unplug();
+    await expect(open("COM3")).resolves.toBeUndefined();
+    expect(serialService.getStatus("COM3").isOpen).toBe(true);
+  });
+
+  it("读口 error（拔线事件）⇒ 主动释放句柄，可重开", async () => {
+    await open("COM3");
+    lastPort().emit("error", new Error("拔线"));
+    expect(serialService.getStatus()).toHaveLength(0);
+    await expect(open("COM3")).resolves.toBeUndefined();
+  });
+});

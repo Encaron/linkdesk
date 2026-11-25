@@ -137,10 +137,16 @@ class SerialService {
    *  ownerPluginId 由插件 openPort 时自声明（壳不猜——pool WCV 多插件同 JS 上下文，
    *  主进程无法从 sender 识别插件，字段是唯一可靠归属声明）。 */
   async openPort(cfg: OpenPortConfig): Promise<void> {
-    if (this.ports.has(cfg.portName)) {
-      const msg = `串口 ${cfg.portName} 已被打开`;
-      this.callbacks?.onSystem({ portName: cfg.portName, message: msg, type: 'error' });
-      throw new Error(msg);
+    const existing = this.ports.get(cfg.portName);
+    if (existing) {
+      if (existing.port.isOpen) {
+        const msg = `串口 ${cfg.portName} 已被打开`;
+        this.callbacks?.onSystem({ portName: cfg.portName, message: msg, type: 'error' });
+        throw new Error(msg);
+      }
+      // 🔴 2026-11-25 实测（拔插后 reopened 报「已被打开」）：Map 里有条目但句柄已不活 = 僵尸。
+      //    僵尸必须**先摘账**再开，否则本次永远打不开、只能重启软件。
+      this.ports.delete(cfg.portName);
     }
 
     const dataBits = cfg.dataBits ?? 8;
@@ -220,7 +226,22 @@ class SerialService {
         type: 'error',
       });
       console.error('[serial-service] 串口读错误:', err.message);
-      // serialport 在错误后可能自动重连或断连——不做额外处理
+      // 🔴 2026-11-25 实测：拔线后 error 回调不回收句柄 ⇒ Map 里留死条目（open:true 撒谎、
+      //    重开报「已被打开」）。此处**主动摘账并 close**（幂等），插回后由插件 reopen 恢复。
+      state.isClosing = true;
+      this.ports.delete(state.portName);
+      try {
+        state.port.close(() => {
+          state.isClosing = false;
+        });
+      } catch {
+        state.isClosing = false;
+      }
+      this.callbacks?.onSystem({
+        portName: state.portName,
+        message: `串口 ${state.portName} 已断开，句柄已释放（插回设备后可用 reopen 恢复）`,
+        type: 'status',
+      });
     });
   }
 
@@ -229,14 +250,19 @@ class SerialService {
   /** E5.8#26——可选 portName 经 getPort 解析（D2）；缺省唯一口语义：0 口抛「串口未打开」/ ≥2 口抛歧义。 */
   async closePort(portName?: string): Promise<void> {
     const state = this.getPort(portName);
-    if (!state.port.isOpen) return;
-
     const name = state.portName;
     state.isClosing = true;
+    // 🔴 2026-11-25 实测（拔线后状态撒谎 / 句柄被攥住）：**先摘账再判 isOpen**——释放是幂等的。
+    //    旧实现在「拔线后 isOpen=false」时直接 return ⇒ Map 条目永不删 ⇒ 会话永远报 open:true、
+    //    插回后 open/reopen 报「已被打开」，只能重启恢复。
+    this.ports.delete(name);
+    if (!state.port.isOpen) {
+      state.isClosing = false;
+      return;
+    }
 
     // 关闭端口
     const p = state.port;
-    this.ports.delete(state.portName);
 
     await new Promise<void>((resolve) => {
       p.close((_err) => {

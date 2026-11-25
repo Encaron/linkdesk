@@ -550,10 +550,16 @@ async function runCommand(commandId: string, args: unknown[], strict: boolean): 
     // 剥 undefined 占位同语义——全仓 handler 样板唯一：(...args)。
     return await cmd.handler(...callArgs);
   } catch (err) {
+    // 🔴 AI 发起的「业务失败」不该弹用户 toast（2026-11-25 实测：AI 负向测试的参数错
+    // 会在用户右下角刷“执行出错”，把测试噪声当故障）。判据：**strict 路径 + 带 code** ⇒
+    // 静默（只 console.error 留诊断；错误码原样回给 AI；账本仍记失败）。
+    // UI 路径（strict=false）与无码的真意外照旧弹。
+    const businessCode = typeof (err as { code?: unknown })?.code === "string" && !!(err as { code?: string }).code;
     reportError({
       message: `命令 "${cmd.title}" 执行出错: ${err instanceof Error ? err.message : String(err)}`,
       source: cmd.category ?? "命令系统",
       error: err,
+      ...(strict && businessCode ? { silent: true } : {}),
     });
     if (strict) throw err instanceof Error ? err : new Error(String(err));
     return undefined;
