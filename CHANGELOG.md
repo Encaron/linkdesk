@@ -4,6 +4,8 @@
 
 ### fix
 
+- 🧯 **串口句柄回收（拔插不再撒谎）**：`serial-service` 的 `closePort` 先摘账再判 `isOpen`（幂等释放）；`openPort` 把「Map 有但句柄已死」视为僵尸先摘账再开（⛔ 误报“已被打开”）；读口 `error`（拔线）主动摘账并关闭句柄 ⇒ 插回后可 `reopen` 恢复，无需重启。配套 `receiveStatus.ports` 口径 = 有接收记录的端口 ∪ 已打开端口，逐项如实标 `open/devicePresent`。
+- 🔇 **AI 失败不再打扰用户**：AI 桥（strict）发起且带机读 `code` 的业务失败只写 console 与账本、不弹用户通知；UI 操作与无码意外照旧弹。
 - 🧯 **S4 作用域根修（0.2.65 回归）**：`activation` 的作用域判定改由「模块求值期」决定——插件**视图模块导入时顺带求值 entry** 的注册也按 `entry` 记（此前会被记成 `view:<实例>`，视图一关整批摘掉，真实实例上 serial 28 条全 view、连只读 `listPorts` 都回 `EVIEWREQUIRED`）。另：manifest 声明 `entry` 的命令**不再被运行期降级**为 view（只记诊断）；声明面命令集合的空集竞态修复（池 preload 早于壳注册时不再永久空 ⇒ 视图卸载提升机制恢复生效）。
 - 📊 **describe 契约补齐**：`filter` 出现未知键时回 **`EBADFILTER`**（此前静默返回全量，AI 会误以为筛过）；`askFirst` 改为**按当前档位实算**（`full` 档为空、`auto` 只列 R3、`ask` 列 R1–R3），并纳入插件声明的 R3（此前 14 条 R3 只列 5 条）。
 - 🩺 **doctor**：`a-view-code` 增加前置检查（插件的视图本就在场时 `skip`，不再误红）；接受 `--blind` 别名（与 05 文档/旧教程写法对齐）。
