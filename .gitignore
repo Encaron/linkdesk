@@ -29,6 +29,8 @@ plugin-sdk-example/dist/
 # E6#15：插件工作区独立 build 的本地 zip——canonical 发货件收 bundled-plugins/（要提交），本地副本忽略防双份
 # 2026-09-05 塌平后单根：plugins/<id>/<id>.linkdesk-plugin
 plugins/*/*.linkdesk-plugin
+# 可替换性夹具的本地构建包（dist/ 已由上方全局规则忽略；根 zip 是 build 默认产物）
+scripts/contract/minimal-settings-ui/*.linkdesk-plugin
 
 # === agent / 本机工具文件（保留在磁盘但不入库） ===
 .claude/
