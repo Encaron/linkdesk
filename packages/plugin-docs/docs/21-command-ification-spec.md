@@ -149,6 +149,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
 3. **`params` written position by position** (`name` / `type` / `required` / `description`).
    Callers build `executeCommand(id, ...params)` straight from it and **never have to read your source to guess arguments**.
    The same declaration also carries **`returns`** (a receipt field table, not a JSON Schema; first-level keys only, `[]` when nothing is returned) and **`example`** (one request body that can run as-is, `{}` when there are no parameters) — so AI can compose calls and judge the response shape without trial and error.
+   `npm run validate` emits a **yellow advisory** (never blocks) when `returns`/`example` are missing; official repos are hard-locked by `check-command-contract`.
 4. **State must be readable back.** Once a command changes state, provide a separate read path (a list/query command, or
    `configuration.get()`) — "do it, then verify" is basic behaviour for automation and AI, and with no read path it can only retry blindly.
 5. **Read streams back by pulling, with a cursor** (serial receive / logs / progress) — ⛔ never hand the caller a subscription.

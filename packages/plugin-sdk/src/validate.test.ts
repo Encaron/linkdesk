@@ -265,3 +265,40 @@ describe("validatePluginJson——顶层 category/categories（v2 分类声明�
     expect(res.valid).toBe(false);
   });
 });
+
+describe("validatePluginJson——命令契约黄灯（returns/example/后置状态；不拦）", () => {
+  const cmd = (extra: Record<string, unknown>) => ({
+    id: "demo-fixture.read",
+    title: "读",
+    risk: "R0",
+    activation: "entry",
+    ...extra,
+  });
+
+  it("缺 returns/example → 两条警告，valid 仍 true", () => {
+    const res = validatePluginJson(fixture({ contributes: { commands: [cmd({})] } }));
+    expect(res.valid).toBe(true);
+    const warnings = res.warnings ?? [];
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("缺 returns / example");
+  });
+
+  it("完整声明 → 无命令契约警告", () => {
+    const res = validatePluginJson(
+      fixture({
+        contributes: {
+          commands: [cmd({ returns: [{ name: "value", type: "number" }], example: {} })],
+        },
+      }),
+    );
+    expect(res.warnings).toBeUndefined();
+  });
+
+  it("写命令（R1+）returns 为空 → 后置状态警告", () => {
+    const res = validatePluginJson(
+      fixture({ contributes: { commands: [cmd({ risk: "R1", returns: [], example: {} })] } }),
+    );
+    expect(res.valid).toBe(true);
+    expect((res.warnings ?? []).some((w) => w.includes("后置状态"))).toBe(true);
+  });
+});

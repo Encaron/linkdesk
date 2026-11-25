@@ -99,6 +99,39 @@ const REMOVED_MANIFEST_FIELDS: Record<string, string> = {
   readme: "改用插件根目录的 README.md（文件名固定，无需声明路径）",
 };
 
+/**
+ * 命令契约的黄灯提示（⛔ 不拦）：`returns`/`example` 缺省、写命令没有后置状态。
+ * schema 对这两项故意放宽（第三方存量不红）；官方仓由 `check-command-contract` 硬锁。
+ * `activation`/`risk` 已由 schema required 硬拦，这里不重复提示。
+ */
+function collectCommandContractWarnings(manifest: unknown, base: string): string[] {
+  const out: string[] = [];
+  const commands = (manifest as { contributes?: { commands?: unknown } } | null)?.contributes?.commands;
+  if (!Array.isArray(commands)) return out;
+  commands.forEach((raw, i) => {
+    if (!raw || typeof raw !== "object") return;
+    const cmd = raw as { id?: unknown; risk?: unknown; returns?: unknown; example?: unknown };
+    const id = typeof cmd.id === "string" ? cmd.id : `#${i}`;
+    const missing: string[] = [];
+    if (cmd.returns === undefined) missing.push("returns");
+    if (cmd.example === undefined) missing.push("example");
+    if (missing.length > 0) {
+      out.push(
+        `${base}: contributes.commands[${i}] (${id}) 缺 ${missing.join(" / ")}——SDK 黄灯提示（不拦）；` +
+          `见作者文档 21-command-ification-spec.md（中文 21-插件命令化规范.md）`,
+      );
+    }
+    const isWrite = cmd.risk === "R1" || cmd.risk === "R2" || cmd.risk === "R3";
+    if (isWrite && (!Array.isArray(cmd.returns) || cmd.returns.length === 0)) {
+      out.push(
+        `${base}: contributes.commands[${i}] (${id}) 是写命令（${String(cmd.risk)}）但没有 returns 后置状态——` +
+          `建议回变更后的可读状态（或 hint 指向状态命令）；⛔ 只回 {}/true`,
+      );
+    }
+  });
+  return out;
+}
+
 /** 扫顶层已移除字段 → 可读警告。**只扫顶层**（这两个字段从来只在顶层） */
 function collectRemovedFieldWarnings(manifest: unknown, base: string): string[] {
   if (!manifest || typeof manifest !== "object") return [];
@@ -352,7 +385,11 @@ export function validatePluginJson(path: string): ValidationResult {
 
   // 3) 已移除字段墓碑提示（E6#91d）+ pluginId 显式声明提醒（E6#98g）——schema 顶层
   //    additionalProperties: true ⇒ 这两步是作者**唯一**能被告知的通道
-  const warnings = [...collectRemovedFieldWarnings(manifest, base), ...collectPluginIdWarning(manifest, base)];
+  const warnings = [
+    ...collectRemovedFieldWarnings(manifest, base),
+    ...collectPluginIdWarning(manifest, base),
+    ...collectCommandContractWarnings(manifest, base),
+  ];
 
   return { valid: errors.length === 0, errors, ...(warnings.length > 0 ? { warnings } : {}) };
 }

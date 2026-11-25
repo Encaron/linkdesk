@@ -100,7 +100,7 @@
 | `when` | ❌ | context key when 条件。不加 `when` = 任何上下文可见 |
 | `description` | ❌ | **这条命令干什么**——用户/AI 视角的意图（i18n key，同 `title` 规矩）。⛔ 不复述 `id`。缺省 = 无说明 |
 | `params` | ❌ | **参数结构**——数组，逐位对应 handler 实参。缺省 = 无参数命令 |
-| `activation` | ❌ | **handler 住在哪**：`"entry"`（入口顶层注册，无视图可调）\| `"view"`（视图组件内注册，需要该视图）。宿主以**注册上下文**为运行期真值，声明只用于「未激活时提前告知」；作者规范要求填全（当前 schema 可选，官方各仓补齐后收紧） |
+| `activation` | ✅ | **handler 住在哪**：`"entry"`（入口顶层注册，无视图可调）\| `"view"`（视图组件内注册，需要该视图）。**schema required**（与 loader 硬拒绝同一真相）；宿主以**注册上下文**为运行期真值，声明只用于「未激活时提前告知」 |
 | `async` | ❌ | **长任务声明提示**（纯 additive）：`true` = 该命令 exec 回 `{pending,opId}`、结果用 `opStatus` 查。**运行期 `meta.async` 覆盖声明**（同 `activation`）；不填 = 不变 |
 | `risk` | ✅ | **AI 风险级**：`"R0"` 读 / `"R1"` 可撤销写 / `"R2"` 有副作用写 / `"R3"` 不可回退或**物理动作**（复位/持续发送/中断/删数据/换运行代码）。插件命令**只认此声明**；缺失或非法 ⇒ 兜底 **R2** |
 | `returns` | ❌ | **回执字段表**（不是 JSON Schema）：`[{ name, type, optional?, description? }]`，只到第一层键；无返回写 `[]` |
