@@ -206,6 +206,25 @@ The old §3.x per-namespace method list has been deleted (= a hand-written secon
 
 > To confirm the ready-made `linkdesk.serial.*` capabilities → the `Serial` domain in [contracts/linkdesk.d.ts](https://github.com/Encaron/linkdesk/blob/electron/contracts/linkdesk.d.ts). For custom USB/native channels → raise it with the platform authors — that's the "add a channel" category (converged, enumerable, one-off), not doing bespoke work for one plugin.
 
+### Shared device sessions (Block 3a · `linkdesk.device`)
+
+The single source of truth for lifecycle is the **host's `DeviceSessionRegistry`**; `serial` is merely the first transport. Plugins own parameters/business logic — **⛔ never cache `open` or build a parallel session table**.
+
+```ts
+device.acquire({ deviceKey, transport: "serial" | "tcp", ownerPluginId, params })
+  → { sessionId, state }
+device.release(sessionId)            → { released: true, already?: true }   // idempotent
+device.getState({ deviceKey? })      → { sessions: DeviceState[] }
+device.recover(sessionId)            → { recovered, sessionId?, ms }
+```
+
+`DeviceState` (the four fields are the contract): `{ deviceKey, open, devicePresent: boolean|null, stale, ownerSessionId, sessionId? }`. `devicePresent:null` = the transport cannot probe (**⛔ treat as false**).
+
+- **Owner limitation (known risk, user decision 2026-11-26)**: pool plugins share one JS context, so the main process cannot infer "which plugin is calling" from IPC — `ownerPluginId` is still **self-declared** (same as the existing serial convention). The host does what it can: `getState` filters by owner on the pool side (own sessions only), `release`/`recover` validate ownership, unknown/forged owner ⇒ `ECAPABILITY`. True host injection (per-plugin identity token / context isolation) is a separate security task — ⛔ do not pretend it is solved here.
+- **`deviceTransports` top-level declaration**: `["serial"|"tcp"]` — the pool-side `device.*` capability gate; omitted = `serial` only; not declared/unknown ⇒ `ECAPABILITY`; the owner must be a loaded plugin.
+- **Error codes** (host semantics): `EDEVICE` (open failed / absent) · `EBUSY` (another owner) · `ENOSESSION` (unknown sessionId) · `EBADARGS` (bad args / non-owner) · `ECAPABILITY` (undeclared transport / unknown owner).
+- Unplug/transport error ⇒ the session stays with `open:false, stale:true`; heal with `recover`; ⛔ no infinite auto-reconnect.
+
 ---
 
 ---

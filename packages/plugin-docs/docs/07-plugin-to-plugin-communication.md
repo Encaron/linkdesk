@@ -83,6 +83,27 @@ const unsub = window.linkdesk.events.on<{ portName: string; text: string }>(
 
 ---
 
+## 3bis. Declarative events (Block 3b)
+
+> First version is **fire-and-forget**: no queue, no replay; high-frequency streams belong to the data pipeline (§6) — ⛔ do not use the event bus as a stream.
+
+Root-field declaration (`contributes` is a closed object, so the declaration lives at the top level):
+
+```jsonc
+"events": {
+  "publishes": [{ "id": "demo.checkin.updated", "returns": [{ "name": "date", "type": "string" }] }],
+  "subscribes": [{ "id": "demo.checkin.updated" }]
+}
+```
+
+- `id = <pluginId>.<eventName>`; `returns` uses the same field table as commands (⛔ no second schema).
+- Publish: `eventBus.publish({ eventId, payload, ownerPluginId }) → { ok:true, recipients }` (**pool-only API**).
+  **Host authorization**: `ownerPluginId` must be loaded and its `publishes` must contain the id ⇒ otherwise **`EEVENTUNDECLARED`**.
+- Subscribe: `events.on("plugin:event", cb)`; the payload carries `{ eventId, payload, from }`; filter by `eventId` yourself.
+- **Backpressure**: no queue in v1 — drop policy, with `recipients`/`dropped` in the receipt and the `event.publish` line of `log`; ⛔ never silently queue.
+- Discoverability: `describe.events = { publishes: [{id, returns}], subscribes: [{id}] }` (the shell only passes declarations through).
+- **Same known limitation as 01 §6**: the pool shares one JS context; declarations are for discovery/audit, ⛔ not process isolation.
+
 ## 4. The `p2p` back door — a phone in a private room (implemented; `target` routing removed)
 
 ```

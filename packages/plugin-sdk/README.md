@@ -92,6 +92,11 @@ npm install -D @linkdesk/plugin-sdk
 - `decodeBytes(data, coding, { strict? })` + `SERIAL_CODINGS` — decode serial bytes (the plugin owns the coding policy).
 - `AsyncCommandMeta` — `{ async: true }` in the `registerCommand` meta marks a long-running command.
 
+### Device sessions & inter-plugin events
+
+- **`window.linkdesk.device`** (Block 3a): `acquire({ deviceKey, transport, ownerPluginId, params }) → { sessionId, state }`, `release(sessionId)` (idempotent), `getState({ deviceKey? })`, `recover(sessionId)`. `state = { deviceKey, open, devicePresent, stale, ownerSessionId, sessionId? }` — never cache `open` yourself. Declare `deviceTransports` in `plugin.json` (default `serial` only; undeclared/unknown ⇒ `ECAPABILITY`). The pool sees only its own sessions; `ownerPluginId` is self-declared (known limitation — host validates what it can). Errors: `EDEVICE` / `EBUSY` / `ENOSESSION` / `EBADARGS` / `ECAPABILITY`.
+- **`window.linkdesk.eventBus.publish({ eventId, payload, ownerPluginId }) → { ok, recipients }`** (Block 3b) + `events.on("plugin:event", cb)`. Declare `events.publishes` / `events.subscribes` in `plugin.json`; publishing an undeclared id ⇒ `EEVENTUNDECLARED`. Fire-and-forget (no queue/replay); `dropped` is reported in the receipt/log.
+
 ## Usage
 
 ### 1. tsconfig — give `window.linkdesk.` its types

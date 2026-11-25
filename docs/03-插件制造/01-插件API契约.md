@@ -206,6 +206,25 @@ async function list(): Promise<FileEntry[]> {
 
 > 确认 `linkdesk.serial.*` 现成能力 → [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts) `Serial` 域。要自定义 USB/原生通道 → 提给平台作者——这是「加通道」范畴（收敛、可枚举、一次性），不是给某插件打工。
 
+### 设备会话共享（Block 3a · `linkdesk.device`）
+
+生命周期唯一真源 = **宿主 `DeviceSessionRegistry`**；`serial` 只是第一个 transport。插件管参数/业务，**⛔ 自缓存 `open` / 自建会话表**。
+
+```ts
+device.acquire({ deviceKey, transport: "serial" | "tcp", ownerPluginId, params })
+  → { sessionId, state }
+device.release(sessionId)            → { released: true, already?: true }   // 幂等
+device.getState({ deviceKey? })      → { sessions: DeviceState[] }
+device.recover(sessionId)            → { recovered, sessionId?, ms }
+```
+
+`DeviceState`（四字段是契约）：`{ deviceKey, open, devicePresent: boolean|null, stale, ownerSessionId, sessionId? }`。`devicePresent:null` = transport 探不了（**⛔ 当 false**）。
+
+- **属主限制（已知风险，用户 2026-11-26 拍板）**：池插件共用一个 JS 上下文，主进程无法从 IPC 推断「哪个插件在调」⇒ `ownerPluginId` 仍是**插件自声明**（与 serial 既有口径一致）。宿主能做的都做了：`getState` 池侧强制按 owner 过滤（只看自己）、`release/recover` 校验属主、未知/伪造 owner ⇒ `ECAPABILITY`。真正的宿主注入（每插件身份令牌/上下文隔离）是独立安全任务，⛔ 在本轮假装已解决。
+- **`deviceTransports` 顶层声明**：`["serial"|"tcp"]`——池侧 `device.*` 的准入；未声明 = 只 `serial`；声明不含/未知 ⇒ `ECAPABILITY`；属主必须是已加载插件。
+- **错误码**（宿主语义码）：`EDEVICE`（开失败/设备不在）· `EBUSY`（他主占用）· `ENOSESSION`（未知 sessionId）· `EBADARGS`（坏参/非属主）· `ECAPABILITY`（未声明 transport / 未知属主）。
+- 拔线/transport 报错 ⇒ 会话保留 `open:false, stale:true`，用 `recover` 自愈；⛔ 自动无限重连。
+
 ---
 
 ---

@@ -53,6 +53,8 @@
 | `requires` | plugin-level activation-order dependency (a string array) — see `02 §4` |
 | `factoryRole` | system slot (settings = settings page / marketplace = plugin marketplace) — **fill it in = form two (replacement/slot switching); leave it out = form one (a normal view plugin coexisting)**, see `06 §factoryRole field details`. **Multiple plugins in the same role already coexist**: same-role plugins legally coexist (one-to-many), the default is the first registered in stable order (core:true has no behavioral privilege and does not claim the default), the settings page groups by role + a switch button + the active set occupies the slot, and the active set is persisted and kept across restarts |
 | `pluginRole` | load strategy (view/data) — derived automatically when absent, see `02 §2.1` |
+| `deviceTransports` | device transport capability declaration (`["serial"\|"tcp"]`) — the pool-side `device.*` gate; omitted = serial only, not declared/unknown ⇒ `ECAPABILITY` (see 01 §6) |
+| `events` | declarative plugin events `{ publishes: [{id, returns}], subscribes: [{id}] }` — publishing requires a declaration; undeclared ⇒ `EEVENTUNDECLARED` (see 07 §3bis) |
 
 ### ❌ Non-existent / removed fake points
 

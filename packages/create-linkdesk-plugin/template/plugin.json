@@ -45,6 +45,14 @@
   // ── 入口（视图插件 = 此文件 default 导出一个 React 组件）──
   "entry": "src/index.tsx",
 
+  // ── 设备 transport 能力（仅当用 window.linkdesk.device.* 时需要；未声明 = 只 serial）──
+  // "deviceTransports": ["serial"],
+  // ── 声明式插件事件（Block 3b；发布必须在 publishes 里声明，否则 EEVENTUNDECLARED）──
+  // "events": {
+  //   "publishes": [{ "id": "{{pluginName}}.updated", "returns": [{ "name": "value", "type": "number" }] }],
+  //   "subscribes": [{ "id": "demo.other.updated" }]
+  // },
+
   // ── 出现位置（appearsIn）——两件事分开声明 ──
   // tabBar              = 这插件**能以标签页形态打开**（能力）
   // standaloneOpenable  = 进欢迎页「开始」卡与标签栏 [+] 创建菜单的**准入**（白名单制，缺省 false；
