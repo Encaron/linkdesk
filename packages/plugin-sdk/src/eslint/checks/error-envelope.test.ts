@@ -42,9 +42,9 @@ describe("check-error-envelope ① 裸 throw new Error（advisory，不拦）", 
     });
   });
 
-  it("pluginError / 具体内置错误 / 注释提及都不判", () => {
+  it("return pluginError / 具体内置错误 / 注释提及都不判", () => {
     const ts = [
-      'throw pluginError({ code: "ENO_SESSION", message: "没有会话" });',
+      'return pluginError({ code: "ENO_SESSION", message: "没有会话" });',
       'throw new TypeError("编程错误");',
       "// throw new Error('注释里的不算');",
       "const text = 'nothing';",
@@ -53,6 +53,17 @@ describe("check-error-envelope ① 裸 throw new Error（advisory，不拦）", 
       const r = runErrorEnvelopeCheck(root);
       expect(r.bareThrows).toBe(0);
       expect(r.advisories).toHaveLength(0);
+    });
+  });
+
+  it("throw pluginError(...) 也提示改为 return", () => {
+    const ts = 'throw pluginError({ code: "ENO_SESSION", message: "没有会话" });';
+    withPlugin({ files: { "src/actions.ts": ts } }, (root) => {
+      const r = runErrorEnvelopeCheck(root);
+      expect(r.thrownPluginErrors).toBe(1);
+      expect(r.advisories).toHaveLength(1);
+      expect(r.advisories[0].message).toContain("return pluginError");
+      expect(r.advisories[0].line).toBe(1);
     });
   });
 

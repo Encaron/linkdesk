@@ -79,6 +79,17 @@ npm install -D @linkdesk/plugin-sdk
 
 <!-- END API-CHEATSHEET -->
 
+### Runtime helpers (`@linkdesk/plugin-sdk/runtime`)
+
+- `pluginError({ code, message, hint?, details? })` — **`return` it for expected business errors**:
+  `return pluginError({ code: "ENO_SESSION", message: "session not found" });`.
+  🔴 **Do not `throw` it** (nor a bare `Error`) for expected failures: thrown values cross the plugin↔pool
+  `contextBridge` with **`message` only** — `code`/`hint`/`details` are lost and the outside AI sees `EUNKNOWN`.
+  The returned object is structured-cloned intact; the pool recognizes `isPluginError: true` and rejects with your code.
+  Reserve `throw` for genuinely unexpected failures.
+- `decodeBytes(data, coding, { strict? })` + `SERIAL_CODINGS` — decode serial bytes (the plugin owns the coding policy).
+- `AsyncCommandMeta` — `{ async: true }` in the `registerCommand` meta marks a long-running command.
+
 ## Usage
 
 ### 1. tsconfig — give `window.linkdesk.` its types

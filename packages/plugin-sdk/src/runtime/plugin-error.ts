@@ -2,12 +2,19 @@
  * 插件业务错误构造器（T14 / T19）——作者面**唯一的错误信封构造**。
  *
  * 导入方式：`import { pluginError } from "@linkdesk/plugin-sdk/runtime";`
- * 用法：`throw pluginError({ code: "ENO_SESSION", message: "串口会话不存在", hint: "先 openPort" });`
+ * 用法（**预期业务错误一律 `return`**）：
+ *   `return pluginError({ code: "ENO_SESSION", message: "串口会话不存在", hint: "先 openPort" });`
+ *
+ * 🔴 为什么是 `return` 不是 `throw`（跨 contextBridge 的硬限制）：
+ *   插件 handler 是经 contextBridge 代理的页面世界函数——**抛出的异常跨桥只保留 message**，
+ *   `code` / `hint` / `details` 自定义属性会丢 ⇒ 门外只剩 `EUNKNOWN`。
+ *   返回值走**结构化克隆**，属性完整；池侧识别 `{ isPluginError: true }` 返回值 ⇒ 转成带
+ *   `code/hint/details` 的拒绝 ⇒ 壳回执原样透传。`throw` 只用于**真正的意外**（那类归 `EUNKNOWN` 合理）。
  *
  * 纪律（04 §四 / 11a §1.2）：
- *   · 插件业务错误⛔ `throw new Error("中文")`——门外只能从中文猜；
+ *   · 预期业务错误 ⛔ `throw new Error("中文")`、⛔ `throw pluginError(...)`——一律 `return pluginError(...)`；
  *   · `code` 给 AI 判、`message` 给人读，两者分离；壳 / CLI / MCP **原样透传** code；
- *   · 裸 Error 或非本形状 ⇒ 壳侧兜底 `EUNKNOWN`（⛔ 猜语义归类）；
+ *   · 裸 Error / 非本形状 ⇒ 壳侧兜底 `EUNKNOWN`（⛔ 猜语义归类）；
  *   · 壳保留码（`EVIEWREQUIRED` / `ENOTACTIVE` / `EUNKNOWNCOMMAND` / `EOPEXPIRED` /
  *     `EPOLICYDENIED` / `EPROTECTED` / `EUSERDENIED` / `ESHELLTIMEOUT` / `EUNKNOWN`）由壳产生，
  *     插件⛔ 自造（门禁侧由 SDK ESLint 规则拦，运行时不做码表判断——避免与壳的第二份名单）。
@@ -52,7 +59,8 @@ class PluginErrorImpl extends Error implements LinkDeskPluginError {
 }
 
 /**
- * 构造一条结构化插件错误（配合 `throw` 使用）。
+ * 构造一条结构化插件错误（**预期业务错误请 `return` 它**；`throw` 仅用于真正的意外——
+ * 跨 contextBridge 的抛出只保留 message，`code`/`hint`/`details` 会丢）。
  *
  * @throws TypeError 入参不是对象、`code` 为空、或 `message` 为空——
  *   这些是作者写错，不是业务错误，应当当场失败而不是伪装成业务回执。

@@ -1,10 +1,11 @@
 /**
- * check 腿 · **错误信封**（T14 · `check-error-envelope`）——插件业务错误走 `pluginError`。
+ * check 腿 · **错误信封**（T14 · `check-error-envelope`）——预期业务错误 **`return pluginError(...)`**。
  *
- * ── 两条判据（一个实现，两个 id）──
- *   ① 🟡 **裸 `throw new Error(...)`**（`linkdesk/no-bare-error-throw`）：业务失败用裸 Error，
- *      门外只剩 `EUNKNOWN`，`code` 与 `message` 分不开，AI 只能从中文猜。→ **advisory（提示不拦）**：
- *      真正的编程错误（不该发生的 invariant）仍可抛；判据只负责把「你可能该用 pluginError」说出来。
+ * ── 判据（一个实现，两个 id ＋ 一条 throw-pluginError 提示）──
+ *   ① 🟡 **裸 `throw new Error(...)` / `throw pluginError(...)`**（`linkdesk/no-bare-error-throw`）：
+ *      预期业务错误必须 **`return pluginError(...)`**。跨 contextBridge 的**抛出**只保留 message，
+ *      `code` / `hint` / `details` 会丢 ⇒ 门外只剩 `EUNKNOWN`；返回值走结构化克隆、属性完整。
+ *      → **advisory（提示不拦）**：真正的编程意外仍可抛（那类 EUNKNOWN 合理）。
  *   ② 🔴 **自造壳保留码**（`linkdesk/no-reserved-shell-error-code`）：`pluginError({ code: "EVIEWREQUIRED" })`
  *      这类壳码由壳产生，插件自造会让 AI 分不清「壳拦的」还是「插件报的」。→ 违规（进腿）。
  *
@@ -34,8 +35,9 @@ export const RESERVED_SHELL_CODE_ID = CHECK_IDS.reservedShellErrorCode;
 
 /** 报文教正解（报错即文档） */
 export const ERROR_ENVELOPE_WHY =
-  "插件业务错误请用 `pluginError({ code, message, hint?, details? })`（从 `@linkdesk/plugin-sdk/runtime` 导入）：" +
-  "`code` 给 AI 判、`message` 给人读；裸 Error 到门外一律变成 `EUNKNOWN`，AI 只能从中文猜。";
+  "预期业务错误请 **`return pluginError({ code, message, hint?, details? })`**（从 `@linkdesk/plugin-sdk/runtime` 导入）：" +
+  "`code` 给 AI 判、`message` 给人读。⚠️ 跨 contextBridge 的 **throw** 只保留 message（code/hint 会丢 ⇒ `EUNKNOWN`）；" +
+  "`throw` 仅用于真正的意外。";
 export const RESERVED_SHELL_CODE_WHY =
   "壳保留码（视图可达性 / 权限 / 异步句柄那几类）由**壳**产生，插件自造会让 AI 分不清是谁拦的。" +
   "改用你自己的业务码（`E` 开头是建议，不强制）；确需知情绕行走标准 disable 注释 ＋ 理由。";
@@ -44,6 +46,8 @@ const EXT = [".ts", ".tsx", ".js", ".jsx"];
 
 /** 裸 `throw new Error(`（不匹配 TypeError 等具体内置错误） */
 const BARE_THROW_RE = /\bthrow\s+new\s+Error\s*\(/g;
+/** `throw pluginError(`——预期错误被抛，跨桥会丢属性 */
+const THROW_PLUGIN_ERROR_RE = /\bthrow\s+pluginError\s*\(/g;
 /** `pluginError({ ... })` 调用点（保留码判据的扫描入口） */
 const PLUGIN_ERROR_CALL_RE = /\bpluginError\s*\(\s*\{/g;
 /** 在调用点附近读 `code: "<字面量>"` */
@@ -59,6 +63,8 @@ export interface ErrorEnvelopeOptions {
 export interface ErrorEnvelopeReport {
   /** 看见的裸 throw 站点数（含被豁免的） */
   bareThrows: number;
+  /** 看见的 `throw pluginError(...)` 站点数（含被豁免的） */
+  thrownPluginErrors: number;
   /** 🟡 裸 throw 提示（不进腿报点，不拦 CI） */
   advisories: CheckViolation[];
   /** 🔴 自造壳保留码（进腿报点） */
@@ -72,6 +78,7 @@ export function runErrorEnvelopeCheck(root: string, options: ErrorEnvelopeOption
   const reserved = new Set(options.reservedCodes ?? []);
   const report: ErrorEnvelopeReport = {
     bareThrows: 0,
+    thrownPluginErrors: 0,
     advisories: [],
     violations: [],
     reservedCodesAvailable: reserved.size > 0,
@@ -96,6 +103,19 @@ export function runErrorEnvelopeCheck(root: string, options: ErrorEnvelopeOption
         file: rel,
         line,
         message: `裸 \`throw new Error(...)\`（${rel}:${line}）——${ERROR_ENVELOPE_WHY}`,
+      });
+    }
+
+    // ①b throw pluginError(...)——预期错误被抛，跨桥丢属性（advisory）
+    const throwPeRe = new RegExp(THROW_PLUGIN_ERROR_RE.source, "g");
+    while ((m = throwPeRe.exec(cleaned)) !== null) {
+      const line = countNewlines(cleaned.slice(0, m.index)) + 1;
+      report.thrownPluginErrors++;
+      if (isDisabled(disabled, line, ERROR_ENVELOPE_ID)) continue;
+      report.advisories.push({
+        file: rel,
+        line,
+        message: `「throw pluginError(...)」（${rel}:${line}）——预期业务错误请 \`return pluginError(...)\`：抛出跨 contextBridge 只保留 message，\`code/hint/details\` 会丢 ⇒ 门外只剩 EUNKNOWN。`,
       });
     }
 

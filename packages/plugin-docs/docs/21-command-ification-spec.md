@@ -319,8 +319,8 @@ The same command surface behaves like this under the four tiers:
   `EUSERDENIED` (the user said no) · `ESHELLTIMEOUT` (nobody answered = it never happened) ·
   `EVIEWREQUIRED` (view-state command but no view in place; open the tab first) · `ENOTACTIVE` (plugin disabled / failed to load) ·
   `EUNKNOWNCOMMAND` (not even declared) · `EOPEXPIRED` (async op handle expired).
-- **Plugin business errors go through the SDK's `pluginError({ code, message, hint?, details? })`** (import from `@linkdesk/plugin-sdk/runtime`):
-  ⛔ `throw new Error("...")`; the shell/CLI passes your `code` through verbatim, while a bare Error becomes `EUNKNOWN`.
+- **Return `pluginError({ code, message, hint?, details? })` for expected business errors** (import from `@linkdesk/plugin-sdk/runtime`):
+  🔴 **`return`, do not `throw`**: the handler crosses a `contextBridge` — a **thrown** value keeps `message` only, so `code`/`hint`/`details` are lost and the outside AI sees `EUNKNOWN`; a returned object is structured-cloned intact and the shell/CLI passes your `code` through verbatim. Reserve `throw` for genuinely unexpected failures.
   `code` is required and non-empty (an `E` prefix is a recommendation, not enforced); `details` passes through verbatim (`--json` only — ⛔ never in the CLI human-readable output).
   The shell codes above are produced by the shell — plugins ⛔ must not mint variants.
 - **How a settings UI reads the tier**: call the `aiPolicy.getState` command (read-only) — it returns the current tier,
