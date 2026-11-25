@@ -3,7 +3,7 @@
  * `scripts/test-replaceability.mjs` 共用的**唯一实现**（⛔ 两份尺子必然漂移）。
  *
  * 输入 = 已剥注释源码（`gate-scan.readStripped`）；输出 = `{rule, file, line, excerpt}[]`。
- * 判据正文见 `docs/04-软件更新/待抉择池/插件语义归属-设置与生态/03-门禁与验收/01-机械门禁.md`。
+ * 判据正文见 `docs/04-软件更新/已落地/插件语义归属-设置与生态/03-门禁与验收/01-机械门禁.md`。
  */
 
 export const RULES = {

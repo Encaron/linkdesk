@@ -38,7 +38,7 @@
       "repo": "marketplace",
       "rule": "K10",
       "file": "src/views/store/sources/AddSourceModal.tsx",
-      "reason": "**临时**：M1 patch（docs/04-软件更新/待抉择池/插件语义归属-设置与生态/marketplace-1.4.26.patch）待线 3 应用；应用后本条即删（文件名改为 MANIFEST_FILE 常量，不再命中）。",
+      "reason": "**临时**：M1 patch（docs/04-软件更新/已落地/插件语义归属-设置与生态/marketplace-1.4.26.patch）待线 3 应用；应用后本条即删（文件名改为 MANIFEST_FILE 常量，不再命中）。",
       "owner": "marketplace（线 3）",
       "until": "2026-12-31"
     }
