@@ -21,6 +21,7 @@ import { DEVICE_ERROR_CODES as C, codedDeviceError } from '../../services/device
 import { createTcpTransport } from '../../services/deviceSession/tcpTransport.js';
 import type { DeviceAcquireConfig, DeviceReply } from '../../../src/core/types/ipc/device';
 import { isLoadedPlugin, pluginDeviceTransports } from '../../plugins/plugin-manifest-loader.js';
+import { assertTransportCapability } from '../../services/deviceSession/capability.js';
 import { IPC } from '../channels.js';
 import { failReply } from './reply.js';
 
@@ -38,22 +39,6 @@ function requirePoolOwner(payload: { scope?: unknown; ownerPluginId?: unknown })
   return owner;
 }
 
-/** ④ 能力闸：未声明的插件只保留存量 serial；tcp 等必须显式声明 */
-function assertTransportCapability(owner: string, transport: string): void {
-  if (owner === '__shell__') return; // legacy 无主打开（serial-service 内部）
-  // 未知属主（测试标签 / 未安装 id）没法查清单——放行并留给宿主后续收紧；
-  // 已装插件未声明 ⇒ 只保留存量 serial（serial API 早已授权）。
-  if (!isLoadedPlugin(owner)) return;
-  const declared = pluginDeviceTransports(owner);
-  const allowed = declared ?? ['serial'];
-  if (!allowed.includes(transport)) {
-    throw codedDeviceError(C.CAPABILITY,
-      `插件 "${owner}" 未声明 transport "${transport}"（已声明：${allowed.join(' / ')}）`,
-      `在 plugin.json 根字段加 "deviceTransports": ["${transport}"]；未声明默认只给 serial（存量）`,
-      { transport, allowed });
-  }
-}
-
 export function registerDeviceHandlers(): void {
   if (_registered) return;
   _registered = true;
@@ -66,7 +51,10 @@ export function registerDeviceHandlers(): void {
       const owner = requirePoolOwner(cfg);
       if (owner) {
         if (cfg.ownerPluginId !== owner) throw codedDeviceError(C.BAD_ARGS, 'ownerPluginId 与调用上下文不一致', '⛔ 替他人 acquire');
-        assertTransportCapability(owner, cfg.transport);
+        assertTransportCapability(owner, cfg.transport, {
+          isLoaded: isLoadedPlugin,
+          transportsOf: pluginDeviceTransports,
+        });
       }
       const r = await deviceSessions.acquire(cfg);
       return ok({ sessionId: r.sessionId, state: r.state });

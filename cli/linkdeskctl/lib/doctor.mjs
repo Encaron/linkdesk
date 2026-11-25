@@ -522,18 +522,18 @@ export const DOCTOR_ASSERTIONS = [
       if (!acq || !endpoint) {
         return { pass: true, skip: true, note: "无设备样本或未给 --endpoint", expected: "—", actual: "—", repro: "—" };
       }
-      const a = await execChecked(ctx.call, acq, [{ endpoint, owner: "doctor-a" }]);
+      const a = await execChecked(ctx.call, acq, [{ endpoint, owner: "device-probe" }]);
       const inner = a.ok && a.result && typeof a.result === "object" ? a.result.result : undefined;
       const sessionId = inner && inner.sessionId;
       if (!sessionId) {
-        return { pass: false, expected: `${acq}（owner=doctor-a）成功`, actual: `code=${a.code} ${a.message}`, repro: `linkdeskctl exec ${acq} '{"endpoint":"${endpoint}","owner":"doctor-a"}'` };
+        return { pass: false, expected: `${acq}（owner=device-probe）成功`, actual: `code=${a.code} ${a.message}`, repro: `linkdeskctl exec ${acq} '{"endpoint":"${endpoint}","owner":"device-probe"}'` };
       }
-      const busy = await execChecked(ctx.call, acq, [{ endpoint, owner: "doctor-b" }]);
+      const busy = await execChecked(ctx.call, acq, [{ endpoint, owner: "device-probe-b" }]);
       const busyOk = !busy.ok && busy.code === "EBUSY" && busy.details && busy.details.ownerSessionId === sessionId;
-      const wrong = await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId, owner: "doctor-b" }]);
+      const wrong = await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId, owner: "device-probe-b" }]);
       const wrongOk = !wrong.ok && wrong.code === "EBADARGS";
       // 收尾：真属主释放（失败也不掩盖前两条）
-      await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId, owner: "doctor-a" }]);
+      await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId, owner: "device-probe" }]);
       return {
         pass: busyOk && wrongOk,
         expected: "他主 acquire ⇒ EBUSY(details.ownerSessionId)；非属主 release ⇒ EBADARGS",

@@ -294,7 +294,7 @@ describe("doctor · device-probe（Block 3a 设备会话样本）", () => {
   it("负控：他主 acquire 回成功（不 EBUSY）⇒ a-device-owner 红", async () => {
     const base = makeDeviceCall();
     const call = async (op, payload) => {
-      if (op === "exec" && payload.commandId === "device-probe.acquire" && payload.args?.[0]?.owner === "doctor-b") {
+      if (op === "exec" && payload.commandId === "device-probe.acquire" && payload.args?.[0]?.owner === "device-probe-b") {
         return { commandId: payload.commandId, result: { sessionId: "dev_2", state: { open: true } } };
       }
       return base(op, payload);

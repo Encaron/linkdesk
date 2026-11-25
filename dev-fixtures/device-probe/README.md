@@ -15,7 +15,10 @@ Block 3a「设备会话共享契约」的**第二个作者**样本：只用宿�
 ## 怎么验
 
 1. 起一个 TCP 回环服务（任何能 listen 的进程即可），记下地址；
-2. 把本目录拷进实例插件家（`{userData}/plugins/device-probe/`）；
+2. 把**整个目录**拷进实例插件家（`{userData}/plugins/device-probe/`）——必须作为**已装/已加载插件**运行：
+   能力闸要求属主是已加载插件，且本 manifest 根字段必须保留 `"deviceTransports": ["tcp"]`
+   （未声明 ⇒ 只保留存量 serial，tcp 会被 `ECAPABILITY` 拒）。⛔ 不要用 `owner:"ghost"`/未知 id 绕过能力闸；
+   隔离实例请用 `--user-data-dir` 指向自己的插件家，⛔ 改主 userData；
 3. `linkdeskctl doctor --profile device-probe --endpoint 127.0.0.1:<port>` ——
    `a-device-truth`（状态如实/幂等释放）与 `a-device-owner`（EBUSY/EBADARGS）应变真绿；
 4. 手工拔“线”：停掉回环服务 → `device-probe.state` 应 `open:false/stale:true`；
