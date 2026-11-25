@@ -1,0 +1,31 @@
+{
+  "pluginId": "event-source",
+  "name": "事件源探针",
+  "version": "1.0.0",
+  "category": "development",
+  "description": "契约验收夹具：声明式发布 demo.tick（⛔ 不随壳发货）",
+  "author": "Encaron",
+  "distribution": "user",
+  "entry": "index.bundle.js",
+  "events": {
+    "publishes": [{ "id": "demo.tick", "returns": [{ "name": "n", "type": "number" }, { "name": "at", "type": "number" }] }],
+    "subscribes": []
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "event-source.fire",
+        "title": "发一次 demo.tick",
+        "description": "经宿主事件总线发布 demo.tick；返回 recipients/dropped（0 订阅方 ⇒ dropped:1）。",
+        "risk": "R1",
+        "activation": "entry",
+        "params": [{ "name": "n", "type": "number", "description": "序号（缺省自增）" }],
+        "returns": [
+          { "name": "recipients", "type": "number", "description": "声明订阅该事件的插件数" },
+          { "name": "dropped", "type": "number", "description": "无人订阅时 1" }
+        ],
+        "example": { "n": 1 }
+      }
+    ]
+  }
+}

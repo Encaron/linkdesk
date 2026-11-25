@@ -14,6 +14,7 @@ import * as path from 'path';
 import { seedBackgroundColor } from './theme-seed.js'; // 04「启动过场」④A：窗背景按持久化主题 seed
 import { registerSerialHandlers } from './ipc/handlers/serial-handlers.js';
 import { registerDeviceHandlers } from './ipc/handlers/device-handlers.js';
+import { registerEventHandlers } from './ipc/handlers/event-handlers.js';
 import { registerFileHandlers } from './ipc/handlers/file-handlers.js';
 import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins/plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
 import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
@@ -174,7 +175,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   // lsp/serial 推送无窗引用依赖 → 可无参；file 必须保留 windowManager——isPoolSender 壳/池来源判定靠它
   // （#6.5 回归：误删参数 → _windowManager 恒 undefined → 壳受信写也被当池来源守卫 → 启动弹十几个"工作区外写入确认"）
   registerLspHandlers();   // E5#74c
-  registerSerialHandlers(); registerDeviceHandlers(); // E5#74b ＋ Block 3a：串口/设备会话生命周期
+  registerSerialHandlers(); registerDeviceHandlers(); registerEventHandlers(); // E5#74b ＋ Block 3a/3b
   registerFileHandlers(windowManager);              // E5#80
   registerPluginInstallHandlers();                  // E6#11/#13（1.2-5）：装卸更 fs/net 段——无窗引用（进度走 IpcBridge.active）
   registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入
@@ -447,7 +448,6 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
     app.quit();
   });
 }
-
 /**
  * E5.7#36：壳渲染进程崩溃——全窗口重建（设计 §2.1 场景 B）。
  * createWindow 内全部 ipcMain 注册已 once-guard（审计①）——重复调用只刷新引用，不重注册；
@@ -587,7 +587,6 @@ function shellWindowOptions(): Electron.BrowserWindowConstructorOptions {
     show: false, // ready-to-show 后再显示，避免白屏闪烁
   };
 }
-
 /** E6#47b-2：workspace 窗自增标识——首窗隐式 ws-1（不带参数），新建窗从 ws-2 起。 */
 let _nextWorkspaceId = 2;
 

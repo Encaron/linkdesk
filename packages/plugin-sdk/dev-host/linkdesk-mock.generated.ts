@@ -182,6 +182,9 @@ export const linkdeskMock: Record<string, unknown> = {
     getState: async (..._args: unknown[]) => { console.info("[linkdesk-mock] device.getState", ..._args); },
     recover: async (..._args: unknown[]) => { console.info("[linkdesk-mock] device.recover", ..._args); },
   },
+  eventBus: {
+    publish: async (..._args: unknown[]) => { console.info("[linkdesk-mock] eventBus.publish", ..._args); },
+  },
   clipboard: {
     readText: async (..._args: unknown[]) => { console.info("[linkdesk-mock] clipboard.readText", ..._args); return ""; },
     writeText: async (..._args: unknown[]) => { console.info("[linkdesk-mock] clipboard.writeText", ..._args); },

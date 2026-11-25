@@ -29,7 +29,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "commands" | "configuration" | "config" | "theme" | "language" | "app" | "appearance"
   | "tabs" | "keybindings" | "notifications" | "toasts" | "menu" | "contextKey"
   | "dialog" | "quickPick" | "quickPickHost" | "dialogHost" | "floatingPanelHost"
-  | "serial" | "device" | "clipboard" | "p2p" | "events" | "pluginState"
+  | "serial" | "device" | "eventBus" | "clipboard" | "p2p" | "events" | "pluginState"
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
   | "viewContainer" | "plugins" | "pluginManager" | "licenses" | "aiPolicy" | "window"

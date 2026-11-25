@@ -250,6 +250,12 @@ export const IPC = {
     system: 'serial:system',
   },
 
+  /** Block 3b：插件间事件总线（声明式发布/订阅） */
+  eventBus: {
+    publish: 'eventBus:publish',
+    bus: 'plugin:event',
+  },
+
   /** Block 3a：设备会话生命周期（transport 无关；serial 是第一个实现） */
   device: {
     acquire: 'device:acquire',

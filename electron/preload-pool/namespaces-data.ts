@@ -50,6 +50,14 @@ export function buildDevice() {
   };
 }
 
+/** eventBus 命名空间（Block 3b）——声明式发布；回执信封（成功 {ok:true,recipients,dropped}） */
+export function buildEventBus() {
+  return {
+    publish: (eventId: string, payload: unknown, ownerPluginId: string) =>
+      ipcRenderer.invoke(IPC.eventBus.publish, { eventId, payload, ownerPluginId }) as Promise<DeviceReply<{ recipients: number; dropped: number }>>,
+  };
+}
+
 /** filesystem 命名空间——路径守卫：池来源写操作经主进程校验（归一化 + 危险目录拒绝 + workspace 外用户确认，读放行） */
 export function buildFilesystem(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（filesystem 命名空间），无法共享。

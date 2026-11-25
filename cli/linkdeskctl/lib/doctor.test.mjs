@@ -59,7 +59,7 @@ describe("doctor 正控（serial profile）", () => {
     });
     const out = await runDoctor({ call, profile: "file-tree" });
     const skipped = out.filter((r) => r.skip).map((r) => r.id);
-    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent", "a-device-truth", "a-device-owner"]);
+    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent", "a-device-truth", "a-device-owner", "a-event-flow"]);
     for (const r of out.filter((x) => !x.skip)) expect(r.pass, `${r.id}: ${r.actual}`).toBe(true);
   });
 

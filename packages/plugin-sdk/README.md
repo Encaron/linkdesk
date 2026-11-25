@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**19 domain interfaces → 52 namespaces / 292 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**19 domain interfaces → 53 namespaces / 293 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -43,6 +43,7 @@ npm install -D @linkdesk/plugin-sdk
 | `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | (type B): floating panel dumb-render subscription — consume… |
 | `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | Serial — read/write/listen, modeled after VS Code SerialPor… |
 | `device` | 4 | `acquire` `release` `getState` `recover` | Block 3a: device session lifecycle — transport-agnostic (se… |
+| `eventBus` ⚠️ | 1 | `publish` | Block 3b: declarative inter-plugin events — **pool-only** (… |
 | `clipboard` | 3 | `readText` `writeText` `writeFileList` | Clipboard — read/write the system clipboard |
 | `p2p` | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.bro… |
 | `events` | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data p… |
@@ -75,7 +76,7 @@ npm install -D @linkdesk/plugin-sdk
 | `update` | 1 | `getState` | The update namespace — read-only update state (for "About"-… |
 | `pluginAssets` | 1 | `getUrl` | —— |
 
-⚠️ = optional namespace in the contract (injected on one side only): `storage` `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
+⚠️ = optional namespace in the contract (injected on one side only): `storage` `eventBus` `bridge` `hotExit` — check for existence before calling; on the other side it is undefined.
 ° = member marked `?` in the contract: injected in one side's preload only (almost always shell-side). **Your plugin runs in the pool** — check for existence before calling.
 
 <!-- END API-CHEATSHEET -->

@@ -292,6 +292,8 @@ function writeRecord(): void {
   }
 }
 
+import { setEventAuditSink } from '../eventAudit.js';
+
 function ledgerEntry(op: string, arg: string | null, ok: boolean, code: string | null, ms: number): void {
   const entry: LedgerEntry = { ts: new Date().toISOString(), op, arg, ok, code, ms };
   ledger.push(entry);
@@ -305,6 +307,11 @@ function ledgerEntry(op: string, arg: string | null, ok: boolean, code: string |
     }
   }
 }
+
+// Block 3b：事件投递进账本（log 可读）——recipients/dropped 编进 arg，避免改 LedgerEntry 形状
+setEventAuditSink((e) => {
+  ledgerEntry('event.publish', `${e.eventId} ← ${e.from} (recipients ${e.recipients}, dropped ${e.dropped})`, true, null, 0);
+});
 
 /**
  * 目标壳窗裁决（AI#41，纯函数——单测可钉）：**聚焦窗优先**，不可用 ⇒ 注册表首个。

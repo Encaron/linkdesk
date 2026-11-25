@@ -1,0 +1,30 @@
+{
+  "pluginId": "event-sink",
+  "name": "事件汇探针",
+  "version": "1.0.0",
+  "category": "development",
+  "description": "契约验收夹具：声明式订阅 demo.tick 并记录（⛔ 不随壳发货）",
+  "author": "Encaron",
+  "distribution": "user",
+  "entry": "index.bundle.js",
+  "events": {
+    "publishes": [],
+    "subscribes": [{ "id": "demo.tick" }]
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "event-sink.last",
+        "title": "读最后收到的事件",
+        "description": "读本插件通过 events.on(\"plugin:event\") 收到的 demo.tick 记录数与本条载荷。",
+        "risk": "R0",
+        "activation": "entry",
+        "returns": [
+          { "name": "count", "type": "number", "description": "累计收到条数" },
+          { "name": "last", "type": "object", "optional": true, "description": "最后一条载荷" }
+        ],
+        "example": {}
+      }
+    ]
+  }
+}

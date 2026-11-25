@@ -4,6 +4,10 @@
 
 ### feat
 
+- 📣 **插件间事件契约（Block 3b）**：插件根字段 `events.publishes/subscribes` 声明式发布/订阅；宿主总线鉴权（未声明 ⇒ `EEVENTUNDECLARED`）、`recipients/dropped` 回执、fire-and-forget；`describe.events` 可发现、`log` 有 `event.publish` 审计。夹具 `event-source`/`event-sink`（⛔ 不随壳发货），`doctor --profile event-pipeline` 真验「AI 不参与搬运」。
+
+### feat
+
 - 🔁 **状态命令约定（T-B · 宿主机制）**：写命令在 manifest `params[]` 声明 `idempotencyKey` 后，**同一键重试由宿主回放首次成功结果**（`replayed:true`，⛔ 不重复执行；失败不缓存，改参数重试仍真跑；未声明 ⇒ 行为不变）。幂等窗口与 `opStatus` 同纪律（memory-only · TTL 10 分钟 · 上限 500 · 惰性清扫）。
 - 🧾 **错误 `details` 端到端**：结构化错误的细节字段（如 `ECONFLICT` 的 `stateVersion`）从池侧一路透传到 `BridgeError`、CLI `--json` 与 MCP 工具正文——AI 能按当前版本自纠，⛔ 从中文猜。
 - 🩺 **doctor ＋3 条断言**：`a-state-keys`（实收回执键 ⊆ 声明 `returns`）、`a-idempotent`（同键回放 / 异键真执行负控）、`a-conflict`（`ECONFLICT` 必须带 `details.stateVersion`）；新增 `--profile state-probe` 纯软件状态样本。

@@ -22,22 +22,12 @@ import { createTcpTransport } from '../../services/deviceSession/tcpTransport.js
 import type { DeviceAcquireConfig, DeviceReply } from '../../../src/core/types/ipc/device';
 import { isLoadedPlugin, pluginDeviceTransports } from '../../plugins/plugin-manifest-loader.js';
 import { IPC } from '../channels.js';
+import { failReply } from './reply.js';
 
 let _registered = false;
 
 function ok<T extends object>(extra: T): DeviceReply<T> {
   return { ok: true, ...extra };
-}
-
-function fail(e: unknown, fallback: string = C.DEVICE): DeviceReply<never> {
-  const err = e as { code?: unknown; message?: unknown; hint?: unknown; details?: unknown };
-  return {
-    ok: false,
-    code: typeof err?.code === 'string' && err.code ? err.code : fallback,
-    message: e instanceof Error ? e.message : String(e),
-    ...(typeof err?.hint === 'string' && err.hint ? { hint: err.hint } : {}),
-    ...(err?.details !== undefined ? { details: err.details } : {}),
-  };
 }
 
 /** 池侧调用必须带属主（scope=host 只有壳 preload 会带） */
@@ -81,7 +71,7 @@ export function registerDeviceHandlers(): void {
       const r = await deviceSessions.acquire(cfg);
       return ok({ sessionId: r.sessionId, state: r.state });
     } catch (e) {
-      return fail(e);
+      return failReply(e);
     }
   });
 
@@ -92,7 +82,7 @@ export function registerDeviceHandlers(): void {
         const owner = requirePoolOwner(payload ?? {});
         return ok(await deviceSessions.release(sessionId, owner ?? undefined));
       } catch (e) {
-        return fail(e);
+        return failReply(e);
       }
     },
   );
@@ -107,7 +97,7 @@ export function registerDeviceHandlers(): void {
           ...(owner ? { ownerPluginId: owner } : {}), // ② 池侧只看自己
         }));
       } catch (e) {
-        return fail(e);
+        return failReply(e);
       }
     },
   );
@@ -119,7 +109,7 @@ export function registerDeviceHandlers(): void {
         const owner = requirePoolOwner(payload ?? {});
         return ok(await deviceSessions.recover(sessionId, owner ?? undefined)); // ① recover 也验属主
       } catch (e) {
-        return fail(e);
+        return failReply(e);
       }
     },
   );

@@ -98,6 +98,7 @@ import { buildUpdate } from './preload-pool/update'; // E6#57.8：主软件更�
 import {
   buildSerial,
   buildDevice,
+  buildEventBus,
   buildFilesystem,
   buildClipboard,
   buildPath,
@@ -139,6 +140,7 @@ try {
     // ── 数据域（4d）──
     serial: buildSerial(events),
     device: buildDevice(),
+    eventBus: buildEventBus(),
     filesystem: buildFilesystem(events),
     clipboard: buildClipboard(),
     path: buildPath(),

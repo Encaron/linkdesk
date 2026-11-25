@@ -203,7 +203,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**19 个域接口 → 52 个命名空间 / 292 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**19 个域接口 → 53 个命名空间 / 293 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -222,6 +222,7 @@
 | `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's DialogHost (the shell preload has no such surface). Named dial… |
 | `encoding` | WorkspaceAPI | 4 | `detect` `decode` `encode` `isBinary` | encoding detection/conversion (main-process EncodingService) |
 | `env` | WorkspaceAPI | 1 | `get` | Environment info — modeled after VS Code ExtensionContext |
+| `eventBus` ⚠️ | DataAPI | 1 | `publish` | Block 3b: declarative inter-plugin events — **pool-only** (optional). Publish is host-authorized: |
 | `events` | DataAPI | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data pipeline. channel is a free-form string; payloads are typed p… |
 | `factorySlots` | FactorySlotsAPI | 4 | `listRoles` `list` `getActive` `setActive` | —— |
 | `fileAssociation` | EditorAPI | 6 | `getPluginFor` `listHandlersFor` `getOverrides` `onDidChangeOverrides` `setDefault` `setDefaultBulk` | file associations — extension→plugin ID (answered directly by the main-process FileAssociationService). |
@@ -260,7 +261,7 @@
 | `window` | ShellAPI | 11 | `minimize` `maximize` `unmaximize` `close` `setZoom` `toggleDevTools` `isMaximized` `onMaximizeChange` `setAlwaysOnTop` `isAlwaysOnTop` `onAlwaysOnTopChange` | Window control — TitleBar button mapping, injected on both ends (11 methods on one channel, shared module electron/wind… |
 | `workspace` | WorkspaceAPI | 10 | `getFolders` `getActive` `setActive` `openFolder` `addFolder` `removeFolder` `onDidChangeFolders` `onDidChangeActiveWorkspace` `getRecentFolders` `onDidChangeRecentFolders` | Workspace — injected by the pool preload (the shell side uses WorkspaceService directly). Pool-authoritative namespace … |
 
-⚠️ = 契约里的**可选命名空间**（只在一侧 preload 注入）：`bridge` `hotExit` `storage`——用前先判存在，另一侧是 `undefined`。
+⚠️ = 契约里的**可选命名空间**（只在一侧 preload 注入）：`bridge` `eventBus` `hotExit` `storage`——用前先判存在，另一侧是 `undefined`。
 ° = 契约标 `?` 的成员：只在一侧 preload 注入（几乎都是壳侧独有）。**插件跑在池侧** ⇒ 调用前先判存在。
 
 <!-- END API-INDEX -->

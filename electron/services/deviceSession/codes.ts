@@ -1,5 +1,5 @@
 /**
- * 设备会话宿主语义码（Block 3a）——**壳内唯一字面量来源**。
+ * 宿主语义码（Block 3a 设备会话 ＋ Block 3b 事件总线）——**壳内唯一字面量来源**。
  *
  * 为什么单独一份：`EDEVICE/EBUSY/ENOSESSION/EBADARGS` 是宿主（不是插件）产生的码；
  * 03 §8.2 要求它们可判读、可测试。⛔ 在 registry/handlers/preload 各写一遍字面量。
@@ -19,6 +19,8 @@ export const DEVICE_ERROR_CODES = Object.freeze({
   BAD_ARGS: 'EBADARGS',
   /** 插件未声明该 transport 能力（Block 3a 能力闸） */
   CAPABILITY: 'ECAPABILITY',
+  /** 事件未在 manifest 声明（Block 3b 发布鉴权） */
+  EVENT_UNDECLARED: 'EEVENTUNDECLARED',
 });
 
 export type DeviceErrorCode = (typeof DEVICE_ERROR_CODES)[keyof typeof DEVICE_ERROR_CODES];

@@ -117,6 +117,9 @@
     "env": [
       "get"
     ],
+    "eventBus": [
+      "publish"
+    ],
     "events": [
       "emit",
       "heartbeat",
@@ -529,6 +532,9 @@
     ],
     "env": [
       "get"
+    ],
+    "eventBus": [
+      "publish"
     ],
     "events": [
       "emit",

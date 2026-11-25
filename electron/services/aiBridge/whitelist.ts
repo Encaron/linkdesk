@@ -35,6 +35,7 @@ import { askUser } from './sensitive.js';
 import { OP_RISK } from './policy/risk.js';
 import type { OpRegistry } from './opRegistry.js';
 import { extractIdempotencyKey, type IdempotencyRegistry } from './idempotency.js';
+import { declaredEventsCatalog } from '../../plugins/plugin-manifest-loader.js';
 import { buildActionCard } from './policy/cards.js';
 import {
   askTextForCommand,
@@ -480,6 +481,8 @@ export const OPS: Record<string, BridgeOp> = {
         // 该插件的视图挂载后才注册）。给 AI 的是**可发现性**：能规划下一步（先 open-tab），
         // ⛔ 不是执行面——`exec` 只认上面那份 commands。
         commandsPending: await listPendingCommands(ctx, commands),
+        // Block 3b：事件声明面（publishes/subscribes）——壳只透传 manifest，⛔ 认业务事件名
+        events: declaredEventsCatalog(),
         // AI#29：哪些动作会先停下等人点头——**自述面**（AI 动手前就知道，客户端据此定等待预算）
         // S7（2026-11-25 外部实测）：自述面必须与**实际判定**一致——按当前档位从命令面实算，
         // 并纳入插件声明的 R3（旧实现只列壳表：命令面 14 条 R3 只列出了 5 条）。

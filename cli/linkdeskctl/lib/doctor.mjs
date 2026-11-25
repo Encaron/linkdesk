@@ -62,6 +62,21 @@ const PROFILES = {
     conflictCommand: "file-tree.rename",
     conflictArgs: { uri: "C:/linkdesk-doctor-none.txt", newName: "none-2.txt", expectedVersion: 999999 },
   },
+  /** event-pipeline——Block 3b 事件样本：source 发 → sink 收（两个夹具插件，⛔ 不随壳发货） */
+  "event-pipeline": {
+    label: "event-pipeline（插件间事件样本 · dev-fixtures）",
+    pluginId: "event-source",
+    readCommand: "event-sink.last",
+    viewCommand: null,
+    changeCommand: "event-source.fire",
+    changeArgs: { n: 42 },
+    stateCommand: "event-sink.last",
+    teardownCommand: null,
+    idempotentCommand: null,
+    conflictCommand: null,
+    eventPublishCommand: "event-source.fire",
+    eventStateCommand: "event-sink.last",
+  },
   /**
    * device-probe——设备会话样本（Block 3a）：只用宿主 device.*（tcp transport），
    * ⛔ 不读 serial 源码。运行前需一个 TCP 回环服务（地址 = --endpoint 或 profile 缺省）。
@@ -524,6 +539,36 @@ export const DOCTOR_ASSERTIONS = [
         expected: "他主 acquire ⇒ EBUSY(details.ownerSessionId)；非属主 release ⇒ EBADARGS",
         actual: `busy=${busyOk} · wrongOwner=${wrongOk}`,
         repro: `linkdeskctl doctor --profile device-probe --endpoint ${endpoint}`,
+      };
+    },
+  },
+  {
+    id: "a-event-flow",
+    name: "插件间事件：source 发 ⇒ sink 收，AI 不参与搬运；log 有 event.publish",
+    source: "Block 3b/04（跨插件联动靠 AI 逐步搬运）",
+    async run(ctx) {
+      const pub = ctx.profile.eventPublishCommand;
+      const read = ctx.profile.eventStateCommand;
+      if (!pub || !read) {
+        return { pass: true, skip: true, note: "profile 无事件样本", expected: "—", actual: "—", repro: "—" };
+      }
+      const before = await execChecked(ctx.call, read);
+      const beforeInner = before.ok && before.result && typeof before.result === "object" ? before.result.result : undefined;
+      const beforeCount = beforeInner && typeof beforeInner.count === "number" ? beforeInner.count : 0;
+      const fired = await execChecked(ctx.call, pub, [{ n: 42 }]);
+      const firedInner = fired.ok && fired.result && typeof fired.result === "object" ? fired.result.result : undefined;
+      const delivered = !!firedInner && firedInner.recipients >= 1 && firedInner.dropped === 0;
+      await new Promise((r) => setTimeout(r, 300)); // 广播是异步派发——给订阅方一拍
+      const after = await execChecked(ctx.call, read);
+      const afterInner = after.ok && after.result && typeof after.result === "object" ? after.result.result : undefined;
+      const got = !!afterInner && afterInner.count > beforeCount && afterInner.last && afterInner.last.n === 42;
+      const log = await ctx.call("log", { limit: 50 }).catch(() => null);
+      const logged = !!(log && Array.isArray(log.entries) && log.entries.some((e) => e && e.op === "event.publish" && String(e.arg).includes("demo.tick")));
+      return {
+        pass: delivered && got && logged,
+        expected: "fire 回 recipients≥1/dropped:0；sink 收到 n=42；log 有 event.publish",
+        actual: `delivered=${delivered} · got=${got} · logged=${logged}（before=${beforeCount}）`,
+        repro: `linkdeskctl exec ${pub} '{"n":42}' && linkdeskctl exec ${read}`,
       };
     },
   },

@@ -41,6 +41,13 @@ export interface DataAPI {
     recover(sessionId: string, ownerPluginId?: string): Promise<DeviceReply<{ recovered: boolean; sessionId?: string; ms: number }>>;
   };
 
+  /** Block 3b: declarative inter-plugin events — **pool-only** (optional). Publish is host-authorized:
+   *  the owner plugin must declare the event id in its manifest `events.publishes`. Fire-and-forget
+   *  (recipients/dropped in the receipt); subscriptions use the existing events.on("plugin:event") channel. */
+  eventBus?: {
+    publish(eventId: string, payload: unknown, ownerPluginId: string): Promise<DeviceReply<{ recipients: number; dropped: number }>>;
+  };
+
   /** Clipboard — read/write the system clipboard */
   clipboard: {
     readText(): Promise<string>;

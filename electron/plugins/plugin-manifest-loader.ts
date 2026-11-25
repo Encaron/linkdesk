@@ -110,6 +110,29 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest, plug
 
 /** E5.8#26 D8——当前已加载插件 ID 集合（rescan 时对比端口 owner，回收被卸载插件的孤儿端口） */
 const _loadedPluginIds = new Set<string>();
+/** Block 3b：插件事件声明（根字段 `events`；过渡形态，待并入 contributes.events） */
+export interface PluginEventsDecl {
+  publishes: Array<{ id: string; returns?: unknown }>;
+  subscribes: Array<{ id: string }>;
+}
+
+const _pluginEvents = new Map<string, PluginEventsDecl>();
+
+/** 读某插件的 events 声明；null = 未声明 */
+export function pluginEvents(pluginId: string): PluginEventsDecl | null {
+  return _pluginEvents.get(pluginId) ?? null;
+}
+
+/** 全部已声明事件（宿主总线统计 recipients / describe 用） */
+export function allPluginEvents(): Array<{ pluginId: string; events: PluginEventsDecl }> {
+  return [..._pluginEvents.entries()].map(([pluginId, events]) => ({ pluginId, events }));
+}
+
+/** 可发现面：聚合声明（describe.events） */
+export function declaredEventsCatalog(): Array<{ pluginId: string; publishes: Array<{ id: string; returns?: unknown }>; subscribes: Array<{ id: string }> }> {
+  return allPluginEvents().map(({ pluginId, events }) => ({ pluginId, publishes: events.publishes, subscribes: events.subscribes }));
+}
+
 /** Block 3a：插件声明的设备 transport 能力（根字段 `deviceTransports`；缺省 = 只给存量 serial） */
 const _deviceTransports = new Map<string, string[]>();
 
@@ -143,6 +166,7 @@ export function loadAllPluginManifests(): void {
   _loadedPluginIds.clear();
   _langDefPluginDirById.clear();
   _deviceTransports.clear();
+  _pluginEvents.clear();
 
   // E6#28b dev 门控——只对在开发插件注册（三表贡献在物化目录 plugin.json）。_loadedPluginIds
   // 只含 dev id：防 rescan 时 closeOrphanSerialPorts 把其他已装插件的真端口当孤儿连坐。
@@ -183,6 +207,17 @@ function registerTablesFromPluginDir(pluginId: string, pluginDir: string): void 
     const raw = fs.readFileSync(manifestPath, "utf-8");
     const manifest = parseManifestJson(raw);
     // Block 3a：根字段 deviceTransports（schema 根允许扩展字段）——能力闸的唯一真相源
+    const rawEvents = (manifest as unknown as { events?: unknown }).events;
+    if (rawEvents && typeof rawEvents === 'object' && !Array.isArray(rawEvents)) {
+      const e = rawEvents as { publishes?: unknown; subscribes?: unknown };
+      const pubs = Array.isArray(e.publishes)
+        ? e.publishes.filter((x): x is { id: string; returns?: unknown } => !!x && typeof x === 'object' && typeof (x as { id?: unknown }).id === 'string')
+        : [];
+      const subs = Array.isArray(e.subscribes)
+        ? e.subscribes.filter((x): x is { id: string } => !!x && typeof x === 'object' && typeof (x as { id?: unknown }).id === 'string')
+        : [];
+      if (pubs.length || subs.length) _pluginEvents.set(pluginId, { publishes: pubs, subscribes: subs });
+    }
     const rawTransports = (manifest as unknown as { deviceTransports?: unknown }).deviceTransports;
     const transports = Array.isArray(rawTransports)
       ? rawTransports.filter((t): t is string => typeof t === "string" && !!t)
