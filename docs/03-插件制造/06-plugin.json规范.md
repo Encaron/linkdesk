@@ -1,6 +1,6 @@
 # plugin.json 规范
 
-> **2026-09-06 与实现对齐核对**（对账）：塌平单根 `plugins/<id>`（无 builtin/user 双层）· 插件只有一类（core:true = 防误删旗标，非类别）· `distribution` = ⚠️ 遗留字段勿填。
+> **2026-09-06 与实现对齐核对**（对账）：塌平单根 `plugins/<id>`（无 builtin/user 双层）· 三事实分家：**随包**（lock `seed`）／**重要**（`essential`，只影响卸载入口可见性）／**可更新**（住所 `updatable`，唯一更新判据）；`core` 已退役 · `distribution` = ⚠️ 遗留字段勿填。
 > 🔴 **本文件恒指「插件自己仓的根」**：插件源码住在**它自己的仓**里，壳仓 `plugins/` 只剩两只开发夹具。
 > 本文所有裸路径（`plugin.json` / `src/…` / `resources/…`）都是**相对插件仓根**说的——别再去壳仓 `plugins/` 里找发货插件的源码（那里没有）。
 > 插件元数据的唯一入口。一个插件 = 一个文件夹 + 一份 `plugin.json` + 入口文件。
@@ -47,7 +47,7 @@ my-plugin/
 
 | 字段 | 语义 | 谁该填 |
 |------|------|:--|
-| `core: true` | **UI 防误删旗标**——卸载按钮不显示/禁用（外壳依赖它提供设置页/插件市场等基础交互）。**无行为特权、非类别** | 官方这几个：`editor` `file-tree` `marketplace` `settings` |
+| `essential: true` | **UI 防误删旗标**——卸载入口不显示（**只**这一件事；仅随包件可声明，本地/第三方自封 ⇒ 拒装）。**无行为特权、非类别、⛔ 不参与更新判定** | 官方这几个：`editor` `file-tree` `marketplace` `settings` |
 | `distribution` | ⚠️ **遗留字段**（schema 已标废弃，勿填）——不再对应任何目录，安装侧恒归一化为 `user` | **第三方请勿填写** |
 
 ### 创建插件（第三方，自己的项目根）
@@ -58,26 +58,26 @@ my-plugin/
   "name": "我的插件",
   "version": "1.0.0",
   "entry": "src/index.tsx"
-  // 不填 core —— 普通插件，用户可自由装卸
+  // 不填 essential —— 普通插件，用户可自由装卸
   // 不填 distribution —— 遗留字段，装进 app 统一归 user
 }
 ```
 
 构建 → `<id>.linkdesk-plugin` → 用户安装 → `{userData}/plugins/<id>/`（见 [04 §二](04-插件分发格式.md)）。
 
-### core:true 的官方插件（随壳发货）
+### essential 的官方插件（随包出厂）
 
 ```jsonc
 // plugins/file-tree/plugin.json（repo 单根实况）
 {
   "name": "文件树",
   "version": "1.0.0",
-  "core": true,                // 🔥 防误删——UI 无卸载按钮
+  "essential": true,           // 🔥 防误删——UI 无卸载按钮（随包 ≠ 重要；重要只影响这一处）
   "entry": "src/index.tsx"
 }
 ```
 
-> **措辞纪律（硬约束 11）：** 「内置/随壳发货」指的是那份 `bundled-plugins/*.linkdesk-plugin` 与 boot 自动装路径，**不是一类插件**。说「core:true 的插件」「随壳发货的插件」，不说「内置插件是……」作类别定性。官方插件走市场分发时不填 core 也一样是普通插件——随包与否由是否进 bundled-plugins 决定，与字段无关。
+> **措辞纪律（硬约束 11）：三件事分家（2026-11-26 拍板）**——① **随包**：`bundled-plugins.lock.json` 的 `seed: true`（构建期事实，插件不得自封）；② **重要**：本字段，**只**影响卸载入口是否显示；③ **可更新**：住所（装在 `{userData}/plugins` 才可为真），**唯一**更新判据。说「随包出厂的插件」指 lock 那一批，⛔ 不把「内置插件」当类别；走市场分发的官方插件不填 `essential` 也照样是普通插件。
 
 ---
 
@@ -224,7 +224,7 @@ my-plugin/
 |---|---|---|
 | `$schema` | `string` | JSON Schema 引用路径 |
 | `pluginId` | `string` | 🔴 **插件身份——发布后永不可变**（对标 VS Code 的 `publisher.name`）。安装目录 `{userData}/plugins/<pluginId>/`、分发件名 `<pluginId>.linkdesk-plugin`、市场目录去重键、卸载墓碑键、更新对账全部以它为准。**强烈建议显式声明**：不声明时退回「项目目录名」兜底，而仓库名与本地目录名是自由的——目录名一改身份就跟着改，且**没有一条会报错**。字符集 `^[A-Za-z0-9][A-Za-z0-9._-]*$`，**外加三个禁用**（见下方「身份的三个禁用」）。规则与实测依据见 [16-命名规范](16-命名规范.md) |
-| `core` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页卸载按钮不显示/禁用；**无行为特权、非类别**：API/命令层可卸可禁，卸走写 removed 墓碑。默认 `false` |
+| `essential` | `boolean` | `true` = **UI 防误删旗标**（对齐上文字段表 :44 新版措辞）——详情页/列表的卸载入口不显示；**无行为特权、非类别、⛔ 不参与更新判定**：API/命令层可卸可禁，卸走写 removed 墓碑。仅随包件可声明。默认 `false` |
 | `distribution` | `string` | ⚠️ **遗留字段**（2026-09-05 塌平单根后不再对应任何目录，安装侧恒归一化为 `user`；schema 已标废弃）。**第三方请勿填写** |
 | `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` / `"lucide"` / `"shared"`——`"shared"` = **按名引用** IconRegistry 共享图标（自己的 `contributes.icons` 键，或宿主默认项 `app.group-*`）；渲染需消费方注入共享图标快照（设置页导航今天已接） |
@@ -330,16 +330,16 @@ my-plugin/
 - **想并存 → 不填。** 例：第三方做全新市场 UI，图标栏官方旁边多一个自己的图标，点进去是自己的 UI，和官方拿同一份数据
 - **想替换 → 填。** 例：声明 `factoryRole:"marketplace"` → 设置页出「插件市场」组 + 切换按钮，切过去后图标/内容换成你的
 
-**形态二实现细节**（已落地；参考实体 `plugins/settings`（官方 core:true 设置套）+ `10-如何造一个设置插件.md`）：
+**形态二实现细节**（已落地；参考实体 `plugins/settings`（官方 essential 设置套）+ `10-如何造一个设置插件.md`）：
 
-- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= 首注册稳定序（core:true 无行为特权，不抢默认——注册序不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
+- **① 一对多槽位**：同一 `factoryRole` 多插件声明 = **合法并存**，全收进槽位候选（不再"第一个胜出"）。**默认**（用户没切过/打开时）= 首注册稳定序（essential 无行为特权，不抢默认——注册序不靠扫描序巧合）。多候选并存不再静默——壳控制台 fail-loud 点名全部候选 + 默认（每候选集合变化才重喷一次）。
 - **② 活动套 = 用户切换选择，落盘持久化**（重启保持）。公开枚举/切换面 `window.linkdesk.factorySlots.*`（通用枚举面，槽位无关收 role 参数；settings 角色另有 `window.linkdesk.settings.*` 兼容别名，内部原样转发）：
 
   | 方法 | 作用 |
   |------|------|
   | `factorySlots.listRoles()` | 全部已填充角色名（注册序）——设置页先枚举角色再 list(role) 判候选数 |
   | `factorySlots.list(role)` | 该角色全部候选 `[{ pluginId, title, viewId? }]`——title=显示名原文，viewId=该套 `contributes.floatingPanel.viewId`（无声明 = undefined） |
-  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（首注册候选，无 core 优先） |
+  | `factorySlots.getActive(role)` | 活动套插件 ID——读持久化，无记录/已卸载回退默认（首注册候选，无 essential 优先） |
   | `factorySlots.setActive(role, pluginId)` | 切换活动套——校验候选后落盘；**非候选 fail-loud 抛错** |
 
 - **③ 切换入口 = 设置页角色分组（动态出现）**：设置 UI 打开时枚举 `listRoles()` → 对每个**非设置插件角色** `list(role)` → **候选 ≥2 才建组**（单候选无切换意义）。组形态 = 切换按钮在顶（列出该角色全部候选，激活高亮）+ 激活套自己的配置在下方；复用同名组优先（按 pluginId 找激活候选自己的配置组）、没有才新建；激活套无配置项 → 空状态。切换 = `setActive` → 重拉数据 → 配置随激活套换。你的设置插件**自身角色**（settings）的切换 = 顶部通用区按钮（见 `10-如何造一个设置插件.md`）。
@@ -352,7 +352,7 @@ my-plugin/
 | | 形态一（并存） | 形态二（替换） |
 |---|---|---|
 | 第三方声明 | 不填 `factoryRole`——普通视图插件（`appearsIn.iconBar` + 自己的 view + `pluginManager.*` 数据） | 填 `factoryRole: "marketplace"` |
-| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=首注册候选，无 core 优先），非激活套隐藏 |
+| 图标栏 | 官方 Marketplace 旁并排你自己的图标，两个市场各自独立 | 只显示**激活套**图标（默认=首注册候选，无 essential 优先），非激活套隐藏 |
 | 设置页 | 无槽位概念 | 出「插件市场」角色组（候选 2）+ 切换按钮 |
 | 用户切换 | 无——自己点哪个进哪个 | 切到你的 Map Store → 图标/打开行为全换成你的，持久化重启保持 |
 | 数据 | 同一份 `pluginManager.*` API，各做各的 UI | 同一份数据，UI 换成激活套 |

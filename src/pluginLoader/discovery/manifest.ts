@@ -70,19 +70,19 @@ const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * reason 封闭集合与 PluginLocalInstallReason 的前三类同形（io/exists 归磁盘段，不在 manifest 层）。
  * detail = 同 reason 的子 case（文案皮用——validateInstallManifest 按 detail 挑既有文案，⛔ 判定规则不在此重建）。
  */
-export type InstallManifestRejection = "bad-manifest" | "unsafe-id" | "core-forbidden";
-export type InstallManifestRejectionDetail = "shape" | "pluginId-type" | "version" | "id-shape" | "host-pseudo" | "core";
+export type InstallManifestRejection = "bad-manifest" | "unsafe-id" | "essential-forbidden";
+export type InstallManifestRejectionDetail = "shape" | "pluginId-type" | "version" | "id-shape" | "host-pseudo" | "essential";
 
-/** installFromDirectory（本地安装）专属：manifest 层校验不拒 core:true 的缺省行为——本地安装流拒（本地不得自封内置）。 */
+/** installFromDirectory（本地安装）专属：manifest 层校验不拒 essential:true 的缺省行为——本地安装流拒（本地不得自封重要型；重要型是随包件的子集）。 */
 export interface ClassifyInstallManifestOpts {
-  /** true = manifest.core === true 判 core-forbidden（默认 false——dev 树安装流维持「消毒 core→false」旧语义） */
-  rejectCore?: boolean;
+  /** true = manifest.essential === true 判 essential-forbidden（默认 false——dev 树安装流维持「消毒 essential→false」旧语义） */
+  rejectEssential?: boolean;
 }
 
 /**
  * E5.7#81 校验规则的**结构化分类器**（R4-1.2 拆出）——校验规则的唯一事实源，
  * validateInstallManifest 是它的抛错皮。返回 reason 而非抛错（五类回执需要分类）。纯函数（测试覆盖）。
- * 校验顺序即 reject 优先级：形状 → pluginId 形状 → 宿主伪身份 → version → core（仅 rejectCore）。
+ * 校验顺序即 reject 优先级：形状 → pluginId 形状 → 宿主伪身份 → version → essential（仅 rejectEssential）。
  */
 export function classifyInstallManifest(
   manifest: unknown,
@@ -111,9 +111,9 @@ export function classifyInstallManifest(
   if (typeof version !== "string" || version.trim() === "") {
     return { ok: false, reason: "bad-manifest", detail: "version" };
   }
-  // R4-1.2：本地安装拒 core:true（本地不得自封内置）——dev 树安装流不走此分支（继续走消毒 core→false）
-  if (opts?.rejectCore && m.core === true) {
-    return { ok: false, reason: "core-forbidden", detail: "core" };
+  // R4-1.2：本地安装拒 essential:true（本地不得自封重要型）——dev 树安装流不走此分支（继续走消毒 essential→false）
+  if (opts?.rejectEssential && m.essential === true) {
+    return { ok: false, reason: "essential-forbidden", detail: "essential" };
   }
   const name = typeof m.name === "string" && m.name.trim() !== "" ? m.name : pluginId;
   return { ok: true, pluginId, version, name };

@@ -23,14 +23,14 @@
       "type": "string",
       "description": "[Deprecated] Plugin type — no longer required. The loader infers the contribution type from declared fields such as entry/mode/themes/languages/resources. Kept only for backward compatibility. The value is an open string, not a closed enum."
     },
-    "core": {
+    "essential": {
       "type": "boolean",
-      "description": "Pure UI safeguard against accidental removal — marks the plugin as important, so the uninstall entry is hidden in the plugin detail UI (newcomers cannot delete it by mistake). Grants no behavioral privilege: disable/uninstall still work through the API/command layer (uninstall writes a `removed` tombstone; boot does not resurrect it). Built-in capabilities such as the settings page and marketplace come from factoryRole slots (replaceable) and are unrelated to this flag. Absent = an ordinary plugin that the UI can freely install and uninstall. Default false.",
+      "description": "Essential plugin — hides only the uninstall entry in the plugin detail/list UI (protects newcomers from accidental removal). Unrelated to bundling: shipping with the app is a build-time fact (`bundled-plugins.lock.json` -> `seed`), not declared here. Unrelated to updates: whether a plugin can be updated is decided solely by its residence (only plugins installed under {userData}/plugins are updatable); this flag MUST NOT participate in any update decision. Only bundled plugins may declare it; local/third-party manifests declaring true are rejected at install (`essential-forbidden`). Grants no other privilege: it does not claim default slots, does not prevent disabling, defines no permissions; command-layer uninstall and deleting the folder remain allowed. Omitted = an ordinary plugin the UI may freely install/uninstall. The old name `core` was retired on 2026-11-26 with no compatibility alias.",
       "default": false
     },
     "factoryRole": {
       "type": "string",
-      "description": "System slot role — declares which system-level feature this plugin fills. settings = settings page (opened with Ctrl+,), marketplace = plugin marketplace. Multiple plugins with the same role may legally coexist (all become slot candidates, one-to-many); the default is the first registered in stable order (core:true grants no privilege and does not claim the default), and a user-switched active candidate is persisted."
+      "description": "System slot role — declares which system-level feature this plugin fills. settings = settings page (opened with Ctrl+,), marketplace = plugin marketplace. Multiple plugins with the same role may legally coexist (all become slot candidates, one-to-many); the default is the first registered in stable order (`essential` grants no privilege and does not claim the default), and a user-switched active candidate is persisted."
     },
     "pluginRole": {
       "type": "string",

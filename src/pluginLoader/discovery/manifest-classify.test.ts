@@ -35,9 +35,9 @@ describe("classifyInstallManifest（R4-1.2 五类回执 manifest 层）", () => 
     expect(reasonOf(classifyInstallManifest({ pluginId: "app", version: "1.0.0" }, "x"))).toBe("unsafe-id");
   });
 
-  it("core:true 且 rejectCore ＝ core-forbidden（本地不得自封内置）；缺省不拒（dev 树消毒旧语义）", () => {
-    const m = { pluginId: "demo", version: "1.0.0", core: true };
-    expect(reasonOf(classifyInstallManifest(m, "demo", { rejectCore: true }))).toBe("core-forbidden");
+  it("essential:true 且 rejectEssential ＝ essential-forbidden（本地不得自封重要型）；缺省不拒（dev 树消毒旧语义）", () => {
+    const m = { pluginId: "demo", version: "1.0.0", essential: true };
+    expect(reasonOf(classifyInstallManifest(m, "demo", { rejectEssential: true }))).toBe("essential-forbidden");
     expect(classifyInstallManifest(m, "demo")).toEqual({
       ok: true, pluginId: "demo", version: "1.0.0", name: "demo",
     });

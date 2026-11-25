@@ -296,7 +296,7 @@ Add to the `disabledPlugins` list + persist → mark the metadata cache `disable
 
 ### 9.4 Uninstall `uninstallPlugin(pluginId)`
 
-1. `core: true` guard first — for core:true plugins the uninstall button is not shown/disabled in the UI (**a mistaken-deletion flag, not a category**: the shell depends on such a plugin for basic interactions like the settings page and the marketplace)
+1. `essential: true` guard first — plugins declaring essential do not get an uninstall entry in the UI (**a mistaken-deletion flag, not a category, and it MUST NOT participate in any update decision**: this is its only effect)
 2. **Two branches (after the 2026-09-05 flattening)**:
    - the target lives in `{userData}/plugins/<id>/` (installed from a zip) → **really delete the directory + settle the account with `PluginInstallService.remove`** (writes a removed marker — boot sees the marker and does not restore it automatically)
    - the target lives in the repo source tree (an app plugin) → move it to the `plugins/.disabled/<id>/` graveyard + it can be reinstalled (a lesson from Windows file locks on cross-directory rename: copy+remove, not rename)
@@ -310,7 +310,7 @@ For source-tree app plugins: copy from `plugins/.disabled/<id>/` back to `plugin
 
 ### 9.6 🔥 The uninstallable ⇒ reinstallable contract
 
-**For any plugin, if it can be uninstalled, reinstalling must restore all of its contributions immediately in the same session** — regardless of the plugin's shape: repo source tree or installed state, with or without an entry, core flag or not (core is only a mistaken-deletion flag, not a category exception).
+**For any plugin, if it can be uninstalled, reinstalling must restore all of its contributions immediately in the same session** — regardless of the plugin's shape: repo source tree or installed state, with or without an entry, essential flag or not (essential is only a mistaken-deletion flag, not a category exception).
 
 **Implementation dependency:** the normalized plugin root URL entry `resolveRuntimePluginRoot` (the same one-liner `dev ? /@fs/{abs} : linkdesk://{id}`) — for entryless plugins (pure views/commands contributions) the `views` registration fallback chain depends on it for dynamic imports. It once broke because the pluginRoot assignment was hard-tied to `manifest.entry` (view loading failed after reinstalling an entryless plugin) — now fixed.
 
@@ -342,7 +342,7 @@ For source-tree app plugins: copy from `plugins/.disabled/<id>/` back to `plugin
 | Dependencies | `extensionDependencies` | `requires` (string array) + suspend to PENDING / cycle fails / cascade unload |
 | Uninstall | Disable / Uninstall | installed state = really delete the directory + settle the account (a removed marker, boot does not revive it); repo source-tree app plugins = move to `.disabled/` as a **same-session** undo (orphans surviving a restart are cleaned automatically at boot) |
 | Clean-up | manual unregister in onWillUninstall | **registrationTracker rolls back automatically in reverse order** (zero manual clean-up) |
-| core plugins | cannot be uninstalled | `core: true` plugins have no uninstall entry in the detail UI (a pure mistaken-deletion flag — the API/command layer can still uninstall and disable them; after uninstall a removed tombstone is written and they do not come back) |
+| Plugins declaring essential | no uninstall entry in the UI | `essential: true` hides the uninstall entry in the detail page/list (a pure mistaken-deletion flag — the API/command layer and deleting the folder still work; after uninstall a removed tombstone is written and they do not come back) |
 
 ---
 

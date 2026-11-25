@@ -265,7 +265,7 @@ export function registerSettingsCommands(): void {
       description: "把设置槽的激活套回退到内置设置页（= 声明 factoryRole:\"settings\" 的注册序首声明）并落盘，重启保持——第三方设置页崩了/打不开时的逃生舱；已经是内置套时如实报 noop，⛔ 不假装切了一次",
       handler: async () => {
         const ROLE = "settings";
-        // 内置 = 注册序首声明（E6#18b：core:true 不优先）——与 FactorySlots 的默认解析同一条口径
+        // 默认 = 注册序首声明（E6#18b：essential 不优先）——与 FactorySlots 的默认解析同一条口径
         const builtin = factorySlots.getDefaultPluginId(ROLE);
         if (!builtin) {
           // 槽空（没有任何声明该角色的套）——齿轮那边靠 settingsSlotFilled 已不显示本项，命令面板仍可达。

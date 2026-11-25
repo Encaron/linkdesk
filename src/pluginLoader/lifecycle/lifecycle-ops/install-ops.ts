@@ -410,15 +410,15 @@ async function installPluginFromDirectory(sourcePath: string, jobId: string): Pr
 
     jobProgress(jobId, "copying", pluginId);
     await linkdesk().filesystem.copy(sourcePath, destDir);
-    // 消毒 manifest——目录源（dev 树安装）强制 distribution=user, core=false（E6#18a：core:true 无行为特权，
+    // 消毒 manifest——目录源（dev 树安装）强制 distribution=user, essential=false（E6#18a：essential 无行为特权，
     // 只剩 UI 藏钮语义——目录/开发安装不冒充发货件；随车 zip 走包安装流真传 core，见 plugin.json 声明）
     const destManifest = `${destDir}/plugin.json`;
     const raw = await linkdesk().filesystem.readTextFile(destManifest);
     // E6#55：JSONC 读入；distribution 是遗留字段（schema 契约外）——局部宽口视图承接，非 PluginManifest 契约面
     const manifest = parseManifestJson(raw) as PluginManifest & { distribution?: string };
-    if (manifest.distribution !== "user" || manifest.core === true) {
+    if (manifest.distribution !== "user" || manifest.essential === true) {
       manifest.distribution = "user";
-      manifest.core = false;
+      manifest.essential = false;
       await linkdesk().filesystem.writeTextFile(destManifest, JSON.stringify(manifest, null, 2));
     }
 
@@ -486,7 +486,7 @@ function toLocalOk(r: PluginInstallResult): PluginLocalInstallResult {
  * 形状（success/error），五类回执塞进去 = 第二语义；本流是低频单发用户动作（来源页选文件夹/选包），
  * 无网络下载段无取消面，进度走裸 emitInstallProgress（unload/reinstall 收尾腿同款）。磁盘互斥由
  * 解压段「目标已存在拒绝」＋复制腿 exists 预检承担。复用的是**流水线后半**（账本→注册→lifecycle）。
- * ⛔ 不做多插件目录（09 v2 再议）；拒 core:true（本地不得自封内置）。
+ * ⛔ 不做多插件目录（09 v2 再议）；拒 essential:true（本地不得自封重要型）。
  */
 export async function installFromDirectory(
   sourcePath: string,
@@ -499,7 +499,7 @@ export async function installFromDirectory(
 }
 
 /** 解压腿：本地 .linkdesk-plugin 离线包 → 主进程 packageExtract（同网络安装段：zip-slip/双源互验/已存在拒绝）→
- *  core:true 拒并清理（本地不得自封内置）→ 依赖链（可选 catalogUrl）→ 账本 → loadPlugin。 */
+ *  essential:true 拒并清理（本地不得自封重要型）→ 依赖链（可选 catalogUrl）→ 账本 → loadPlugin。 */
 async function installLocalPackage(sourcePath: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult> {
   emitInstallProgress("validating", opts?.pluginId, "校验插件包");
   try {
@@ -516,11 +516,11 @@ async function installLocalPackage(sourcePath: string, opts?: PluginInstallReque
     }
     const { pluginId, version, targetDir } = extracted;
     const manifest = await readInstallManifest(targetDir);
-    // 本地不得自封内置（09）——core:true 拒并清理解压产物（防半装目录残留挡住下次安装）
+    // 本地不得自封重要型（09）——essential:true 拒并清理解压产物（防半装目录残留挡住下次安装）
     // 与「读不出 manifest」同清理（包合法但内容坏 = 半装残留）。
-    if (manifest === null || manifest.core === true) {
+    if (manifest === null || manifest.essential === true) {
       try { await linkdesk().filesystem.remove(targetDir); } catch { /* 清理失败非致命——exists 拒绝仍在 */ }
-      return { ok: false, reason: manifest === null ? "bad-manifest" : "core-forbidden" };
+      return { ok: false, reason: manifest === null ? "bad-manifest" : "essential-forbidden" };
     }
     const displayName = typeof manifest.name === "string" && manifest.name.trim() !== "" ? manifest.name : pluginId;
     // E6#73j（G6）：落在 {userData}/plugins/<id> = 用户安装家 ⇒ 可被新包更新（与包安装流同判据）
@@ -564,8 +564,8 @@ async function installLocalFolder(sourcePath: string, opts?: PluginInstallReques
       return { ok: false, reason: "bad-manifest" };
     }
     const sourceDirName = sourcePath.split(/[\\/]/).pop() || sourcePath;
-    // 判定单点 = classifyInstallManifest（rejectCore:true——本地不得自封内置；dev 树流维持消毒旧语义）
-    const classified = classifyInstallManifest(parsedManifest, sourceDirName, { rejectCore: true });
+    // 判定单点 = classifyInstallManifest（rejectEssential:true——本地不得自封重要型；dev 树流维持消毒旧语义）
+    const classified = classifyInstallManifest(parsedManifest, sourceDirName, { rejectEssential: true });
     if (!classified.ok) return { ok: false, reason: classified.reason };
     const { pluginId, version, name } = classified;
 

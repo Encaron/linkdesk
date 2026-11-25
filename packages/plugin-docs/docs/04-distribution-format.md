@@ -71,10 +71,10 @@ my-plugin/
 
 | Field | Meaning (the only source of truth) |
 |------|------|
-| `core: true` | **A UI guard against accidental deletion**—the uninstall button is hidden/disabled (the shell relies on it for basic interactions such as the settings page and the marketplace; delete it and the shell is crippled). **It is not a category and grants no behavioral privilege**—loading and install/uninstall take the same path |
+| `essential: true` | **A UI guard against accidental deletion**—hides the uninstall entry and nothing else. **Not a category, no behavioral privilege, and it MUST NOT participate in any update decision**—loading and install/uninstall take the same path. Only bundled plugins may declare it (local/third-party self-declaration is rejected at install) |
 | `distribution` | ⚠️ **Legacy field** (already annotated in the schema)—after flattening it no longer maps to any directory, and the install side always normalizes it to `user`. **Third-party plugins should not set it** |
 
-Wording discipline (hard constraint 11): don't frame it as two categories "builtin plugins vs. third-party plugins"—say "**plugins with core:true**" (purely a UI button-hiding mechanism against accidental deletion; at the API/command layer they can still be uninstalled or disabled) and "**plugins shipped with the shell**" (the bundled zip ones). **Current state in the repo:** only the two dev fixtures remain under the shell repo's `plugins/`; the 4 core:true plugins (`editor` `file-tree` `marketplace` `settings`) keep their source in **their own repos**; **shipped with the shell = the 6 zips in `bundled-plugins/`** (settings / plugin marketplace / language / base theme / file tree / editor)—the version ledger is `bundled-plugins.lock.json`. "Which ones are core:true" is not a list inside shell code; it is declared only by the zip and lock data (hard constraint 10).
+Wording discipline (hard constraint 11; three separate facts as of 2026-11-26): **bundled** = `seed: true` in `bundled-plugins.lock.json` (build-time fact; the batch of zips shipped with the app); **essential** = this flag (only controls whether the uninstall entry is shown); **updatable** = residence (the sole update criterion). Do not frame it as two categories "builtin plugins vs. third-party plugins"—say "**plugins declaring `essential`**" and "**plugins shipped with the app**". **Current state in the repo:** 6 bundled plugins = the 6 zips in `bundled-plugins/` (settings / plugin marketplace / language / base theme / file tree / editor), of which 4 declare `essential` (`editor` `file-tree` `marketplace` `settings`) and keep their source in **their own repos**; the version ledger is `bundled-plugins.lock.json`. Neither list is a literal in shell code; both are declared by the zip and lock data (hard constraint 10).
 
 **Plugin data directories (independent of the code roots):**
 
@@ -182,10 +182,10 @@ Author-side notes on install/uninstall/update/reinstall are in [02 plugin lifecy
 |------|------|
 | `.linkdesk-plugin` single-file zip (downloaded/extracted to `{userData}/plugins/<id>/`) | `.vsix` single file (downloaded/extracted to `~/.vscode/extensions/<id>/`) |
 | `{userData}/plugins/<id>/` install directory (flat, single root) | `~/.vscode/extensions/<id>/` |
-| `core: true` plugins can't be uninstalled (accidental-deletion guard) | `builtin/` built-in extensions |
+| Plugins declaring `essential`: no uninstall entry in the UI (accidental-deletion guard; command layer / deleting the folder still works) | `builtin/` built-in extensions |
 | Uninstall = delete directory + settle the ledger (really deleted); only source-tree app plugins move to `.disabled/` | Uninstall = delete files (not recoverable) |
 | `env.get(id).pluginDataDir` | `ExtensionContext.storagePath` |
-| `core: true` plugin shipping = `bundled-plugins/*.linkdesk-plugin` (**a first-launch seed**: boot only fills in what's missing and **never refreshes installed copies**; but **the box itself does refresh with the shell version**—before packaging, `sync:bundled` pulls each plugin's "latest released version") | Ships with app updates (built into the installer) |
+| **Shipped with the app** = `bundled-plugins/*.linkdesk-plugin` (unrelated to `essential`; **a first-launch seed**: boot only fills in what's missing and **never refreshes installed copies**; but **the box itself does refresh with the shell version**—before packaging, `sync:bundled` pulls each plugin's "latest released version") | Ships with app updates (built into the installer) |
 | `requires` **runtime** dependency orchestration ([02 §4](02-plugin-lifecycle.md)) | `extensionDependencies` resolved at install time |
 
 ---

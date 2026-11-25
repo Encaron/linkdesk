@@ -693,7 +693,7 @@ app.whenReady().then(async () => {
   // 账本 reconcile 才能同见这批包（"放 zip → 重启 → 出现"的启动语义）。失败不阻断（内部吞错）。
   await ingestPluginBundles();
   // E6#15c：首启自动装 bundled-plugins 发货夹 → userData/plugins/<id>/（内置 pre-bundle 随壳分发，
-  // 与第三方插件同一棵树——差异只剩 manifest.core:true）。与 ingest 同批（registerProtocol 后、
+  // 与第三方插件同一棵树——差异只剩 manifest.essential）。与 ingest 同批（registerProtocol 后、
   // 三表扫描前）——同见、同幂等；发货源保留为恢复备份。
   await installBundledPlugins();
   // E6#31a：启动清 {userData}/tmp 下载残留（单实例保证启动瞬间无在途下载 = *.part 半截 + 孤立 .linkdesk-plugin

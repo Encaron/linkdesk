@@ -86,8 +86,9 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
   }
 
   const m = plugin.manifest ?? {};
-  // E6#18a：core:true = 纯 UI 防误删旗标——只用于「不画卸载按钮」+「内置」分组徽标，无行为特权
-  const isCore = !!m.core;
+  // E6#18a / 2026-11-26 语义二分：essential = 纯 UI 防误删旗标——只用于「不画卸载按钮」（徽标文案保持「内置」，外观零变化），
+  // ⛔ 不参与更新判定（可更新只看住所 updatable）；`core` 已退役。
+  const isEssential = !!m.essential;
 
   return (
     <div className="ldk-plugin-detail">
@@ -96,14 +97,14 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
         <div className="ldk-pd-icon-container">
           {/* list() IPC 只序列化 7 字段（无 icon）——占位 codicon 兜底（E5.7#98） */}
           <span className="codicon codicon-symbol-misc ldk-pd-icon-codicon" />
-          {isCore && <span className="ldk-pd-icon-badge codicon codicon-star-full" />}
+          {isEssential && <span className="ldk-pd-icon-badge codicon codicon-star-full" />}
         </div>
 
         <div className="ldk-pd-header-details">
           <div className="ldk-pd-title-row">
             <h1 className="ldk-pd-name">{t(m.name ?? pluginId ?? "")}</h1>
             {m.version && <span className="ldk-pd-version">v{m.version}</span>}
-            {isCore && <span className="ldk-pd-badge ldk-pd-badge-core">{t("内置")}</span>}
+            {isEssential && <span className="ldk-pd-badge ldk-pd-badge-core">{t("内置")}</span>}
           </div>
           {m.author && (
             <p className="ldk-pd-subtitle"><span>{m.author}</span></p>
@@ -122,7 +123,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
         </div>
       )}
 
-      {/* ═══ Action Bar — E6#18a：core:true 只藏「卸载」钮（防误删旗标），禁用/启用照常（可禁）；
+      {/* ═══ Action Bar — E6#18a：essential 只藏「卸载」钮（防误删旗标），禁用/启用照常（可禁）；
           「不可卸载」不再是诚实文案（命令/接口层可卸）——藏钮即防误删机制，不画锁死声明 ═══ */}
       <div className="ldk-pd-action-bar">
         {disabled ? (
@@ -134,7 +135,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
             <button className="ldk-pd-btn ldk-pd-btn-disable" onClick={handleDisable} disabled={busy}>
               <span className="codicon codicon-circle-slash" /> {t("禁用")}
             </button>
-            {!isCore && (
+            {!isEssential && (
               <button className="ldk-pd-btn ldk-pd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
                 <span className="codicon codicon-trash" /> {t("卸载")}
               </button>

@@ -1,6 +1,6 @@
 # The plugin.json Spec
 
-> **2026-09-06 reconciliation against the implementation** (audit): flattened single root `plugins/<id>` (no builtin/user two-tier) · there is only one kind of plugin (`core:true` = an accidental-uninstall guard flag, not a category) · `distribution` = ⚠️ legacy field, do not fill it in.
+> **2026-09-06 reconciliation against the implementation** (audit): flattened single root `plugins/<id>` (no builtin/user two-tier) · three separate facts: **bundled** (lock `seed`) / **essential** (only controls uninstall-entry visibility) / **updatable** (residence only); `core` is retired · `distribution` = ⚠️ legacy field, do not fill it in.
 > 🔴 **Throughout this document, "the root" always means the root of the plugin's own repo**: plugin source lives in **its own repo**; the `plugins/` folder of the shell repo holds only two development fixtures.
 > Every bare path in this document (`plugin.json` / `src/…` / `resources/…`) is **relative to the plugin repo root** — do not go looking for a shipped plugin's source under the shell repo's `plugins/` (it is not there).
 > The single entry point for plugin metadata. One plugin = one folder + one `plugin.json` + one entry file.
@@ -47,7 +47,7 @@ my-plugin/
 
 | Field | Meaning | Who should fill it in |
 |------|------|:--|
-| `core: true` | **UI accidental-uninstall guard flag** — the uninstall button is hidden/disabled (the shell depends on it for baseline interactions such as the settings page and the plugin marketplace). **No behavioral privileges, not a category** | These official ones: `editor` `file-tree` `marketplace` `settings` |
+| `essential: true` | **UI accidental-uninstall guard flag** — hides the uninstall entry and nothing else (only bundled plugins may declare it; local/third-party self-declaration is rejected at install). **No behavioral privileges, not a category, and it MUST NOT participate in any update decision** | These official ones: `editor` `file-tree` `marketplace` `settings` |
 | `distribution` | ⚠️ **Legacy field** (already marked deprecated in the schema, do not fill it in) — it no longer maps to any directory and the install side always normalizes it to `user` | **Third parties must not fill this in** |
 
 ### Creating a plugin (third party, your own project root)
@@ -58,26 +58,26 @@ my-plugin/
   "name": "My Plugin",
   "version": "1.0.0",
   "entry": "src/index.tsx"
-  // Do not fill in core — an ordinary plugin the user can freely install and uninstall
+  // Do not fill in essential — an ordinary plugin the user can freely install and uninstall
   // Do not fill in distribution — a legacy field; once installed into the app it is always normalized to user
 }
 ```
 
 Build → `<id>.linkdesk-plugin` → the user installs it → `{userData}/plugins/<id>/` (see [04 §2](04-distribution-format.md)).
 
-### core:true official plugins (shipped with the shell)
+### essential official plugins (shipped with the app)
 
 ```jsonc
 // plugins/file-tree/plugin.json (actual state of the repo's single root)
 {
   "name": "File Tree",
   "version": "1.0.0",
-  "core": true,                // 🔥 uninstall guard — no uninstall button in the UI
+  "essential": true,           // 🔥 uninstall guard — no uninstall button in the UI (bundled != essential)
   "entry": "src/index.tsx"
 }
 ```
 
-> **Wording discipline (hard constraint 11):** "builtin / shipped with the shell" refers to that copy of `bundled-plugins/*.linkdesk-plugin` and the boot auto-install path, **not to a kind of plugin**. Say "a plugin with core:true", "a plugin shipped with the shell" — do not say "builtin plugins are…" as a category definition. An official plugin distributed through the marketplace is just as much an ordinary plugin when it does not set core — whether it is bundled is decided by whether it goes into bundled-plugins, not by the field.
+> **Wording discipline (hard constraint 11): three separate facts (decided 2026-11-26)** — ① **bundled**: `seed: true` in `bundled-plugins.lock.json` (a build-time fact; a plugin cannot declare itself bundled); ② **essential**: this field, which **only** controls whether the uninstall entry is shown; ③ **updatable**: residence (only plugins under `{userData}/plugins` are updatable) — the **sole** update criterion. Say "a plugin shipped with the app" for the lock batch; do not treat "builtin plugins" as a category. An official plugin distributed via the marketplace is an ordinary plugin even without `essential`.
 
 ---
 
@@ -224,7 +224,7 @@ Multi-theme package:
 |---|---|---|
 | `$schema` | `string` | JSON Schema reference path |
 | `pluginId` | `string` | 🔴 **The plugin's identity — forever immutable after publication** (VS Code's `publisher.name` is the counterpart). The install directory `{userData}/plugins/<pluginId>/`, the distribution file name `<pluginId>.linkdesk-plugin`, the marketplace catalog dedupe key, the uninstall tombstone key and update reconciliation all key off it. **Declaring it explicitly is strongly recommended**: without a declaration it falls back to the "project directory name", and repo names and local directory names are free-form — rename the directory and the identity changes with it, with **nothing ever reporting an error**. Charset `^[A-Za-z0-9][A-Za-z0-9._-]*$`, **plus three banned names** (see "The three identity bans" below). Rules and the empirical evidence behind them are in [16-naming-conventions](16-naming-conventions.md) |
-| `core` | `boolean` | `true` = **UI accidental-uninstall guard flag** (matching the newer wording in the field table above) — the uninstall button on the detail page is hidden/disabled; **no behavioral privileges and not a category**: the API/command layers can still uninstall and disable it, and uninstalling writes a `removed` tombstone. Defaults to `false` |
+| `essential` | `boolean` | `true` = **UI accidental-uninstall guard flag** (matching the newer wording in the field table above) — the uninstall entry in the detail page and list is hidden; **no behavioral privileges, not a category, and it MUST NOT participate in any update decision**: the API/command layers can still uninstall and disable it, and uninstalling writes a `removed` tombstone. Only bundled plugins may declare it. Defaults to `false` |
 | `distribution` | `string` | ⚠️ **Legacy field** (since the single-root flattening on 2026-09-05 it no longer maps to any directory; the install side always normalizes it to `user`; already marked deprecated in the schema). **Third parties must not fill this in** |
 | `factoryRole` | `string` | System slot role: `"settings"` \| `"marketplace"`. **Filling it in = form 2 (replace / switch into the slot); omitting it = form 1 (coexist as an ordinary view plugin)** — see "The `factoryRole` field in depth" below |
 | `iconSource` | `string` | `"codicon"` (default) / `"svg"` / `"url"` / `"lucide"` / `"shared"` — `"shared"` references an IconRegistry shared icon **by name** (your own `contributes.icons` key, or a host default such as `app.group-*`); rendering needs the consumer to inject the shared-icons snapshot (settings nav does today) |
@@ -330,16 +330,16 @@ Plugin-level activation ordering — declares which plugins must be activated be
 - **Want coexistence → do not fill it in.** Example: a third party builds an entirely new marketplace UI; an extra icon of their own appears next to the official one in the icon bar, clicking it shows their UI, pulling the same data as the official one
 - **Want replacement → fill it in.** Example: declaring `factoryRole:"marketplace"` → the settings page shows a "Plugin Marketplace" group + a switch button, and once switched, the icon/content become yours
 
-**Form 2 implementation details** (already shipped; reference entities `plugins/settings` (the official core:true settings set) + `10-building-a-settings-plugin.md`):
+**Form 2 implementation details** (already shipped; reference entities `plugins/settings` (the official essential settings set) + `10-building-a-settings-plugin.md`):
 
-- **① One-to-many slots**: several plugins declaring the same `factoryRole` = **legitimately coexisting**; all are collected as slot candidates (no more "first one wins"). The **default** (when the user has never switched / on open) = first-registered stable order (core:true has no behavioral privilege and does not grab the default — registration order does not rely on a coincidence of scan order). Multiple coexisting candidates are no longer silent — the shell console fail-louds, naming every candidate + the default (re-emitted only when the candidate set for that role changes).
+- **① One-to-many slots**: several plugins declaring the same `factoryRole` = **legitimately coexisting**; all are collected as slot candidates (no more "first one wins"). The **default** (when the user has never switched / on open) = first-registered stable order (essential has no behavioral privilege and does not grab the default — registration order does not rely on a coincidence of scan order). Multiple coexisting candidates are no longer silent — the shell console fail-louds, naming every candidate + the default (re-emitted only when the candidate set for that role changes).
 - **② Active set = the user's switch choice, persisted to disk** (survives restarts). The public enumeration/switching surface is `window.linkdesk.factorySlots.*` (a generic enumeration surface, role-agnostic and taking a role parameter; the settings role additionally has the compatible alias `window.linkdesk.settings.*`, which forwards everything as-is internally):
 
   | Method | Purpose |
   |------|------|
   | `factorySlots.listRoles()` | All filled role names (registration order) — the settings page enumerates roles first, then calls list(role) to judge the candidate count |
   | `factorySlots.list(role)` | All candidates for that role `[{ pluginId, title, viewId? }]` — title = the raw display name, viewId = that set's `contributes.floatingPanel.viewId` (undefined if not declared) |
-  | `factorySlots.getActive(role)` | The active set's plugin ID — reads the persisted value; with no record / after uninstall it falls back to the default (the first-registered candidate, no core preference) |
+  | `factorySlots.getActive(role)` | The active set's plugin ID — reads the persisted value; with no record / after uninstall it falls back to the default (the first-registered candidate, no essential preference) |
   | `factorySlots.setActive(role, pluginId)` | Switch the active set — validates the candidate, then persists; **a non-candidate fail-louds with an error** |
 
 - **③ Switch entry point = a role group on the settings page (appearing dynamically)**: when the settings UI opens it enumerates `listRoles()` → for every **non-settings-plugin role** it calls `list(role)` → **a group is created only when there are ≥2 candidates** (a single candidate makes switching meaningless). Group shape = the switch button on top (listing every candidate for that role, the active one highlighted) + the active set's own configuration below; it reuses a group of the same name where possible (finding the active candidate's own configuration group by pluginId), and only creates a new one otherwise; if the active set has no settings, it shows an empty state. Switching = `setActive` → refetch data → the configuration follows the active set. Switching your settings plugin's **own role** (settings) = the button in the generic area at the top (see `10-building-a-settings-plugin.md`).
@@ -352,7 +352,7 @@ Plugin-level activation ordering — declares which plugins must be activated be
 | | Form 1 (coexist) | Form 2 (replace) |
 |---|---|---|
 | Third-party declaration | Do not fill in `factoryRole` — an ordinary view plugin (`appearsIn.iconBar` + its own view + `pluginManager.*` data) | Fill in `factoryRole: "marketplace"` |
-| Icon bar | Your own icon sits side by side next to the official Marketplace; the two marketplaces are fully independent | Only the **active set's** icon is shown (default = the first-registered candidate, no core preference); inactive sets are hidden |
+| Icon bar | Your own icon sits side by side next to the official Marketplace; the two marketplaces are fully independent | Only the **active set's** icon is shown (default = the first-registered candidate, no essential preference); inactive sets are hidden |
 | Settings page | No notion of slots | Shows a "Plugin Marketplace" role group (2 candidates) + a switch button |
 | User switching | None — click whichever you want | Switch to your Map Store → the icon/open behavior all become yours, persisted across restarts |
 | Data | The same `pluginManager.*` API, each building its own UI | The same data, with the UI swapped for the active set |

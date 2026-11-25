@@ -379,14 +379,14 @@ export interface PluginUpdateCheckResult {
 }
 
 /** R4-1.2（I16·正典 09 §三·补2）：本地安装失败回执 reason——五类封闭集合 */
-export type PluginLocalInstallReason = "bad-manifest" | "unsafe-id" | "core-forbidden" | "exists" | "io";
+export type PluginLocalInstallReason = "bad-manifest" | "unsafe-id" | "essential-forbidden" | "exists" | "io";
 
 /**
  * R4-1.2（I16·正典 09 §三·补2）：`pluginManager.installFromDirectory(path)` 回执。
  * 输入 = 含 plugin.json 的单插件文件夹，或 .linkdesk-plugin 离线包（解压走包安装流同一路）；
  * 落盘 = {userData}/plugins/<pluginId>（用户安装家，与网络安装同路：账本 → 注册 → lifecycle，⛔ 不旁路）。
  * `reason` 封闭五类（09 正典）：bad-manifest＝plugin.json 缺失/不可解析/缺 version；unsafe-id＝pluginId
- * 形状不合法（SAFE_PLUGIN_ID）或撞宿主伪身份；core-forbidden＝本地不得自封内置；exists＝同 id 已装
+ * 形状不合法（SAFE_PLUGIN_ID）或撞宿主伪身份；essential-forbidden＝本地/第三方不得自封重要型（只有随包件可声明）；exists＝同 id 已装
  * （调用方确认覆盖——先卸载再装）；io＝复制/解压/磁盘失败。成功面附带 version/parked/needRestart 透传。
  */
 export interface PluginLocalInstallResult {
@@ -465,8 +465,8 @@ export interface LicenseEntitlement {
 }
 
 /** Disabled/uninstalled list entry — the serialized shape of loader getDisabledPluginInfo/getUninstalledPluginInfo (a further subset of PluginListSubset)
- *  E6#30.5b: the core flag passes through — list() EXCLUDES disabled plugins; the disabled-state detail page's uninstall button honors E6#18 "no uninstall button on the detail page for core:true"
- *  and core can only be obtained here (read from the cached manifest; a purely additive optional field, zero regression).
+ *  E6#30.5b: the essential flag passes through — list() EXCLUDES disabled plugins; the disabled-state detail page's uninstall button honors E6#18 "no uninstall button on the detail page for essential:true"
+ *  and essential can only be obtained here (read from the cached manifest; a purely additive optional field, zero regression).
  *  E6#106: + four icon fields (icon/iconSource/marketIcon/marketIconSource) — the **same precedent as #65a adding an icon channel to list()**.
  *  Disabled rows previously had to fall back to the catalog entry for art, but the catalog entry's icon had changed to an absolute URL (the not-installed shape) ⇒ a disabled row
  *  (even though the plugin is still on disk) would silently start pulling remote art, breaking offline. After the channel was added the resolution order is unified with the other positions: installed first → catalog → default block.
@@ -476,7 +476,7 @@ export interface PluginInfoEntry {
   name: string;
   description?: string;
   version?: string;
-  core?: boolean;
+  essential?: boolean;
   /** E6#73j (G6): the same residence criterion as `PluginListEntry.updatable` — being disabled **does not change residence** (disable only records a list entry,
    *  the catalog stays in place) ⇒ a disabled plugin in the userData home can still be updated, one in the app tree cannot. */
   updatable?: boolean;
@@ -498,7 +498,7 @@ export interface PluginListSubset {
   name?: string;
   description?: string;
   version?: string;
-  core?: boolean;
+  essential?: boolean;
   author?: string;
   statusBar?: PluginManifest["statusBar"];
   contributes?: PluginManifest["contributes"];

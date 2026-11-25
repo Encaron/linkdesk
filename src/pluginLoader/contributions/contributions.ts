@@ -343,7 +343,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
  * 赋值绑死在 `manifest.entry` 上——entryless 插件
  * （纯 views/commands 贡献）重装后 views 注册兜底链断裂（❌ view 未找到匹配模块）。
  * 契约：任何插件，只要能被卸载，重装就必须同 session 立即恢复全部贡献——
- * 与插件形状无关（glob 内/外、entry 有无、core 标志全不豁免，core:true 只是默认值）。
+ * 与插件形状无关（glob 内/外、entry 有无、essential 标志全不豁免，essential 只是默认值）。
  * dev: resolvePath IPC 拼 /@fs/{abs}；prod: linkdesk://{pluginId} 协议（无需查盘）。
  * 失败 reject——各调用点保留自己的错误语义（toast / warn+continue / 静默跳过）。
  */

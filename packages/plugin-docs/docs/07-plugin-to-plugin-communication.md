@@ -238,7 +238,7 @@ The LinkDesk model:
 
 - **Pipes are built once by the core.** `events.emit`, `events.on`, `p2p.send`, `p2p.on`, `registerCommand`, `serial.onData` — these functions belong to the core, not to any plugin.
 - **Channel names/command names are picked by the plugin.** `'serial:rawData'`, `'sbq-protocol:parsed'` — just strings; the core does not know what they mean.
-- **A new data source = no core changes needed.** A new plugin calls the same `events.emit('new-channel-name', data)` line, and the core code changes by zero lines.
+- **A new data source = no essential changes needed.** A new plugin calls the same `events.emit('new-channel-name', data)` line, and the core code changes by zero lines.
 
 **The core's workload is O(1), not O(N).** That is what plugin freedom means.
 

@@ -169,7 +169,7 @@ const FACTS = {
     layout:
       "配方在 `themes/defaults.json`（**主题配方只住 `themes/`**）。\n一个文件里装着亮色与暗色两套 colorway，但 `contributes.themes` 只声明了一条 —— 这是现状，不是笔误。",
     notes: [
-      "🔴 **未决**：本仓 README 写「出厂自带（`core: true`）——不显示卸载按钮」，但 `plugin.json` 里**没有 `core` 字段** —— 照当前清单，卸载按钮**是显示的**。要么补字段、要么改 README（改了要发版）。",
+      "🔴 **可卸载（正确形态）**：随包出厂 ≠ 不可卸载——本仓不声明 `essential`，所以卸载按钮**是显示的**（2026-11-26 语义二分：随包 / 重要 / 可更新 三事实分家；旧 `core` 旗标已退役）。",
       "本仓**没有 `resources/`**、`plugin.json` 里**没有 `icon`**（市场侧走默认块）。",
       "配方 json 的顶层键是 `id / name / type / colorways`（老形态，用 `type` 不用 `appearance`）。",
     ],

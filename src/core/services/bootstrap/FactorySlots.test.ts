@@ -2,7 +2,7 @@
  * FactorySlots 单元测试——E5.8#41.11 一槽多插件：initialize/getPluginIds/getDefaultPluginId/hasSlot
  * + 重复 factoryRole fail-loud + 卸载后槽位刷新 + E5.8#41.12 活动套 getActive/setActive（落盘持久化）。
  *
- * 覆盖：单槽 / 多角色多槽 / 多候选按注册序落槽（E6#18b：core:true 不优先，默认=首声明）/
+ * 覆盖：单槽 / 多角色多槽 / 多候选按注册序落槽（E6#18b：essential 不优先，默认=首声明）/
  * 重复声明 fail-loud 点名两 pluginId（每候选集合只喷一次）/ 卸载后 refreshFromPlugins 槽位刷新 /
  * 活动套四场景（无记录回退默认 / setActive 落盘重启保持 / 非候选 fail-loud 拒绝 / 激活套卸载候选漂移回退）。
  *
@@ -41,13 +41,13 @@ import { FactorySlots } from "./FactorySlots";
 import type { SlotPluginEntry } from "./FactorySlots";
 
 // 窄化 fixture——只喂 FactorySlots 消费的字段（E5.7#98；完整 PluginManifest 字段几十个，测试不需要）
-const entry = (pluginId: string, factoryRole?: string, core?: boolean): SlotPluginEntry => ({
+const entry = (pluginId: string, factoryRole?: string, essential?: boolean): SlotPluginEntry => ({
   pluginId,
   manifest: {
     name: `Demo ${pluginId}`,
     version: "1.0.0",
     ...(factoryRole ? { factoryRole } : {}),
-    ...(core ? { core } : {}),
+    ...(essential ? { essential } : {}),
   } as SlotPluginEntry["manifest"],
 });
 
@@ -73,21 +73,21 @@ describe("FactorySlots — 一对多（E5.8#41.11）", () => {
     expect(slots.getDefaultPluginId("marketplace")).toBe("demo-market");
   });
 
-  it("多候选按注册序落槽——后声明的 core:true 不再优先当选默认（E6#18b：core:true 无行为特权）", () => {
+  it("多候选按注册序落槽——后声明的 essential 不再优先当选默认（E6#18b：essential 无行为特权）", () => {
     const slots = new FactorySlots();
     slots.initialize([
       entry("demo-settings-b", "settings"), // 非 core，先声明
-      entry("demo-settings-a", "settings", true), // core:true，后声明
+      entry("demo-settings-a", "settings", true), // essential，后声明
     ]);
     // 注册序直落（不排序）——默认 = 首声明（非 core 的 b），core 的 a 排后
     expect(slots.getPluginIds("settings")).toEqual(["demo-settings-b", "demo-settings-a"]);
     expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-b"); // 注册序首声明，core 不优先
   });
 
-  it("多候选 core 先声明——首声明（恰为 core）仍当选默认（顺序与 core 无关）", () => {
+  it("多候选 essential 先声明——首声明（恰为 essential）仍当选默认（顺序与 essential 无关）", () => {
     const slots = new FactorySlots();
     slots.initialize([
-      entry("demo-settings-x", "settings", true), // core:true，先声明
+      entry("demo-settings-x", "settings", true), // essential，先声明
       entry("demo-settings-y", "settings"), // 非 core，后声明
     ]);
     expect(slots.getPluginIds("settings")).toEqual(["demo-settings-x", "demo-settings-y"]);
@@ -138,13 +138,13 @@ describe("FactorySlots — 一对多（E5.8#41.11）", () => {
   it("listRoles 随 refreshFromPlugins 刷新——卸载后角色消失", () => {
     const slots = new FactorySlots();
     manifestsMock.mockReturnValue([
-      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", essential: true } },
       { pluginId: "demo-market", manifest: { name: "Demo Market", version: "1.0.0", factoryRole: "marketplace" } },
     ]);
     slots.refreshFromPlugins();
     expect(slots.listRoles()).toEqual(["settings", "marketplace"]);
     manifestsMock.mockReturnValue([
-      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", essential: true } },
     ]);
     slots.refreshFromPlugins();
     expect(slots.listRoles()).toEqual(["settings"]);
@@ -161,14 +161,14 @@ describe("FactorySlots — 一对多（E5.8#41.11）", () => {
   it("卸载后槽位刷新——refreshFromPlugins 从已加载插件重扫（插件进出自动重扫）", () => {
     const slots = new FactorySlots();
     manifestsMock.mockReturnValue([
-      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", essential: true } },
       { pluginId: "demo-settings-b", manifest: { name: "Demo B", version: "1.0.0", factoryRole: "settings" } },
     ]);
     slots.refreshFromPlugins();
     expect(slots.getPluginIds("settings")).toEqual(["demo-settings-a", "demo-settings-b"]);
     // 卸载 demo-settings-b → 重扫后只剩一个
     manifestsMock.mockReturnValue([
-      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", essential: true } },
     ]);
     slots.refreshFromPlugins();
     expect(slots.getPluginIds("settings")).toEqual(["demo-settings-a"]);
@@ -182,7 +182,7 @@ describe("FactorySlots — 活动套（E5.8#41.12）", () => {
     for (const k of Object.keys(pluginStateMock.store)) delete pluginStateMock.store[k];
   });
 
-  it("无持久化记录——getActive 回退注册序首声明（E6#18b：不 core 优先；此例首声明恰为 core）", () => {
+  it("无持久化记录——getActive 回退注册序首声明（E6#18b：不 essential 优先；此例首声明恰为 essential）", () => {
     const slots = new FactorySlots();
     slots.initialize([entry("demo-settings-a", "settings", true), entry("demo-settings-b", "settings")]);
     expect(slots.getActive("settings")).toBe("demo-settings-a"); // 首声明（非 core 偏袒）

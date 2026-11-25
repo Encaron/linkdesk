@@ -144,7 +144,19 @@ export interface PluginManifest {
   pluginId?: string;
   /** @deprecated Use declarative fields such as contributes + tabBehavior instead — contribution points are detected from the manifest's actual declaration fields (Modeled after VS Code contributes) */
   type?: PluginType;
-  core?: boolean;
+  /**
+   * 「重要型」——**只**表示「插件详情/已装列表不显示卸载按钮」（防小白误删）。
+   *
+   * 语义边界（2026-11-26 用户拍板，`docs/04-软件更新/待抉择池/插件语义-随包与重要二分/00-提案.md`）：
+   *   - 与「随包」是两件事：随包 = 构建期事实（`bundled-plugins.lock.json` 的 `seed`），本字段**不声明**随包；
+   *   - 与「可更新」正交：能不能更新只由住所 `updatable` 决定，本字段 ⛔ 不得参与更新判定；
+   *   - 只允许随包件声明：本地/目录安装声明 `essential:true` ⇒ 拒装（不得自封重要型）。
+   *   - 无任何其它特权：不抢默认槽位、不禁用、不定义权限；命令层卸载与文件夹删除照常允许。
+   *
+   * 🔴 旧名 `core` 已退役（2026-11-26 硬切，无兼容别名）——它把「随包/重要」混成一个旗标，
+   *    被市场误当作"不能更新"用过一次（「全部更新」谎报已是最新，marketplace 1.4.39 修）。
+   */
+  essential?: boolean;
   /** Plugin role — governs loading strategy only. view = has a UI component, data = pure data. Auto-derived when omitted */
   pluginRole?: "view" | "data";
   name: string;
@@ -165,7 +177,7 @@ export interface PluginManifest {
   tabBehavior?: TabBehavior;
   /** System slot role — declares which system-level function this plugin fills. settings = the settings page, marketplace = the plugin marketplace.
    *  Multiple plugins with the same role legitimately coexist (one-to-many, all collected into the slot candidates); default = the stable order of first registration
-   *  (E6#18b: core:true carries no behavioral privilege and does not grab the default); the user's switched active suite persists.
+   *  (E6#18b: `essential` carries no behavioral privilege and does not grab the default); the user's switched active suite persists.
    *  E5.7#65: open string — third parties may declare new role names with zero shell changes (FactorySlots looks up by string). */
   factoryRole?: string;
   statusBar?: StatusBarItem[];

@@ -33,7 +33,7 @@ class EnvService {
 
   /**
    * 随壳发货的插件安装包夹——E6#15c：bundled-plugins/*.linkdesk-plugin（2026-09-05 塌平单根：
-   * 发货夹直接放 zip，无 builtin/user 子目录层——core:true 与第三方插件同一棵树）。
+   * 发货夹直接放 zip，无 builtin/user 子目录层——essential 插件与第三方插件同一棵树）。
    * 内置插件 pre-bundle 独立化后的发货形态（electron-builder extraResources 原样搬）：
    *   dev：<repo>/bundled-plugins/（仓库内暂存 = 发货源，boot 自动装同走此夹，dev/prod 一致）
    *   prod：<resources>/bundled-plugins/（打包搬入）
@@ -47,7 +47,7 @@ class EnvService {
 
   /**
    * 用户安装包代码根——E6#7b 新建：{userData}/plugins/<id>/（2026-09-05 塌平单根：平铺，无 builtin/user
-   * 子目录层——core:true 发货插件与第三方手动装插件同根并列）。.linkdesk-plugin 解压目标；
+   * 子目录层——essential 发货插件与第三方手动装插件同根并列）。.linkdesk-plugin 解压目标；
    * 与只读 appPluginsDir 分离（AI执行守则 陷阱 1「不要混」），也与下面 pluginsRootDir
    * （linkdesk/plugins/<id>/data 插件私有数据根）不同——代码根 vs 数据根勿混淆。
    */

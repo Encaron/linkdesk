@@ -81,7 +81,7 @@ type DisabledPluginInfo = {
   name: string;
   description?: string;
   version?: string;
-  core?: boolean;
+  essential?: boolean;
   updatable: boolean;
   icon?: PluginManifest["icon"];
   iconSource?: PluginManifest["iconSource"];
@@ -90,7 +90,7 @@ type DisabledPluginInfo = {
 };
 
 /** 获取禁用插件的基本信息（在 plugins/.disabled/ 下）
- *  E6#30.5b：带 core 旗标——详情页禁用分支卸载钮守 E6#18「core:true 详情页不画」（缓存 manifest 内含 core）
+ *  E6#30.5b：带 essential 旗标——详情页禁用分支卸载钮守 E6#18「essential:true 详情页不画」（缓存 manifest 内含 essential）
  *  E6#106：带图标四字段——禁用行的展示图数据通道（同 E6#65a 给 list() 补图标通道的同一先例）。
  *    禁用插件**仍在盘上**（disable 只记名单、目录原地不动），本地包内图标可达；不补这四个字段，禁用行
  *    只能退到目录条目取图，而目录条目的图标是「未装态」形态（绝对 URL）⇒ **断网时禁用行裂图**。 */
@@ -109,7 +109,7 @@ export function getDisabledPluginInfo(): DisabledPluginInfo[] {
         name: cached.name,
         description: cached.description,
         version: cached.version,
-        core: cached.manifest?.core,
+        essential: cached.manifest?.essential,
         updatable,
         icon: cached.manifest?.icon,
         iconSource: cached.manifest?.iconSource,
@@ -126,7 +126,7 @@ export function getDisabledPluginInfo(): DisabledPluginInfo[] {
         name: m.name || pluginId,
         description: m.description,
         version: m.version,
-        core: m.core,
+        essential: m.essential,
         updatable,
         icon: m.icon,
         iconSource: m.iconSource,

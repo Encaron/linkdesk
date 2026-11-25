@@ -8,7 +8,7 @@
  * E2c #19e。E5.8#41.11（Phase 8.2 方案 A）：**一槽多插件**——`Map<FactoryRole, string[]>`。
  * 多个插件声明同一 factoryRole = **合法并存**（形态二进槽，设计见 工厂角色并存 档案）：
  *   - 候选全收——不再静默 first-wins（旧实现 `if (!has) set` = 两个设置插件谁先扫到谁赢 = #41.5 同碰撞类隐患）
- *   - 默认 = 注册序首声明（E6#18b：**不做 core 优先排序**——core:true 无行为特权，只剩 UI 藏钮语义；
+ *   - 默认 = 注册序首声明（E6#18b：**不做 essential 优先排序**——essential 无行为特权，只剩 UI 藏钮语义；
  *     候选按注册序落槽，首声明当选默认，激活套由 getActive 持久化优先）
  *   - 多候选 fail-loud 诊断点名全部候选 + 默认（对标 #24.6 失败必出声；每候选集合变化才重喷一次）
  * 路由停靠点：**#41.11 消费方全走 `getDefaultPluginId`**（注册序首声明；E6#18b 后无 core 偏袒）——
@@ -62,7 +62,7 @@ export class FactorySlots {
 
   /**
    * 扫描所有已加载插件，自动填充插槽。
-   * 一对多：每角色收集全部候选，按注册序落槽（E6#18b：不做 core 优先排序——core:true 无行为特权，
+   * 一对多：每角色收集全部候选，按注册序落槽（E6#18b：不做 essential 优先排序——essential 无行为特权，
    * 默认 = 首声明；激活套优先由 getActive 读持久化）。多候选并存合法——但默认解析显式 fail-loud
    * 出声（对标 #24.6 失败必出声，不静默抢椅）。必须在插件加载完成后、首次消费前调用。
    */
@@ -84,7 +84,7 @@ export class FactorySlots {
           this._diagnosedSig.set(role, sig);
           const names = candidates.join(" / ");
           console.error(
-            `[FactorySlots] 角色 "${role}" 多候选并存：${names}。默认 = "${candidates[0]}"（注册序首声明；core:true 不优先——并存合法，激活套占槽、非激活套图标隐藏），用户可在设置 UI 切换激活套。`
+            `[FactorySlots] 角色 "${role}" 多候选并存：${names}。默认 = "${candidates[0]}"（注册序首声明；essential 不优先——并存合法，激活套占槽、非激活套图标隐藏），用户可在设置 UI 切换激活套。`
           );
         }
       }

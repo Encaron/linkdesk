@@ -37,9 +37,9 @@ import { revertThemeIfCurrent, revertLanguageIfCurrent, reapplyThemeAfterUnload 
 /**
  * 取可变更插件 manifest——未找到抛错（disable/uninstall 共用前置守卫，E5.8#1c 去重）。
  * action 用于错误文案（"禁用"/"卸载"）。
- * E6#18a：**不再因 manifest.core 拒绝**——core:true = 纯 UI 防误删旗标（详情页藏钮），无行为特权，
+ * E6#18a：**不再因 manifest.essential 拒绝**——essential = 纯 UI 防误删旗标（详情页藏钮），无行为特权，
  * API/命令层可卸可禁（卸完写 removed 墓碑，见 uninstallPlugin userData 分支）。UI 藏钮在
- * PluginDetailPoolView（isCore 不画卸载钮）。
+ * PluginDetailPoolView（isEssential 不画卸载钮）。
  * E5.8#15：回退 _pendingPlugins——缺依赖挂起（连带卸载等依赖回归）的插件也可禁用/卸载
  * （禁用优先语义在操作层闭环：连带的消费方被显式禁用 → 不被依赖出现事件自动激活）。
  */
@@ -128,7 +128,7 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
 /**
  * 卸载插件：userData 家 = 目录真删 + 账本 removed 墓碑（E6#18c）；app 树 = 移 .disabled/ →
  * 从 viewRegistry 移除 → 持久化。如果插件之前被禁用，从禁用列表清理（卸载优先级高于禁用）。
- * E6#18a：core:true 不再被硬闸拦（可卸可禁）——UI 藏钮防误删，命令/接口层放行。
+ * E6#18a：essential 不再被硬闸拦（可卸可禁）——UI 藏钮防误删，命令/接口层放行。
  *
  * E6#73m K1：**进 job 表**（18 档 §三 K 第 1 行）——此前卸载全程零输出，一个几万文件的插件卸起来
  * 界面一个字都没有，用户只能猜是不是卡死了。现在与安装共用同一张表、面板同一段「进行中」，

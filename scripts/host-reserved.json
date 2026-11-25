@@ -184,6 +184,15 @@
       "replacedBy": "theme.resetMix（外观模式行齿轮菜单；src/core/commands/input-bindings/shellMenus.ts:128 when settingKey=='app.appearanceMode'）",
       "landing": "无落点（配置键整格删除；入口改为 theme.resetMix 齿轮菜单）",
       "approvedBy": "用户 · 2026-11-24（v0.2.62 实机反馈「复位按钮在最底部、默认置灰、点了没反应」→ 撤行改齿轮菜单，已发版）"
+    },
+    {
+      "name": "core",
+      "kind": "manifestField",
+      "since": "2026-11-26",
+      "why": "插件语义二分（2026-11-26 用户拍板）：core 一个旗标同时被读成「随包/内置/不可卸载」，市场据此判过更新（「全部更新」谎报已是最新）。三事实分家——随包＝lock seed、重要＝essential（只影响卸载入口可见性）、可更新＝住所 updatable；core 整删、无兼容别名。",
+      "replacedBy": "essential",
+      "landing": "src/core/api/types.ts（essential 字段注释记退役）＋ docs/04-软件更新/待抉择池/插件语义-随包与重要二分/00-提案.md",
+      "approvedBy": "用户 · 2026-11-26"
     }
   ]
 }

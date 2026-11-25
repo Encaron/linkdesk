@@ -942,7 +942,6 @@
     "contributes.titleBar.right[].when": [],
     "contributes.views": [],
     "contributes.viewsContainers": [],
-    "core": [],
     "cssVars": [],
     "description": [],
     "distribution": [
@@ -951,6 +950,7 @@
     ],
     "docs": [],
     "entry": [],
+    "essential": [],
     "factoryRole": [],
     "file": [],
     "i18n": [],

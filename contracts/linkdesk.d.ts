@@ -2485,7 +2485,19 @@ export interface PluginManifest {
     pluginId?: string;
     /** @deprecated Use declarative fields such as contributes + tabBehavior instead — contribution points are detected from the manifest's actual declaration fields (Modeled after VS Code contributes) */
     type?: PluginType;
-    core?: boolean;
+    /**
+     * 「重要型」——**只**表示「插件详情/已装列表不显示卸载按钮」（防小白误删）。
+     *
+     * 语义边界（2026-11-26 用户拍板，`docs/04-软件更新/待抉择池/插件语义-随包与重要二分/00-提案.md`）：
+     *   - 与「随包」是两件事：随包 = 构建期事实（`bundled-plugins.lock.json` 的 `seed`），本字段**不声明**随包；
+     *   - 与「可更新」正交：能不能更新只由住所 `updatable` 决定，本字段 ⛔ 不得参与更新判定；
+     *   - 只允许随包件声明：本地/目录安装声明 `essential:true` ⇒ 拒装（不得自封重要型）。
+     *   - 无任何其它特权：不抢默认槽位、不禁用、不定义权限；命令层卸载与文件夹删除照常允许。
+     *
+     * 🔴 旧名 `core` 已退役（2026-11-26 硬切，无兼容别名）——它把「随包/重要」混成一个旗标，
+     *    被市场误当作"不能更新"用过一次（「全部更新」谎报已是最新，marketplace 1.4.39 修）。
+     */
+    essential?: boolean;
     /** Plugin role — governs loading strategy only. view = has a UI component, data = pure data. Auto-derived when omitted */
     pluginRole?: "view" | "data";
     name: string;
@@ -2506,7 +2518,7 @@ export interface PluginManifest {
     tabBehavior?: TabBehavior;
     /** System slot role — declares which system-level function this plugin fills. settings = the settings page, marketplace = the plugin marketplace.
      *  Multiple plugins with the same role legitimately coexist (one-to-many, all collected into the slot candidates); default = the stable order of first registration
-     * ( core:true carries no behavioral privilege and does not grab the default); the user's switched active suite persists.
+     * ( `essential` carries no behavioral privilege and does not grab the default); the user's switched active suite persists.
      * open string — third parties may declare new role names with zero shell changes (FactorySlots looks up by string). */
     factoryRole?: string;
     statusBar?: StatusBarItem[];
@@ -2896,7 +2908,7 @@ export interface PluginListSubset {
     name?: string;
     description?: string;
     version?: string;
-    core?: boolean;
+    essential?: boolean;
     author?: string;
     statusBar?: PluginManifest["statusBar"];
     contributes?: PluginManifest["contributes"];
@@ -2986,13 +2998,13 @@ export interface PluginInstallResult {
     cancelled?: boolean;
 }
 /** R4-1.2（I16·正典 09 §三·补2）：本地安装失败回执 reason——五类封闭集合 */
-export type PluginLocalInstallReason = "bad-manifest" | "unsafe-id" | "core-forbidden" | "exists" | "io";
+export type PluginLocalInstallReason = "bad-manifest" | "unsafe-id" | "essential-forbidden" | "exists" | "io";
 /**
  * R4-1.2（I16·正典 09 §三·补2）：`pluginManager.installFromDirectory(path)` 回执。
  * 输入 = 含 plugin.json 的单插件文件夹，或 .linkdesk-plugin 离线包（解压走包安装流同一路）；
  * 落盘 = {userData}/plugins/<pluginId>（用户安装家，与网络安装同路：账本 → 注册 → lifecycle，⛔ 不旁路）。
  * `reason` 封闭五类（09 正典）：bad-manifest＝plugin.json 缺失/不可解析/缺 version；unsafe-id＝pluginId
- * 形状不合法（SAFE_PLUGIN_ID）或撞宿主伪身份；core-forbidden＝本地不得自封内置；exists＝同 id 已装
+ * 形状不合法（SAFE_PLUGIN_ID）或撞宿主伪身份；essential-forbidden＝本地/第三方不得自封重要型（只有随包件可声明）；exists＝同 id 已装
  * （调用方确认覆盖——先卸载再装）；io＝复制/解压/磁盘失败。成功面附带 version/parked/needRestart 透传。
  */
 export interface PluginLocalInstallResult {
@@ -3006,8 +3018,8 @@ export interface PluginLocalInstallResult {
     parked?: boolean;
 }
 /** Disabled/uninstalled list entry — the serialized shape of loader getDisabledPluginInfo/getUninstalledPluginInfo (a further subset of PluginListSubset)
- * the core flag passes through — list() EXCLUDES disabled plugins; the disabled-state detail page's uninstall button honors  "no uninstall button on the detail page for core:true"
- *  and core can only be obtained here (read from the cached manifest; a purely additive optional field, zero regression).
+ * the essential flag passes through — list() EXCLUDES disabled plugins; the disabled-state detail page's uninstall button honors  "no uninstall button on the detail page for essential:true"
+ *  and essential can only be obtained here (read from the cached manifest; a purely additive optional field, zero regression).
  * + four icon fields (icon/iconSource/marketIcon/marketIconSource) — the **same precedent as  adding an icon channel to list()**.
  *  Disabled rows previously had to fall back to the catalog entry for art, but the catalog entry's icon had changed to an absolute URL (the not-installed shape) ⇒ a disabled row
  *  (even though the plugin is still on disk) would silently start pulling remote art, breaking offline. After the channel was added the resolution order is unified with the other positions: installed first → catalog → default block.
@@ -3017,7 +3029,7 @@ export interface PluginInfoEntry {
     name: string;
     description?: string;
     version?: string;
-    core?: boolean;
+    essential?: boolean;
     /** (G6): the same residence criterion as `PluginListEntry.updatable` — being disabled **does not change residence** (disable only records a list entry,
      *  the catalog stays in place) ⇒ a disabled plugin in the userData home can still be updated, one in the app tree cannot. */
     updatable?: boolean;
@@ -3154,7 +3166,7 @@ export interface PluginsAPI {
          * R4-1.2（I16·正典 09 §三·补2）：本地安装——含 plugin.json 的单插件文件夹或 .linkdesk-plugin 离线包，
          * 复制进 {userData}/plugins/<pluginId> → 账本 → 注册 → lifecycle（与网络安装同一路，⛔ 不旁路）。
          * 五类回执见 PluginLocalInstallReason；同 id 已装回 `reason:"exists"`（覆盖 = 调用方先卸载再装）。
-         * 拒 core:true（本地不得自封内置）。⛔ 不做多插件目录（09 v2 再议）。
+         * 拒 essential:true（本地不得自封重要型）。⛔ 不做多插件目录（09 v2 再议）。
          */
         installFromDirectory?(path: string, opts?: PluginInstallRequestOpts): Promise<PluginLocalInstallResult>;
         /** (1.2-5): the explicit name for the url/.linkdesk-plugin package install flow (installPlugin routing alias; identical on both the shell and pool preloads — the pool proxies via plugins:call). Progress goes through the plugin:installProgress channel */

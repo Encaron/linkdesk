@@ -22,7 +22,7 @@ Follow the official settings plugin (= the `plugin.json` in **the settings plugi
   "name": "Pretty Settings",                 // plugin name — this is what the shared-area button shows (goes through t())
   "version": "1.0.0",
   "icon": "resources/icon.png",
-  // omit core — uninstallable; core: true means the UI has no uninstall button (an anti-mistake-deletion flag, not a category)
+  // omit essential — uninstallable; essential: true means the UI has no uninstall entry (an anti-mistake-deletion flag, not a category)
   "factoryRole": "settings",                // ① the key — declares you are a member of the "settings set" family
   "entry": "src/index.tsx",                 // tab entry (appearsIn.tabBar requires entry)
   "appearsIn": { "tabBar": true },          // ⛔ don't declare iconBar — the bottom-left gear belongs to the shell (bottom is a position, not the gear)
@@ -103,7 +103,7 @@ import { InlineInput, SelectBox, FormRow } from "@linkdesk/ui";
 
 The data API only determines "what data exists"; **the layout is your free play**. Current references:
 
-- **Official settings** (repo `Encaron/linkdesk-plugin-settings`, core:true) = group tree on the left + form on the right + a flat switch bar on top — the only settings set in service right now (the old `settings-demo` reference implementation has been retired; for composing from scratch see approach 1/2 below)
+- **Official settings** (repo `Encaron/linkdesk-plugin-settings`, essential) = group tree on the left + form on the right + a flat switch bar on top — the only settings set in service right now (the old `settings-demo` reference implementation has been retired; for composing from scratch see approach 1/2 below)
 - Your own settings set can be arranged however you like: banner header + card sections (every configuration group = a card, with a role pill row + keycap cards for keybindings) + a bottom-right pill for switching sets — all fine (the design source for form two = the factory-role coexistence mockup `01-形态一形态二-复杂场景图.html`)
 
 Composition dimensions: group navigation / search box / control rendering / "Open as JSON" / the keybindings subpage / banner header / card sections — each of these can be built, skipped, or moved.
@@ -139,7 +139,7 @@ The number of shared-area buttons is **derived from the live set at runtime** �
 
 Copy the official settings plugin's directory (repo `Encaron/linkdesk-plugin-settings`) wholesale into your project root and change only:
 
-1. `plugin.json` — `name`/`description`; **remove `core: true`** (otherwise the UI has no uninstall entry point); for new UI copy see the i18n section below
+1. `plugin.json` — `name`/`description`; **remove `essential: true`** (otherwise the UI has no uninstall entry point); for new UI copy see the i18n section below
 2. Append your own style to `src/views/SettingsView.css` — **but override rules must hang off your own root class**, see "🔥 CSS scoping iron rule" below
 
 The official settings plugin has **zero `@src/core` imports** (two historical `@src/core` dependencies were eliminated along the way: `getFilePath` → self-derived from `path.appDataDir`; `useConfigurationIpc` → calls `window.linkdesk.configuration.*` directly), so a copy is self-contained.
@@ -179,4 +179,4 @@ New UI copy goes through `t("<original Chinese text>")`; the i18n audit in `npm 
 - On real hardware: run `npm run dev` in **your own project root** (or build a zip and install it into `{userData}/plugins`) → restart → the icon bar shows up → open settings → the shared area shows the new button → click to switch → persistence survives a restart
 - Uninstallable and reinstallable (uninstallable ⇒ reinstallable = the very definition of plugin-ness)
 
-> Reference implementation: repo `Encaron/linkdesk-plugin-settings` (the core:true official settings set, whose UI has no uninstall entry point).
+> Reference implementation: repo `Encaron/linkdesk-plugin-settings` (the essential official settings set, whose UI has no uninstall entry point).

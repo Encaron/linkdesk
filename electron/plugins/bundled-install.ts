@@ -1,10 +1,10 @@
 /**
  * bundled-install——E6#15c 首启自动装：把随壳发货的 `bundled-plugins/*.linkdesk-plugin`
  * （2026-09-05 塌平单根：发货夹直接放 zip，无 builtin/user 子目录层）解压成
- * `{userData}/plugins/<id>/`，供 loader 单根从 userData 统一发现。core:true 插件与第三方
+ * `{userData}/plugins/<id>/`，供 loader 单根从 userData 统一发现。essential 插件与第三方
  * 插件同一条加载路（破特权阶级）——发货 zip 里的插件与手动装的插件在 {userData}/plugins
- * 同一棵树里并列，差异只剩 manifest.core:true（纯 UI 藏钮防误删——卸载无 core 豁免，removed
- * 墓碑对任何来源同款，E6#18：boot ② 跳过不看 core，只看账本 removed）。
+ * 同一棵树里并列，差异只剩 manifest.essential（纯 UI 藏钮防误删——卸载无豁免，removed
+ * 墓碑对任何来源同款，E6#18：boot ② 跳过不看 essential，只看账本 removed）。
  *
  * 与 bundle-ingest 的关系：同 zip 语义、不同来源——
  *   ingest 读 userData 手动丢的 zip（消费后删 zip）；
