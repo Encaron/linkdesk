@@ -34,6 +34,15 @@ const _poolCommands = new Map<string, PoolCommandEntry>();
 // registerCommand 只读栈顶（⛔ 自己维护挂载判断）。空栈 = entry 上下文（默认）。
 const _activationStack: string[] = [];
 
+/**
+ * 2026-11-25：**入口 import 强制上下文**（修复「插件升级/重开后齿轮命令丢失」）。
+ * 病根：entry 的顶层副作用若在某个视图挂载期间被 import（on-command 激活 / 懒加载），
+ * 会按栈顶误判成 view 作用域 ⇒ 该视图卸载时命令被摘；模块缓存又让 entry 不会二次执行
+ * ⇒ 之后齿轮菜单报「命令 … 未在池内注册」。
+ * 修法：PluginComponent 在 import **入口**（非视图）前后压/弹本计数器；期间注册一律按 entry。
+ */
+let _entryImportDepth = 0;
+
 /** 视图挂载：压栈（栈顶即当前视图上下文） */
 function enterViewContext(viewInstanceId: string): void {
   if (_activationStack[_activationStack.length - 1] !== viewInstanceId) _activationStack.push(viewInstanceId);
@@ -131,7 +140,8 @@ export function buildCommands(events: EventSystemApi) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
     registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string; pluginId?: string; description?: string; params?: { name: string; type: "string" | "number" | "boolean" | "object"; required?: boolean; description?: string }[]; async?: boolean }) => {
       // S4：读激活上下文栈顶定 activation/scope——entry 顶层注册 = plugin 作用域；视图挂载期间 = view:<id>
-      const viewInstanceId = _activationStack[_activationStack.length - 1];
+      // 2026-11-25：入口 import 期间强制 entry（见 _entryImportDepth 注）——否则视图内触发激活入口会误记 view 作用域。
+      const viewInstanceId = _entryImportDepth > 0 ? undefined : _activationStack[_activationStack.length - 1];
       const activation: "entry" | "view" = viewInstanceId ? "view" : "entry";
       const scope = viewInstanceId ? `view:${viewInstanceId}` : "plugin";
       const existing = _poolCommands.get(id);
@@ -200,6 +210,9 @@ export function buildCommands(events: EventSystemApi) {
     /** S4 内部面——PluginComponent mount/unmount 压弹激活上下文栈（非插件作者 API，⛔ 插件自己调） */
     _enterViewContext: enterViewContext,
     _leaveViewContext: leaveViewContext,
+    /** 2026-11-25 内部面——import 入口前后压/弹「强制 entry 作用域」计数器（PluginComponent 调；非插件 API） */
+    _beginEntryImport: () => { _entryImportDepth++; },
+    _endEntryImport: () => { if (_entryImportDepth > 0) _entryImportDepth--; },
     getCommands: () => ipcRenderer.invoke(IPC.plugins.call, 'getCommands'),
   };
 

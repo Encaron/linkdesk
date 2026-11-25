@@ -163,9 +163,17 @@ function collectSurfaces(root: string, manifest: unknown, options: LinkdeskPlugi
 function rewriteDistManifest(manifest: unknown, surfaceByRel: Map<string, string>): unknown {
   const clone: unknown = JSON.parse(JSON.stringify(manifest));
   const c = clone as {
+    entry?: unknown;
     appearsIn?: { statusBar?: unknown };
     contributes?: { views?: Record<string, Array<{ render?: unknown }>> };
   };
+  // 2026-11-25：**入口路径同样要改写**——dist 的 JS 入口恒 index.bundle.js；源码 plugin.json 的
+  // `entry: "src/index.tsx"` 若原样进包，会让「入口顶层副作用」（命令注册）依赖的路径不存在：
+  // 壳的 resolveEntry 虽能按 bundle 兜底，但第三方宿主/读者按 manifest.entry 取入口即 404
+  // （实证：settings 1.0.55 的齿轮命令在部分路径上报「未在池内注册」）。
+  if (typeof c.entry === "string" && surfaceByRel.has(c.entry)) {
+    c.entry = surfaceByRel.get(c.entry);
+  }
   // E6#62d：自绘状态栏组件声明路径 → 编译表面（dist manifest 供 linkdesk:// 协议 root-direct 直解析）
   const appearsIn = c.appearsIn;
   if (appearsIn && typeof appearsIn.statusBar === "string" && surfaceByRel.has(appearsIn.statusBar)) {
@@ -529,6 +537,14 @@ export function defineLinkdeskPluginConfig(options: LinkdeskPluginOptions = {}):
         // 的插件（既有 zip）零影响。不可解 .bin → PACKAGER_RED 抛错（catch 见下：真红拦 build）。
         includeLspRuntimePackages(root, pkgDir, distManifest, (m) => this.warn(m));
 
+        // 2026-11-25：dist manifest.entry 必须指向包内真实文件——入口顶层注册（命令等）靠它被 import。
+        // 缺文件 = 打包真错（源码路径误入 dist），当场红，⛔ 不把「找不到入口」留给运行时。
+        const distEntry = (distManifest as { entry?: unknown }).entry;
+        if (typeof distEntry === "string" && distEntry && !existsSync(join(pkgDir, distEntry))) {
+          throw new Error(
+            `dist plugin.json 的 entry "${distEntry}" 不在包内——打包应把它改写为编译产物（index.bundle.js）`,
+          );
+        }
         writeFileSync(join(pkgDir, "plugin.json"), `${JSON.stringify(distManifest, null, 2)}\n`, "utf8");
         for (const decl of collectI18nDecls(manifest)) copyFileInto(root, pkgDir, decl.rel);
         // E6#93b：此处原有一行 `copyFileInto(root, pkgDir, "icon.svg")`——已删，别再写回来。

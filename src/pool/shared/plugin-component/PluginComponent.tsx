@@ -63,6 +63,23 @@ function PluginUnavailable({ pluginId }: { pluginId: string }) {
  *  pluginId = 待加载模块的归属插件（贡献/宿主插件本身）。⚠️ plugin-detail 详情页里它 ≠ detailPluginId
  *  （被展示的插件）——贡献视图由活跃 marketplace 插件渲染，resolvePath 要的是贡献插件根。
  */
+/**
+ * 2026-11-25：**入口 import**专用——import 前后开/关 preload 的「强制 entry 作用域」计数器。
+ * 入口顶层副作用（命令注册）必须记成 plugin 作用域；若此时有视图挂载，裸 import 会被误记 view。
+ * 旧壳 preload 无内部面 ⇒ 可选链 no-op（行为退回旧档）。renderPath（视图）导入不走本函数。
+ */
+async function importEntry(url: string): Promise<unknown> {
+  const cmd = window.linkdesk?.commands as
+    | { _beginEntryImport?: () => void; _endEntryImport?: () => void }
+    | undefined;
+  cmd?._beginEntryImport?.();
+  try {
+    return await import(/* @vite-ignore */ url);
+  } finally {
+    cmd?._endEntryImport?.();
+  }
+}
+
 export function resolvePluginViewLoader(pluginId: string, renderPath?: string): (() => Promise<unknown>) | null {
   // 🔴 #37f 边界诊断：pluginId 来自持久化布局 DTO，`string` 类型标注挡不住运行时坏数据
   //   （2026-09-11~12 累计日志里 `[object Object]` 被当插件 id 六次——写入者未定位、现场已被探针覆盖）。
@@ -124,13 +141,13 @@ export function resolvePluginViewLoader(pluginId: string, renderPath?: string): 
             const url = isDev
               ? `/@fs/${root}/${info.entry}`
               : `linkdesk://${pluginId}/${info.entry}`;
-            const mod = await import(/* @vite-ignore */ url);
+            const mod = await importEntry(url);
             return mod;
           }
           // 在盘上但清单无 entry（老清单/纯贡献插件走到组件加载）→ 落 src/index.tsx legacy 兜底。
           // 与旧实现的分别：**在盘性已被上面的 root 闸证过**，所以这条兜底不再是「拼一条未必存在的路径」。
           const url = isDev ? `/@fs/${root}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
-          const mod = await import(/* @vite-ignore */ url);
+          const mod = await importEntry(url);
           return mod;
         } catch (e) {
           console.error(`[PluginComponent] 动态加载插件 "${pluginId}" 失败:`, e);

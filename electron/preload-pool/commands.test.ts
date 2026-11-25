@@ -204,3 +204,30 @@ describe('S2/T14 补充：错误形态宽容（错误对象不是 Error 实例�
     expect(call?.[2]).toEqual({ error: '插件说：参数不对', code: 'EPLUGIN', hint: '看 describe' });
   });
 });
+
+describe('2026-11-25：入口 import 强制上下文（齿轮命令丢失回归）', () => {
+  it('视图挂载期间 import 入口 → 命令记 plugin 作用域，视图卸载后仍可执行', async () => {
+    ipcMock.invoke.mockClear();
+    const commands = buildCommands(fakeEvents());
+
+    commands._enterViewContext('view-1');
+    commands._beginEntryImport();
+    commands.registerCommand('demo-plugin.entryScoped', () => 'ok');
+    commands._endEntryImport();
+    commands._leaveViewContext('view-1'); // 视图卸载：只摘 view:*，plugin 作用域必须留下
+
+    await expect(commands.executeCommand('demo-plugin.entryScoped')).resolves.toBe('ok');
+  });
+
+  it('对照：同一路径不包 entry 上下文 → 记 view 作用域，视图卸载即摘（原有语义不变）', async () => {
+    ipcMock.invoke.mockClear();
+    const commands = buildCommands(fakeEvents());
+
+    commands._enterViewContext('view-2');
+    commands.registerCommand('demo-plugin.viewScoped', () => 'view');
+    commands._leaveViewContext('view-2');
+
+    // 已摘 ⇒ executeCommand miss → fallback 壳 IPC（mock 返回 undefined）
+    await expect(commands.executeCommand('demo-plugin.viewScoped')).resolves.toBeUndefined();
+  });
+});
