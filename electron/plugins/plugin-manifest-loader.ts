@@ -110,6 +110,18 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest, plug
 
 /** E5.8#26 D8——当前已加载插件 ID 集合（rescan 时对比端口 owner，回收被卸载插件的孤儿端口） */
 const _loadedPluginIds = new Set<string>();
+/** Block 3a：插件声明的设备 transport 能力（根字段 `deviceTransports`；缺省 = 只给存量 serial） */
+const _deviceTransports = new Map<string, string[]>();
+
+/** 读某插件的 transport 能力声明；null = 未声明（调用方按存量策略处理） */
+/** 是否已加载的插件（能力闸用它区分「已装未声明」与「未知/测试标签」） */
+export function isLoadedPlugin(pluginId: string): boolean {
+  return _loadedPluginIds.has(pluginId);
+}
+
+export function pluginDeviceTransports(pluginId: string): string[] | null {
+  return _deviceTransports.get(pluginId) ?? null;
+}
 
 /**
  * 全量扫盘——启动时 whenReady 调一次；装/卸/重装后经 plugins:rescanManifests 重扫。
@@ -130,6 +142,7 @@ export function loadAllPluginManifests(): void {
 
   _loadedPluginIds.clear();
   _langDefPluginDirById.clear();
+  _deviceTransports.clear();
 
   // E6#28b dev 门控——只对在开发插件注册（三表贡献在物化目录 plugin.json）。_loadedPluginIds
   // 只含 dev id：防 rescan 时 closeOrphanSerialPorts 把其他已装插件的真端口当孤儿连坐。
@@ -168,8 +181,15 @@ function registerTablesFromPluginDir(pluginId: string, pluginDir: string): void 
   _loadedPluginIds.add(pluginId);
   try {
     const raw = fs.readFileSync(manifestPath, "utf-8");
+    const manifest = parseManifestJson(raw);
+    // Block 3a：根字段 deviceTransports（schema 根允许扩展字段）——能力闸的唯一真相源
+    const rawTransports = (manifest as unknown as { deviceTransports?: unknown }).deviceTransports;
+    const transports = Array.isArray(rawTransports)
+      ? rawTransports.filter((t): t is string => typeof t === "string" && !!t)
+      : null;
+    if (transports) _deviceTransports.set(pluginId, transports);
     // E6#15e：lsp.args 相对插件根的路径以 pluginDir 为基准绝对化（sub-1 fallback 落地形态：注册处一次绝对化）
-    registerManifestTables(pluginId, parseManifestJson(raw), pluginDir);
+    registerManifestTables(pluginId, manifest, pluginDir);
   } catch (e) {
     console.error(`[plugin-manifest-loader] 跳过插件 ${pluginId}——plugin.json 解析失败`, e);
   }

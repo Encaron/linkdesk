@@ -10,6 +10,7 @@ import { IPC, filesystemChanged } from '../ipc/channels';
 import { buildFileAssociationFace } from '../ipc/file-association-face';
 import type { EventSystemApi } from '../ipc/event-system';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../../src/core/types/ipc/serial';
+import type { DeviceAcquireConfig, DeviceReply, DeviceSessionState } from '../../src/core/types/ipc/device';
 import type { FileChangeEvent } from '../../src/core/services/files/FileService';
 import type { SearchWireOptions, SearchWireResult } from '../../src/core/types/ipc/search';
 
@@ -33,6 +34,20 @@ export function buildSerial(events: EventSystemApi) {
     onSystem: (cb: (payload: SerialSystemPayload) => void) => events.on(IPC.serial.system, cb),
   };
   /* jscpd:ignore-end */
+}
+
+/** device 命名空间（Block 3a）——**返回回执信封**（contextBridge 抛错会丢 code/details，⛔ 在这里 throw） */
+export function buildDevice() {
+  return {
+    acquire: (cfg: DeviceAcquireConfig) => ipcRenderer.invoke(IPC.device.acquire, cfg) as Promise<DeviceReply<{ sessionId: string; state: DeviceSessionState }>>,
+    // 复核口径：池侧必须带 owner（宿主校验属主/可见性）；⛔ 无 owner = EBADARGS
+    release: (sessionId: string, ownerPluginId: string) =>
+      ipcRenderer.invoke(IPC.device.release, sessionId, { ownerPluginId }) as Promise<DeviceReply<{ released: true; already?: true }>>,
+    getState: (filter: { deviceKey?: string; ownerPluginId: string }) =>
+      ipcRenderer.invoke(IPC.device.getState, filter) as Promise<DeviceReply<{ sessions: DeviceSessionState[] }>>,
+    recover: (sessionId: string, ownerPluginId: string) =>
+      ipcRenderer.invoke(IPC.device.recover, sessionId, { ownerPluginId }) as Promise<DeviceReply<{ recovered: boolean; sessionId?: string; ms: number }>>,
+  };
 }
 
 /** filesystem 命名空间——路径守卫：池来源写操作经主进程校验（归一化 + 危险目录拒绝 + workspace 外用户确认，读放行） */

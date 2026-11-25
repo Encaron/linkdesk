@@ -97,6 +97,7 @@ import { buildFactorySlots } from './preload-pool/factory-slots'; // E5.8#41.14�
 import { buildUpdate } from './preload-pool/update'; // E6#57.8：主软件更新只读态（写命令不进契约）
 import {
   buildSerial,
+  buildDevice,
   buildFilesystem,
   buildClipboard,
   buildPath,
@@ -137,6 +138,7 @@ try {
   const poolExposed = {
     // ── 数据域（4d）──
     serial: buildSerial(events),
+    device: buildDevice(),
     filesystem: buildFilesystem(events),
     clipboard: buildClipboard(),
     path: buildPath(),

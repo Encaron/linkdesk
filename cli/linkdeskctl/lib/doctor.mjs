@@ -63,6 +63,25 @@ const PROFILES = {
     conflictArgs: { uri: "C:/linkdesk-doctor-none.txt", newName: "none-2.txt", expectedVersion: 999999 },
   },
   /**
+   * device-probe——设备会话样本（Block 3a）：只用宿主 device.*（tcp transport），
+   * ⛔ 不读 serial 源码。运行前需一个 TCP 回环服务（地址 = --endpoint 或 profile 缺省）。
+   */
+  "device-probe": {
+    label: "device-probe（设备会话样本 · dev-fixtures）",
+    pluginId: "device-probe",
+    readCommand: "device-probe.state",
+    viewCommand: null,
+    changeCommand: null,
+    stateCommand: null,
+    teardownCommand: null,
+    idempotentCommand: null,
+    conflictCommand: null,
+    deviceAcquireCommand: "device-probe.acquire",
+    deviceStateCommand: "device-probe.state",
+    deviceReleaseCommand: "device-probe.release",
+    deviceEndpoint: "127.0.0.1:9100",
+  },
+  /**
    * state-probe——纯软件状态样本（T-B · 13-状态命令约定）。
    * 插件住 `dev-fixtures/state-probe/`（验证用，⛔ 随壳发货）：装上后同一条断言链对
    * 「读快照 → 改 → 回读确认 → 同键重放 → 版本冲突」全链路成立。
@@ -438,6 +457,76 @@ export const DOCTOR_ASSERTIONS = [
       };
     },
   },
+  {
+    id: "a-device-truth",
+    name: "设备状态如实：acquire ⇒ open:true/属主可读；release ⇒ 无会话；重复 release 幂等",
+    source: "Block 3a/03（串口五类 bug 的通用化：状态撒谎/僵尸/幂等释放）",
+    async run(ctx) {
+      const acq = ctx.profile.deviceAcquireCommand;
+      if (!acq) {
+        return { pass: true, skip: true, note: "profile 无设备会话样本", expected: "—", actual: "—", repro: "—" };
+      }
+      const endpoint = ctx.endpoint ?? ctx.profile.deviceEndpoint;
+      if (!endpoint) {
+        return { pass: true, skip: true, note: "未给 --endpoint（设备会话断言需要真实设备/回环服务）", expected: "—", actual: "—", repro: "linkdeskctl doctor --profile device-probe --endpoint 127.0.0.1:9100" };
+      }
+      const a = await execChecked(ctx.call, acq, [{ endpoint }]);
+      const inner = a.ok && a.result && typeof a.result === "object" ? a.result.result : undefined;
+      if (!a.ok) {
+        return { pass: false, expected: `${acq} 成功（需要 TCP 回环服务在 ${endpoint}）`, actual: `code=${a.code} ${a.message}`, repro: `linkdeskctl exec ${acq} '{"endpoint":"${endpoint}"}'` };
+      }
+      const sessionId = inner && inner.sessionId;
+      const opened = !!inner && inner.state && inner.state.open === true && inner.state.ownerSessionId === sessionId;
+      const st = await execChecked(ctx.call, ctx.profile.deviceStateCommand, [{ endpoint }]);
+      const stInner = st.ok && st.result && typeof st.result === "object" ? st.result.result : undefined;
+      const listed = !!stInner && Array.isArray(stInner.sessions) && stInner.sessions.some((x) => x && x.sessionId === sessionId && x.open === true && x.stale === false);
+      const rel = await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId }]);
+      const relInner = rel.ok && rel.result && typeof rel.result === "object" ? rel.result.result : undefined;
+      const released = !!relInner && relInner.released === true;
+      const again = await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId }]);
+      const againInner = again.ok && again.result && typeof again.result === "object" ? again.result.result : undefined;
+      const idempotent = !!againInner && againInner.already === true;
+      const after = await execChecked(ctx.call, ctx.profile.deviceStateCommand, [{ endpoint }]);
+      const afterInner = after.ok && after.result && typeof after.result === "object" ? after.result.result : undefined;
+      const empty = !!afterInner && Array.isArray(afterInner.sessions) && afterInner.sessions.length === 0;
+      return {
+        pass: opened && listed && released && idempotent && empty,
+        expected: "acquire 后 open:true；release 后无会话；重复 release ⇒ already:true",
+        actual: `open=${opened} · listed=${listed} · released=${released} · idempotent=${idempotent} · empty=${empty}`,
+        repro: `linkdeskctl doctor --profile device-probe --endpoint ${endpoint}`,
+      };
+    },
+  },
+  {
+    id: "a-device-owner",
+    name: "设备属主唯一：他主 acquire ⇒ EBUSY；非属主 release ⇒ EBADARGS",
+    source: "Block 3a/03（一个 OS 句柄只归一个会话；⛔ 作用到别人会话）",
+    async run(ctx) {
+      const acq = ctx.profile.deviceAcquireCommand;
+      const endpoint = ctx.endpoint ?? ctx.profile.deviceEndpoint;
+      if (!acq || !endpoint) {
+        return { pass: true, skip: true, note: "无设备样本或未给 --endpoint", expected: "—", actual: "—", repro: "—" };
+      }
+      const a = await execChecked(ctx.call, acq, [{ endpoint, owner: "doctor-a" }]);
+      const inner = a.ok && a.result && typeof a.result === "object" ? a.result.result : undefined;
+      const sessionId = inner && inner.sessionId;
+      if (!sessionId) {
+        return { pass: false, expected: `${acq}（owner=doctor-a）成功`, actual: `code=${a.code} ${a.message}`, repro: `linkdeskctl exec ${acq} '{"endpoint":"${endpoint}","owner":"doctor-a"}'` };
+      }
+      const busy = await execChecked(ctx.call, acq, [{ endpoint, owner: "doctor-b" }]);
+      const busyOk = !busy.ok && busy.code === "EBUSY" && busy.details && busy.details.ownerSessionId === sessionId;
+      const wrong = await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId, owner: "doctor-b" }]);
+      const wrongOk = !wrong.ok && wrong.code === "EBADARGS";
+      // 收尾：真属主释放（失败也不掩盖前两条）
+      await execChecked(ctx.call, ctx.profile.deviceReleaseCommand, [{ sessionId, owner: "doctor-a" }]);
+      return {
+        pass: busyOk && wrongOk,
+        expected: "他主 acquire ⇒ EBUSY(details.ownerSessionId)；非属主 release ⇒ EBADARGS",
+        actual: `busy=${busyOk} · wrongOwner=${wrongOk}`,
+        repro: `linkdeskctl doctor --profile device-probe --endpoint ${endpoint}`,
+      };
+    },
+  },
 ];
 
 /**
@@ -445,12 +534,12 @@ export const DOCTOR_ASSERTIONS = [
  * @param {{call: Function, profile?: string, only?: string}} opts
  * @returns 每条的 resultOf 形状数组
  */
-export async function runDoctor({ call, profile = "serial", only = null }) {
+export async function runDoctor({ call, profile = "serial", only = null, endpoint = null }) {
   const profileData = PROFILES[profile];
   if (!profileData) {
     throw new Error(`未知 profile "${profile}"——可选: ${Object.keys(PROFILES).join(" / ")}`);
   }
-  const ctx = { call, profile: profileData };
+  const ctx = { call, profile: profileData, endpoint: endpoint ?? profileData.deviceEndpoint ?? null };
   const list = only ? DOCTOR_ASSERTIONS.filter((a) => a.id === only) : DOCTOR_ASSERTIONS;
   if (only && list.length === 0) {
     throw new Error(`未知断言 "${only}"——用 --list 看全部`);

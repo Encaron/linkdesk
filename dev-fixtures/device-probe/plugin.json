@@ -1,0 +1,77 @@
+{
+  "pluginId": "device-probe",
+  "name": "设备会话探针",
+  "version": "1.0.0",
+  "category": "development",
+  "description": "契约验收夹具：只用宿主的 device.* 生命周期 API（TCP transport），⛔ 不 import 串口任何代码",
+  "author": "Encaron",
+  "distribution": "user",
+  "deviceTransports": ["tcp"],
+  "entry": "index.bundle.js",
+  "contributes": {
+    "commands": [
+      {
+        "id": "device-probe.acquire",
+        "title": "打开设备会话",
+        "description": "按 endpoint（host:port）经 tcp transport 建会话。owner 缺省 device-probe；同设备他主占用 ⇒ EBUSY。",
+        "risk": "R1",
+        "activation": "entry",
+        "params": [
+          { "name": "endpoint", "type": "string", "required": true, "description": "设备地址 host:port" },
+          { "name": "owner", "type": "string", "description": "属主标识（缺省 device-probe；验收他主冲突用）" }
+        ],
+        "returns": [
+          { "name": "sessionId", "type": "string", "description": "会话 id" },
+          { "name": "state", "type": "object", "description": "四字段状态 {deviceKey,open,devicePresent,stale,ownerSessionId}" }
+        ],
+        "example": { "endpoint": "127.0.0.1:9100" }
+      },
+      {
+        "id": "device-probe.release",
+        "title": "释放设备会话",
+        "description": "幂等释放；已释放 ⇒ already:true。owner 不符 ⇒ EBADARGS。",
+        "risk": "R1",
+        "activation": "entry",
+        "params": [
+          { "name": "sessionId", "type": "string", "required": true, "description": "会话 id" },
+          { "name": "owner", "type": "string", "description": "属主标识（验收非属主释放用）" }
+        ],
+        "returns": [
+          { "name": "released", "type": "boolean", "description": "是否已释放" },
+          { "name": "already", "type": "boolean", "optional": true, "description": "重复释放时为 true" }
+        ],
+        "example": { "sessionId": "dev_00000001" }
+      },
+      {
+        "id": "device-probe.state",
+        "title": "读设备会话状态",
+        "description": "按 endpoint（可缺省）读四字段状态——直接来自宿主注册表，⛔ 插件缓存。",
+        "risk": "R0",
+        "activation": "entry",
+        "params": [
+          { "name": "endpoint", "type": "string", "description": "只读该设备；缺省全部会话" }
+        ],
+        "returns": [
+          { "name": "sessions", "type": "array", "description": "会话状态数组" }
+        ],
+        "example": { "endpoint": "127.0.0.1:9100" }
+      },
+      {
+        "id": "device-probe.recover",
+        "title": "恢复设备会话",
+        "description": "句柄已死（拔线/断连）⇒ 按原参数重开；活会话 ⇒ recovered:false。",
+        "risk": "R1",
+        "activation": "entry",
+        "params": [
+          { "name": "sessionId", "type": "string", "required": true, "description": "会话 id" }
+        ],
+        "returns": [
+          { "name": "recovered", "type": "boolean", "description": "是否真的重开" },
+          { "name": "sessionId", "type": "string", "optional": true, "description": "新会话 id" },
+          { "name": "ms", "type": "number", "description": "耗时毫秒" }
+        ],
+        "example": { "sessionId": "dev_00000001" }
+      }
+    ]
+  }
+}

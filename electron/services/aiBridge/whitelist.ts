@@ -564,7 +564,7 @@ export const OPS: Record<string, BridgeOp> = {
   exec: {
     name: 'exec',
     kind: 'write',
-    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。注意：describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（用 requestElevation 说明理由请求用户提权；CLI 子命令 request-elevation，MCP 工具 linkdesk_request_elevation；批准后再重试一次，别原样硬重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，≥2 个参数时壳侧按声明顺序展开）',
+    help: '执行壳命令（能执行的 = describe 的 commands 清单里那些；严格回传真结果——做了/没做可分辨）。注意：describe 的 askFirst.commands 里的敏感命令会先在软件里弹确认框，用户不点头 = EUSERDENIED、不执行；当前权限档位不允许 = EPOLICYDENIED（用 requestElevation 说明理由请求用户提权；CLI 子命令 request-elevation，MCP 工具 linkdesk_request_elevation；批准后再重试一次，别原样硬重试）；命令被标 userOnly = EPROTECTED（只能由用户在界面上操作）。实参两种写法等价：**逐位平铺**（`args: [a, b]`）或**一个具名对象**（`{ 参数名: 值 }`——键名照 describe 里该命令的 `params[].name`，壳侧按声明顺序展开）',
     params: [
       { name: 'commandId', type: 'string', required: true, description: '命令 id（如 app.openAiManual）' },
       { name: 'args', type: 'array', required: false, description: '透传给命令的实参（逐位平铺，或一个具名对象——键名照该命令的 params[].name）' },

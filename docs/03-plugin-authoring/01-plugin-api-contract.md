@@ -29,7 +29,7 @@ A few key points (a summary of Matrix §2; the matrix wins on details):
 
 | Fact | Explanation |
 |------|------|
-| **The contract has 51 namespaces** | The pool injects 50 (the only shell-only face is `bridge`; `storage` is a split face — the pool injects `getFilePath` only); the shell injects 27; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
+| **The contract has 52 namespaces** | The pool injects 51 (the only shell-only face is `bridge`; `storage` is a split face — the pool injects `getFilePath` only); the shell injects 28; mock injects 13 — **the live readings of the `check-namespace-matrix` gate are authoritative** (this row is mechanically reconciled by it; ⛔ do not copy the comment in `surfaces.ts` — that one drifts too) |
 | **Pool = the plugin runtime source of truth** | Plugins run in the pool preload — namespaces injected by the pool are **required**; `bridge` is real-shell-only |
 | **"Shell-only" ≠ plugins can't call it** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` **are actually injected in the pool** — the older version's ❌ shell-only marking for those surfaces was wrong |
 | **Contract required-surface drift is now zero** | `env.get(pluginId)` forwarding, `clipboard.readText` shell completion, `dialog.openFile` shell completion — all three are implemented, with no `?` degradation |

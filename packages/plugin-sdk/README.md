@@ -18,7 +18,7 @@ npm install -D @linkdesk/plugin-sdk
 > Auto-generated, **do not edit by hand**—produced live by `scripts/generate-api-cheatsheet.mjs` reading `linkdesk.d.ts` from `@linkdesk/contracts`;
 > `npm run check` mechanically watches for drift. For full signatures and per-method notes see `linkdesk.d.ts` itself (jump to it straight from the IDE).
 
-**19 domain interfaces → 51 namespaces / 288 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
+**19 domain interfaces → 52 namespaces / 292 methods**, all invoked via `window.linkdesk.<namespace>.<method>`. (plus 1 deprecated alias/es `config`, not counted twice)
 
 | Namespace | Methods | Method | Notes |
 |:--|:--:|:--|:--|
@@ -42,6 +42,7 @@ npm install -D @linkdesk/plugin-sdk
 | `dialogHost` | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's Di… |
 | `floatingPanelHost` | 4 | `onShow` `action` `registerBoundsHost` `getBounds` | (type B): floating panel dumb-render subscription — consume… |
 | `serial` | 11 | `listPorts` `getStatus` `openPort` `closePort` `sendData` `sendText` `setDtr` `setRts` `onData` `onStats` `onSystem` | Serial — read/write/listen, modeled after VS Code SerialPor… |
+| `device` | 4 | `acquire` `release` `getState` `recover` | Block 3a: device session lifecycle — transport-agnostic (se… |
 | `clipboard` | 3 | `readText` `writeText` `writeFileList` | Clipboard — read/write the system clipboard |
 | `p2p` | 2 | `send` `on` | p2p targeted inter-plugin push — same pattern as bridge.bro… |
 | `events` | 4 | `on` `emit` `heartbeat`° `notifyTheme`° | Generic event subscribe + publish — the inter-plugin data p… |

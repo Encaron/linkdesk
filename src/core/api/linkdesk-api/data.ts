@@ -5,6 +5,7 @@
  */
 
 import type { OpenPortConfig, SerialStatus, SerialDataPayload, SerialStatsPayload, SerialSystemPayload, SerialPortInfo } from "../../types/ipc/serial";
+import type { DeviceAcquireConfig, DeviceReply, DeviceSessionState } from "../../types/ipc/device";
 
 /** Serial / clipboard / inter-plugin communication / events / persistent storage namespace surfaces — modeled after VS Code SerialPort API + p2p + EventEmitter + state */
 export interface DataAPI {
@@ -25,6 +26,19 @@ export interface DataAPI {
     onData(cb: (payload: SerialDataPayload) => void): () => void;
     onStats(cb: (payload: SerialStatsPayload) => void): () => void;
     onSystem(cb: (payload: SerialSystemPayload) => void): () => void;
+  };
+
+  /** Block 3a: device session lifecycle — transport-agnostic (serial first, tcp for acceptance).
+   *  Truth = host registry; plugins must not cache `open` (see 03 §8). */
+  device: {
+    /** ⚠️ 四条都返回**回执信封**（contextBridge 抛错会丢 code/details）：成功 {ok:true,...}、失败 {ok:false,code,message,hint?,details?} */
+    acquire(cfg: DeviceAcquireConfig): Promise<DeviceReply<{ sessionId: string; state: DeviceSessionState }>>;
+    /** Idempotent release: already-released ⇒ already:true. Pool callers **must** pass their owner id (host-verified at runtime). */
+    release(sessionId: string, ownerPluginId?: string): Promise<DeviceReply<{ released: true; already?: true }>>;
+    /** Pool callers see only their own sessions (host filters by ownerPluginId; shell uses scope=host). */
+    getState(filter: { deviceKey?: string; ownerPluginId?: string }): Promise<DeviceReply<{ sessions: DeviceSessionState[] }>>;
+    /** Reopen a stale session with the original params; live session ⇒ recovered:false. Owner is verified. */
+    recover(sessionId: string, ownerPluginId?: string): Promise<DeviceReply<{ recovered: boolean; sessionId?: string; ms: number }>>;
   };
 
   /** Clipboard — read/write the system clipboard */

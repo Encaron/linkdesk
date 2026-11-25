@@ -59,7 +59,7 @@ describe("doctor 正控（serial profile）", () => {
     });
     const out = await runDoctor({ call, profile: "file-tree" });
     const skipped = out.filter((r) => r.skip).map((r) => r.id);
-    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent"]);
+    expect(skipped).toEqual(["a-view-code", "a-poststate", "a-teardown", "a-async-op", "a-state-keys", "a-idempotent", "a-device-truth", "a-device-owner"]);
     for (const r of out.filter((x) => !x.skip)) expect(r.pass, `${r.id}: ${r.actual}`).toBe(true);
   });
 
@@ -242,5 +242,69 @@ describe("doctor · state-probe（T-B 纯软件状态样本）", () => {
     const out = await runDoctor({ call: makeStateCall({ conflictWithoutDetails: true }), profile: "state-probe", only: "a-conflict" });
     expect(out[0].pass).toBe(false);
     expect(out[0].actual).toContain("code=ECONFLICT");
+  });
+});
+
+
+/** device-probe 假服务：注册表语义的最小子集（acquire/release/state/recover） */
+function makeDeviceCall() {
+  let session = null; // {sessionId, owner}
+  const describe = {
+    commands: [
+      { id: "device-probe.state", risk: "R0", riskSource: "declared", activation: "entry", returns: [] },
+      { id: "device-probe.acquire", risk: "R1", riskSource: "declared", activation: "entry" },
+      { id: "device-probe.release", risk: "R1", riskSource: "declared", activation: "entry" },
+      { id: "device-probe.recover", risk: "R1", riskSource: "declared", activation: "entry" },
+    ],
+    commandCount: 4,
+  };
+  const call = async (op, payload) => {
+    if (op === "ping") return { pid: 1 };
+    if (op === "describe") return describe;
+    if (op !== "exec") return null;
+    const id = payload.commandId;
+    const a = (payload.args && payload.args[0] && typeof payload.args[0] === "object") ? payload.args[0] : {};
+    if (id === "device-probe.state") {
+      return { commandId: id, result: { sessions: session ? [{ deviceKey: a.endpoint ?? "ep", open: true, devicePresent: true, stale: false, ownerSessionId: session.sessionId, sessionId: session.sessionId }] : [] } };
+    }
+    if (id === "device-probe.acquire") {
+      if (session) throw Object.assign(coded("EBUSY", "占用"), { details: { ownerSessionId: session.sessionId } });
+      session = { sessionId: "dev_1", owner: a.owner ?? "device-probe" };
+      return { commandId: id, result: { sessionId: "dev_1", state: { deviceKey: a.endpoint, open: true, devicePresent: true, stale: false, ownerSessionId: "dev_1" } } };
+    }
+    if (id === "device-probe.release") {
+      if (!session) return { commandId: id, result: { released: true, already: true } };
+      if (a.owner && a.owner !== session.owner) throw coded("EBADARGS", "非属主");
+      session = null;
+      return { commandId: id, result: { released: true } };
+    }
+    throw coded("EUNKNOWNCOMMAND", "不存在");
+  };
+  return call;
+}
+
+describe("doctor · device-probe（Block 3a 设备会话样本）", () => {
+  it("正控：a-device-truth / a-device-owner 全绿，其余按 profile 跳过", async () => {
+    const out = await runDoctor({ call: makeDeviceCall(), profile: "device-probe", endpoint: "127.0.0.1:9100" });
+    const dev = out.filter((r) => r.id.startsWith("a-device-"));
+    expect(dev.map((r) => r.id)).toEqual(["a-device-truth", "a-device-owner"]);
+    for (const r of dev) expect(r.pass, `${r.id}: ${r.actual}`).toBe(true);
+  });
+
+  it("负控：他主 acquire 回成功（不 EBUSY）⇒ a-device-owner 红", async () => {
+    const base = makeDeviceCall();
+    const call = async (op, payload) => {
+      if (op === "exec" && payload.commandId === "device-probe.acquire" && payload.args?.[0]?.owner === "doctor-b") {
+        return { commandId: payload.commandId, result: { sessionId: "dev_2", state: { open: true } } };
+      }
+      return base(op, payload);
+    };
+    const out = await runDoctor({ call, profile: "device-probe", endpoint: "127.0.0.1:9100", only: "a-device-owner" });
+    expect(out[0].pass).toBe(false);
+  });
+
+  it("未给 --endpoint ⇒ 两条设备断言 skip（不是假绿）", async () => {
+    const out = await runDoctor({ call: makeDeviceCall(), profile: "device-probe", only: "a-device-truth", endpoint: "" });
+    expect(out[0].skip).toBe(true);
   });
 });

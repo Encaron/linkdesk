@@ -87,6 +87,12 @@
       "registerProvider",
       "unregisterProvider"
     ],
+    "device": [
+      "acquire",
+      "getState",
+      "recover",
+      "release"
+    ],
     "dialog": [
       "alert",
       "confirm",
@@ -493,6 +499,12 @@
       "onDidChange",
       "registerProvider",
       "unregisterProvider"
+    ],
+    "device": [
+      "acquire",
+      "getState",
+      "recover",
+      "release"
     ],
     "dialog": [
       "alert",

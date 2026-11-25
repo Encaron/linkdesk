@@ -32,6 +32,8 @@ import type {
   OpenPortConfig, SerialStatus,
   SerialDataPayload, SerialStatsPayload, SerialSystemPayload,
 } from '../../src/core/types/ipc/serial';
+import { deviceSessions } from './deviceSession/index.js';
+import type { DeviceHandle } from './deviceSession/transport.js';
 
 // ── 类型 ──
 
@@ -49,8 +51,10 @@ interface PortState {
   isClosing: boolean;
   portName: string;
   baudRate: number;
-  ownerPluginId?: string;
 }
+
+/** 未声明归属的口（壳/无主打开）——注册表要求 owner 非空；连坐名单要把它排除 */
+const SERIAL_UNOWNED = '__shell__';
 
 // E5.8#2：SerialStatus re-export 已删（消费方直引 src/core/types/ipc/serial 正源）
 // E5.8#28：三回调载荷对象化——portName = 路由键（D6——下游按口路由的前提，推流源头不带口名 = 下游无法路由）
@@ -80,6 +84,15 @@ class SerialService {
   /** E5.8#26 D4——多口状态：portName → PortState。端口共存（D1），硬件所有权在主进程。 */
   private ports = new Map<string, PortState>();
   private callbacks: SerialCallbacks | null = null;
+
+  /** Block 3a：serial 是第一个 transport——只管开/关/探在不在，会话生命周期归 deviceSessions */
+  constructor() {
+    deviceSessions.registerTransport({
+      id: 'serial',
+      open: (deviceKey, params) => this.openTransport(deviceKey, params),
+      probe: async (deviceKey) => (await this.listPorts()).some((p) => p.name === deviceKey),
+    });
+  }
 
   /** 注册事件回调——serial-handlers 在初始化时调用 */
   setCallbacks(cb: SerialCallbacks): void {
@@ -144,18 +157,29 @@ class SerialService {
         this.callbacks?.onSystem({ portName: cfg.portName, message: msg, type: 'error' });
         throw new Error(msg);
       }
-      // 🔴 2026-11-25 实测（拔插后 reopened 报「已被打开」）：Map 里有条目但句柄已不活 = 僵尸。
-      //    僵尸必须**先摘账**再开，否则本次永远打不开、只能重启软件。
+      // 🔴 2026-11-25 实测：Map 有但句柄已死 = 僵尸——先摘账再开（会话表在注册表里，acquire 会处理 stale）
       this.ports.delete(cfg.portName);
     }
+    // Block 3a：生命周期交注册表；transport.open 负责真正的打开与读循环。
+    // owner 缺省用哨兵（壳/无主打开）——连坐名单会排除它。
+    await deviceSessions.acquire({
+      deviceKey: cfg.portName,
+      transport: 'serial',
+      ownerPluginId: cfg.ownerPluginId || SERIAL_UNOWNED,
+      params: cfg as unknown as Record<string, unknown>,
+    });
+  }
 
+  /** serial transport 的 open——真正的句柄建立（只在注册表判定「该开」后被调用） */
+  private async openTransport(deviceKey: string, params: Record<string, unknown>): Promise<DeviceHandle> {
+    const cfg = params as unknown as OpenPortConfig;
     const dataBits = cfg.dataBits ?? 8;
     const stopBits = cfg.stopBits ?? 1;
     const parity = cfg.parity ?? 'none';
 
     const state: PortState = {
       port: new SerialPort({
-        path: cfg.portName,
+        path: deviceKey,
         baudRate: cfg.baudRate,
         dataBits: dataBits as 8 | 7 | 6 | 5,
         stopBits: stopBits as 1 | 2,
@@ -163,16 +187,15 @@ class SerialService {
         autoOpen: false,
       }),
       isClosing: false,
-      portName: cfg.portName,
+      portName: deviceKey,
       baudRate: cfg.baudRate,
-      ownerPluginId: cfg.ownerPluginId,
     };
 
     await new Promise<void>((resolve, reject) => {
       state.port.open((err) => {
         if (err) {
           const msg = `串口打开失败：${err.message}`;
-          this.callbacks?.onSystem({ portName: cfg.portName, message: msg, type: 'error' });
+          this.callbacks?.onSystem({ portName: deviceKey, message: msg, type: 'error' });
           reject(new Error(msg));
         } else {
           resolve();
@@ -185,11 +208,16 @@ class SerialService {
       state.port.flush(() => resolve());
     });
 
-    this.ports.set(cfg.portName, state);
+    this.ports.set(deviceKey, state);
     this.startReadLoop(state);
 
-    // 系统消息（V2 格式）
-    this.callbacks?.onSystem({ portName: cfg.portName, message: `---- 已打开串行端口 ${cfg.portName} ----`, type: 'status' });
+    this.callbacks?.onSystem({ portName: deviceKey, message: `---- 已打开串行端口 ${deviceKey} ----`, type: 'status' });
+
+    // 权威态永远问真句柄（⛔ 缓存 open）
+    return {
+      isOpen: () => state.port.isOpen,
+      close: () => this.closeHandle(deviceKey),
+    };
   }
 
   // ── 读循环（对标 Rust read_loop——事件驱动替代轮询）──
@@ -250,31 +278,27 @@ class SerialService {
   /** E5.8#26——可选 portName 经 getPort 解析（D2）；缺省唯一口语义：0 口抛「串口未打开」/ ≥2 口抛歧义。 */
   async closePort(portName?: string): Promise<void> {
     const state = this.getPort(portName);
-    const name = state.portName;
+    // Block 3a：先摘注册表账、再由 handle.close 放句柄（顺序即判据，幂等）
+    const sessionId = deviceSessions.sessionIdFor(state.portName);
+    if (sessionId) await deviceSessions.release(sessionId);
+    else await this.closeHandle(state.portName);
+  }
+
+  /** transport 的 close——先摘本地账再放句柄（设备可能已断电，关闭错误忽略） */
+  private async closeHandle(portName: string): Promise<void> {
+    const state = this.ports.get(portName);
+    if (!state) return; // 幂等：已摘
     state.isClosing = true;
-    // 🔴 2026-11-25 实测（拔线后状态撒谎 / 句柄被攥住）：**先摘账再判 isOpen**——释放是幂等的。
-    //    旧实现在「拔线后 isOpen=false」时直接 return ⇒ Map 条目永不删 ⇒ 会话永远报 open:true、
-    //    插回后 open/reopen 报「已被打开」，只能重启恢复。
-    this.ports.delete(name);
+    this.ports.delete(portName);
     if (!state.port.isOpen) {
       state.isClosing = false;
       return;
     }
-
-    // 关闭端口
-    const p = state.port;
-
     await new Promise<void>((resolve) => {
-      p.close((_err) => {
-        // 忽略关闭错误（设备可能已断电）
-        resolve();
-      });
+      state.port.close(() => resolve());
     });
-
-    // 清理状态
     state.isClosing = false;
-
-    this.callbacks?.onSystem({ portName: name, message: `---- 关闭串行端口 ${name} ----`, type: 'status' });
+    this.callbacks?.onSystem({ portName, message: `---- 关闭串行端口 ${portName} ----`, type: 'status' });
   }
 
   // ── E5.8#26 D8——卸载连坐（主进程内部，非公开 API）──
@@ -282,21 +306,19 @@ class SerialService {
   /** 当前端口 owner 去重集合——rescan 连坐回收判定用（loader 对比插件集合）。
    *  ownerPluginId 未声明的口（壳/无归属打开）不进集合——绝不因任何插件卸载被误关。 */
   getPortOwners(): string[] {
-    return [...this.ports.values()]
-      .map((s) => s.ownerPluginId)
-      .filter((id): id is string => Boolean(id));
+    return [...new Set(
+      deviceSessions.sessions()
+        .map((s) => s.ownerPluginId)
+        .filter((id) => id && id !== SERIAL_UNOWNED),
+    )];
   }
 
   /** 关闭指定插件打开的全部端口——卸载插件时回收其硬件资源（S16 补洞）。
    *  挂钩走 Phase 2 可逆注册主进程侧机制（#8 定案面），本方法只做资源回收。
    *  幂等：重复调用（插件主动关 + 连坐）对已删条目 no-op。 */
   async closePortsByOwner(pluginId: string): Promise<void> {
-    const owned = [...this.ports.values()]
-      .filter((s) => s.ownerPluginId === pluginId)
-      .map((s) => s.portName);
-    for (const name of owned) {
-      await this.closePort(name);
-    }
+    // Block 3a：属主表只有注册表一份（⛔ 兩套）——release 幂等，逐条失败不阻断其余
+    await deviceSessions.closeByOwner(pluginId);
   }
 
   /**

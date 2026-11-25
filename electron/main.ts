@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { seedBackgroundColor } from './theme-seed.js'; // 04「启动过场」④A：窗背景按持久化主题 seed
 import { registerSerialHandlers } from './ipc/handlers/serial-handlers.js';
+import { registerDeviceHandlers } from './ipc/handlers/device-handlers.js';
 import { registerFileHandlers } from './ipc/handlers/file-handlers.js';
 import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins/plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
 import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
@@ -173,7 +174,7 @@ function createWindow(workspaceFolder?: string, restoreWsWindowId?: string): voi
   // lsp/serial 推送无窗引用依赖 → 可无参；file 必须保留 windowManager——isPoolSender 壳/池来源判定靠它
   // （#6.5 回归：误删参数 → _windowManager 恒 undefined → 壳受信写也被当池来源守卫 → 启动弹十几个"工作区外写入确认"）
   registerLspHandlers();   // E5#74c
-  registerSerialHandlers(); // E5#74b
+  registerSerialHandlers(); registerDeviceHandlers(); // E5#74b ＋ Block 3a：串口/设备会话生命周期
   registerFileHandlers(windowManager);              // E5#80
   registerPluginInstallHandlers();                  // E6#11/#13（1.2-5）：装卸更 fs/net 段——无窗引用（进度走 IpcBridge.active）
   registerDialogHandlers(windowManager);            // E5.8#62 审计#4：对话框 parent 反查宿主窗——须在 windowManager 创建后注入

@@ -203,7 +203,7 @@
 
 <!-- BEGIN API-INDEX -->
 
-**19 个域接口 → 51 个命名空间 / 288 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
+**19 个域接口 → 52 个命名空间 / 292 个方法**；调用一律 `window.linkdesk.<命名空间>.<方法>`。
 
 | 命名空间 | 域接口 | 方法数 | 方法 | 一句话 |
 |:--|:--|:--:|:--|:--|
@@ -217,6 +217,7 @@
 | `configuration` | CommandsAPI | 15 | `get` `set` `getSchema` `onChange` `getConfigurationContributions` `inspectConfiguration` `getUserSettings` `onDidChangeConfiguration` `onPluginLifecycleChange` `consumeSettingsGroup` `onRequestSettingsGroup` `consumeScrollToSetting` `onRequestScrollToSetting` `consumeOpenKeybindings` `onRequestOpenKeybindings` | Configuration — the new name — modeled after VS Code vscode.workspace.getConfiguration |
 | `contextKey` | UiAPI | 1 | `set` | ContextKey — plugins SET state for the shell's when clauses to read |
 | `decorations` | EditorAPI | 4 | `registerProvider` `unregisterProvider` `getDecoration` `onDidChange` | file decorations — a local in-pool registry (zero IPC). Shape modeled after contract §3.24 |
+| `device` | DataAPI | 4 | `acquire` `release` `getState` `recover` | Block 3a: device session lifecycle — transport-agnostic (serial first, tcp for acceptance). |
 | `dialog` | UiAPI | 6 | `confirm` `alert` `open` `openFile` `save` `confirmContent` | Dialogs — confirm/alert/file selection |
 | `dialogHost` | UiAPI | 5 | `onShow` `current` `pending` `confirm` `cancel` | Dialog dumb-render subscription — consumed by the pool's DialogHost (the shell preload has no such surface). Named dial… |
 | `encoding` | WorkspaceAPI | 4 | `detect` `decode` `encode` `isBinary` | encoding detection/conversion (main-process EncodingService) |

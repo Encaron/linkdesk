@@ -8,6 +8,11 @@
 - 🧾 **错误 `details` 端到端**：结构化错误的细节字段（如 `ECONFLICT` 的 `stateVersion`）从池侧一路透传到 `BridgeError`、CLI `--json` 与 MCP 工具正文——AI 能按当前版本自纠，⛔ 从中文猜。
 - 🩺 **doctor ＋3 条断言**：`a-state-keys`（实收回执键 ⊆ 声明 `returns`）、`a-idempotent`（同键回放 / 异键真执行负控）、`a-conflict`（`ECONFLICT` 必须带 `details.stateVersion`）；新增 `--profile state-probe` 纯软件状态样本。
 
+### feat
+
+- 🔌 **设备会话共享契约（Block 3a）**：新增宿主 `DeviceSessionRegistry`（属主唯一 / 幂等释放 / 僵尸摘账 / `recover` 自愈）与 `transport` 接口；serial 收编为第一个 transport（行为与 1.0.46 对齐），新增 `device:acquire/release/getState/recover` IPC 与 `linkdesk.device.*`；`tcp` 作为第二 transport 用于验收；夹具 `dev-fixtures/device-probe`（⛔ 不随壳发货）。`doctor --profile device-probe` 新增 `a-device-truth` / `a-device-owner`。
+- 🧩 **单参命令也认具名对象**：`expandNamedArgs` 由 arity≥2 放宽到 ≥1（实测 `{sessionId}` 被当普通对象 ⇒ EBADARGS）。
+
 ### fix
 
 - 🚫 **T3 开闸：命令声明 `risk`/`activation` 必填**：loader 对缺声明/非法值的命令**拒绝注册**并响亮报错（⛔ 兜底 R2 装成正常命令）；`audit:plugin-commands` 对官方仓缺口从黄转红（exit 1），`.release-mp-1.3.0` 冻结暂存副本排除。

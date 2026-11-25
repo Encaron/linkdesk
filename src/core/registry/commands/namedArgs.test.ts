@@ -49,11 +49,11 @@ describe("expandNamedArgs（纯函数）", () => {
     expect(r.expanded).toEqual(["viewId"]);
   });
 
-  it("负控①：arity=1（params 只有一条）⇒ 不展开", () => {
+  it("正控①：arity=1（params 只有一条）也展开（Block 3a 统一口径：⛔ 单参例外）", () => {
     const one = [{ name: "viewId", type: "string" as const, required: true }];
     const r = expandNamedArgs(one, [{ viewId: "v1" }]);
-    expect(r.args).toEqual([{ viewId: "v1" }]);
-    expect(r.expanded).toEqual([]);
+    expect(r.args).toEqual(["v1"]);
+    expect(r.expanded).toEqual(["viewId"]);
   });
 
   it("负控②：未声明 params（undefined / 空表）⇒ 不展开", () => {

@@ -249,6 +249,14 @@ export const IPC = {
     stats: 'serial:stats',
     system: 'serial:system',
   },
+
+  /** Block 3a：设备会话生命周期（transport 无关；serial 是第一个实现） */
+  device: {
+    acquire: 'device:acquire',
+    release: 'device:release',
+    getState: 'device:getState',
+    recover: 'device:recover',
+  },
   shell: {
     showItemInFolder: 'shell:showItemInFolder',
     startDrag: 'shell:startDrag',

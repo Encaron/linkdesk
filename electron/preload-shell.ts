@@ -26,6 +26,7 @@ import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
+import type { DeviceSessionState } from '../src/core/types/ipc/device';
 import type { DownloadProgress, UpdateState } from '../src/core/types/ipc/update'; // E6#57.9c：#57.12 加 DownloadProgress
 import type { DialogOpenOptions, DialogContentOpenOptions, DialogSaveOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
@@ -538,6 +539,17 @@ try {
         listenDirect(ipcRenderer, IPC.p2p.data, (d: { channel: string; data: unknown }) => {
           if (d.channel === channel) cb(d.data);
         }),
+    },
+    // Block 3a：设备会话生命周期——回执信封；壳内 scope=host（可看全量，doctor/诊断用）
+    device: {
+      acquire: (cfg: { deviceKey: string; transport: string; ownerPluginId: string; params?: Record<string, unknown> }) =>
+        ipcRenderer.invoke(IPC.device.acquire, { ...cfg, scope: 'host' }) as Promise<{ ok: true; sessionId: string; state: DeviceSessionState } | { ok: false; code: string; message: string; hint?: string; details?: unknown }>,
+      release: (sessionId: string) =>
+        ipcRenderer.invoke(IPC.device.release, sessionId, { scope: 'host' }) as Promise<{ ok: true; released: true; already?: true } | { ok: false; code: string; message: string; hint?: string; details?: unknown }>,
+      getState: (filter?: { deviceKey?: string }) =>
+        ipcRenderer.invoke(IPC.device.getState, { ...filter, scope: 'host' }) as Promise<{ ok: true; sessions: DeviceSessionState[] } | { ok: false; code: string; message: string; hint?: string; details?: unknown }>,
+      recover: (sessionId: string) =>
+        ipcRenderer.invoke(IPC.device.recover, sessionId, { scope: 'host' }) as Promise<{ ok: true; recovered: boolean; sessionId?: string; ms: number } | { ok: false; code: string; message: string; hint?: string; details?: unknown }>,
     },
     clipboard: {
       // E5.8#20 D2 修复：补 readText（对齐池 namespaces-data.ts：66）——契约必选面壳侧缺失，调用即崩的潜伏漂移

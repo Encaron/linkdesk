@@ -504,7 +504,9 @@ export function expandNamedArgs(
   params: LinkDeskCommandParam[] | undefined,
   args: unknown[],
 ): { args: unknown[]; expanded: string[] } {
-  if (!params || params.length < 2 || args.length !== 1) return { args, expanded: [] };
+  // 2026-11-25 Block 3a：单参数命令也认具名对象——README/help 原文只写了「≥2 时展开」，
+  // 实测单参命令传 {sessionId} 会被当普通对象（handler 收到 object ⇒ EBADARGS），AI 得记住例外。
+  if (!params || params.length === 0 || args.length !== 1) return { args, expanded: [] };
   const only = args[0];
   if (only === null || typeof only !== 'object' || Array.isArray(only)) return { args, expanded: [] };
   const obj = only as Record<string, unknown>;

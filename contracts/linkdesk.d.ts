@@ -2038,6 +2038,33 @@ export interface SerialSystemPayload {
     /** Message category—status success flow / error failure anomaly (D8 refusal, driver error, unplug) */
     type: "status" | "error";
 }
+export interface DeviceAcquireConfig {
+    deviceKey: string;
+    /** transport 标识：`serial`（首个）/ `tcp`（验收用） */
+    transport: string;
+    /** 插件自声明（主进程无法从 sender 识别插件——与 serial ownerPluginId 同口径） */
+    ownerPluginId: string;
+    params?: Record<string, unknown>;
+}
+/** preload 层回执信封：错误带可判读码（⛔ 让跨 IPC 只剩一句中文） */
+export type DeviceReply<T> = ({
+    ok: true;
+} & T) | {
+    ok: false;
+    code: string;
+    message: string;
+    hint?: string;
+    details?: unknown;
+};
+/** 会话状态四字段（⊕ 两个 id）——`devicePresent:null` = transport 探不了（⛔ 当 false） */
+export interface DeviceSessionState {
+    deviceKey: string;
+    open: boolean;
+    devicePresent: boolean | null;
+    stale: boolean;
+    ownerSessionId: string | null;
+    sessionId?: string;
+}
 /** Serial / clipboard / inter-plugin communication / events / persistent storage namespace surfaces — modeled after VS Code SerialPort API + p2p + EventEmitter + state */
 export interface DataAPI {
     /** Serial — read/write/listen, modeled after VS Code SerialPort API */
@@ -2057,6 +2084,33 @@ export interface DataAPI {
         onData(cb: (payload: SerialDataPayload) => void): () => void;
         onStats(cb: (payload: SerialStatsPayload) => void): () => void;
         onSystem(cb: (payload: SerialSystemPayload) => void): () => void;
+    };
+    /** Block 3a: device session lifecycle — transport-agnostic (serial first, tcp for acceptance).
+     *  Truth = host registry; plugins must not cache `open` (see 03 §8). */
+    device: {
+        /** ⚠️ 四条都返回**回执信封**（contextBridge 抛错会丢 code/details）：成功 {ok:true,...}、失败 {ok:false,code,message,hint?,details?} */
+        acquire(cfg: DeviceAcquireConfig): Promise<DeviceReply<{
+            sessionId: string;
+            state: DeviceSessionState;
+        }>>;
+        /** Idempotent release: already-released ⇒ already:true. Pool callers **must** pass their owner id (host-verified at runtime). */
+        release(sessionId: string, ownerPluginId?: string): Promise<DeviceReply<{
+            released: true;
+            already?: true;
+        }>>;
+        /** Pool callers see only their own sessions (host filters by ownerPluginId; shell uses scope=host). */
+        getState(filter: {
+            deviceKey?: string;
+            ownerPluginId?: string;
+        }): Promise<DeviceReply<{
+            sessions: DeviceSessionState[];
+        }>>;
+        /** Reopen a stale session with the original params; live session ⇒ recovered:false. Owner is verified. */
+        recover(sessionId: string, ownerPluginId?: string): Promise<DeviceReply<{
+            recovered: boolean;
+            sessionId?: string;
+            ms: number;
+        }>>;
     };
     /** Clipboard — read/write the system clipboard */
     clipboard: {

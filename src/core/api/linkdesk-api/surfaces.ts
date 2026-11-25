@@ -29,7 +29,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "commands" | "configuration" | "config" | "theme" | "language" | "app" | "appearance"
   | "tabs" | "keybindings" | "notifications" | "toasts" | "menu" | "contextKey"
   | "dialog" | "quickPick" | "quickPickHost" | "dialogHost" | "floatingPanelHost"
-  | "serial" | "clipboard" | "p2p" | "events" | "pluginState"
+  | "serial" | "device" | "clipboard" | "p2p" | "events" | "pluginState"
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
   | "viewContainer" | "plugins" | "pluginManager" | "licenses" | "aiPolicy" | "window"
@@ -65,7 +65,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
  *    getProductInfo into the checklist (the type now has the name) and the factory construction is kept (an established pattern whose comment explains the history;
  *    changing it for "we could skip the detour now" would be pointless churn); the pool-side buildApp() exposes only the contract surface getVersion */
 export type ShellExposed = Pick<LinkDeskAPI,
-  | "getFilePath" | "serial" | "filesystem" | "path" | "plugins"
+  | "getFilePath" | "serial" | "device" | "filesystem" | "path" | "plugins"
   | "fileAssociation" | "pluginManager" | "licenses" | "dialog" | "pluginState" | "menu"
   | "contextKey" | "keybindings" | "p2p"
   | "clipboard" | "app" | "env" | "events" | "bridge" | "window" | "update" | "storage"> & {

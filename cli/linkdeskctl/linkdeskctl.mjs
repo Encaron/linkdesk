@@ -119,6 +119,7 @@ function parseArgv(argv) {
     else if (a === "--list") opts.list = true; // doctor --list（S5）
     else if (a === "-k") opts.only = argv[++i]; // doctor -k <断言 id>
     else if (a === "--profile") opts.profile = argv[++i]; // doctor --profile file-tree
+    else if (a === "--endpoint") opts.endpoint = argv[++i]; // doctor --endpoint host:port（设备会话断言）
     else if (a === "--blind") { /* doctor 本来就是"门外盲测"——兼容 05 文档/旧教程的 --blind 写法，无副作用 */ }
     else if (a === "--status") { opts.statusRequested = true; opts.statusOpId = argv[++i] ?? null; } // exec --status <opId>（S6 异步相位）
     else if (a.startsWith("--")) throw new BridgeError("EUSAGE", `未知选项 ${a}`, "看 `--help`。");
@@ -415,7 +416,7 @@ async function main() {
       }
       const call = (op2, payload2) => callBridge(op2, payload2, callOpts).then((x) => x.result);
       const profile = opts.profile ?? "serial";
-      const results = await runDoctor({ call, profile, only: opts.only });
+      const results = await runDoctor({ call, profile, only: opts.only, endpoint: opts.endpoint ?? null });
       const failed = results.filter((r) => !r.pass);
       if (opts.json) {
         console.log(JSON.stringify({ ok: failed.length === 0, subcommand, profile, results }, null, 2));
