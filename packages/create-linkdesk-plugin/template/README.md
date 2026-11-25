@@ -57,6 +57,7 @@ Every entry under `contributes.commands[]` declares:
 
 - **Where the handler goes**: entry commands → module top level (`src/commands.ts`, called from `src/index.tsx`); view commands → inside the view component (`src/index.tsx`).
 - A view command called without its view yields `EVIEWREQUIRED` — the AI can predict this from `describe.activation`.
+- **Write commands**: return the **post-change state** (never just `{}`/`true`); declare `idempotencyKey` (`string`) to let the host replay a successful result on retry (`replayed: true`); return `ECONFLICT` (`details.stateVersion`) on version conflicts.
 - **Long-running commands**: pass `{ async: true }` in the registration meta (`AsyncCommandMeta` from `@linkdesk/plugin-sdk/runtime`). The shell answers `{ pending, opId }` and tracks the op (`opStatus`, `EOPEXPIRED`) — never build your own state machine, and there is no `runAsync` API.
 - Full spec + checklist: author doc `21-command-ification-spec.md`.
 

@@ -106,6 +106,8 @@
 | `returns` | ❌ | **回执字段表**（不是 JSON Schema）：`[{ name, type, optional?, description? }]`，只到第一层键；无返回写 `[]` |
 | `example` | ❌ | **一条可直接执行的请求体**（无参写 `{}`）——AI 照它拼调用，⛔ 不试错 |
 
+> 🔴 **保留参数名 `idempotencyKey`**（`type:"string"`）：写命令声明它即启用**宿主幂等重放**——同键重复调用回放首次**成功**结果（第二次 `replayed:true`），⛔ 插件自建重放、⛔ 失败缓存。写命令成功回执要带**后置状态**；并发冲突回 `ECONFLICT`（`details.stateVersion` 给当前版本）。
+
 **`params` 条目字段（逐位对应 handler 实参）：**
 
 | 字段 | 必需 | 说明 |

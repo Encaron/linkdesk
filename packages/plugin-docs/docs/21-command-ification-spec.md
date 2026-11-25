@@ -140,7 +140,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
 
 ---
 
-## 3. Seven things every command should get right
+## 3. Eight things every command should get right
 
 1. **`id` carries your own prefix**: `<pluginId>.<action>` (e.g. `demo-notes.addNote`).
    Both AI and users list "what can this plugin do" by **prefix** — an id without one gets attributed to somebody else.
@@ -174,6 +174,7 @@ has one implementation and one behaviour — AI does not have to fake mouse inpu
 
 6. **`activation` says where the handler lives**: `entry` (registered at the entry's top level — callable with no view) or `view` (registered inside a view component — needs that view). It must match the **actual registration site**: the host records the runtime truth at registration, and the declaration is only the "tell AI before activation" hint; a conflict resolves to the runtime truth (+ a diagnostic). ⛔ Never register after `setTimeout` / `await` (the context is read wrong).
 7. **`risk` is required**: `R0` read / `R1` reversible write / `R2` side-effecting write / `R3` irreversible or physical (reset, continuous sending, interrupting a connection, deleting data, replacing running code). To skip confirmation, declare `"risk": "R0"` **explicitly**; missing or invalid ⇒ fallback **R2** (it asks once). ⛔ Never guess from verbs (`send`/`list`) — a second-language name breaks it instantly.
+8. **Write commands must be safe to retry**: a successful receipt carries the **post-change state** (the readable value after the change, or a `hint` pointing at the state command) — ⛔ never just `{}`/`true`. Optionally declare **`idempotencyKey`** (`string`) in `params`: on retry with the same key the **host** replays the first **successful** result (the second receipt carries `replayed:true`) — ⛔ do not build replay yourself; failures are not cached (changing arguments really re-runs). Guard concurrent writes with `expectedVersion`: a mismatch yields `ECONFLICT` (`details.stateVersion` = current version) — ⛔ never overwrite silently.
 
    **Long-running (async) commands**: put `{ async: true }` in the **meta** of `registerCommand` (type `AsyncCommandMeta`, imported from `@linkdesk/plugin-sdk/runtime`). The shell answers `{ commandId, pending: true, opId, startedAt }` immediately, runs the handler in the background, and records the op + emits `op.completed` on completion; callers query `opStatus` for `running|done|failed|expired`, and an expired handle yields `EOPEXPIRED`. ⛔ Do not build your own state machine or cache — and **there is no `runAsync` API**. The manifest may also declare `contributes.commands[].async` (an **advance hint**, purely additive); the runtime `meta.async` overrides the declaration (same as `activation`).
 
@@ -318,7 +319,8 @@ The same command surface behaves like this under the four tiers:
   `EPOLICYDENIED` (current tier forbids it; the AI may request elevation) · `EPROTECTED` (userOnly, never callable) ·
   `EUSERDENIED` (the user said no) · `ESHELLTIMEOUT` (nobody answered = it never happened) ·
   `EVIEWREQUIRED` (view-state command but no view in place; open the tab first) · `ENOTACTIVE` (plugin disabled / failed to load) ·
-  `EUNKNOWNCOMMAND` (not even declared) · `EOPEXPIRED` (async op handle expired).
+  `EUNKNOWNCOMMAND` (not even declared) · `EOPEXPIRED` (async op handle expired) ·
+  `ECONFLICT` (write conflict; `details.stateVersion` = current version — re-read the snapshot and retry).
 - **Return `pluginError({ code, message, hint?, details? })` for expected business errors** (import from `@linkdesk/plugin-sdk/runtime`):
   🔴 **`return`, do not `throw`**: the handler crosses a `contextBridge` — a **thrown** value keeps `message` only, so `code`/`hint`/`details` are lost and the outside AI sees `EUNKNOWN`; a returned object is structured-cloned intact and the shell/CLI passes your `code` through verbatim. Reserve `throw` for genuinely unexpected failures.
   `code` is required and non-empty (an `E` prefix is a recommendation, not enforced); `details` passes through verbatim (`--json` only — ⛔ never in the CLI human-readable output).

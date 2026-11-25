@@ -17,6 +17,7 @@
  */
 
 import type { AsyncCommandMeta } from "@linkdesk/plugin-sdk/runtime";
+import { pluginError } from "@linkdesk/plugin-sdk/runtime";
 
 /** hello 命令的参数——形状同时写在 plugin.json 那条声明的 params 里 */
 export interface HelloArgs {
@@ -47,5 +48,23 @@ export function registerPluginCommands(): number {
     return { message: "长任务完成", waitedMs: Date.now() - started };
   }, { async: true } satisfies AsyncCommandMeta);
 
-  return 2;
+  // 写命令样板：后置状态 + 版本冲突 + 幂等键（第三个参数 idempotencyKey 由宿主消费，插件不自建重放）。
+  let savedGreeting = { text: "", stateVersion: 0 };
+  reg(
+    "{{pluginName}}.saveGreeting",
+    async (text: string, expectedVersion?: number) => {
+      if (expectedVersion !== undefined && expectedVersion !== savedGreeting.stateVersion) {
+        return pluginError({
+          code: "ECONFLICT",
+          message: "状态版本不一致，未写入",
+          hint: "重新读状态后再试",
+          details: { stateVersion: savedGreeting.stateVersion },
+        });
+      }
+      savedGreeting = { text, stateVersion: savedGreeting.stateVersion + 1 };
+      return { message: "已保存", savedText: savedGreeting.text, stateVersion: savedGreeting.stateVersion };
+    },
+  );
+
+  return 3;
 }

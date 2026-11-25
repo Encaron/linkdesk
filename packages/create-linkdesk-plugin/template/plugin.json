@@ -108,6 +108,25 @@
         "example": {}
       },
       {
+        // 写命令样板：回后置状态；声明 idempotencyKey 由宿主重放；版本冲突回 ECONFLICT。
+        "id": "{{pluginName}}.saveGreeting",
+        "title": "保存问候语",
+        "description": "保存一句问候语并返回后置状态（文本/状态版本）。带 expectedVersion 时先比对；带 idempotencyKey 时同键重试由宿主回放。",
+        "activation": "entry",
+        "risk": "R1",
+        "params": [
+          { "name": "text", "type": "string", "required": true, "description": "要保存的问候语" },
+          { "name": "expectedVersion", "type": "number", "description": "期望的当前 stateVersion；不一致 ⇒ ECONFLICT（⛔ 不覆盖）" },
+          { "name": "idempotencyKey", "type": "string", "description": "重试键：同键重复调用回放首次结果（replayed:true），⛔ 再执行一次" }
+        ],
+        "returns": [
+          { "name": "message", "type": "string", "description": "保存结果提示" },
+          { "name": "savedText", "type": "string", "description": "保存后的问候语" },
+          { "name": "stateVersion", "type": "number", "description": "保存后的状态版本" }
+        ],
+        "example": { "text": "Hello" }
+      },
+      {
         // 长任务样板：handler 在 src/commands.ts 的 meta 里写 async:true；exec 立即回 {pending,opId}。
         "id": "{{pluginName}}.longTask",
         "title": "长任务样板",

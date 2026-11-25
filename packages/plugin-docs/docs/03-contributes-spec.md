@@ -106,6 +106,8 @@
 | `returns` | ❌ | **receipt field table** (not a JSON Schema): `[{ name, type, optional?, description? }]`, first-level keys only; `[]` when nothing is returned |
 | `example` | ❌ | **one request body that can run as-is** (`{}` when there are no parameters) — AI composes the call from it, ⛔ no trial and error |
 
+> 🔴 **Reserved parameter name `idempotencyKey`** (`type:"string"`): declaring it on a write command enables **host-side idempotent replay** — a repeated call with the same key returns the first **successful** result (the second receipt carries `replayed:true`); ⛔ do not implement replay yourself, ⛔ failures are not cached. Successful write receipts must carry the **post-change state**; a concurrent conflict returns `ECONFLICT` (`details.stateVersion` = current version).
+
 **`params` item fields (positionally matching the handler's arguments):**
 
 | Field | Required | Description |
