@@ -191,7 +191,7 @@
       "since": "2026-11-26",
       "why": "插件语义二分（2026-11-26 用户拍板）：core 一个旗标同时被读成「随包/内置/不可卸载」，市场据此判过更新（「全部更新」谎报已是最新）。三事实分家——随包＝lock seed、重要＝essential（只影响卸载入口可见性）、可更新＝住所 updatable；core 整删、无兼容别名。",
       "replacedBy": "essential",
-      "landing": "src/core/api/types.ts（essential 字段注释记退役）＋ docs/04-软件更新/待抉择池/插件语义-随包与重要二分/00-提案.md",
+      "landing": "src/core/api/types.ts（essential 字段注释记退役）＋ docs/04-软件更新/已落地/插件语义-随包与重要二分/00-提案.md",
       "approvedBy": "用户 · 2026-11-26"
     }
   ]
